@@ -1,4 +1,4 @@
-# Team 18 - Week 1
+# Team 18 — Week 3, Sept. 15–21
 
 ## Overview
 
@@ -6,7 +6,7 @@
 This milestone the goals were completing the project requirements document and our first weekly logs. The requirements document is linked to the [Project Requirements Document](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/2) issue.
 
 ### Burnup Chart
-![Burnup Chart 1](./log_images/burnup_week3.png)
+![Burnup Chart 1](./log_images//team_log_imgs/burnup_week3.png)
 
 ## Details
 
