@@ -27,3 +27,6 @@ Given the current progress on the project there is no tabular view available for
 
 ### Test Reports
 Similarly to above, given no code has been developed yet, there are subsequently no tests to be reported on.
+
+## Next Steps
+The next milestones for our group include completing the system architecture. This entails deciding upon our tech stack, integrating our requirements into feasible components, figuring out protocols/APIs and metrics. Additionally, the next milestone will include work on a Data Flow Diagram to represent input and outputs that the system will handle.
