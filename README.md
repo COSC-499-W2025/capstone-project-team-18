@@ -1,5 +1,5 @@
 # Log Branch
 
-This branch is special. It will contain only the weekly logs. Please remeber to PR when adding.
+This branch is special. It will contain only the weekly personal and team logs. Please remeber to PR when adding.
 
-**Remember to checkout to your own branch `[name]-log` before pushing your weekly personal log!**
+**Remember:** Checkout to your own branch `[name]-log`, push your changes (i.e., your weekly log), and make a PR to the `log` branch.
