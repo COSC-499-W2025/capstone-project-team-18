@@ -11,7 +11,7 @@
 ## Week 3, Sept. 15–21  
 
 ### Peer Eval  
-![Peer eval](./log_images/personal_log_imgs/priyansh_week3_log.png)  
+![Peer eval](./log_images/personal_log_imgs/priyansh/priyansh_week3_log.png)  
 
 ### Recap  
 This week's goal was to start laying the foundation for our project by discussing potential technologies/the tech stack we want to use, figuring out what each member's strong suits are, and building an overall plan for the year.  
