@@ -22,5 +22,5 @@ Be sure to keep your docs and README.md up-to-date.
 There are three sub-branches (off of main) in this project:
 1. develop — Branch off of here when developing features / making changes to the codebase
 2. doc — All documentation should be located here (e.g. system architecture, project plan)
-3. log — Each team member should have their own branch for their weekly personal log: `[name]-log`. The weekly team log will exist in the `log` branch.
+3. log — All weekly personal logs and the team's log are located here.
 
