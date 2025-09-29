@@ -70,6 +70,7 @@ For this project, we will develop a multi-platform desktop application. The user
 - If rules conflict in Step 3, the system highlights conflicts and suggests precedence.
 - If zero artifacts match in Step 4, the system prompts to broaden filters.
 
+
 ### Use Case 3: Run Analysis Job
 
 - **Primary actor:** User
@@ -90,6 +91,8 @@ For this project, we will develop a multi-platform desktop application. The user
 - If the job is long in Step 2, the system shows progress and allows pause/cancel.
 - If metadata is missing in Step 3, the system uses fallback heuristics (e.g., file timestamps).
 
+![uml use case diagram 4](./uml-use-case-4.png)
+
 ### Use Case 4: View Results Dashboard (Visualizations & Key Performance Indicators)
 
 - **Primary actor:** User
@@ -109,6 +112,8 @@ For this project, we will develop a multi-platform desktop application. The user
 
 - User toggles Compare Periods (e.g., last month vs. this month); system renders a comparison view.
 - User bookmarks the current dashboard view; system saves the bookmark.
+
+![uml use case diagram 4](./uml-use-case-5.png)
 
 ### Use Case 5: Generate Static Webpage & Prompt to Host on GitHub Pages
 
