@@ -10,7 +10,7 @@
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi_week3_log.png)
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week3_log.png)
 
 ### Recap
 
@@ -20,7 +20,7 @@ This week's goals were to finish the requirements and I was assigned to complete
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi_week4_log.png)
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week4_log.png)
 
 ### Recap
 
