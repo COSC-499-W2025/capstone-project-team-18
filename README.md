@@ -1,12 +1,5 @@
 ```
-.
-├── docs                    # Documentation files
-│   ├── contract            # Team contract
-│   ├── proposal            # Project proposal 
-│   ├── design              # UI mocks
-│   ├── minutes             # Minutes from team meetings
-│   ├── logs                # Team and individual Logs
-│   └── ...          
+.         
 ├── src                     # Source files (alternatively `app`)
 ├── tests                   # Automated tests 
 ├── utils                   # Utility files
