@@ -9,25 +9,30 @@ This branch contains only the weekly individual and team logs.
 ``` txt
 .
 └── logs/
-    └── log_images/
-        ├── personal_log_imgs/
-        │   ├── alex/
-        │   │   ├── week3.png
-        │   │   ├── week4.png
-        │   │   └── etc...
-        │   ├── Erem
-        │   ├── jimi
-        │   ├── priyansh
-        │   ├── sam
-        │   └── tawana
-        ├── team_log_imgs/
-        │   ├── burnup_week3.png
-        │   ├── burnup_week4.png
-        │   └── etc...
-        ├── Alex.md
-        ├── Erem.md
-        ├── Jimi.md
-        ├── Priyansh.md
-        ├── Sam.md
-        └── Tawana.md
-        ```
+    ├── log_images/
+    │   ├── personal_log_imgs/
+    │   │   ├── alex/
+    │   │   │   ├── week3.png
+    │   │   │   ├── week4.png
+    │   │   │   └── etc...
+    │   │   ├── Erem
+    │   │   ├── jimi
+    │   │   ├── priyansh
+    │   │   ├── sam
+    │   │   └── tawana
+    │   └── team_log_imgs/
+    │       ├── burnup_week3.png
+    │       ├── burnup_week4.png
+    │       └── etc...
+    ├── team_logs/
+    │   ├── template.md
+    │   ├── week3.md
+    │   ├── week4.md
+    │   └── etc...
+    ├── Alex.md
+    ├── Erem.md
+    ├── Jimi.md
+    ├── Priyansh.md
+    ├── Sam.md
+    └── Tawana.md
+```
