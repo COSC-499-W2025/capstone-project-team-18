@@ -34,4 +34,4 @@ I led our team's brainstorming session and later assigned each person in our tea
 ![Peer Eval](./log_images/personal_log_imgs/alex/week5.png)
 
 ### Recap
-My goal for this week was to support my teammates who were making the DFD diagrams and communicate feedback I got from other teams about our diagrams. Additionally, I completed the team log for this week.
+My goals for this week were to support my teammates who were making the DFD and communicate feedback I got from other teams about our diagrams. Additionally, I completed the team log for this week.
