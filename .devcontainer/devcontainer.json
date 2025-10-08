@@ -1,0 +1,25 @@
+{
+
+    "name": "capstoneProjectDevContainer",
+
+    // Build the devcontainer from the Dockerfile
+    "build": {"dockerfile": "../Dockerfile"},
+
+    // The features we should have. This ensures we have the gitbub CLI
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+
+    // The extensions installed in the resulting VSCode Version
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-azuretools.vscode-docker",
+                "visualstudioexptteam.vscodeintellicode"
+            ]
+        }
+    },
+
+    "postCreateCommand": "bash utils/postCreateScript.sh"
+}
