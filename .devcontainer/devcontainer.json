@@ -19,7 +19,8 @@
                 "visualstudioexptteam.vscodeintellicode"
             ],
             "settings": {
-                  "[python]": {
+                "files.trimTrailingWhitespace": true,
+                "[python]": {
                     "editor.defaultFormatter": "ms-python.autopep8",
                     "editor.formatOnSave": true
                 }
