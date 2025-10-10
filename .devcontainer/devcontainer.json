@@ -17,7 +17,13 @@
                 "ms-python.python",
                 "ms-azuretools.vscode-docker",
                 "visualstudioexptteam.vscodeintellicode"
-            ]
+            ],
+            "settings": {
+                  "[python]": {
+                    "editor.defaultFormatter": "ms-python.autopep8",
+                    "editor.formatOnSave": true
+                }
+            }
         }
     },
 
