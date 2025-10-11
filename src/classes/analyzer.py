@@ -9,11 +9,6 @@ from datetime import datetime
 from statistic import Statistic, StatisticIndex
 from report import FileReport
 
-"""
-This module defines file analyzer classes.
-Analyzers inspect files and produce FileReport objects containing statistics.
-"""
-
 
 class BaseFileAnalyzer:
     """
@@ -32,11 +27,13 @@ class BaseFileAnalyzer:
 
         raise ValueError("Unimplemented")
 
-        self.stats.add(
-            Statistic(FileStatTemplate.DATE_CREATED, datetime.now()))
-        self.stats.add(
-            Statistic(FileStatTemplate.DATE_MODIFIED, datetime.now()))
-        self.stats.add(Statistic(FileStatTemplate.FILE_SIZE_BYTES, 50))
+        stats = [
+            Statistic(FileStatTemplate.FILE_SIZE_BYTES.value, 50),
+            Statistic(FileStatTemplate.DATE_MODIFIED.value, datetime.now()),
+            Statistic(FileStatTemplate.DATE_CREATED.value, datetime.now())
+        ]
+
+        st = StatisticIndex(stats)
 
     def analyze(self) -> FileReport:
         """

@@ -178,6 +178,10 @@ class StatisticIndex():
         self._statistics.append(stat)
         self._index[stat.statistic_template] = stat
 
+    def add_list(self, stat: list[Statistic]) -> None:
+        for s in stat:
+            self.add(s)
+
     def get(self, template: StatisticTemplate) -> Optional[Statistic]:
         """
         Gets a stat from this index by it's template. If the template
