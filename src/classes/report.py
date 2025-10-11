@@ -1,9 +1,8 @@
 """
 Reports hold statistics. They are created from either a generator or a analyzer class
 """
-
-from typing import List, Dict, Optional
-from statistic import Statistic, StatTemplate, StatisticIndex
+from typing import Any
+from statistic import Statistic, StatisticTemplate, StatisticIndex
 
 
 class BaseReport:
@@ -16,16 +15,16 @@ class BaseReport:
         self.statistics = statistics
 
     def add_statistic(self, stat: Statistic):
-        self.stats.add(stat)
+        self.statistics.add(stat)
 
-    def get(self, template: StatTemplate):
-        return self.stats.get(template)
+    def get(self, template: StatisticTemplate):
+        return self.statistics.get(template)
 
-    def get_value(self, template: StatTemplate, default=None):
-        return self.stats.get_value(template, default)
+    def get_value(self, template: StatisticTemplate) -> Any:
+        return self.statistics.get_value(template)
 
-    def to_dict(self):
-        return self.stats.to_dict()
+    def to_dict(self) -> dict[str, Any]:
+        return self.statistics.to_dict()
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.to_dict()}>"
@@ -43,7 +42,7 @@ class FileReport(BaseReport):
         super().__init__(statistics)
         self.path_to_file = path_to_file
 
-    def get_filename():
+    def get_filename(self):
         raise ValueError("Unimplemented")
 
 

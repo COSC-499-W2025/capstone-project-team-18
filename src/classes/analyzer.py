@@ -3,10 +3,10 @@ This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
 
-from statistic import Statistic, StatIndex, FileStatTemplate
+from statistic import Statistic
 from datetime import datetime
 
-from statistic import Statistic, StatisticIndex, FileStatTemplate
+from statistic import Statistic, StatisticIndex
 from report import FileReport
 
 """
@@ -44,7 +44,7 @@ class BaseFileAnalyzer:
         """
         self._process()
 
-        return FileReport(self.path_to_file, self.stats)
+        return FileReport(statistics=self.stats, path_to_file=self.path_to_file)
 
 
 class TextFileAnalyzer(BaseFileAnalyzer):
