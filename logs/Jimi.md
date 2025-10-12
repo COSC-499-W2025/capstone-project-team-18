@@ -38,3 +38,13 @@ This week's goals were to finish the project proposal, system architecture and d
 ### Recap
 
 This week's goals were to finish the DFD diagram and understand the data flow of our system. My role was to complete the DFD before the first class. I took feedback from the group and completed the diagram. We then spent the rest of the week adjusting and improving bot the Level 0 & 1 diagrams.
+
+## Week 6, Sept. 6–12
+
+### Peer Eval
+
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week6_log.png)
+
+### Recap
+
+This week's goals were to rework our documentation to more closely be aligned with the class requirements. I was responsible for consolidating these changes into the README. I also reworked the WBS by changing the requirements to follow the format necessary for a CLI over.
