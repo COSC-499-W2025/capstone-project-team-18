@@ -17,7 +17,7 @@ This week's goals were to complete the DFDs and continue fleshing out specific i
 ```
 jademola -> Jimi Ademola
 eremozdemir -> Erem Ozdemir
-thndlovu -> Tawan Ndlovu
+thndlovu -> Tawana Ndlovu
 alextaschuk -> Alex Taschuk
 sjsikora -> Sam Sikora
 priyansh1913 -> Priyansh Mathur

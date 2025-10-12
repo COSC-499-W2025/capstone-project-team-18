@@ -17,7 +17,7 @@ This week the goals were to complete the system architecture diagram, project pr
 ```
 jademola -> Jimi Ademola
 eremozdemir -> Erem Ozdemir
-thndlovu -> Tawan Ndlovu
+thndlovu -> Tawana Ndlovu
 alextaschuk -> Alex Taschuk
 sjsikora -> Sam Sikora
 priyansh1913 -> Priyansh Mathur
