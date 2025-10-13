@@ -4,7 +4,7 @@
 
 ### Milestone Goals
 
-This week the goal was to restructure our project with the finalized week 6 requirements, which introduced Python as the required implementation language and shifted our focus to a command-line-only implementation. We revised the system architecture accordingly, updated the Level 0 and Level 1 DFDs to reflect the removal of the dashboard and web components, and clarified data storage through a centralized database. The README was updated with links and explanations for the revised architecture, diagrams, and WBS, and we also prepared our development environment by reviewing Docker basics.
+This week the goal was to restructure our project with the finalized Milestone #1 requirements, which introduced Python as the required implementation language and shifted our focus to a command-line-only implementation. We revised the system architecture accordingly, updated the Level 0 and Level 1 DFDs to reflect the removal of the dashboard and web components, and clarified data storage through a centralized database. The README was updated with links and explanations for the revised architecture, diagrams, and WBS, and we also prepared our development environment by reviewing Docker basics.
 
 ### Burnup Chart
 
