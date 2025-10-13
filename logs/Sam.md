@@ -1,3 +1,9 @@
+# Week 6 10/06 - 10/12
+
+![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week6_log.png)
+
+This week the canonical requirements for the project were released. This meant our group had to revist our design documents to ensure they met the standard. I spent time whiteboarding and designing a new iteration of our system architure. Then, using the diagram as a basis, I started coding in the repo and made key classes in our system. This inculded a class to analyze a file, a report class, and a statistic class and creating the first tests for the project. I also created the developer enviorment for the group by defining a .devcontainer file. I also spent time reviewing other teammates' code (PR #21,#30).
+
 # Week 5 09/29 - 10/05
 
 ![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week5_log.png)
@@ -12,8 +18,6 @@ This week, I focused heavily on developing the system architecture and refining 
 
 # Week 3 09/15 - 09/21
 
-# Peer Eval
 ![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week3_log.png)
 
-# Recap on your week's goals
 For this week, the goal was figuring out a large, 5,000 foot, overview of what the project would look like and creating the requirements file. Specifically, I help create some non functional requirements and formulaize everyone's expectations of each other for the team contract.
