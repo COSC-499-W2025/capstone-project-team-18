@@ -9,6 +9,8 @@
 
 **[Week 5, Sept. 29–Oct. 5](#week-5-sept-29-oct-5)**
 
+**[Week 6, Oct. 06–12](#week-6-oct-6-12)**
+
 
 ### Peer Eval
 ![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week3_log.png)
@@ -29,3 +31,10 @@ This week I focused on reviewing and refining our system architecture. I compare
 
 ### Recap
 This week, I worked with Jimi to finalize our DFD and ensure the data flow accurately represented our system’s processes. He started the DFD and after feedback from the group and I refined both the Level 0 and Level 1 diagrams for clarity and consistency. I also contributed to general group discussions and adjustments to improve how our diagrams aligned with our system’s functionality.
+
+### Peer Eval
+![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week6_log.png)
+
+
+### Recap
+With the new requirements for Milestone #1, our team needed to adjust parts of our project design. I worked closely with Alex to update our Level 0 and Level 1 DFDs to reflect the new system structure that he and Sam developed. Throughout the process, I made edits to ensure the diagrams accurately represented the revised data flow and clarified a few points about how the new design would integrate with our existing components. I also participated in team discussions to review the updated architecture and confirm that everyone was aligned before submission.
