@@ -5,6 +5,7 @@ import cmd
 
 
 class ArtifactMiner(cmd.Cmd):
+    cmd_history = []  # will store the user's previous 3 commands
     # Config for CIL
     intro = (
         "\nChoose one of the following options:"
@@ -20,11 +21,17 @@ class ArtifactMiner(cmd.Cmd):
     project_filepath = ''  # Will be overwritten with user input
     user_consent = False  # Milestone #1, requirement #1, #4
 
+    def update_history(self, cmd_history: list, cmd: str):
+        if len(cmd_history) == 3:
+            cmd_history.pop()  # remove the last item
+        cmd_history.insert(0, cmd)
+        return cmd_history
+
     def do_perms(self, arg):
         '''
         Provides consent statement. User may enter Y/N to agree or disagree.
         '''
-
+        self.update_history(self.cmd_history, "perms")
         agreement = (
             "Do you consent to this program accessing all files and/or folders "
             "in the filepath you provide and (if applicable) permission to use "
@@ -45,6 +52,7 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_filepath(self, arg):
         '''User specifies the project's filepath'''
+        self.update_history(self.cmd_history, "filepath")
 
         prompt = "Paste or type the full filepath to your project folder: "
         self.project_filepath = input(prompt).strip()
@@ -54,6 +62,8 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_begin(self, arg):
         '''Begin the mining process. User must give consent and provide filepath prior.'''
+        self.update_history(self.cmd_history, "begin")
+
         if self.user_consent:
             try:  # verify valid filepath
                 with open(self.project_filepath) as project:
@@ -65,6 +75,21 @@ class ArtifactMiner(cmd.Cmd):
             print(
                 "\nError: Missing consent. Type perms or 1 to read user permission agreement.")
             print(self.intro)
+
+    def do_back(self, arg):
+        '''Return to the previous screen'''
+        print(str(self.cmd_history))
+        if len(self.cmd_history) > 0:
+            match self.cmd_history[-1]:
+                case "perms":
+                    self.cmd_history.pop()
+                    return self.do_perms(arg)
+                case "filepath":
+                    self.cmd_history.pop()
+                    return self.do_filepath(arg)
+                case "begin":
+                    self.cmd_history.pop()
+                    return self.do_begin(arg)
 
     def default(self, line):
         '''
