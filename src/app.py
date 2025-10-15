@@ -2,13 +2,12 @@
 This file is the starting script for the application.
 It provides logic for the CLI that the user will
 interact with to begin the artifact miner.
+- To start the CLI tool, run this file.
 """
 import cmd
 
 
 class ArtifactMiner(cmd.Cmd):
-    cmd_history = []  # will store the user's previous 3 commands
-
     def __init__(self):
         super().__init__()
 
@@ -22,6 +21,7 @@ class ArtifactMiner(cmd.Cmd):
         )
         self.prompt = '(PAF) '
         self.ruler = '-'  # overwrite default seaparator line ('=')
+        self.cmd_history = []  # will store the user's previous 3 commands
 
         # Update with user input
         self.project_filepath = ''  # Will be overwritten with user input
@@ -33,9 +33,13 @@ class ArtifactMiner(cmd.Cmd):
         print(self.options)
 
     def update_history(self, cmd_history: list, cmd: str):
-        if len(cmd_history) == 3:
+        '''
+        We will track the user's history (entered commands) so that they can go back if they wish.
+        This function updated the `cmd_history` list to do so.
+        '''
+        if len(cmd_history) == 3:  # we'll only track their 3 most recent commands
             cmd_history.pop()  # remove the last item
-        cmd_history.insert(0, cmd)
+        cmd_history.insert(0, cmd)  # add new command
         return cmd_history
 
     def do_perms(self, arg):
@@ -44,21 +48,21 @@ class ArtifactMiner(cmd.Cmd):
         '''
         self.update_history(self.cmd_history, "perms")
         agreement = (
-            "Do you consent to this program accessing all files and/or folders "
-            "in the filepath you provide and (if applicable) permission to use "
-            "the files and/or folders in 3rd party software? \n(Y/N): "
+            "Do you consent to this program accessing all files and/or folders"
+            "in the filepath you provide and (if applicable) permission to use"
+            "the files and/or folders in 3rd party software? \n(Y/N):"
         )
         while True:
             answer = input(agreement).strip().upper()
-            if answer == 'Y':
+            if answer == 'Y':  # user consents
                 self.user_consent = True
                 print("\nThank you for consenting. You may now continue.")
                 print(self.options)
                 break
-            elif answer == 'N':
+            elif answer == 'N':  # user doesn't consent
                 print("Consent not given. Exiting application...")
                 return True  # tells cmdloop() to exit
-            else:
+            else:  # invalid input from user
                 print("Invalid response. Please enter 'Y' or 'N'.")
 
     def do_filepath(self, arg):
