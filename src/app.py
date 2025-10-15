@@ -1,25 +1,36 @@
 """
-This file is the starting script for the application
+This file is the starting script for the application.
+It provides logic for the CLI that the user will
+interact with to begin the artifact miner.
 """
 import cmd
 
 
 class ArtifactMiner(cmd.Cmd):
     cmd_history = []  # will store the user's previous 3 commands
-    # Config for CIL
-    intro = (
-        "\nChoose one of the following options:"
-        "\n(1) Permissions"
-        "\n(2) Set filepath"
-        "\n(3) Begin Artifact Miner"
-        "\nType help or ? to list commands\n"
-    )
-    prompt = '(PAF) '
-    ruler = '-'  # overwrite default seaparator line ('=')
 
-    # Get from user input
-    project_filepath = ''  # Will be overwritten with user input
-    user_consent = False  # Milestone #1, requirement #1, #4
+    def __init__(self):
+        super().__init__()
+
+        # Config for CLI
+        self.options = (
+            "Choose one of the following options:\n"
+            "(1) Permissions\n"
+            "(2) Set filepath\n"
+            "(3) Begin Artifact Miner\n"
+            "Type help or ? to list commands\n"
+        )
+        self.prompt = '(PAF) '
+        self.ruler = '-'  # overwrite default seaparator line ('=')
+
+        # Update with user input
+        self.project_filepath = ''  # Will be overwritten with user input
+        self.user_consent = False  # Milestone #1- Requirement #1, #4
+
+        title = 'Project Artifact Miner'
+        print(f'\n{title}')
+        print(self.ruler * len(self.options.splitlines()[0]))
+        print(self.options)
 
     def update_history(self, cmd_history: list, cmd: str):
         if len(cmd_history) == 3:
@@ -42,7 +53,7 @@ class ArtifactMiner(cmd.Cmd):
             if answer == 'Y':
                 self.user_consent = True
                 print("\nThank you for consenting. You may now continue.")
-                print(self.intro)
+                print(self.options)
                 break
             elif answer == 'N':
                 print("Consent not given. Exiting application...")
@@ -58,7 +69,7 @@ class ArtifactMiner(cmd.Cmd):
         self.project_filepath = input(prompt).strip()
         print("\nFilepath successfully received")
         print(self.project_filepath)
-        print(self.intro)
+        print(self.options)
 
     def do_begin(self, arg):
         '''Begin the mining process. User must give consent and provide filepath prior.'''
@@ -74,7 +85,7 @@ class ArtifactMiner(cmd.Cmd):
         else:
             print(
                 "\nError: Missing consent. Type perms or 1 to read user permission agreement.")
-            print(self.intro)
+            print(self.options)
 
     def do_back(self, arg):
         '''Return to the previous screen'''
@@ -115,4 +126,4 @@ class ArtifactMiner(cmd.Cmd):
 
 
 if __name__ == '__main__':
-    ArtifactMiner().cmdloop()
+    ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
