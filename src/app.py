@@ -5,6 +5,7 @@ interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
 import cmd
+from classes.analyzer import BaseFileAnalyzer, TextFileAnalyzer
 
 
 class ArtifactMiner(cmd.Cmd):
@@ -47,10 +48,11 @@ class ArtifactMiner(cmd.Cmd):
         Provides consent statement. User may enter Y/N to agree or disagree.
         '''
         self.update_history(self.cmd_history, "perms")
+        # TODO: agreement doesn't print properly if the terminal isn't wide enough
         agreement = (
             "Do you consent to this program accessing all files and/or folders"
-            "in the filepath you provide and (if applicable) permission to use"
-            "the files and/or folders in 3rd party software? \n(Y/N):"
+            "\nin the filepath you provide and (if applicable) permission to use"
+            "\nthe files and/or folders in 3rd party software?\n(Y/N):"
         )
         while True:
             answer = input(agreement).strip().upper()
@@ -82,7 +84,8 @@ class ArtifactMiner(cmd.Cmd):
         if self.user_consent:
             try:  # verify valid filepath
                 with open(self.project_filepath) as project:
-                    print('TODO: Implement')
+                    # TODO: Implement logic for report generation
+                    print()
             except FileNotFoundError:
                 print("Error: Invalid file. Please try again.")
                 self.do_filepath(arg)
