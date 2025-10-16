@@ -2,7 +2,7 @@
 Reports hold statistics. They are created from either a generator or a analyzer class
 """
 from typing import Any
-from statistic import Statistic, StatisticTemplate, StatisticIndex
+from .statistic import Statistic, StatisticTemplate, StatisticIndex
 
 
 class BaseReport:

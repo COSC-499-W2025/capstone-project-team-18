@@ -3,11 +3,9 @@ This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
 
-from statistic import Statistic
+from .statistic import Statistic, StatisticIndex
+from .report import FileReport
 from datetime import datetime
-
-from statistic import Statistic, StatisticIndex
-from report import FileReport
 
 
 class BaseFileAnalyzer:
