@@ -1,5 +1,5 @@
 """
-Reports hold statistics. They are created from either a generator or a analyzer class
+Reports hold statistics.
 """
 from typing import Any
 from statistic import Statistic, StatisticTemplate, StatisticIndex
@@ -48,8 +48,12 @@ class FileReport(BaseReport):
 
 class ProjectReport(BaseReport):
     """
-    This ProjectReport class holds Statstics about a project. It
-    is generated from many different FileReports
+    The ProjectReport class ultizes many FileReports to
+    create many Project Statistics about a single project.
+
+    For example, mabye we sum up all the lines of written
+    in a FileReport to create a project level statistics
+    of "total lines written."
     """
 
     def __init__(self, file_reports: list[FileReport]):
