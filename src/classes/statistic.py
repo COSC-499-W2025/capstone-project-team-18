@@ -154,56 +154,86 @@ class Statistic():
 
 class StatisticIndex():
     """
-    A generic statistic index that holds only one specific type of statistic.
-    Uses generics to ensure type safety.
+    StatisticIndex is a list of multiple Statistic objects.
+    It provides methods to add, retrieve, update, and list
+    statistics in an organized way.
+
+    At the end of the day, this class is just a wrapper for a hashmap.
+    However, it provides a way for us to add functionality as our
+    system gets more complex. For example, maybe we want a method here
+    to save these statistic to a database. It is simply a
+    layer of abstraction.
     """
 
-    def __init__(self, statistics: Optional[List[Statistic]] = None):
-        self._statistics: List[Statistic] = statistics or []
-        self._index: Dict[StatisticTemplate, Statistic] = {
-            stat.statistic_template: stat for stat in self._statistics
-        }
+    _stats: Dict[StatisticTemplate, Statistic]
 
-    def add(self, stat: Statistic) -> None:
+    def __init__(self, list_of_statistics: Optional[List[Statistic]] = None):
+        self._stats = {}
+
+        if list_of_statistics is None:
+            return
+
+        for stat in list_of_statistics:
+            self.add(stat)
+
+    def add(self, stat: Statistic):
         """
-        Adds a statistic to to this index. Overwrites any
-        duplicaties
+        Adds a Statistic to index.
+
+        If a statistic of this type is already in the index,
+        it will overwrite it
         """
 
-        if self._index.get(stat.statistic_template) is not None:
-            self._statistics = [
-                s for s in self._statistics if s.statistic_template != stat.statistic_template
-            ]
+        self._stats[stat.get_template()] = stat
 
-        self._statistics.append(stat)
-        self._index[stat.statistic_template] = stat
+    def remove(self, stat: Statistic):
+        """
+        Removes a Statistic from the index
+        """
 
-    def add_list(self, stat: list[Statistic]) -> None:
-        for s in stat:
-            self.add(s)
+        self._stats.pop(stat.get_template(), None)
 
     def get(self, template: StatisticTemplate) -> Optional[Statistic]:
         """
-        Gets a stat from this index by it's template. If the template
-        is not present in the index, it will return None.
+        Retrieves a Statistic from the index by its template.
+        Returns None if not found.
         """
-        return self._index.get(template)
+
+        return self._stats.get(template, None)
 
     def get_value(self, template: StatisticTemplate) -> Any:
         """
-        Gets the value of a statistic by its template.
+        Retrieves the value of a Statistic from the index by its template.
+        Returns None if not found.
         """
+
         stat = self.get(template)
-        return stat.value if stat else None
+        if stat is None:
+            return None
+        return stat.value
 
     def to_dict(self) -> Dict[str, Any]:
-        return {s.statistic_template.name: s.value for s in self._statistics}
+        """
+        Converts the StatisticIndex to a dictionary mapping
+        statistic names to their values.
+        """
 
-    def __len__(self) -> int:
-        return len(self._statistics)
+        return {
+            stat.get_template().name: stat.value
+            for stat in self._stats.values()
+        }
 
-    def all_statstics(self):
-        return self._statistics
+    def __len__(self):
+        return len(self._stats)
 
-    def __repr__(self) -> str:
-        return f"<StatisticIndex {self.to_dict()}>"
+    def __repr__(self):
+        stats_repr = ", ".join(
+            [f"{stat.get_template().name}={stat.value}" for stat in self._stats.values()]
+        )
+        return f"<StatisticIndex {stats_repr}>"
+
+    def __iter__(self):
+        return iter(self._stats.values())
+
+    def __contains__(self, template: StatisticTemplate) -> bool:
+        return template in self._stats
