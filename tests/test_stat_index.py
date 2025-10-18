@@ -43,12 +43,12 @@ def test_weighted_skills_creation():
 
 
 def test_file_statistic_enum_values():
-    assert FileStatisticTemplateCollection.LINES_IN_FILE.value.name == "LINES_IN_FILE"
-    assert FileStatisticTemplateCollection.TYPE_OF_FILE.value.expected_type == FileDomain
+    assert FileStatCollection.LINES_IN_FILE.value.name == "LINES_IN_FILE"
+    assert FileStatCollection.TYPE_OF_FILE.value.expected_type == FileDomain
 
 
 def test_statistic_valid_int():
-    template = FileStatisticTemplateCollection.LINES_IN_FILE.value
+    template = FileStatCollection.LINES_IN_FILE.value
     stat = Statistic(template, 150)
     assert stat.value == 150
     assert stat.statistic_template == template
@@ -56,25 +56,25 @@ def test_statistic_valid_int():
 
 
 def test_statistic_valid_enum():
-    template = FileStatisticTemplateCollection.TYPE_OF_FILE.value
+    template = FileStatCollection.TYPE_OF_FILE.value
     stat = Statistic(template, FileDomain.CODE)
     assert stat.value == FileDomain.CODE
 
 
 def test_statistic_invalid_type_raises():
-    template = FileStatisticTemplateCollection.FILE_SIZE_BYTES.value
+    template = FileStatCollection.FILE_SIZE_BYTES.value
     with pytest.raises(TypeError):
         Statistic(template, "not_an_int")
 
 
 def test_statistic_valid_list_of_strings():
-    template = FileStatisticTemplateCollection.SKILLS_DEMONSTRATED.value
+    template = FileStatCollection.SKILLS_DEMONSTRATED.value
     stat = Statistic(template, ["Python", "Testing"])
     assert stat.value == ["Python", "Testing"]
 
 
 def test_add_and_get_statistic(sample_date: date):
-    template = FileStatisticTemplateCollection.DATE_CREATED.value
+    template = FileStatCollection.DATE_CREATED.value
     stat = Statistic(template, sample_date)
 
     index = StatisticIndex([stat])
@@ -86,7 +86,7 @@ def test_add_and_get_statistic(sample_date: date):
 
 
 def test_add_overwrites_existing_statistic():
-    template = FileStatisticTemplateCollection.LINES_IN_FILE.value
+    template = FileStatCollection.LINES_IN_FILE.value
     stat1 = Statistic(template, 100)
     stat2 = Statistic(template, 200)
 
@@ -99,15 +99,15 @@ def test_add_overwrites_existing_statistic():
 
 def test_get_returns_none_when_missing():
     index = StatisticIndex()
-    template = FileStatisticTemplateCollection.DATE_MODIFIED.value
+    template = FileStatCollection.DATE_MODIFIED.value
     assert index.get(template) is None
     assert index.get_value(template) is None
 
 
 def test_to_dict_returns_correct_mapping(sample_date: date):
     stat1 = Statistic(
-        FileStatisticTemplateCollection.DATE_CREATED.value, sample_date)
-    stat2 = Statistic(FileStatisticTemplateCollection.LINES_IN_FILE.value, 42)
+        FileStatCollection.DATE_CREATED.value, sample_date)
+    stat2 = Statistic(FileStatCollection.LINES_IN_FILE.value, 42)
 
     index = StatisticIndex([stat1, stat2])
     result = index.to_dict()
@@ -120,7 +120,7 @@ def test_to_dict_returns_correct_mapping(sample_date: date):
 
 def test_repr_of_statistic_index(sample_date: date):
     stat = Statistic(
-        FileStatisticTemplateCollection.DATE_CREATED.value, sample_date)
+        FileStatCollection.DATE_CREATED.value, sample_date)
     index = StatisticIndex([stat])
     rep = repr(index)
     assert "StatisticIndex" in rep
@@ -128,13 +128,13 @@ def test_repr_of_statistic_index(sample_date: date):
 
 
 def test_project_statistic_collection(skill_weighted_list: List[WeightedSkills]):
-    template = ProjectStatisticTemplateCollection.PROJECT_SKILLS_DEMONSTRATED.value
+    template = ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value
     stat = Statistic(template, skill_weighted_list)
     assert isinstance(stat.value[0], WeightedSkills)
     assert stat.value[0].skill_name == "Python"
 
 
 def test_user_statistic_collection_dates(sample_date: date):
-    template = UserStatisticTemplateCollection.USER_START_DATE.value
+    template = UserStatCollection.USER_START_DATE.value
     stat = Statistic(template, sample_date)
     assert stat.value == sample_date
