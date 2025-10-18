@@ -36,11 +36,11 @@ class FileReport(BaseReport):
     by file-type specific, analyzers.
     """
 
-    path_to_file: str
+    filepath: str
 
-    def __init__(self, statistics: StatisticIndex, path_to_file: str):
+    def __init__(self, statistics: StatisticIndex, filepath: str):
         super().__init__(statistics)
-        self.path_to_file = path_to_file
+        self.filepath = filepath
 
     def get_filename(self):
         raise ValueError("Unimplemented")
@@ -67,7 +67,7 @@ class ProjectReport(BaseReport):
 class UserReport(BaseReport):
     """
     This UserReport class hold Statstics about the user. It is made
-    from many different ReportReports
+    from many different ProjectReports
     """
 
     def __init__(self, file_reports: list[ProjectReport]):

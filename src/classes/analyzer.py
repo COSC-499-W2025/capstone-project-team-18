@@ -2,13 +2,10 @@
 This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
-
-from statistic import Statistic
 import datetime
 from pathlib import Path
 
-
-from .statistic import Statistic, StatisticIndex, FileStatisticTemplate, FileStatisticTemplateCollection
+from .statistic import Statistic, StatisticIndex, FileStatCollection
 from report import FileReport
 
 
@@ -24,24 +21,27 @@ class BaseFileAnalyzer:
     to the StatisticIndex (self.stats).
 
     Attributes:
-        path_to_file (str): The path to the file being analyzed.
+        filepath (str): The path to the file being analyzed.
         stats (StatisticIndex): The index holding collected statistics.
 
     """
 
-    def __init__(self, path_to_file: str):
-        self.path_to_file = path_to_file
+    def __init__(self, filepath: str):
+        self.filepath = filepath
         self.stats = StatisticIndex()
 
     def _process(self) -> None:
         """
         A private function that collects basic statistics available for any file.
-        This includes the file's:
+        This includes a file's:
         - Creation date
         - Last modified/accessed date
         - Size (in bytes)
+
+        Returns:
+        -
         """
-        metadata = Path(self.path_to_file).stat()
+        metadata = Path(self.filepath).stat()
 
         # file's creation date
         created = datetime.datetime.fromtimestamp(
@@ -54,11 +54,11 @@ class BaseFileAnalyzer:
 
         stats = [
             Statistic(
-                FileStatisticTemplateCollection.DATE_CREATED.value, created),
+                FileStatCollection.DATE_CREATED.value, created),
             Statistic(
-                FileStatisticTemplateCollection.DATE_MODIFIED.value, modified),
+                FileStatCollection.DATE_MODIFIED.value, modified),
             Statistic(
-                FileStatisticTemplateCollection.FILE_SIZE_BYTES.value, size_bytes)
+                FileStatCollection.FILE_SIZE_BYTES.value, size_bytes)
         ]
         self.stats.add_list(stats)
 
@@ -68,7 +68,7 @@ class BaseFileAnalyzer:
         """
         self._process()
 
-        return FileReport(statistics=self.stats, path_to_file=self.path_to_file)
+        return FileReport(statistics=self.stats, filepath=self.filepath)
 
 
 class TextFileAnalyzer(BaseFileAnalyzer):
