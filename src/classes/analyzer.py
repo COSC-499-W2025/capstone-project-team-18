@@ -4,9 +4,11 @@ a file and generate a report with statistics.
 """
 
 from statistic import Statistic
-from datetime import datetime
+import datetime
+from pathlib import Path
 
-from statistic import Statistic, StatisticIndex
+
+from .statistic import Statistic, StatisticIndex, FileStatisticTemplate, FileStatisticTemplateCollection
 from report import FileReport
 
 
@@ -33,18 +35,32 @@ class BaseFileAnalyzer:
 
     def _process(self) -> None:
         """
-        Collect basic statistics available for any file.
+        A private function that collects basic statistics available for any file.
+        This includes the file's:
+        - Creation date
+        - Last modified/accessed date
+        - Size (in bytes)
         """
+        metadata = Path(self.path_to_file).stat()
 
-        raise ValueError("Unimplemented")
+        # file's creation date
+        created = datetime.datetime.fromtimestamp(
+            getattr(metadata, 'st_birthtime', metadata.st_ctime))
+
+        # file's last accessed/modified date
+        modified = datetime.datetime.fromtimestamp(metadata.st_atime)
+
+        size_bytes = metadata.st_size
 
         stats = [
-            Statistic(FileStatTemplate.FILE_SIZE_BYTES.value, 50),
-            Statistic(FileStatTemplate.DATE_MODIFIED.value, datetime.now()),
-            Statistic(FileStatTemplate.DATE_CREATED.value, datetime.now())
+            Statistic(
+                FileStatisticTemplateCollection.DATE_CREATED.value, created),
+            Statistic(
+                FileStatisticTemplateCollection.DATE_MODIFIED.value, modified),
+            Statistic(
+                FileStatisticTemplateCollection.FILE_SIZE_BYTES.value, size_bytes)
         ]
-
-        st = StatisticIndex(stats)
+        self.stats.add_list(stats)
 
     def analyze(self) -> FileReport:
         """
