@@ -2,7 +2,7 @@
 Reports hold statistics.
 """
 from typing import Any
-from statistic import Statistic, StatisticTemplate, StatisticIndex
+from .statistic import Statistic, StatisticTemplate, StatisticIndex
 
 
 class BaseReport:
