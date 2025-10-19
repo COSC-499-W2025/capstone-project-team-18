@@ -42,8 +42,6 @@ def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_tex
     '''
     analyzer = BaseFileAnalyzer(str(temp_text_file))
     report = analyzer.analyze()  # FileReport obj
-    print(str(temp_text_file))
-    print(f'stat index: {str(report.statistics)}')
     # Check that filepath is stored in report obj
     assert getattr(report, "filepath") == str(temp_text_file)
 
