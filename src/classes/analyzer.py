@@ -2,11 +2,13 @@
 This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
+from report import FileReport
+from .statistic import Statistic, StatisticIndex, FileStatCollection
 import datetime
 from pathlib import Path
-
-from .statistic import Statistic, StatisticIndex, FileStatCollection
-from report import FileReport
+import os
+import logging
+logger = logging.basicConfig(level=logging.DEBUG)
 
 
 class BaseFileAnalyzer:
@@ -38,29 +40,29 @@ class BaseFileAnalyzer:
         - Last modified/accessed date
         - Size (in bytes)
 
-        Returns:
-        -
+        All of the metadata is wrapped into a list and put into `self.stats`.
         """
-        metadata = Path(self.filepath).stat()
+        try:
+            metadata = Path(self.filepath).stat()
 
-        # file's creation date
-        created = datetime.datetime.fromtimestamp(
-            getattr(metadata, 'st_birthtime', metadata.st_ctime))
+            created = datetime.datetime.fromtimestamp(
+                getattr(metadata, 'st_birthtime', metadata.st_ctime))
+            last_accessed = datetime.datetime.fromtimestamp(metadata.st_atime)
+            last_modified = datetime.datetime.fromtimestamp(metadata.st_mtime)
+            size_bytes = metadata.st_size
 
-        # file's last accessed/modified date
-        modified = datetime.datetime.fromtimestamp(metadata.st_atime)
-
-        size_bytes = metadata.st_size
-
-        stats = [
-            Statistic(
-                FileStatCollection.DATE_CREATED.value, created),
-            Statistic(
-                FileStatCollection.DATE_MODIFIED.value, modified),
-            Statistic(
-                FileStatCollection.FILE_SIZE_BYTES.value, size_bytes)
-        ]
-        self.stats.add_list(stats)
+            stats = [
+                Statistic(FileStatCollection.DATE_CREATED.value, created),
+                Statistic(FileStatCollection.DATE_ACCESSED.value,
+                          last_accessed),
+                Statistic(FileStatCollection.DATE_MODIFIED.value,
+                          last_modified),
+                Statistic(FileStatCollection.FILE_SIZE_BYTES.value, size_bytes)
+            ]
+            self.stats.add_list(stats)
+        except (FileNotFoundError, PermissionError, OSError, AttributeError) as e:
+            logging.error(
+                f"Couldn't access metadata for a file in: {self.filepath}")
 
     def analyze(self) -> FileReport:
         """
