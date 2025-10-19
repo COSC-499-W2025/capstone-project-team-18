@@ -16,7 +16,7 @@ class BaseFileAnalyzer:
     Base class for file analysis. Provides a framework for collecting
     file-level statistics.
 
-    To be a specific file analyzer, extend this class and implement the
+    To be analyze a specific file, extend this class and implement the
     _process method. In this method, call the _process method of the
     superclass to collect basic statistics, then add any file-specific
     statistics to the StatisticIndex (self.stats).
