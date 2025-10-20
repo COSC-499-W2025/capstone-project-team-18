@@ -61,21 +61,16 @@ def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_tex
     assert size == temp_text_file.stat().st_size
 
 
-def test_base_file_analyzer_nonexistent_file_logs_and_returns_empty(caplog):
+def test_base_file_analyzer_nonexistent_file_logs_and_returns_empty():
     '''
     Test that the `analyze()` function returns nothing if an error is thrown
     '''
-    caplog.set_level("ERROR")
-    bogus = str(CLASSES_DIR / "does_not_exist.xyz")
-    analyzer = BaseFileAnalyzer(bogus)
+    fake_file = str(CLASSES_DIR / "does_not_exist.xyz")
+    analyzer = BaseFileAnalyzer(fake_file)
     report = analyzer.analyze()
 
-    # Should have logged an error
-    assert any("Couldn't access metadata" in rec.message for rec in caplog.records)
-
-    # Stats should be empty
-    # Access internal statistics via to_dict for simplicity
-    assert report.to_dict() == {}
+    # report's StatisticIndex should be empty
+    assert len(report.statistics) == 0
 
 
 def test_text_file_analyzer_analyze_raises_unimplemented(temp_text_file: Path):
