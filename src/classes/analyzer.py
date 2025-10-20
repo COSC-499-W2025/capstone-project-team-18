@@ -15,7 +15,7 @@ class BaseFileAnalyzer:
     Base class for file analysis. Provides a framework for collecting
     file-level statistics.
 
-    To be analyze a specific file, extend this class and implement the
+    To analyze a specific file, extend this class and implement the
     _process method. In this method, call the _process method of the
     superclass to collect basic statistics, then add any file-specific
     statistics to the StatisticIndex (self.stats).
@@ -59,9 +59,9 @@ class BaseFileAnalyzer:
                 Statistic(FileStatCollection.FILE_SIZE_BYTES.value, size_bytes)
             ]
             self.stats.add_list(stats)
-        except (FileNotFoundError, PermissionError, OSError, AttributeError):
+        except (FileNotFoundError, PermissionError, OSError, AttributeError) as e:
             logging.error(
-                f"Couldn't access metadata for a file in: {self.filepath}")
+                f"Couldn't access metadata for a file in: {self.filepath}. \nError thrown: {str(e)}")
 
     def analyze(self) -> FileReport:
         """
