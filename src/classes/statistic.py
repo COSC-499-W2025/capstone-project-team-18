@@ -1,5 +1,6 @@
 """
-A statistic is key information about its subject. It lives in a report
+This file defines everything that has to do with a statistic. Everything
+revolves around the Statistic class.
 """
 
 from enum import Enum
@@ -8,7 +9,9 @@ from datetime import date
 from typing import Any, List, Dict, Optional
 from abc import ABC
 
-# These are data classes. They hold data for stats that can't just have one value
+# These are data classes. The purpose of these is sometimes a statistic needs
+# to hold many types of data instead of just one value. For example, WeightedSkills
+# doesn't just have the skill_name, but also a weight attached to it.
 
 
 @dataclass
@@ -23,11 +26,17 @@ class FileDomain(Enum):
     TEST = "test"
     DOCUMENTATION = "documentation"
 
-# Here are the StatTemplates. They hold the statistics as a Enum.
+# The following are StatisticTemplate classes. A StatisticTemplate is simply a
+# description of a data point. It has a name, description, expected value, and it is either
+# a statistic about a single file, one project, or the user's behavior.
 
 
 @dataclass(frozen=True)
 class StatisticTemplate(ABC):
+    """
+    This is the very base template. If we need any metadata
+    about a statistic (e.g. description) it lives here.
+    """
     name: str
     description: str
     expected_type: Any
@@ -44,8 +53,18 @@ class ProjectStatisticTemplate(StatisticTemplate):
 class UserStatisticTemplate(StatisticTemplate):
     pass
 
+# The following are a list of stats available at the file, project, and
+# user level. If we want to add a new data point, (e.g. you want to keep
+# track of the authors in a file) you would give that a name, description,
+# and a expected_type and put that in the according Collection class.
 
-class FileStatisticTemplateCollection(Enum):
+# The purpose of these Collection classes is that they serve as the
+# ground truth list of all statistics. These collection objects are
+# the one single place where we create, delete, and modify the types
+# of data points we are dealing with.
+
+
+class FileStatCollection(Enum):
     LINES_IN_FILE = FileStatisticTemplate(
         name="LINES_IN_FILE",
         description="number of lines in a file",
@@ -54,7 +73,7 @@ class FileStatisticTemplateCollection(Enum):
 
     DATE_MODIFIED = FileStatisticTemplate(
         name="DATE_MODIFIED",
-        description="last date the file was modifiyed",
+        description="last date the file was modified",
         expected_type=date,
     )
 
@@ -89,7 +108,7 @@ class FileStatisticTemplateCollection(Enum):
     )
 
 
-class ProjectStatisticTemplateCollection(Enum):
+class ProjectStatCollection(Enum):
     PROJECT_START_DATE = ProjectStatisticTemplate(
         name="PROJECT_START_DATE",
         description="the first start date of the project",
@@ -109,7 +128,7 @@ class ProjectStatisticTemplateCollection(Enum):
     )
 
 
-class UserStatisticTemplateCollection(Enum):
+class UserStatCollection(Enum):
     USER_START_DATE = UserStatisticTemplate(
         name="USER_START_DATE",
         description="the very first project start",
@@ -131,7 +150,13 @@ class UserStatisticTemplateCollection(Enum):
 
 class Statistic():
     """
-    A concerte application of a statistic described by a StatTemplate.
+    The Statistic class is the concrete data holder of a data point that
+    was described by a StatisticTemplate.
+
+    A Statistic instance is defined with two objects, a StatisticTemplate
+    which defines what data point you are looking at, and a value which is
+    the actual value of the stat.
+
     """
 
     def __init__(self, stat_template: StatisticTemplate, value: Any):
@@ -148,62 +173,95 @@ class Statistic():
 
         self.value = value
 
+    def get_template(self) -> StatisticTemplate:
+        return self.statistic_template
+
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.statistic_template.name}={self.value}>"
 
 
 class StatisticIndex():
     """
-    A generic statistic index that holds only one specific type of statistic.
-    Uses generics to ensure type safety.
+    StatisticIndex is a list of multiple Statistic objects.
+    It provides methods to add, retrieve, update, and list
+    statistics in an organized way.
+
+    At the end of the day, this class is just a wrapper for a hashmap.
+    However, it provides a way for us to add functionality as our
+    system gets more complex. For example, maybe we want a method here
+    to save these statistic to a database. It is simply a
+    layer of abstraction.
     """
 
-    def __init__(self, statistics: Optional[List[Statistic]] = None):
-        self._statistics: List[Statistic] = statistics or []
-        self._index: Dict[StatisticTemplate, Statistic] = {
-            stat.statistic_template: stat for stat in self._statistics
-        }
+    _stats: Dict[StatisticTemplate, Statistic]
 
-    def add(self, stat: Statistic) -> None:
+    def __init__(self, list_of_statistics: Optional[List[Statistic]] = None):
+        self._stats = {}
+
+        if list_of_statistics is None:
+            return
+
+        for stat in list_of_statistics:
+            self.add(stat)
+
+    def add(self, stat: Statistic):
         """
-        Adds a statistic to to this index. Overwrites any
-        duplicaties
+        Adds a Statistic to index.
+
+        If a statistic of this type is already in the index,
+        it will overwrite it
         """
 
-        if self._index.get(stat.statistic_template) is not None:
-            self._statistics = [
-                s for s in self._statistics if s.statistic_template != stat.statistic_template
-            ]
+        self._stats[stat.get_template()] = stat
 
-        self._statistics.append(stat)
-        self._index[stat.statistic_template] = stat
+    def remove(self, stat: Statistic):
+        """
+        Removes a Statistic from the index
+        """
 
-    def add_list(self, stat: list[Statistic]) -> None:
-        for s in stat:
-            self.add(s)
+        self._stats.pop(stat.get_template(), None)
 
     def get(self, template: StatisticTemplate) -> Optional[Statistic]:
         """
-        Gets a stat from this index by it's template. If the template
-        is not present in the index, it will return None.
+        Retrieves a Statistic from the index by its template.
+        Returns None if not found.
         """
-        return self._index.get(template)
+
+        return self._stats.get(template, None)
 
     def get_value(self, template: StatisticTemplate) -> Any:
         """
-        Gets the value of a statistic by its template.
+        Retrieves the value of a Statistic from the index by its template.
+        Returns None if not found.
         """
+
         stat = self.get(template)
-        return stat.value if stat else None
+        if stat is None:
+            return None
+        return stat.value
 
     def to_dict(self) -> Dict[str, Any]:
-        return {s.statistic_template.name: s.value for s in self._statistics}
+        """
+        Converts the StatisticIndex to a dictionary mapping
+        statistic names to their values.
+        """
 
-    def __len__(self) -> int:
-        return len(self._statistics)
+        return {
+            stat.get_template().name: stat.value
+            for stat in self._stats.values()
+        }
 
-    def all_statstics(self):
-        return self._statistics
+    def __len__(self):
+        return len(self._stats)
 
-    def __repr__(self) -> str:
-        return f"<StatisticIndex {self.to_dict()}>"
+    def __repr__(self):
+        stats_repr = ", ".join(
+            [f"{stat.get_template().name}={stat.value}" for stat in self._stats.values()]
+        )
+        return f"<StatisticIndex {stats_repr}>"
+
+    def __iter__(self):
+        return iter(self._stats.values())
+
+    def __contains__(self, template: StatisticTemplate) -> bool:
+        return template in self._stats

@@ -3,17 +3,26 @@ This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
 
-from statistic import Statistic
+from .statistic import Statistic, StatisticIndex
+from .report import FileReport
 from datetime import datetime
-
-from statistic import Statistic, StatisticIndex
-from report import FileReport
 
 
 class BaseFileAnalyzer:
     """
-    The base file analyzer. It computes common file-level statistics
-    that apply to any file (e.g., timestamps, size).
+    Base class for file analysis. Provides a framework for collecting
+    file-level statistics.
+
+    To be a specific file analyzer, extend this class and implement the
+    _process method. In this method, call the _process method of the
+    superclass to collect basic statistics, then add any file-specific
+    statistics to the StatisticIndex (self.stats).
+    to the StatisticIndex (self.stats).
+
+    Attributes:
+        path_to_file (str): The path to the file being analyzed.
+        stats (StatisticIndex): The index holding collected statistics.
+
     """
 
     def __init__(self, path_to_file: str):
