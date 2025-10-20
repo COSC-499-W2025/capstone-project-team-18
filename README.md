@@ -26,14 +26,7 @@ We are building a command‑line interface (CLI) tool for mining project artifac
 
 Prerequisites: Python 3.11+ recommended.
 
-1. (Optional) Create and activate a virtual environment
-   - macOS/Linux:
-     - `python3 -m venv .venv`
-     - `source .venv/bin/activate`
-   - Windows (PowerShell):
-     - `py -m venv .venv`
-     - `.venv\\Scripts\\Activate.ps1`
-2. Install dependencies: `pip install -r requirements.txt`
+1. Start Dev Container using devcontainer.json configuration
 3. Start the CLI: `python src/app.py`
 
 You should see the prompt `(PAF)` and a menu of options.
