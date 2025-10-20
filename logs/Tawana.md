@@ -1,3 +1,11 @@
+# Week 7 10/13 - 10/19
+
+# Peer Evaluation!
+[Peer Eval THN](./log_images/personal_log_imgs/tawana/tawana_week7_log.png)
+
+# Recap on your week goals
+This week, my focus was on organizing our documentation to support ongoing project tracking. I created a minutes/ directory, uploaded all past meeting notes, and took the notes for our October 16 session to maintain a consistent record of project progress. This centralizes our communication history and sets a clear structure for future documentation. In addition, I participated in our team meeting to discuss upcoming priorities and spent time reviewing my teammates’ code to provide feedback.
+
 # Week 6 10/06 - 10/12
 
 # Peer Evaluation!
