@@ -2,11 +2,10 @@
 This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
-from report import FileReport
+from .report import FileReport
 from .statistic import Statistic, StatisticIndex, FileStatCollection
 import datetime
 from pathlib import Path
-import os
 import logging
 logger = logging.basicConfig(level=logging.DEBUG)
 
@@ -60,7 +59,7 @@ class BaseFileAnalyzer:
                 Statistic(FileStatCollection.FILE_SIZE_BYTES.value, size_bytes)
             ]
             self.stats.add_list(stats)
-        except (FileNotFoundError, PermissionError, OSError, AttributeError) as e:
+        except (FileNotFoundError, PermissionError, OSError, AttributeError):
             logging.error(
                 f"Couldn't access metadata for a file in: {self.filepath}")
 
