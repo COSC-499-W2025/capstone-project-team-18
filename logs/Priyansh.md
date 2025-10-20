@@ -10,6 +10,10 @@
 
 **[Week 6, Oct. 6-12](#week-6-oct-6---oct12)**
 
+**[Week 7, Oct. 13-19](#week-7-oct-13-19)**
+
+---
+
 ## Week 3, Sept. 15-21
 
 ### Peer Eval
@@ -56,3 +60,18 @@ This week's goals focused on aligning our project design with Milestone #1 requi
 I collaborated with my team to discuss ideas for modifying our existing design plans to better match the requirements for Milestone #1. These discussions helped us refine our approach to the data flow diagrams and overall system architecture.
 
 Additionally, I reviewed and approved several pull requests to ensure quality and completeness of our team's work. I reviewed Erem's PR , which contained the finalized Milestone 1 DFD Level 0 & 1 diagrams that consolidated our data flow visualization work. I also reviewed Jimi's PR, examining the updated documentation to verify that all use cases, diagrams, and requirements were complete and clearly defined. Lastly, I reviewed Alex's personal and team logs for Week 6, confirming they accurately reflected the week's accomplishments and progress toward Milestone #1.
+
+
+
+## Week 7, Oct. 13-19
+
+### Peer Eval
+![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week7_log.png)
+
+### Recap
+
+This week marked our team transitioned from planning to active development. My primary focus was on creating the team log for Week 7 and reviewing pull requests to ensure code quality and documentation completeness.
+
+I took responsibility for writing the comprehensive team log for Week 7, documenting active development. The log covered the successful merge of 6 pull requests, including our first code implementation (PR #27 - Analyzer, Report, and Statistics classes), the closure of 2 issues, and the creation of 7 new GitHub issues to organize parallel development work.
+
+Additionally, I reviewed and approved PR #44 (Enhanced Documentation for Class Structure). This was a critical PR that added a 100-line README explaining the entire class architecture and how Statistics, Reports, and Analyzers work together. I verified that all 15 test cases were passing and confirmed that the code examples clearly demonstrated how to use the statistics system. I also reviewed the new PR template that was added to standardize future contributions, ensuring it will help the whole team work more efficiently with the codebase as we continue development.
