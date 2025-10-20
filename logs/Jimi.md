@@ -8,6 +8,11 @@
 
 **[Week 5, Sept. 29–Oct. 5](#week-5-sept-29-oct-5)**
 
+**[Week 6, Oct. 6–12](#week-6-oct-612)**
+
+**[Week 7, Oct. 13-19](#week-7-oct-1319)**
+
+
 
 ## Week 3, Sept. 15–21
 
@@ -39,7 +44,7 @@ This week's goals were to finish the project proposal, system architecture and d
 
 This week's goals were to finish the DFD diagram and understand the data flow of our system. My role was to complete the DFD before the first class. I took feedback from the group and completed the diagram. We then spent the rest of the week adjusting and improving bot the Level 0 & 1 diagrams.
 
-## Week 6, Sept. 6–12
+## Week 6, Oct. 6–12
 
 ### Peer Eval
 
@@ -48,3 +53,13 @@ This week's goals were to finish the DFD diagram and understand the data flow of
 ### Recap
 
 This week's goals were to rework our documentation to more closely be aligned with the class requirements. I was responsible for consolidating these changes into the README. I also reworked the WBS by changing the requirements to follow the format necessary for a CLI over.
+
+## Week 7, Oct. 13–19
+
+### Peer Eval
+
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week7_log.png)
+
+### Recap
+
+This week's goals were to flesh out classes for our code and create a baseline for the project. We wanted to build out the initial CLI interface and create parent classes which will act as placeholders for analysis and statistics. My role during this week was to flesh out the issues page and project board such that everyone knew what was available and needed for development. This also allowed us to understand what could be combined into the same features. Additionally, I worked on the logic for fetching metadata based on the user's operating system.
