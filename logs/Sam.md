@@ -1,3 +1,9 @@
+# Week 7 10/13 - 10/19
+
+![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week7_log.png)
+
+This week, I focused on reviewing and improving my previously written code. After receiving valuable feedback from the team that some parts of my code could be simplified and better documented, I took the time this week to refine my inline comments, write a comprehensive README explaining the class structure, and clean up and simplify the StatisticIndex class. In addition, I participated in our team meeting to discuss future work and priorities and spent time reviewing my teammates’ code to provide feedback.
+
 # Week 6 10/06 - 10/12
 
 ![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week6_log.png)
