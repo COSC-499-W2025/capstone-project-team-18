@@ -6,6 +6,7 @@ a file and generate a report with statistics.
 from .statistic import Statistic, StatisticIndex
 from .report import FileReport
 from datetime import datetime
+from pathlib import *
 
 
 class BaseFileAnalyzer:
