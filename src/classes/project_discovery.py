@@ -1,6 +1,6 @@
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Optional
 import logging
 import tempfile
 import shutil
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def discover_projects(zip_path: str) -> Dict[str, List[str]]:
-    """Returns dict mapping project names to their file paths from a zip file."""
+    """Returns dictionary mapping project names to their file paths from a zip file."""
     if not Path(zip_path).exists():
         raise FileNotFoundError(f"Zip file not found: {zip_path}")
 
@@ -23,9 +23,6 @@ def discover_projects(zip_path: str) -> Dict[str, List[str]]:
                     continue
 
                 parts = Path(path).parts
-                if not parts:
-                    continue
-
                 # First part is project name, rest is file path
                 name = parts[0]
                 file = str(Path(*parts[1:])) if len(parts) > 1 else parts[0]
