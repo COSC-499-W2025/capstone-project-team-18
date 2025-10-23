@@ -44,21 +44,21 @@ class BaseFileAnalyzer:
         try:
             metadata = Path(self.filepath).stat()
 
-            created = datetime.datetime.fromtimestamp(
-                getattr(metadata, 'st_birthtime', metadata.st_ctime))
-            last_accessed = datetime.datetime.fromtimestamp(metadata.st_atime)
-            last_modified = datetime.datetime.fromtimestamp(metadata.st_mtime)
-            size_bytes = metadata.st_size
+            # Map file statistic templates to their corresponding timestamp values
+            timestamps = {
+                FileStatCollection.DATE_CREATED.value: getattr(metadata, "st_birthtime", metadata.st_ctime),
+                FileStatCollection.DATE_ACCESSED.value: metadata.st_atime,
+                FileStatCollection.DATE_MODIFIED.value: metadata.st_mtime,
+            }
 
-            stats = [
-                Statistic(FileStatCollection.DATE_CREATED.value, created),
-                Statistic(FileStatCollection.DATE_ACCESSED.value,
-                          last_accessed),
-                Statistic(FileStatCollection.DATE_MODIFIED.value,
-                          last_modified),
-                Statistic(FileStatCollection.FILE_SIZE_BYTES.value, size_bytes)
-            ]
-            self.stats.add_list(stats)
+            # Add timestamp stats
+            for template, value in timestamps.items():
+                self.stats.add(
+                    Statistic(template, datetime.datetime.fromtimestamp(value)))
+
+            self.stats.add(
+                Statistic(FileStatCollection.FILE_SIZE_BYTES.value, metadata.st_size))
+
         except (FileNotFoundError, PermissionError, OSError, AttributeError) as e:
             logging.error(
                 f"Couldn't access metadata for a file in: {self.filepath}. \nError thrown: {str(e)}")
