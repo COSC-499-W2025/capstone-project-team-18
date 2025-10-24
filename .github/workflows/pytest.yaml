@@ -1,0 +1,31 @@
+name: Pytest
+
+on:
+  pull_request:
+
+jobs:
+  run-pytest:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version:
+          - "3.12"
+
+  name: run-pytest
+  runs-on: ${{ matrix.os }}
+
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Tests
+      run: pytest
