@@ -12,7 +12,9 @@ for p in (str(CLASSES_DIR), str(SRC_DIR)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from src.classes.project_discovery import discover_projects, is_group_project  # type: ignore  # noqa: E402
+from src.classes.project_discovery import discover_projects  # type: ignore  # noqa: E402
+from src.classes.report import ProjectReport  # type: ignore  # noqa: E402
+from src.classes.statistic import ProjectStatCollection  # type: ignore  # noqa: E402
 
 
 @pytest.fixture
@@ -91,10 +93,17 @@ def test_discover_multiple_projects(multi_project_zip: Path):
 
 def test_identify_project_type(git_zip: Path):
     """Verifies Git-based detection of individual vs group projects."""
-    # Single author = individual
-    assert is_group_project(str(git_zip), "SoloProject") == "individual"
-    # Multiple authors = group
-    assert is_group_project(str(git_zip), "TeamProject") == "group"
+    # Single author = individual (False)
+    solo_report = ProjectReport(zip_path=str(
+        git_zip), project_name="SoloProject")
+    assert solo_report.statistics.get(
+        ProjectStatCollection.IS_GROUP_PROJECT.value).value is False
+
+    # Multiple authors = group (True)
+    team_report = ProjectReport(zip_path=str(
+        git_zip), project_name="TeamProject")
+    assert team_report.statistics.get(
+        ProjectStatCollection.IS_GROUP_PROJECT.value).value is True
 
 
 def test_no_git_projects(tmp_path: Path):
@@ -106,8 +115,10 @@ def test_no_git_projects(tmp_path: Path):
     # Project discovery should still work
     result = discover_projects(str(zip_path))
     assert "BasicProject" in result and len(result["BasicProject"]) == 2
-    # No Git repo = None
-    assert is_group_project(str(zip_path), "BasicProject") is None
+    # No Git repo = no statistics
+    report = ProjectReport(zip_path=str(zip_path), project_name="BasicProject")
+    assert report.statistics.get(
+        ProjectStatCollection.IS_GROUP_PROJECT.value) is None
 
 
 def test_invalid_inputs(tmp_path: Path):
@@ -120,5 +131,76 @@ def test_invalid_inputs(tmp_path: Path):
     bad_zip.write_text("This is not a valid zip file")
     with pytest.raises(zipfile.BadZipFile):
         discover_projects(str(bad_zip))
-    with pytest.raises(zipfile.BadZipFile):
-        is_group_project(str(bad_zip), "AnyProject")
+
+
+def test_mac_zip_structure():
+    """Verifies handling of Mac-created zip files with parent folders and metadata."""
+    # Test with actual Mac zip file from issue #67
+    mac_zip_path = Path(__file__).parent / "resources" / "mac_projects.zip"
+    result = discover_projects(str(mac_zip_path))
+
+    # Should skip parent "Projects" folder and __MACOSX metadata
+    assert "Projects" not in result
+    assert "__MACOSX" not in result
+
+    # Should find ProjectA and ProjectB as top-level projects
+    assert "ProjectA" in result
+    assert "ProjectB" in result
+
+    # Verify ProjectA files (should filter out .DS_Store)
+    assert "a_1.txt" in result["ProjectA"]
+    assert "a_2.txt" in result["ProjectA"]
+    assert "subfolder/a_3.txt" in result["ProjectA"]
+    assert ".DS_Store" not in result["ProjectA"]
+    assert len(result["ProjectA"]) == 3
+
+    # Verify ProjectB files
+    assert "b_1.txt" in result["ProjectB"]
+    assert "b_2.txt" in result["ProjectB"]
+    assert "b_3.txt" in result["ProjectB"]
+    assert len(result["ProjectB"]) == 3
+
+
+def test_project_report_git_analysis(git_zip: Path):
+    """Verifies ProjectReport correctly analyzes Git authorship statistics."""
+    # Test individual project (1 author)
+    solo_report = ProjectReport(zip_path=str(
+        git_zip), project_name="SoloProject")
+
+    is_group = solo_report.statistics.get(
+        ProjectStatCollection.IS_GROUP_PROJECT.value)
+    total_authors = solo_report.statistics.get(
+        ProjectStatCollection.TOTAL_AUTHORS.value)
+    authors_per_file = solo_report.statistics.get(
+        ProjectStatCollection.AUTHORS_PER_FILE.value)
+
+    assert is_group is not None
+    assert is_group.value is False  # Individual project
+    assert total_authors is not None
+    assert total_authors.value == 1
+    assert authors_per_file is not None
+    assert isinstance(authors_per_file.value, dict)
+    assert "solo_work.py" in authors_per_file.value
+    assert authors_per_file.value["solo_work.py"] == 1
+
+    # Test group project (2 authors)
+    team_report = ProjectReport(zip_path=str(
+        git_zip), project_name="TeamProject")
+
+    is_group = team_report.statistics.get(
+        ProjectStatCollection.IS_GROUP_PROJECT.value)
+    total_authors = team_report.statistics.get(
+        ProjectStatCollection.TOTAL_AUTHORS.value)
+    authors_per_file = team_report.statistics.get(
+        ProjectStatCollection.AUTHORS_PER_FILE.value)
+
+    assert is_group is not None
+    assert is_group.value is True  # Group project
+    assert total_authors is not None
+    assert total_authors.value == 2
+    assert authors_per_file is not None
+    assert isinstance(authors_per_file.value, dict)
+    assert "feature1.py" in authors_per_file.value
+    assert "feature2.py" in authors_per_file.value
+    assert authors_per_file.value["feature1.py"] == 1
+    assert authors_per_file.value["feature2.py"] == 1

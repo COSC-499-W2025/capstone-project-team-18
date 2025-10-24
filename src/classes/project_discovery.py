@@ -1,10 +1,7 @@
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 import logging
-import tempfile
-import shutil
-from git import Repo, InvalidGitRepositoryError
 
 logger = logging.getLogger(__name__)
 
@@ -15,55 +12,78 @@ def discover_projects(zip_path: str) -> Dict[str, List[str]]:
         raise FileNotFoundError(f"Zip file not found: {zip_path}")
 
     projects = {}
+    all_files = []
+
     try:
         with zipfile.ZipFile(zip_path, 'r') as zf:
             for path in zf.namelist():
-                # Skip directory entries
-                if path.endswith('/'):
+                # Skip directory entries and Mac metadata
+                if path.endswith('/') or '__MACOSX' in path or path.endswith('.DS_Store'):
                     continue
+                all_files.append(path)
 
+            if not all_files:
+                return projects
+
+            # Group files by their first directory level
+            first_level = {}
+            for path in all_files:
                 parts = Path(path).parts
-                # First part is project name, rest is file path
-                name = parts[0]
-                file = str(Path(*parts[1:])) if len(parts) > 1 else parts[0]
+                if len(parts) > 0:
+                    first_level.setdefault(parts[0], []).append(parts)
 
-                projects.setdefault(name, []).append(file)
+            # Check if all files share a common parent folder
+            if len(first_level) == 1:
+                # Single top-level folder
+                parent = list(first_level.keys())[0]
+                all_parts = first_level[parent]
+
+                # Check if there are any files with second-level directories
+                has_subdirs = any(len(p) > 2 for p in all_parts)
+
+                if has_subdirs:
+                    # Has subdirectories - skip parent, use second level as projects
+                    second_level_dirs = {p[1] for p in all_parts if len(p) > 1}
+
+                    # Only skip parent if ALL files have second-level dirs
+                    all_have_second = all(len(p) > 1 for p in all_parts)
+
+                    if all_have_second and len(second_level_dirs) > 1:
+                        # Multiple second-level dirs - use them as project names
+                        for path in all_files:
+                            parts = Path(path).parts
+                            if len(parts) >= 2:
+                                name = parts[1]
+                                file = str(
+                                    Path(*parts[2:])) if len(parts) > 2 else parts[1]
+                                projects.setdefault(name, []).append(file)
+                    else:
+                        # Use parent as project name
+                        for path in all_files:
+                            parts = Path(path).parts
+                            name = parts[0]
+                            file = str(
+                                Path(*parts[1:])) if len(parts) > 1 else parts[0]
+                            projects.setdefault(name, []).append(file)
+                else:
+                    # No subdirectories - use parent as project name
+                    for path in all_files:
+                        parts = Path(path).parts
+                        name = parts[0]
+                        file = str(Path(*parts[1:])
+                                   ) if len(parts) > 1 else parts[0]
+                        projects.setdefault(name, []).append(file)
+            else:
+                # Multiple top-level folders - use first level as project names
+                for path in all_files:
+                    parts = Path(path).parts
+                    name = parts[0]
+                    file = str(Path(*parts[1:])
+                               ) if len(parts) > 1 else parts[0]
+                    projects.setdefault(name, []).append(file)
 
     except zipfile.BadZipFile as e:
         logger.error(f"Invalid zip file: {zip_path}. Error: {str(e)}")
         raise
 
     return projects
-
-
-def is_group_project(zip_path: str, project_name: str) -> Optional[str]:
-    """Returns 'individual', 'group', or None based on Git commit authors."""
-    if not Path(zip_path).exists():
-        raise FileNotFoundError(f"Zip file not found: {zip_path}")
-
-    temp = tempfile.mkdtemp()
-    try:
-        with zipfile.ZipFile(zip_path, 'r') as zf:
-            # Extract only files belonging to this project
-            files = [f for f in zf.namelist()
-                     if f.startswith(f"{project_name}/")]
-
-            if not files:
-                return None
-
-            for path in files:
-                zf.extract(path, temp)
-
-        try:
-            repo = Repo(Path(temp) / project_name)
-            # Count unique commit authors by email
-            authors = {c.author.email for c in repo.iter_commits()}
-            return "individual" if len(authors) == 1 else "group" if authors else None
-        except InvalidGitRepositoryError:
-            return None
-
-    except zipfile.BadZipFile as e:
-        logger.error(f"Invalid zip file: {zip_path}. Error: {str(e)}")
-        raise
-    finally:
-        shutil.rmtree(temp, ignore_errors=True)
