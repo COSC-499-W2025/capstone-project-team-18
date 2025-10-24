@@ -78,7 +78,7 @@ class BaseFileAnalyzer:
         # Given a single project for a user and the project's structure return a list with each fileReport
         projectFiles = project_structure[project_title]
 
-        # empty list to be returned
+        # list of reports for each file in an individual project to be returned
         reports = []
 
         for file in projectFiles:

@@ -81,3 +81,9 @@ def test_text_file_analyzer_analyze_raises_unimplemented(temp_text_file: Path):
     analyzer = TextFileAnalyzer(str(temp_text_file))
     with pytest.raises(ValueError, match="Unimplemented"):
         _ = analyzer.analyze()
+
+
+def test_extract_file_reports_recieves_empty_project():
+    """
+    Test that the extraction returns corrrect messaging upon reciept of an empty project directory
+    """
