@@ -113,6 +113,30 @@ class FileStatCollection(Enum):
         expected_type=FileDomain,
     )
 
+    WORD_COUNT = FileStatisticTemplate(
+        name="WORD_COUNT",
+        description="number of words in a text based file.",
+        expected_type=int
+    )
+
+    CHARACTER_COUNT = FileStatisticTemplate(
+        name="CHARACTER_COUNT",
+        description="the number of alphanumeric characters in a text",
+        expected_type=int
+    )
+
+    SENTENCE_COUNT = FileStatisticTemplate(
+        name="SENTENCE_COUNT",
+        description="the number of sentences in a document.",
+        expected_type=int
+    )
+
+    ARI_WRITING_SCORE = FileStatisticTemplate(
+        name="ARI_WRITING_SCORE",
+        description="the US grade needed to read a document based on the Automated Readability Index",
+        expected_type=float
+    )
+
 
 class ProjectStatCollection(Enum):
     PROJECT_START_DATE = ProjectStatisticTemplate(
@@ -245,6 +269,10 @@ class StatisticIndex():
         if stat is None:
             return None
         return stat.value
+
+    def extend(self, stat_list: List[Statistic]):
+        for stat in stat_list:
+            self.add(stat)
 
     def to_dict(self) -> Dict[str, Any]:
         """
