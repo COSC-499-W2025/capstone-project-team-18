@@ -170,6 +170,7 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path: Path):
     REAL_SENTENCE_COUNT = 6
     REAL_ARI_SCORE = 4.71 * (REAL_ALPHA_NUMERIC_CHARACTER_COUNT / REAL_WORD_COUNT) + \
         0.5 * (REAL_WORD_COUNT / REAL_SENTENCE_COUNT) - 21.43
+    REAL_TYPE_OF_FILE = FileDomain.DOCUMENTATION
 
     measured_word_count = report.get_value(FileStatCollection.WORD_COUNT.value)
     measured_character_count = report.get_value(
@@ -178,8 +179,77 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path: Path):
         FileStatCollection.SENTENCE_COUNT.value)
     measured_ari_score = report.get_value(
         FileStatCollection.ARI_WRITING_SCORE.value)
+    measured_type_of_file = report.get_value(
+        FileStatCollection.TYPE_OF_FILE.value)
 
-    assert REAL_WORD_COUNT == measured_word_count
-    assert REAL_ALPHA_NUMERIC_CHARACTER_COUNT == measured_character_count
-    assert REAL_SENTENCE_COUNT == measured_sentence_count
+    assert REAL_WORD_COUNT == measured_word_count, f"Expected {REAL_WORD_COUNT}, got {measured_word_count}"
+    assert REAL_ALPHA_NUMERIC_CHARACTER_COUNT == measured_character_count, f"Expected {REAL_ALPHA_NUMERIC_CHARACTER_COUNT}, got {measured_character_count}"
+    assert REAL_SENTENCE_COUNT == measured_sentence_count, f"Expected {REAL_SENTENCE_COUNT}, got {measured_sentence_count}"
     assert REAL_ARI_SCORE == measured_ari_score, f"Expected {REAL_ARI_SCORE}, got {measured_ari_score}"
+    assert REAL_TYPE_OF_FILE == measured_type_of_file, f"Expected {REAL_TYPE_OF_FILE}, got {measured_type_of_file}"
+
+# ---------- Test PythonAnalyzer ----------
+
+
+def test_PythonAnalyzer_core_stats():
+    """
+    This test uses the example_python.py file
+    in the tests/static/ directory. To ensure
+    that the PythonAnalyzer is correctly measuring
+    statistics about Python files.
+    """
+    path = "./tests/static/example_python.py"
+
+    report = PythonAnalyzer(path).analyze()
+
+    REAL_TYPE_OF_FILE = FileDomain.CODE
+    REAL_NUMBER_OF_FUNCTIONS = 7
+    REAL_NUMBER_OF_CLASSES = 1
+    REAL_IMPORTS = ["os", "tkinter", "Classes", "Util"]
+
+    measured_type_of_file = report.get_value(
+        FileStatCollection.TYPE_OF_FILE.value)
+    measured_number_of_functions = report.get_value(
+        FileStatCollection.NUMBER_OF_FUNCTIONS.value)
+    measured_number_of_classes = report.get_value(
+        FileStatCollection.NUMBER_OF_CLASSES.value)
+    measured_imports = report.get_value(
+        FileStatCollection.IMPORTED_PACKAGES.value)
+
+    assert REAL_TYPE_OF_FILE == measured_type_of_file, f"Expected {REAL_TYPE_OF_FILE}, got {measured_type_of_file}"
+    assert REAL_NUMBER_OF_FUNCTIONS == measured_number_of_functions, f"Expected {REAL_NUMBER_OF_FUNCTIONS}, got {measured_number_of_functions}"
+    assert REAL_NUMBER_OF_CLASSES == measured_number_of_classes, f"Expected {REAL_NUMBER_OF_CLASSES}, got {measured_number_of_classes}"
+    assert set(REAL_IMPORTS) == set(
+        measured_imports), f"Expected {REAL_IMPORTS}, got {measured_imports}"
+
+
+def test_PythonAnalyzer_no_functions_or_classes(tmp_path: Path):
+    """
+    Test that PythonAnalyzer correctly handles a Python file
+    with no functions or classes.
+    """
+
+    content = (
+        "# This is a simple python file\n"
+        "import os\n"
+        "import sys\n"
+        "\n"
+        "print('Hello, World!')\n"
+    )
+
+    file_path = _create_temp_file(
+        "test_PythonAnalyzer_no_functions_or_classes.py", content, tmp_path)
+
+    report = PythonAnalyzer(str(file_path)).analyze()
+
+    number_of_functions = report.get_value(
+        FileStatCollection.NUMBER_OF_FUNCTIONS.value)
+    number_of_classes = report.get_value(
+        FileStatCollection.NUMBER_OF_CLASSES.value)
+    imported_packages = report.get_value(
+        FileStatCollection.IMPORTED_PACKAGES.value)
+
+    assert number_of_functions == 0, f"Expected 0 functions, got {number_of_functions}"
+    assert number_of_classes == 0, f"Expected 0 classes, got {number_of_classes}"
+    assert set(imported_packages) == set(
+        ["os", "sys"]), f"Expected no imports, got {imported_packages}"

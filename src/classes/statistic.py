@@ -137,6 +137,24 @@ class FileStatCollection(Enum):
         expected_type=float
     )
 
+    NUMBER_OF_FUNCTIONS = FileStatisticTemplate(
+        name="NUMBER_OF_FUNCTIONS",
+        description="the number of functions or methods defined in a code file",
+        expected_type=int
+    )
+
+    NUMBER_OF_CLASSES = FileStatisticTemplate(
+        name="NUMBER_OF_CLASSES",
+        description="the number of classes defined in a code file",
+        expected_type=int
+    )
+
+    IMPORTED_PACKAGES = FileStatisticTemplate(
+        name="IMPORTED_PACKAGES",
+        description="the list of modules or packages imported in a code file",
+        expected_type=list[str]
+    )
+
 
 class ProjectStatCollection(Enum):
     PROJECT_START_DATE = ProjectStatisticTemplate(
