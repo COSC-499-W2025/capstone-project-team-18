@@ -71,15 +71,21 @@ class FileStatCollection(Enum):
         expected_type=int,
     )
 
+    DATE_CREATED = FileStatisticTemplate(
+        name="DATE_CREATED",
+        description="creation date of the file",
+        expected_type=date,
+    )
+
     DATE_MODIFIED = FileStatisticTemplate(
         name="DATE_MODIFIED",
         description="last date the file was modified",
         expected_type=date,
     )
 
-    DATE_CREATED = FileStatisticTemplate(
-        name="DATE_CREATED",
-        description="creation date of the file",
+    DATE_ACCESSED = FileStatisticTemplate(
+        name="DATE_ACCESSED",
+        description="last date the file was accessed",
         expected_type=date,
     )
 
