@@ -13,6 +13,14 @@ def discover_projects(zip_path: str) -> Dict[str, List[str]]:
 
     projects = {}
     all_files = []
+    
+    def add_to_projects(file_path: str, name_index: int) -> None:
+        """Helper to extract project name and file path from parts."""
+        parts = Path(file_path).parts
+        if len(parts) > name_index:
+            name = parts[name_index]
+            file = str(Path(*parts[name_index + 1:])) if len(parts) > name_index + 1 else parts[name_index]
+            projects.setdefault(name, []).append(file)
 
     try:
         with zipfile.ZipFile(zip_path, 'r') as zf:
@@ -51,36 +59,19 @@ def discover_projects(zip_path: str) -> Dict[str, List[str]]:
                     if all_have_second and len(second_level_dirs) > 1:
                         # Multiple second-level dirs - use them as project names
                         for path in all_files:
-                            parts = Path(path).parts
-                            if len(parts) >= 2:
-                                name = parts[1]
-                                file = str(
-                                    Path(*parts[2:])) if len(parts) > 2 else parts[1]
-                                projects.setdefault(name, []).append(file)
+                            add_to_projects(path, 1)
                     else:
                         # Use parent as project name
                         for path in all_files:
-                            parts = Path(path).parts
-                            name = parts[0]
-                            file = str(
-                                Path(*parts[1:])) if len(parts) > 1 else parts[0]
-                            projects.setdefault(name, []).append(file)
+                            add_to_projects(path, 0)
                 else:
                     # No subdirectories - use parent as project name
                     for path in all_files:
-                        parts = Path(path).parts
-                        name = parts[0]
-                        file = str(Path(*parts[1:])
-                                   ) if len(parts) > 1 else parts[0]
-                        projects.setdefault(name, []).append(file)
+                        add_to_projects(path, 0)
             else:
                 # Multiple top-level folders - use first level as project names
                 for path in all_files:
-                    parts = Path(path).parts
-                    name = parts[0]
-                    file = str(Path(*parts[1:])
-                               ) if len(parts) > 1 else parts[0]
-                    projects.setdefault(name, []).append(file)
+                    add_to_projects(path, 0)
 
     except zipfile.BadZipFile as e:
         logger.error(f"Invalid zip file: {zip_path}. Error: {str(e)}")
