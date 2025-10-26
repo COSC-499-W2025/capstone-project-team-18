@@ -35,46 +35,6 @@ class ArtifactMiner(cmd.Cmd):
         print(self.options)
 
 
-    def update_history(self, cmd_history: list, cmd: str):
-        '''
-        We will track the user's history (entered commands) so that they can go back if they wish.
-        This function updated the `cmd_history` list to do so.
-        '''
-        if len(cmd_history) == 3:  # we'll only track their 3 most recent commands
-            cmd_history.pop()  # remove the last item
-        cmd_history.insert(0, cmd)  # add new command
-        return cmd_history
-
-
-    # def do_perms(self, arg):
-    #     '''
-    #     Provides consent statement. User may enter Y/N to agree or disagree.
-    #     '''
-    #     self.update_history(self.cmd_history, "perms")
-    #     # TODO: agreement doesn't print properly if the terminal isn't wide enough
-    #     agreement = (
-    #         "Do you consent to this program accessing all files and/or folders"
-    #         "\nin the filepath you provide and (if applicable) permission to use"
-    #         "\nthe files and/or folders in 3rd party software?\n"
-    #         "(Y/N) or type 'back'/'cancel' to return to main menu: "
-    #     )
-    #     while True:
-    #         answer = input(agreement).strip().upper()
-
-    #         if answer == 'Y':  # user consents
-    #             self.user_consent = True
-    #             print("\nThank you for consenting. You may now continue.")
-    #             print(self.options)
-    #             break
-    #         elif answer == 'N':  # user doesn't consent
-    #             print("Consent not given. Exiting application...")
-    #             return True  # tells cmdloop() to exit
-    #         elif self._handle_cancel_input(answer): # user entered 'back'/'cancel'
-    #             print("\n" + self.options)
-    #             break
-    #         else:  # invalid input from user
-    #             print("Invalid response. Please enter 'Y' or 'N', or 'back'/'cancel' to return.")
-
     def do_perms(self, arg):
         '''
         Provides consent statement. User may enter Y/N to agree or disagree.
@@ -107,6 +67,7 @@ class ArtifactMiner(cmd.Cmd):
             else:  # invalid input from user
                 # Make sure this matches your actual error message
                 print("Invalid response. Please enter 'Y', 'N', 'back', or 'cancel'.")
+
 
     def do_filepath(self, arg):
         '''User specifies the project's filepath'''
@@ -145,20 +106,36 @@ class ArtifactMiner(cmd.Cmd):
             print("\n" + self.options)
 
 
+    def update_history(self, cmd_history: list, cmd: str):
+        '''
+        We will track the user's history (entered commands) so that they can go back if they wish.
+        This function updated the `cmd_history` list to do so.
+        '''
+        if len(cmd_history) == 3:  # we'll only track their 3 most recent commands
+            cmd_history.pop(0)  # remove the oldest item (first item)
+        cmd_history.append(cmd)  # add new command to the end
+       
+        return cmd_history
+
+
     def do_back(self, arg):
         '''Return to the previous screen'''
         print(str(self.cmd_history))
-        if len(self.cmd_history) > 0:
-            match self.cmd_history[-1]:
+        if len(self.cmd_history) > 1:  # Need at least 2 items to go back
+            # Get the second-to-last command (the one we want to go back to)
+            previous_cmd = self.cmd_history[-1]  # Get second-to-last command
+            self.cmd_history.pop()  # Remove current command from history
+            
+            match previous_cmd:
                 case "perms":
-                    self.cmd_history.pop()
                     return self.do_perms(arg)
                 case "filepath":
-                    self.cmd_history.pop()
                     return self.do_filepath(arg)
                 case "begin":
-                    self.cmd_history.pop()
                     return self.do_begin(arg)
+        else:
+            print("\nNo previous command to return to.")
+            print(self.options)
 
 
     def _handle_cancel_input(self, user_input):
@@ -166,15 +143,15 @@ class ArtifactMiner(cmd.Cmd):
         Helper method to check if user wants to cancel and handle it.
         Returns True if cancel was triggered, False otherwise.
         '''
-
         if user_input.strip().lower() in ['back', 'cancel']:
             # Remove the current command from history since user is cancelling
             if len(self.cmd_history) > 0:
-                cancelled_cmd = self.cmd_history.pop()
+                cancelled_cmd = self.cmd_history.pop()  # Now correctly removes from end
                 print(f"\nCancelled '{cancelled_cmd}' operation.")
             else:
                 print("\nReturning to main menu.")
             return True
+       
         return False
 
 
