@@ -1,9 +1,9 @@
 from datetime import date
-from classes.statistic import (
-    StatisticIndex, Statistic,
+from src.classes.statistic import (
+    StatisticIndex, Statistic, StatisticTemplate,
     UserStatCollection, WeightedSkills
 )
-from classes.report import UserReport
+from src.classes.report import UserReport
 
 def test_to_user_readable_string():
     idx = StatisticIndex([
@@ -20,3 +20,20 @@ def test_to_user_readable_string():
     assert "You started your first project on 9/20/2023!" in out
     assert "Your latest contribution was on 10/20/2025." in out
     assert "Your skills include: " in out
+
+def test_to_user_readable_string_empty():
+    idx = StatisticIndex()
+    report = UserReport.from_statistics(idx)
+    assert report.to_user_readable_string() == "No user statistics are available yet."
+
+
+def test_to_user_readable_string_fallback_generic_title_value():
+    dummy_template = StatisticTemplate(
+        name="CUSTOM_UNKNOWN_STAT",
+        description="A stat not covered by custom phrasing",
+        expected_type=int,
+    )
+    idx = StatisticIndex([Statistic(dummy_template, 42)])
+    report = UserReport.from_statistics(idx)
+    out = report.to_user_readable_string()
+    assert "Custom Unknown Stat: 42" in out

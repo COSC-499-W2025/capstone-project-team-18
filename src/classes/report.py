@@ -217,12 +217,19 @@ class UserReport(BaseReport):
                     pass
                 lines.append(f"Your skills include: {skills_line}.")
                 continue
-
-            maybe_dt = self._coerce_datetime(value)
+            
             title = self._title_from_name(name)
+            
+            should_try_date = (
+                template.expected_type in (date, datetime)
+                or isinstance(value, (date, datetime))
+                or isinstance(value, str) 
+            )
+            maybe_dt = self._coerce_datetime(value) if should_try_date else None
+            
             if maybe_dt:
                 lines.append(f"{title}: {self._fmt_mdy(maybe_dt)}")
             else:
                 lines.append(f"{title}: {value!r}")
-
+                
         return "\n".join(lines)
