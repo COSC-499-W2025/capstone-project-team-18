@@ -1,3 +1,9 @@
+# Week 8 10/20 - 10/26
+
+![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week8_log.png)
+
+This week began with a team meeting where we defined key development areas and assigned the Milestone #1 requirements under those areas. We had extensive discussions about our next steps and ultimately decided to focus on completing an end-to-end workflow by the end of the week. To support this goal, I created five GitHub issues (#67, #68, #69, #70, #71) representing the core tasks needed for the workflow and assigned them to team members. While they worked on those, I set up a GitHub Action to automatically run tests on pull request creation (#87) which was needed after we accidentally merged faulty code. In addition, I developed several file analyzer classes (#89), created another issue for a teammate (#90), and reviewed multiple pull requests (#84, #92, #91, #74).
+
 # Week 7 10/13 - 10/19
 
 ![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week7_log.png)
