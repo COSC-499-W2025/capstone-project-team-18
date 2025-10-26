@@ -85,12 +85,6 @@ def temp_directory_with_subfolder(tmp_path: Path) -> dict:
     }
 
 
-@pytest.fixture
-def temp_directory_random_subfolder(num_files, num_subfolders) -> dict:
-    '''Temp directory (includes subfolders) to be deleted after test'''
-    title = "testProject"
-
-
 def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_text_file: Path):
     '''
     Test that the metadata of the file we created in `temp_text_file()` will be read and stored
