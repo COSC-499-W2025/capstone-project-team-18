@@ -156,15 +156,6 @@ def test_project_to_user_many_to_many(temp_db):
             assert user in p.user_reports
 
 
-def test_user_preferences_table_exists(temp_db):
-    '''
-    Verify that UserPreferencesTable exists and is accessible.
-    '''
-    inspector = inspect(temp_db)
-    tables = inspector.get_table_names()
-    assert 'user_preferences' in tables
-
-
 def test_user_preferences_data_inserted(temp_db):
     '''
     Verify that user preferences data was inserted during fixture setup.
