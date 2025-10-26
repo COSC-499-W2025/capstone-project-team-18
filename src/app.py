@@ -22,7 +22,7 @@ class ArtifactMiner(cmd.Cmd):
             "Type help or ? to list commands\n"
         )
         self.prompt = '(PAF) '
-        self.ruler = '-'  # overwrite default seaparator line ('=')
+        self.ruler = '-'  # overwrite default separator line ('=')
         self.cmd_history = []  # will store the user's previous 3 commands
 
         # Update with user input
@@ -111,7 +111,7 @@ class ArtifactMiner(cmd.Cmd):
         We will track the user's history (entered commands) so that they can go back if they wish.
         This function updated the `cmd_history` list to do so.
         '''
-        if len(cmd_history) == 3:  # we'll only track their 3 most recent commands
+        if len(cmd_history) == 3:  # only track their 3 most recent commands
             cmd_history.pop(0)  # remove the oldest item (first item)
         cmd_history.append(cmd)  # add new command to the end
        
@@ -122,8 +122,8 @@ class ArtifactMiner(cmd.Cmd):
         '''Return to the previous screen'''
         print(str(self.cmd_history))
         if len(self.cmd_history) > 1:  # Need at least 2 items to go back
-            # Get the second-to-last command (the one we want to go back to)
-            previous_cmd = self.cmd_history[-1]  # Get second-to-last command
+            # Get the last command (the one we want to go back to)
+            previous_cmd = self.cmd_history[-1]  # Get last command
             self.cmd_history.pop()  # Remove current command from history
             
             match previous_cmd:
