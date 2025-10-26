@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from datetime import datetime
-
+from src.classes.analyzer import FileReport
 
 import pytest
 
@@ -33,6 +33,62 @@ def temp_text_file(tmp_path: Path) -> Path:
     content = "Myles Jack wasn't down\n"
     p.write_text(content, encoding="utf-8")
     return p
+
+
+@pytest.fixture
+def temp_directory_no_subfolder(tmp_path: Path) -> dict:
+    '''Temp directory to be deleted after test'''
+    directory = {}
+    files = []
+    title = "testProject"
+    for _ in range(5):
+        p = tmp_path / "sample.txt"
+        content = "Myles Jack wasn't down\n"
+        p.write_text(content, encoding="utf-8")
+        files.append(p)
+    directory.update({title: files})
+    return directory
+
+
+@pytest.fixture
+def temp_directory_with_subfolder(tmp_path: Path) -> dict:
+    """
+    Create a temp directory structure like:
+
+    {
+    "ProjectA": ["a_1.txt", "a_2.txt","subfolder/a_3.txt"
+    }
+    """
+
+    project_name = "ProjectA"
+
+    # files directly in project root
+    file1 = tmp_path / "a_1.txt"
+    file1.write_text("File One", encoding="utf-8")
+
+    file2 = tmp_path / "a_2.txt"
+    file2.write_text("File Two", encoding="utf-8")
+
+    # create subfolder + file
+    subfolder = tmp_path / "subfolder"
+    subfolder.mkdir()
+
+    file3 = subfolder / "a_3.txt"
+    file3.write_text("File Three", encoding="utf-8")
+
+    return {
+        project_name: [
+            str(file1),
+            str(file2),
+            str(file3),
+        ]
+    }
+
+
+@pytest.fixture
+def temp_directory_random_subfolder(num_files, num_subfolders) -> dict:
+    '''Temp directory (includes subfolders) to be deleted after test'''
+    title = "testProject"
 
 
 def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_text_file: Path):
@@ -83,7 +139,35 @@ def test_text_file_analyzer_analyze_raises_unimplemented(temp_text_file: Path):
         _ = analyzer.analyze()
 
 
-def test_extract_file_reports_recieves_empty_project():
+def test_extract_file_reports_recieves_empty_project(tmp_path):
     """
-    Test that the extraction returns corrrect messaging upon reciept of an empty project directory
+    Test that the extraction returns correct messaging upon reciept of an empty project directory
     """
+
+    analyzer = BaseFileAnalyzer(tmp_path)
+    listReport = analyzer.extract_file_reports("testProject", {})
+    assert listReport == []
+
+
+def test_extract_file_reports_returns_project(tmp_path, temp_directory_no_subfolder):
+    """
+    Test that the extraction returns a list of FileReports with the accurate # of reports
+    """
+    analyzer = BaseFileAnalyzer(tmp_path)
+    listReport = analyzer.extract_file_reports(
+        "testProject", temp_directory_no_subfolder)
+    print(listReport)
+    assert len(listReport) == 5 and all(isinstance(report, FileReport)
+                                        for report in listReport)
+
+
+def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_directory_with_subfolder):
+    """
+    Test that the extraction returns a list of FileReports with the accurate #
+    """
+    analyzer = BaseFileAnalyzer(tmp_path)
+    listReport = analyzer.extract_file_reports(
+        "ProjectA", temp_directory_with_subfolder)
+    print(listReport)
+    assert len(listReport) == 3 and all(isinstance(report, FileReport)
+                                        for report in listReport)
