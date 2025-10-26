@@ -12,6 +12,8 @@
 
 **[Week 7, Oct. 13-19](#week-7-oct-13-19)**
 
+**[Week 8, Oct. 20-26](#week-8-oct-20-26)**
+
 ---
 
 ## Week 3, Sept. 15-21
@@ -75,3 +77,17 @@ This week marked our team transitioned from planning to active development. My p
 I took responsibility for writing the comprehensive team log for Week 7, documenting active development. The log covered the successful merge of 6 pull requests, including our first code implementation (PR #27 - Analyzer, Report, and Statistics classes), the closure of 2 issues, and the creation of 7 new GitHub issues to organize parallel development work.
 
 Additionally, I reviewed and approved PR #44 (Enhanced Documentation for Class Structure). This was a critical PR that added a 100-line README explaining the entire class architecture and how Statistics, Reports, and Analyzers work together. I verified that all 15 test cases were passing and confirmed that the code examples clearly demonstrated how to use the statistics system. I also reviewed the new PR template that was added to standardize future contributions, ensuring it will help the whole team work more efficiently with the codebase as we continue development.
+
+
+## Week 8, Oct. 20-26
+
+### Peer Eval
+![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week8_log.png)
+
+### Recap
+
+This week's goal was to implement critical features for our end-to-end workflow and extend code analysis capabilities.
+
+I completed Issue #67, implementing project discovery from zip files with Git-based group detection—a core feature enabling our workflow to start from user uploads. This included creating 6 comprehensive tests covering multiple projects, Mac zip structures, and Git authorship analysis. I also implemented Issue #90, creating JavaAnalyzer and JavaScriptAnalyzer classes using regex-based parsing to extend analysis beyond Python. Both analyzers count classes, functions, and imports, with full test coverage including test fixtures (example_java.java, example_javascript.js).
+
+Additionally, I reviewed Tawana's PR #91 on user-readable UserReport class, providing feedback on test coverage and code consistency.
