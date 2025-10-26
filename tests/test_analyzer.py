@@ -194,11 +194,11 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path: Path):
 def test_PythonAnalyzer_core_stats():
     """
     This test uses the example_python.py file
-    in the tests/static/ directory. To ensure
+    in the tests/resources/ directory. To ensure
     that the PythonAnalyzer is correctly measuring
     statistics about Python files.
     """
-    path = "./tests/static/example_python.py"
+    path = "./tests/resources/example_python.py"
 
     report = PythonAnalyzer(path).analyze()
 
