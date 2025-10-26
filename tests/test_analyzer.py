@@ -146,7 +146,7 @@ def test_extract_file_reports_recieves_empty_project(tmp_path):
 
     analyzer = BaseFileAnalyzer(tmp_path)
     listReport = analyzer.extract_file_reports("testProject", {})
-    assert listReport == []
+    assert listReport[0] == "There is no files to analyze at this path"
 
 
 def test_extract_file_reports_returns_project(tmp_path, temp_directory_no_subfolder):
@@ -156,7 +156,6 @@ def test_extract_file_reports_returns_project(tmp_path, temp_directory_no_subfol
     analyzer = BaseFileAnalyzer(tmp_path)
     listReport = analyzer.extract_file_reports(
         "testProject", temp_directory_no_subfolder)
-    print(listReport)
     assert len(listReport) == 5 and all(isinstance(report, FileReport)
                                         for report in listReport)
 
