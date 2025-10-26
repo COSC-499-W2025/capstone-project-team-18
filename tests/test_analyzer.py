@@ -8,6 +8,8 @@ import pytest
 from src.classes.analyzer import *
 from src.classes.statistic import FileStatCollection
 
+TEST_DIR = Path(__file__).parent / "static"
+
 
 def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "utf-8") -> Path:
     """
@@ -253,3 +255,47 @@ def test_PythonAnalyzer_no_functions_or_classes(tmp_path: Path):
     assert number_of_classes == 0, f"Expected 0 classes, got {number_of_classes}"
     assert set(imported_packages) == set(
         ["os", "sys"]), f"Expected no imports, got {imported_packages}"
+
+
+def test_JavaAnalyzer(tmp_path):
+    """
+    Test JavaAnalyzer with an actual Java file.
+    """
+    from src.classes.analyzer import JavaAnalyzer
+
+    file_path = TEST_DIR / "example_java.java"
+    report = JavaAnalyzer(str(file_path)).analyze()
+
+    number_of_functions = report.get_value(
+        FileStatCollection.NUMBER_OF_FUNCTIONS.value)
+    number_of_classes = report.get_value(
+        FileStatCollection.NUMBER_OF_CLASSES.value)
+    imported_packages = report.get_value(
+        FileStatCollection.IMPORTED_PACKAGES.value)
+
+    assert number_of_functions == 8, f"Expected 8 functions, got {number_of_functions}"
+    assert number_of_classes == 2, f"Expected 2 classes, got {number_of_classes}"
+    assert "java" in imported_packages, f"Expected 'java' in imports, got {imported_packages}"
+
+
+def test_JavaScriptAnalyzer(tmp_path):
+    """
+    Test JavaScriptAnalyzer with an actual JavaScript file.
+    """
+    from src.classes.analyzer import JavaScriptAnalyzer
+
+    file_path = TEST_DIR / "example_javascript.js"
+    report = JavaScriptAnalyzer(str(file_path)).analyze()
+
+    number_of_functions = report.get_value(
+        FileStatCollection.NUMBER_OF_FUNCTIONS.value)
+    number_of_classes = report.get_value(
+        FileStatCollection.NUMBER_OF_CLASSES.value)
+    imported_packages = report.get_value(
+        FileStatCollection.IMPORTED_PACKAGES.value)
+
+    assert number_of_functions >= 4, f"Expected at least 4 functions, got {number_of_functions}"
+    assert number_of_classes == 2, f"Expected 2 classes, got {number_of_classes}"
+    assert "react" in imported_packages, f"Expected 'react' in imports, got {imported_packages}"
+    assert "axios" in imported_packages, f"Expected 'axios' in imports, got {imported_packages}"
+    assert "lodash" in imported_packages, f"Expected 'lodash' in imports, got {imported_packages}"
