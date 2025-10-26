@@ -7,7 +7,9 @@ import tempfile
 import shutil
 import zipfile
 from git import Repo, InvalidGitRepositoryError
-from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection
+from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, UserStatCollection, WeightedSkills
+from typing import Any
+from datetime import datetime, date
 
 
 class BaseReport:
@@ -129,3 +131,98 @@ class UserReport(BaseReport):
 
         raise ValueError("Unimplemented")
         return super().__init__(None)
+
+    @classmethod
+    def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
+        inst = cls.__new__(cls)
+        BaseReport.__init__(inst, statistics)
+        return inst
+
+    @staticmethod
+    def _fmt_mdy(d: datetime | date | None) -> str:
+        if d is None:
+            return "an unknown date"
+        if isinstance(d, date) and not isinstance(d, datetime):
+            d = datetime(d.year, d.month, d.day)
+        return f"{d.month}/{d.day}/{d.year}"
+
+    @staticmethod
+    def _coerce_datetime(val: Any) -> datetime | None:
+        if isinstance(val, datetime):
+            return val
+        if isinstance(val, date):
+            return datetime(val.year, val.month, val.day)
+        if isinstance(val, (int, float)):
+            try:
+                return datetime.fromtimestamp(val)
+            except Exception:
+                return None
+        if isinstance(val, str):
+            for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S",
+                        "%Y-%m-%dT%H:%M:%S.%fZ"):
+                try:
+                    return datetime.strptime(val, fmt)
+                except ValueError:
+                    pass
+            try:
+                return datetime.fromisoformat(val)
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    def _title_from_name(raw: str) -> str:
+        s = raw.replace("_", " ").replace("-", " ").strip().lower().title()
+        return s
+
+    def to_user_readable_string(self) -> str:
+        """
+        For every statistic in self.statistics, return a human-readable line.
+        Known user stats get custom phrasing; others fall back to 'Title: value'.
+        """
+        if self.statistics is None or len(self.statistics) == 0:
+            return "No user statistics are available yet."
+
+        lines: list[str] = []
+
+        for stat in self.statistics:
+            template = stat.get_template()
+            name = template.name 
+            value = stat.value
+
+            if name == UserStatCollection.USER_START_DATE.value.name:
+                dt = self._coerce_datetime(value)
+                lines.append(
+                    f"You started your first project on {self._fmt_mdy(dt)}!"
+                )
+                continue
+
+            if name == UserStatCollection.USER_END_DATE.value.name:
+                dt = self._coerce_datetime(value)
+                lines.append(
+                    f"Your latest contribution was on {self._fmt_mdy(dt)}."
+                )
+                continue
+
+            if name == UserStatCollection.USER_SKILLS.value.name:
+                skills_line = "an unknown set of skills"
+                try:
+                    if isinstance(value, list) and value:
+                        def _skill_str(ws: WeightedSkills) -> str:
+                            n = getattr(ws, "skill_name", None) or str(ws)
+                            w = getattr(ws, "weight", None)
+                            return f"{n} ({w})" if w is not None else f"{n}"
+                        skills_line = ", ".join(_skill_str(ws) for ws in value)
+                except Exception:
+                    pass
+                lines.append(f"Your skills include: {skills_line}.")
+                continue
+
+            maybe_dt = self._coerce_datetime(value)
+            title = self._title_from_name(name)
+            if maybe_dt:
+                lines.append(f"{title}: {self._fmt_mdy(maybe_dt)}")
+            else:
+                lines.append(f"{title}: {value!r}")
+
+        return "\n".join(lines)
