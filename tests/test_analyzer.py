@@ -132,7 +132,7 @@ def test_extract_file_reports_recieves_empty_project(tmp_path):
 
     analyzer = BaseFileAnalyzer(tmp_path)
     listReport = analyzer.extract_file_reports("testProject", {})
-    assert listReport[0] == "There is no files to analyze at this path"
+    assert listReport == []
 
 
 def test_extract_file_reports_returns_project(tmp_path, temp_directory_no_subfolder):

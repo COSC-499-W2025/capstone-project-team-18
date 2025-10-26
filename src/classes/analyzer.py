@@ -93,7 +93,7 @@ class BaseFileAnalyzer:
                 analyzer = BaseFileAnalyzer(file)
                 reports.append(analyzer.analyze())
         else:
-            return ["There are no files to analyze for this project"]
+            return []
         return reports
 
 
