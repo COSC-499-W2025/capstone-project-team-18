@@ -90,4 +90,4 @@ This week's goal was to implement critical features for our end-to-end workflow 
 
 I completed Issue #67, implementing project discovery from zip files with Git-based group detection—a core feature enabling our workflow to start from user uploads. This included creating 6 comprehensive tests covering multiple projects, Mac zip structures, and Git authorship analysis. I also implemented Issue #90, creating JavaAnalyzer and JavaScriptAnalyzer classes using regex-based parsing to extend analysis beyond Python. Both analyzers count classes, functions, and imports, with full test coverage including test fixtures (example_java.java, example_javascript.js).
 
-Additionally, I reviewed Tawana's PR #91 on user-readable UserReport class, providing feedback on test coverage and code consistency.
+Additionally, I reviewed PR #87 GitHub Pytest Action by Sam, which adds CI/CD to automatically run tests on every PR. I also reviewed PR #91 on user-readable UserReport formatting by Tawana, providing feedback on test coverage and code consistency.
