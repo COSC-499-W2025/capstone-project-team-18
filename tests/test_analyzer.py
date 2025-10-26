@@ -8,7 +8,7 @@ import pytest
 from src.classes.analyzer import *
 from src.classes.statistic import FileStatCollection
 
-TEST_DIR = Path(__file__).parent / "static"
+TEST_DIR = Path(__file__).parent / "resources"
 
 
 def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "utf-8") -> Path:

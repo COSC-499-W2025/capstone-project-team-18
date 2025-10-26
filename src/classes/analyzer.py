@@ -168,7 +168,7 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         Calculates the Automated readability index (ARI) readability
         score for English text. The output is the US grade level
         that is needed to read this text (e.g. 6.7 would be about
-        a 8th grade level). Formula is defined here:
+        a 7th grade level). Formula is defined here:
 
         https://en.wikipedia.org/wiki/Automated_readability_index
         """
