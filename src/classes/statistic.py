@@ -175,6 +175,24 @@ class ProjectStatCollection(Enum):
         expected_type=list[WeightedSkills],
     )
 
+    IS_GROUP_PROJECT = ProjectStatisticTemplate(
+        name="IS_GROUP_PROJECT",
+        description="whether this is a group project based on Git commit authors",
+        expected_type=bool,
+    )
+
+    TOTAL_AUTHORS = ProjectStatisticTemplate(
+        name="TOTAL_AUTHORS",
+        description="total number of unique commit authors in the project",
+        expected_type=int,
+    )
+
+    AUTHORS_PER_FILE = ProjectStatisticTemplate(
+        name="AUTHORS_PER_FILE",
+        description="mapping of file paths to number of unique authors per file",
+        expected_type=dict,
+    )
+
 
 class UserStatCollection(Enum):
     USER_START_DATE = UserStatisticTemplate(
