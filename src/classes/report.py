@@ -1,8 +1,14 @@
 """
 Reports hold statistics.
 """
+from typing import Any, Optional
+from pathlib import Path
+import tempfile
+import shutil
+import zipfile
+from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
 from typing import Any
-from .statistic import Statistic, StatisticTemplate, StatisticIndex, FileStatCollection, ProjectStatCollection
+from datetime import datetime, date
 
 
 class BaseReport:
@@ -65,27 +71,23 @@ class ProjectReport(BaseReport):
         # This creates a list of datetime objects representing when each file was last modified
         date_modified_list = [report.get_value(FileStatCollection.DATE_MODIFIED.value) for report in file_reports if report.get_value(FileStatCollection.DATE_MODIFIED.value) is not None]
 
-        # Find the earliest date (project start)
-        if date_created_list:
-            start_date = min(date_created_list)             # Find the minimum (earliest) date from all creation dates
-            project_start_stat = Statistic(ProjectStatCollection.PROJECT_START_DATE.value, start_date)
-
-        # Find the latest modified date (project end)
-        if date_modified_list:
-            end_date = max(date_modified_list)              # Find the maximum (latest) date from all modification dates
-            project_end_stat = Statistic(ProjectStatCollection.PROJECT_END_DATE.value, end_date)
 
         # Build list of project-level statistics
         # Only add statistics that were successfully calculated
         project_stats = []
         
-        # Add start date statistic if we found any creation dates
+        # Find the earliest date (project start)
         if date_created_list:
-            project_stats.append(project_start_stat)   
-        
-        # Add end date statistic if we found any modification dates     
+            start_date = min(date_created_list)             # Find the minimum (earliest) date from all creation dates
+            project_start_stat = Statistic(ProjectStatCollection.PROJECT_START_DATE.value, start_date)
+            project_stats.append(project_start_stat)        # Add start date statistic if we found any creation dates
+
+        # Find the latest modified date (project end)
         if date_modified_list:
-            project_stats.append(project_end_stat)
+            end_date = max(date_modified_list)              # Find the maximum (latest) date from all modification dates
+            project_end_stat = Statistic(ProjectStatCollection.PROJECT_END_DATE.value, end_date)
+            project_stats.append(project_end_stat)          # Add end date statistic if we found any modification dates   
+        
             
         # Create StatisticIndex with project-level statistic
         project_statistics = StatisticIndex(project_stats)
@@ -96,7 +98,7 @@ class ProjectReport(BaseReport):
 
 class UserReport(BaseReport):
     """
-    This UserReport class hold Statstics about the user. It is made
+    This UserReport class hold Statistics about the user. It is made
     from many different ReportReports
     """
 
