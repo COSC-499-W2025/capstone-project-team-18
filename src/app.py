@@ -41,9 +41,12 @@ def start_miner(zipped_file: str) -> None:
 
         project_reports.append(pr)
 
-    user_report = UserReport(project_reports)
+        print(pr)
+
+    return
 
     # TODO: Add User Report Processing
+    user_report = UserReport(project_reports)
 
 
 if __name__ == '__main__':
