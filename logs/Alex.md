@@ -14,6 +14,8 @@
 
 **[Week 7, Oct. 07–19](#week-7-oct-0719)**
 
+**[Week 8, Oct. 20–26](#week-8-oct-2026)**
+
 ## Week 3, Sept. 15–21
 
 ![Peer eval](./log_images/personal_log_imgs/alex/week3.png)
@@ -60,3 +62,15 @@ Additionally, I implemented logic for a function that will parse metadata that w
 - The PR can be found [here](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/47)
 
 I met with my team and we planned expectations and tasks for the next coming weeks. We talked about what features we wanted to work on and who would do what. Lastly, I reviewed a [PR](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/44) which closed issue #43, and a [PR](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/46) which closed issue #45.
+
+## Week 8, Oct. 20–26
+
+![Peer Eval](/logs/log_images/personal_log_imgs/alex/week8.png)
+
+### Recap
+
+This week, my goal was to initialize our app's database.
+
+I completed issue [#80](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/80), which adds all of the code for the database's initialization and test cases for it. We will be accessing and modifying the DB using the `sqlalchemy` library. There are a few new issues that will need to be opened to flesh out some specifics about the DB (e.g., complete documentation for the DB and how to access/modify tables and implement columns that will be stored in the user_report table.)
+
+I also reviewed Sam's PR ([#88](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/88)) and Priyansh's PR ([#84](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/67))
