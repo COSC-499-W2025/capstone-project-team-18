@@ -21,7 +21,7 @@ class ArtifactMiner(cmd.Cmd):
             "Type help or ? to list commands\n"
         )
         self.prompt = '(PAF) '
-        self.ruler = '-'  # overwrite default seaparator line ('=')
+        self.ruler = '-'  # overwrite default separator line ('=')
         self.cmd_history = []  # will store the user's previous 3 commands
 
         # Update with user input
