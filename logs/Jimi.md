@@ -12,7 +12,7 @@
 
 **[Week 7, Oct. 13-19](#week-7-oct-1319)**
 
-**[Week 8, Oct. 20-26](#week-7-oct-2026)**
+**[Week 8, Oct. 20-26](#week-8-oct-2026)**
 
 
 
