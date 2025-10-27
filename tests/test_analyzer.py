@@ -115,16 +115,6 @@ def test_base_file_analyzer_nonexistent_file_logs_and_returns_empty():
     assert len(report.statistics) == 0
 
 
-def test_text_file_analyzer_analyze_raises_unimplemented(temp_text_file: Path):
-    '''
-    Currently, the `TextFileAnalyzer() function doesn't have any logic. Once it does,
-    the test case(s) will be implemented here.
-    '''
-    analyzer = TextFileAnalyzer(str(temp_text_file))
-    with pytest.raises(ValueError, match="Unimplemented"):
-        _ = analyzer.analyze()
-
-
 def test_extract_file_reports_recieves_empty_project(tmp_path):
     """
     Test that the extraction returns correct messaging upon reciept of an empty project directory
