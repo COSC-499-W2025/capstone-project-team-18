@@ -7,7 +7,7 @@ import tempfile
 import shutil
 import zipfile
 from git import Repo, InvalidGitRepositoryError
-from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, UserStatCollection, WeightedSkills
+from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
 from typing import Any
 from datetime import datetime, date
 
@@ -64,15 +64,57 @@ class ProjectReport(BaseReport):
     """
 
     def __init__(self, file_reports: list[FileReport] = None, zip_path: str = None, project_name: str = None):
-        """Initialize ProjectReport with optional Git analysis from zip file."""
-        statistics = StatisticIndex()
-        if zip_path and project_name:
-            git_stats = self._analyze_git_authorship(zip_path, project_name)
-            if git_stats:
-                for stat in git_stats:
-                    statistics.add(stat)
-        super().__init__(statistics)
+            """
+            Initialize ProjectReport with file reports and optional Git analysis from zip file.
+            
+            Args:
+                file_reports: List of FileReport objects to aggregate statistics from
+                zip_path: Optional path to zip file for Git analysis
+                project_name: Optional project name for Git analysis
+            """
+            project_stats = []
+            
+            # Process file reports if provided
+            if file_reports:
+                # Extract all creation dates from file reports, filtering out None values
+                date_created_list = [
+                    report.get_value(FileStatCollection.DATE_CREATED.value) 
+                    for report in file_reports 
+                    if report.get_value(FileStatCollection.DATE_CREATED.value) is not None
+                ]
 
+                # Extract all modification dates from file reports, filtering out None values  
+                date_modified_list = [
+                    report.get_value(FileStatCollection.DATE_MODIFIED.value) 
+                    for report in file_reports 
+                    if report.get_value(FileStatCollection.DATE_MODIFIED.value) is not None
+                ]
+
+                # Calculate and add project start date (earliest file creation)
+                if date_created_list:
+                    start_date = min(date_created_list)
+                    project_start_stat = Statistic(ProjectStatCollection.PROJECT_START_DATE.value, start_date)
+                    project_stats.append(project_start_stat)
+
+                # Calculate and add project end date (latest file modification)
+                if date_modified_list:
+                    end_date = max(date_modified_list)
+                    project_end_stat = Statistic(ProjectStatCollection.PROJECT_END_DATE.value, end_date)
+                    project_stats.append(project_end_stat)
+
+            # Create StatisticIndex with project-level statistics
+            project_statistics = StatisticIndex(project_stats)
+            
+            # Add Git analysis statistics if zip file is provided
+            if zip_path and project_name:
+                git_stats = self._analyze_git_authorship(zip_path, project_name)
+                if git_stats:
+                    for stat in git_stats:
+                        project_statistics.add(stat)
+            
+            # Initialize the base class with the project statistics
+            super().__init__(project_statistics)
+            
     def _analyze_git_authorship(self, zip_path: str, project_name: str) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
         if not Path(zip_path).exists():
@@ -121,8 +163,8 @@ class ProjectReport(BaseReport):
 
 class UserReport(BaseReport):
     """
-    This UserReport class hold Statstics about the user. It is made
-    from many different ProjectReports
+    This UserReport class hold Statistics about the user. It is made
+    from many different ReportReports
     """
 
     def __init__(self, file_reports: list[ProjectReport]):
