@@ -120,7 +120,7 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_back(self, arg):
         '''Return to the previous screen'''
-        print(str(self.cmd_history))
+        
         if len(self.cmd_history) > 1:  # Need at least 2 items to go back
             # Get the last command (the one we want to go back to)
             previous_cmd = self.cmd_history[-1]  # Get last command
