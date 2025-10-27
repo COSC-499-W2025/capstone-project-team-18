@@ -55,3 +55,20 @@ To support these technical implementations, I contributed to updating the CLI do
 
 I also reviewed PR's [37](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/37), which was the inital CLI tool creation.
 
+
+## Week 8, Oct. 20–26
+
+![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week8_log.png)
+
+### Recap
+This week I focused on implementing core functionality for the ProjectReport class and addressing a CLI bug. My primary contribution was developing the project timeline calculation feature in the `ProjectReport.__init__` method, which aggregates file-level statistics to determine project start and end dates.
+
+I implemented logic to extract creation and modification dates from FileReport objects, calculate the earliest creation date as the project start date, and find the latest modification date as the project end date. The implementation includes proper error handling for missing date information and follows the established pattern of wrapping calculated values in Statistic objects using ProjectStatCollection templates.
+
+To ensure code reliability, I created comprehensive unit tests in `test_project_report.py` with over 8 test cases covering basic functionality, edge cases (empty file lists, single files, missing dates), complex scenarios with multiple files, and negative assertions using assertFalse to verify incorrect assumptions. The tests also validate inheritance behavior and ensure BaseReport methods work properly.
+
+During the development process, I encountered and resolved several technical challenges including import errors with FileStatCollection and ProjectStatCollection, and fixed a critical bug where the project end date calculation was incorrectly using creation dates instead of modification dates. I also worked through merge conflicts when integrating with the dev branch, successfully combining my file-based initialization approach with existing Git analysis functionality into a unified constructor with optional parameters.
+
+Additionally, I collaborated with team members on code review feedback, implementing suggestions to eliminate redundant conditional checks and improve code efficiency. This work directly supports our project's core functionality of analyzing and reporting on software development metrics and timelines.
+
+The implementation can be found in PR ([#98](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/98)) and addresses issue requirements for project-level statistical aggregation and temporal analysis. I also reviewed Alex's Database Initialization PR ([#96](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/96)) and Sam's github pytest action PR ([#87](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/87)).
