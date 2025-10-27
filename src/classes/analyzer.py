@@ -4,6 +4,7 @@ a file and generate a report with statistics.
 """
 from .report import FileReport
 from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain
+from utils.project_discovery import ProjectFiles
 import datetime
 from pathlib import Path
 import logging
@@ -13,6 +14,22 @@ from charset_normalizer import from_path
 
 logger = logging.basicConfig(level=logging.DEBUG)
 
+def extract_file_reports(project_file: ProjectFiles) -> list[FileReport]:
+    """
+    Method to extract inidvidual fileReports within each project
+    """
+    # Given a single project for a user and the project's structure return a list with each fileReport
+    projectFiles = project_file.file_paths
+
+    # list of reports for each file in an individual project to be returned
+    reports = []
+    if (projectFiles != None):
+        for file in projectFiles:
+            analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file)
+            reports.append(analyzer.analyze())
+    else:
+        return []
+    return reports
 
 class BaseFileAnalyzer:
     """
@@ -79,22 +96,7 @@ class BaseFileAnalyzer:
 
         return FileReport(statistics=self.stats, filepath=self.filepath)
 
-    def extract_file_reports(self, project_title: str, project_structure: dict) -> list[FileReport]:
-        """
-        Method to extract inidvidual fileReports within each project
-        """
-        # Given a single project for a user and the project's structure return a list with each fileReport
-        projectFiles = project_structure.get(project_title)
 
-        # list of reports for each file in an individual project to be returned
-        reports = []
-        if (projectFiles != None):
-            for file in projectFiles:
-                analyzer = BaseFileAnalyzer(file)
-                reports.append(analyzer.analyze())
-        else:
-            return []
-        return reports
 
 
 class TextFileAnalyzer(BaseFileAnalyzer):
