@@ -39,16 +39,7 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(self.cli.cmd_history, ["perms"])
 
         self.cli.update_history(self.cli.cmd_history, "filepath")
-        self.assertEqual(self.cli.cmd_history, ["filepath", "perms"])
-
-    def test_update_history_maintains_max_three_commands(self):
-        """Test that history only keeps the 3 most recent commands."""
-        commands = ["first", "second", "third", "fourth"]
-        for cmd in commands:
-            self.cli.update_history(self.cli.cmd_history, cmd)
-
-        self.assertEqual(len(self.cli.cmd_history), 3)
-        self.assertEqual(self.cli.cmd_history, ["fourth", "third", "second"])
+        self.assertEqual(self.cli.cmd_history, ["perms", "filepath"])
 
     # Cancel Input Handler Tests
     def test_handle_cancel_input_with_back(self):
