@@ -4,6 +4,7 @@ for the Artifact Miner application using the cmd module.
 """
 
 import cmd
+from app import start_miner
 
 
 class ArtifactMiner(cmd.Cmd):
@@ -80,13 +81,7 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "begin")
 
         if self.user_consent:
-            try:  # verify valid filepath
-                with open(self.project_filepath) as project:
-                    # TODO: Implement logic for report generation
-                    print()
-            except FileNotFoundError:
-                print("Error: Invalid file. Please try again.")
-                self.do_filepath(arg)
+            start_miner(self.project_filepath)
         else:
             print(
                 "\nError: Missing consent. Type perms or 1 to read user permission agreement.")

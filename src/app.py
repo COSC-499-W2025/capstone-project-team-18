@@ -9,7 +9,6 @@ from utils.zipped_utils import unzip_file
 from utils.project_discovery import discover_projects
 from classes.analyzer import extract_file_reports
 from classes.report import ProjectReport, UserReport
-from classes.cli import ArtifactMiner
 import tempfile
 
 
@@ -50,6 +49,5 @@ def start_miner(zipped_file: str) -> None:
 
 
 if __name__ == '__main__':
-    start_miner(
-        "/workspaces/capstone-project-team-18/tests/resources/mac_projects.zip")
+    from classes.cli import ArtifactMiner
     ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
