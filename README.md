@@ -1,21 +1,69 @@
+# CLI User Guide
+
+## Quick Start
+```bash
+cd src
+python3 app.py
 ```
-.         
-├── src                     # Source files (alternatively `app`)
-├── tests                   # Automated tests 
-├── utils                   # Utility files
-└── README.md
+
+## Commands
+| Input | Action |
+|-------|--------|
+| `1` | Grant permissions |
+| `2` | Set file path |
+| `3` | Begin analysis |
+| `back`/`cancel` | Return to main menu |
+| `exit` | Quit application |
+
+## Workflow
+
+### 1. Permissions
+```
+(PAF) 1
+Do you consent to this program accessing files? (Y/N): Y
+```
+- `Y` = Grant access
+- `N` = Exit app
+- `back`/`cancel` = Main menu
+
+### 2. File Path
+```
+(PAF) 2
+Enter filepath: /path/to/project
+```
+- Enter any valid path
+- `back`/`cancel` = Main menu
+
+### 3. Begin
+```
+(PAF) 3
+```
+Requires steps 1 & 2 completed first.
+
+## Example Session
+```bash
+(PAF) 1
+(Y/N): Y
+Thank you for consenting.
+
+(PAF) 2
+Enter filepath: ./myproject
+Filepath successfully received
+
+(PAF) 3
+[Analysis begins...]
 ```
 
-Please use a branching workflow, and once an item is ready, do remember to issue a PR, review, and merge it into the master branch.
-Be sure to keep your docs and README.md up-to-date.
+## Error Messages
+- **"Missing consent"** → Complete step 1
+- **"Invalid file"** → Check file path in step 2
+- **"Unknown command"** → Use 1, 2, 3, or help
 
-
-# Branches 
-
-There are three sub-branches (off of main) in this project:
-1. [develop](https://github.com/COSC-499-W2025/capstone-project-team-18/tree/develop) — Branch off of here when developing features / making changes to the codebase
-2. [doc](https://github.com/COSC-499-W2025/capstone-project-team-18/tree/doc) — All documentation should be located here (e.g. system architecture, project plan)
-3. [log](https://github.com/COSC-499-W2025/capstone-project-team-18/tree/log) — All weekly personal logs and the team's log are located here.
+## Testing
+```bash
+cd tests
+python3 test_app_cli.py
+```
 
 
 ## CLI Tool: Project Artifact Miner
