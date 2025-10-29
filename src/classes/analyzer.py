@@ -93,7 +93,7 @@ class BaseFileAnalyzer:
                 analyzer = BaseFileAnalyzer(file)
                 reports.append(analyzer.analyze())
         else:
-            return []
+            return None
         return reports
 
 
