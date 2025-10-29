@@ -63,7 +63,11 @@ class ProjectReport(BaseReport):
     of "total lines written."
     """
 
-    def __init__(self, file_reports: list[FileReport] = None, zip_path: str = None, project_name: str = None):
+    def __init__(self,
+                 file_reports: Optional[list[FileReport]] = None,
+                 zip_path: Optional[str] = None,
+                 project_name: Optional[str] = None
+                 ):
         """
         Initialize ProjectReport with file reports and optional Git analysis from zip file.
 
@@ -72,9 +76,6 @@ class ProjectReport(BaseReport):
             zip_path: Optional path to zip file for Git analysis
             project_name: Optional project name for Git analysis
         """
-
-        self.file_reports = file_reports
-
         project_stats = []
 
         # Process file reports if provided
