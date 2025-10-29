@@ -71,15 +71,21 @@ class FileStatCollection(Enum):
         expected_type=int,
     )
 
+    DATE_CREATED = FileStatisticTemplate(
+        name="DATE_CREATED",
+        description="creation date of the file",
+        expected_type=date,
+    )
+
     DATE_MODIFIED = FileStatisticTemplate(
         name="DATE_MODIFIED",
         description="last date the file was modified",
         expected_type=date,
     )
 
-    DATE_CREATED = FileStatisticTemplate(
-        name="DATE_CREATED",
-        description="creation date of the file",
+    DATE_ACCESSED = FileStatisticTemplate(
+        name="DATE_ACCESSED",
+        description="last date the file was accessed",
         expected_type=date,
     )
 
@@ -107,6 +113,48 @@ class FileStatCollection(Enum):
         expected_type=FileDomain,
     )
 
+    WORD_COUNT = FileStatisticTemplate(
+        name="WORD_COUNT",
+        description="number of words in a text based file.",
+        expected_type=int
+    )
+
+    CHARACTER_COUNT = FileStatisticTemplate(
+        name="CHARACTER_COUNT",
+        description="the number of alphanumeric characters in a text",
+        expected_type=int
+    )
+
+    SENTENCE_COUNT = FileStatisticTemplate(
+        name="SENTENCE_COUNT",
+        description="the number of sentences in a document.",
+        expected_type=int
+    )
+
+    ARI_WRITING_SCORE = FileStatisticTemplate(
+        name="ARI_WRITING_SCORE",
+        description="the US grade needed to read a document based on the Automated Readability Index",
+        expected_type=float
+    )
+
+    NUMBER_OF_FUNCTIONS = FileStatisticTemplate(
+        name="NUMBER_OF_FUNCTIONS",
+        description="the number of functions or methods defined in a code file",
+        expected_type=int
+    )
+
+    NUMBER_OF_CLASSES = FileStatisticTemplate(
+        name="NUMBER_OF_CLASSES",
+        description="the number of classes defined in a code file",
+        expected_type=int
+    )
+
+    IMPORTED_PACKAGES = FileStatisticTemplate(
+        name="IMPORTED_PACKAGES",
+        description="the list of modules or packages imported in a code file",
+        expected_type=list[str]
+    )
+
 
 class ProjectStatCollection(Enum):
     PROJECT_START_DATE = ProjectStatisticTemplate(
@@ -125,6 +173,24 @@ class ProjectStatCollection(Enum):
         name="PROJECT_SKILLS_DEMONSTRATED",
         description="the skills demonstrated in this project",
         expected_type=list[WeightedSkills],
+    )
+
+    IS_GROUP_PROJECT = ProjectStatisticTemplate(
+        name="IS_GROUP_PROJECT",
+        description="whether this is a group project based on Git commit authors",
+        expected_type=bool,
+    )
+
+    TOTAL_AUTHORS = ProjectStatisticTemplate(
+        name="TOTAL_AUTHORS",
+        description="total number of unique commit authors in the project",
+        expected_type=int,
+    )
+
+    AUTHORS_PER_FILE = ProjectStatisticTemplate(
+        name="AUTHORS_PER_FILE",
+        description="mapping of file paths to number of unique authors per file",
+        expected_type=dict,
     )
 
 
@@ -239,6 +305,10 @@ class StatisticIndex():
         if stat is None:
             return None
         return stat.value
+
+    def extend(self, stat_list: List[Statistic]):
+        for stat in stat_list:
+            self.add(stat)
 
     def to_dict(self) -> Dict[str, Any]:
         """

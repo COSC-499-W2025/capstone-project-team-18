@@ -100,9 +100,8 @@ def temp_db(tmp_path: Path):
         yield engine
     finally:
         # Clean up
-        # Base.metadata.drop_all(engine)
-        # engine.dispose()
-        print('done')
+        Base.metadata.drop_all(engine)
+        engine.dispose()
 
 
 def test_tables_exist(temp_db):
