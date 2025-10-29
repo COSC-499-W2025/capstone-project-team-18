@@ -1,5 +1,5 @@
 """
-A file that handles with project discovery. Meaning, given
+A file that handles logic for project discovery. Meaning, given
 a zipped file, with directories are projects? Which files
 should be considered?
 """
@@ -29,6 +29,15 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
     """
     Given the path to the directory where the zip file was extracted,
     discover the projects and their files.
+
+    The way we do this is:
+    1. Look at each top-level directory (ignore files at the top level)
+    2. For each top-level directory, check if it is a project using heuristics
+         (see dir_is_project function).
+    3. If it is a project, add it to the list of projects.
+    4. If it is not a project, look at its subdirectories and repeat step 2-4.
+
+    The assumption here is that projects are always in their own directories.
 
     Args:
         - unzipped_dir : str The path to the directory where the zip file was extracted
@@ -92,30 +101,23 @@ def dir_is_project(dir_path: Path) -> bool:
         - bool True if the directory is a project, False otherwise.
     """
 
-    # Files that instantly qualify a directory as a project
-    INSTANT_PROJECT_FILES = [
+    INSTANT_SUCCESS_FILES_AND_DIR = [
+        # Files that instantly qualify a directory as a project
         "README.md",
         "README.txt",
         "package.json",
         ".gitignore",
         "requirements.txt",
-    ]
 
-    # Directories that instantly qualify a directory as a project
-    INSTANT_PROJECT_DIRS = [
+        # Directories that instantly qualify a directory as a project
         ".git",
         "src",
         "app",
     ]
 
     # Check for instant project directories
-    for instant_dir in INSTANT_PROJECT_DIRS:
+    for instant_dir in INSTANT_SUCCESS_FILES_AND_DIR:
         if (dir_path / instant_dir).exists():
-            return True
-
-    # Check for instant project files
-    for instant_file in INSTANT_PROJECT_FILES:
-        if (dir_path / instant_file).exists():
             return True
 
     # Check if there are any files (excluding ignored files)

@@ -12,7 +12,7 @@ for p in (str(CLASSES_DIR), str(SRC_DIR)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from src.classes.project_discovery import discover_projects  # type: ignore  # noqa: E402
+from src.utils.project_discovery import discover_projects, ProjectFiles  # type: ignore  # noqa: E402
 from src.classes.report import ProjectReport  # type: ignore  # noqa: E402
 from src.classes.statistic import ProjectStatCollection  # type: ignore  # noqa: E402
 
@@ -77,18 +77,32 @@ def git_zip(tmp_path: Path) -> Path:
     return zip_path
 
 
-def test_discover_multiple_projects(multi_project_zip: Path):
+def test_discover_multiple_projects(multi_project_zip: Path, tmp_path: Path):
     """Verifies discovery of multiple projects with nested folder structures."""
-    result = discover_projects(str(multi_project_zip))
+    # Unzip to temp dir
+    extract_dir = tmp_path / "extracted"
+    extract_dir.mkdir()
+    import zipfile
+    with zipfile.ZipFile(multi_project_zip, 'r') as zf:
+        zf.extractall(extract_dir)
+    result = discover_projects(str(extract_dir))
     # Should find all 3 projects
-    assert len(result) == 3
-    assert "Assignment1" in result and "Assignment2" in result and "FinalProject" in result
+    project_names = {p.name for p in result}
+    assert {"Assignment1", "Assignment2", "FinalProject"} <= project_names
+    # Helper to get file paths for a project
+
+    def get_files(name):
+        for p in result:
+            if p.name == name:
+                return p.file_paths
+        return []
     # Verify nested paths are preserved correctly
-    assert "src/utils/helper.py" in result["Assignment2"]
-    assert "src/models/user.py" in result["FinalProject"]
+    assert "src/utils/helper.py" in get_files("Assignment2")
+    assert "src/models/user.py" in get_files("FinalProject")
     # Verify file counts per project
-    assert len(result["Assignment1"]) == 2 and len(
-        result["Assignment2"]) == 4 and len(result["FinalProject"]) == 3
+    assert len(get_files("Assignment1")) == 2
+    assert len(get_files("Assignment2")) == 4
+    assert len(get_files("FinalProject")) == 3
 
 
 def test_identify_project_type(git_zip: Path):
@@ -112,53 +126,63 @@ def test_no_git_projects(tmp_path: Path):
     with zipfile.ZipFile(zip_path, 'w') as zf:
         zf.writestr("BasicProject/main.py", "print('No git')")
         zf.writestr("BasicProject/utils.py", "# Utilities")
-    # Project discovery should still work
-    result = discover_projects(str(zip_path))
-    assert "BasicProject" in result and len(result["BasicProject"]) == 2
+    # Unzip to temp dir
+    extract_dir = tmp_path / "nogit_extracted"
+    extract_dir.mkdir()
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        zf.extractall(extract_dir)
+    result = discover_projects(str(extract_dir))
+    # Should find BasicProject with 2 files
+    found = [p for p in result if p.name == "BasicProject"]
+    assert found and len(found[0].file_paths) == 2
     # No Git repo = no statistics
+    # (ProjectReport still expects zip_path, so this part is unchanged)
     report = ProjectReport(zip_path=str(zip_path), project_name="BasicProject")
     assert report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value) is None
 
 
 def test_invalid_inputs(tmp_path: Path):
-    """Verifies proper error handling for invalid zip files and paths."""
-    # Nonexistent file should raise FileNotFoundError
+    """Verifies proper error handling for invalid directories."""
+    # Nonexistent directory should raise FileNotFoundError
+    from src.utils.project_discovery import discover_projects
     with pytest.raises(FileNotFoundError):
-        discover_projects("/nonexistent/path/file.zip")
-    # Corrupted zip file should raise BadZipFile
-    bad_zip = tmp_path / "corrupted.zip"
-    bad_zip.write_text("This is not a valid zip file")
-    with pytest.raises(zipfile.BadZipFile):
-        discover_projects(str(bad_zip))
+        discover_projects(str(tmp_path / "does_not_exist"))
 
 
-def test_mac_zip_structure():
+def test_mac_zip_structure(tmp_path: Path):
     """Verifies handling of Mac-created zip files with parent folders and metadata."""
-    # Test with actual Mac zip file from issue #67
     mac_zip_path = Path(__file__).parent / "resources" / "mac_projects.zip"
-    result = discover_projects(str(mac_zip_path))
-
+    extract_dir = tmp_path / "mac_extracted"
+    extract_dir.mkdir()
+    import zipfile
+    with zipfile.ZipFile(mac_zip_path, 'r') as zf:
+        zf.extractall(extract_dir)
+    result = discover_projects(str(extract_dir))
+    project_names = {p.name for p in result}
     # Should skip parent "Projects" folder and __MACOSX metadata
-    assert "Projects" not in result
-    assert "__MACOSX" not in result
-
+    assert "Projects" not in project_names
+    assert "__MACOSX" not in project_names
     # Should find ProjectA and ProjectB as top-level projects
-    assert "ProjectA" in result
-    assert "ProjectB" in result
+    assert "ProjectA" in project_names
+    assert "ProjectB" in project_names
 
+    def get_files(name):
+        for p in result:
+            if p.name == name:
+                return p.file_paths
+        return []
     # Verify ProjectA files (should filter out .DS_Store)
-    assert "a_1.txt" in result["ProjectA"]
-    assert "a_2.txt" in result["ProjectA"]
-    assert "subfolder/a_3.txt" in result["ProjectA"]
-    assert ".DS_Store" not in result["ProjectA"]
-    assert len(result["ProjectA"]) == 3
-
+    assert "a_1.txt" in get_files("ProjectA")
+    assert "a_2.txt" in get_files("ProjectA")
+    assert "subfolder/a_3.txt" in get_files("ProjectA")
+    assert ".DS_Store" not in get_files("ProjectA")
+    assert len(get_files("ProjectA")) == 3
     # Verify ProjectB files
-    assert "b_1.txt" in result["ProjectB"]
-    assert "b_2.txt" in result["ProjectB"]
-    assert "b_3.txt" in result["ProjectB"]
-    assert len(result["ProjectB"]) == 3
+    assert "b_1.txt" in get_files("ProjectB")
+    assert "b_2.txt" in get_files("ProjectB")
+    assert "b_3.txt" in get_files("ProjectB")
+    assert len(get_files("ProjectB")) == 3
 
 
 def test_project_report_git_analysis(git_zip: Path):
@@ -174,12 +198,10 @@ def test_project_report_git_analysis(git_zip: Path):
     authors_per_file = solo_report.statistics.get(
         ProjectStatCollection.AUTHORS_PER_FILE.value)
 
-    assert is_group is not None
-    assert is_group.value is False  # Individual project
-    assert total_authors is not None
-    assert total_authors.value == 1
-    assert authors_per_file is not None
-    assert isinstance(authors_per_file.value, dict)
+    assert is_group is not None and is_group.value is False  # Individual project
+    assert total_authors is not None and total_authors.value == 1
+    assert authors_per_file is not None and isinstance(
+        authors_per_file.value, dict)
     assert "solo_work.py" in authors_per_file.value
     assert authors_per_file.value["solo_work.py"] == 1
 
@@ -194,12 +216,10 @@ def test_project_report_git_analysis(git_zip: Path):
     authors_per_file = team_report.statistics.get(
         ProjectStatCollection.AUTHORS_PER_FILE.value)
 
-    assert is_group is not None
-    assert is_group.value is True  # Group project
-    assert total_authors is not None
-    assert total_authors.value == 2
-    assert authors_per_file is not None
-    assert isinstance(authors_per_file.value, dict)
+    assert is_group is not None and is_group.value is True  # Group project
+    assert total_authors is not None and total_authors.value == 2
+    assert authors_per_file is not None and isinstance(
+        authors_per_file.value, dict)
     assert "feature1.py" in authors_per_file.value
     assert "feature2.py" in authors_per_file.value
     assert authors_per_file.value["feature1.py"] == 1

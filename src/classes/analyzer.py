@@ -14,6 +14,7 @@ from charset_normalizer import from_path
 
 logger = logging.basicConfig(level=logging.DEBUG)
 
+
 def extract_file_reports(project_file: ProjectFiles) -> list[FileReport]:
     """
     Method to extract inidvidual fileReports within each project
@@ -28,8 +29,9 @@ def extract_file_reports(project_file: ProjectFiles) -> list[FileReport]:
             analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file)
             reports.append(analyzer.analyze())
     else:
-        return []
+        return None
     return reports
+
 
 class BaseFileAnalyzer:
     """
@@ -95,8 +97,6 @@ class BaseFileAnalyzer:
         self._process()
 
         return FileReport(statistics=self.stats, filepath=self.filepath)
-
-
 
 
 class TextFileAnalyzer(BaseFileAnalyzer):
