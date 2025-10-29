@@ -1,34 +1,18 @@
-"""
-This file will run everytime pytest
-starts running tests. It is used to
-make global changes to the testing environment.
+"""conftest.py
+Ensure tests can import the package layout used by the application.
+
+When running the app directly (for example via ``python src/app.py``) the
+current working directory may be ``src/``, which makes local imports resolve
+quite differently than when pytest runs from the repository root. Add the
+repository root and the ``src/`` directory to ``sys.path`` so tests that do
+``from src.classes...`` work the same way pytest runs them as when running
+the app.
+
 """
 
 import sys
 from pathlib import Path
 
-"""
-When pytest runs, we consider capstone-project-team-18
-to be the root of the project for imports.
-
-However, when we run the application normally,
-the src/ directory is considered to be the root
-for imports.
-
-This makes us run in to error in a situation
-like this:
-
-- pytest imports ArtifactMiner with:
-    from src.classes.cli import ArtifactMiner
-
-- but ArtifactMiner tries to import start_miner with:
-    from app import start_miner
-
-Error can't find app!
-
-So here, we adjust sys.path to ensure that
-imports work correctly in both scenarios.
-"""
 # Repository root (this file is at the repo root)
 REPO_ROOT = Path(__file__).resolve().parent
 SRC_DIR = REPO_ROOT / "src"

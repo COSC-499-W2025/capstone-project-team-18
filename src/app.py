@@ -40,11 +40,15 @@ def start_miner(zipped_file: str) -> None:
 
         project_reports.append(pr)
 
-    user_report = UserReport(project_reports)
+        print(pr)
 
-    print(user_report.to_user_readable_string())
+    return
+
+    # TODO: Add User Report Processing
+    user_report = UserReport(project_reports)
 
 
 if __name__ == '__main__':
+    from classes.cli import ArtifactMiner
     from classes.cli import ArtifactMiner
     ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
