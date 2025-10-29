@@ -114,7 +114,14 @@ class ProjectReport(BaseReport):
             
             # Initialize the base class with the project statistics
             super().__init__(project_statistics)
-            
+   
+    @classmethod
+    def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
+        """Create a ProjectReport directly from a StatisticIndex for testing"""
+        inst = cls.__new__(cls)
+        BaseReport.__init__(inst, statistics)
+        return inst
+    
     def _analyze_git_authorship(self, zip_path: str, project_name: str) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
         if not Path(zip_path).exists():
@@ -167,13 +174,59 @@ class UserReport(BaseReport):
     from many different ReportReports
     """
 
-    def __init__(self, file_reports: list[ProjectReport]):
+    def __init__(self, project_reports: list[ProjectReport]):
+        """
+        Initialize UserReport with project reports to calculate user-level statistics.
+        
+        This method calculates user-level statistics by finding:
+        - User start date: earliest project start date across all projects
+        - User end date: latest project end date across all projects
+        
+        Args:
+            project_reports: List of ProjectReport objects containing project-level statistics
+        """
+        
+        
+        # Extract all project start dates, filtering out None values
+        # This creates a list of datetime objects representing when each project started
+        project_start_dates =[
+            report.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            for report in project_reports
+            if report.get_value(ProjectStatCollection.PROJECT_START_DATE.value) is not None
+        ]
+        
+        # Extract all project end dates, filtering out None values
+        # This creates a list of datetime objects representing when each project ended
+        project_end_dates =[
+            report.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+            for report in project_reports
+            if report.get_value(ProjectStatCollection.PROJECT_END_DATE.value) is not None
+        ]
+        
+        # Build list of user-level statistics
+        user_stats = []
+        
+        # Calculate and add user start date (earliest project start)
+        # Calculate and add project start date (earliest file creation)
+        if project_start_dates:
+            start_date = min(project_start_dates)
+            user_start_stat = Statistic(UserStatCollection.USER_START_DATE.value, start_date)
+            user_stats.append(user_start_stat)
 
-        # Here we would take all the file stats and turn them into user stats
-
-        raise ValueError("Unimplemented")
-        return super().__init__(None)
-
+        # Calculate and add project end date (latest file modification)
+        if project_end_dates:
+            end_date = max(project_end_dates)
+            user_end_stat = Statistic(UserStatCollection.USER_END_DATE.value, end_date)
+            user_stats.append(user_end_stat)
+            
+        # Create StatisticIndex with user-level statistics
+        user_statistics = StatisticIndex(user_stats)
+        
+        # Initialize the base class with the user statistics
+        super().__init__(user_statistics)
+                    
+    
+          
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
         inst = cls.__new__(cls)
