@@ -65,6 +65,29 @@ class UserStatisticTemplate(StatisticTemplate):
 
 
 class FileStatCollection(Enum):
+    NUMBER_OF_STRUCTS = FileStatisticTemplate(
+        name="NUMBER_OF_STRUCTS",
+        description="the number of structs defined in a C code file",
+        expected_type=int
+    )
+
+    NUMBER_OF_TYPEDEFS = FileStatisticTemplate(
+        name="NUMBER_OF_TYPEDEFS",
+        description="the number of typedefs in a C code file",
+        expected_type=int
+    )
+
+    NUMBER_OF_INCLUDES = FileStatisticTemplate(
+        name="NUMBER_OF_INCLUDES",
+        description="the number of #include statements in a C code file",
+        expected_type=int
+    )
+
+    NUMBER_OF_INTERFACES = FileStatisticTemplate(
+        name="NUMBER_OF_INTERFACES",
+        description="the number of interfaces in a TypeScript code file",
+        expected_type=int
+    )
     LINES_IN_FILE = FileStatisticTemplate(
         name="LINES_IN_FILE",
         description="number of lines in a file",
