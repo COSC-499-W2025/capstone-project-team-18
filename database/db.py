@@ -161,8 +161,3 @@ def init_db(engine):
     make_columns(UserStatCollection, UserReportTable)
 
     Base.metadata.create_all(engine)
-
-
-if __name__ == "__main__":
-    engine1 = get_engine(DB_PATH)
-    init_db(engine1)
