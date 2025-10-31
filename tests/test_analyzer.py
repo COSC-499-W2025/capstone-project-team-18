@@ -120,7 +120,7 @@ def test_base_file_analyzer_nonexistent_file_logs_and_returns_empty():
 
 def test_extract_file_reports_recieves_empty_project(tmp_path):
     """
-    Test that the extraction returns correct messaging upon reciept of an empty project directory
+    Test that the extraction returns None upon reciept of an empty project directory
     """
 
     project_discovery = None
