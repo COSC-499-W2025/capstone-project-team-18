@@ -3,12 +3,18 @@ This file will store all of the config and logic that we will need to access and
 '''
 from datetime import date
 
+from datetime import date
+
 from sqlalchemy import ForeignKey
 from sqlalchemy import Table
+from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date
 from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
+
+from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, WeightedSkills
+from .utils.init_columns import make_columns
 
 from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, WeightedSkills
 from .utils.init_columns import make_columns
@@ -82,12 +88,13 @@ class FileReportTable(Base):
 
     # Define a FK and one-to-many relationship with ProjectReport.
     # This will allow us to easily find the related file reports that are used to create
+    # Define a FK and one-to-many relationship with ProjectReport.
+    # This will allow us to easily find the related file reports that are used to create
     # a given project report
+    project_id = Column(Integer, ForeignKey("project_report.id"))
     project_id = Column(Integer, ForeignKey("project_report.id"))
     project_report = relationship(
         "ProjectReportTable", back_populates="file_reports")
-
-    filepath = Column(String)  # path to the file when we unzip to the temp dir
 
 
 class ProjectReportTable(Base):
@@ -162,4 +169,14 @@ def init_db(engine):
     make_columns(ProjectStatCollection, ProjectReportTable)
     make_columns(UserStatCollection, UserReportTable)
 
+    # Dynamically attach Statistic columns after classes are defined
+    make_columns(FileStatCollection, FileReportTable)
+    make_columns(ProjectStatCollection, ProjectReportTable)
+    make_columns(UserStatCollection, UserReportTable)
+
     Base.metadata.create_all(engine)
+
+
+if __name__ == "__main__":
+    engine1 = get_engine(DB_PATH)
+    init_db(engine1)

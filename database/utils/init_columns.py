@@ -8,13 +8,14 @@ respective tables as a result.
 from datetime import date
 import typing as t
 
-from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String
+from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date, Enum as SAEnum
 
 
 from src.classes.statistic import (
     FileStatCollection,
     ProjectStatCollection,
     UserStatCollection,
+    WeightedSkills,
 )
 
 StatCollectionType = t.Union[
@@ -32,7 +33,7 @@ def _sqlalchemy_type_for(expected_type: t.Any):
     Supported mappings:
     - int -> Integer
     - str -> String
-    - date -> DateTime
+    - datetime.date -> Date
     - float -> Float
     - list[str], list[WeightedSkills], dict -> JSON
     - bool -> Boolean
