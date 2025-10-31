@@ -79,21 +79,21 @@ class BaseFileAnalyzer:
 
         return FileReport(statistics=self.stats, filepath=self.filepath)
 
-        def extract_file_reports(self, project_title: str, project_structure: dict) -> list:
-            """
-            Method to extract individual fileReports within each project
-            """
-            # Given a single project for a user and the project's structure return a list with each fileReport
-            projectFiles = project_structure.get(project_title)
-            # list of reports for each file in an individual project to be returned
-            reports = []
-            if projectFiles is not None:
-                for file in projectFiles:
-                    analyzer = BaseFileAnalyzer(file)
-                    reports.append(analyzer.analyze())
-            else:
-                return None
-            return reports
+    def extract_file_reports(self, project_title: str, project_structure: dict) -> list:
+        """
+        Method to extract individual fileReports within each project
+        """
+        # Given a single project for a user and the project's structure return a list with each fileReport
+        projectFiles = project_structure.get(project_title)
+        # list of reports for each file in an individual project to be returned
+        reports = []
+        if projectFiles is not None:
+            for file in projectFiles:
+                analyzer = BaseFileAnalyzer(file)
+                reports.append(analyzer.analyze())
+        else:
+            return None
+        return reports
 
 
 class TextFileAnalyzer(BaseFileAnalyzer):
