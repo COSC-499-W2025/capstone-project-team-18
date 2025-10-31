@@ -1,9 +1,17 @@
+charset-normalizer==3.4.4
 gitdb==4.0.12
 GitPython==3.1.41
+greenlet==3.2.4
+iniconfig==2.3.0
 numpy==2.3.3
+packaging==25.0
+pluggy==1.6.0
+pytest==8.3.3
 python-dateutil==2.9.0.post0
 pytz==2025.2
 setuptools==78.1.1
 six==1.17.0
 smmap==5.0.2
+SQLAlchemy==2.0.44
+typing_extensions==4.15.0
 tzdata==2025.2
