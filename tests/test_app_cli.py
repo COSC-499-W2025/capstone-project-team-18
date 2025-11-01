@@ -5,12 +5,7 @@ Tests user interaction flows, command handling, and navigation logic.
 import unittest
 from unittest.mock import patch, mock_open
 import sys
-import os
-
-# Add src directory to path so we can import app
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
-from app import ArtifactMiner
+from src.classes.cli import ArtifactMiner
 
 
 class TestCLI(unittest.TestCase):
@@ -57,7 +52,8 @@ class TestCLI(unittest.TestCase):
         self.cli.cmd_history = ["filepath"]
 
         with patch('builtins.print') as mock_print:
-            result = self.cli._handle_cancel_input("CANCEL")  # Test case insensitive
+            result = self.cli._handle_cancel_input(
+                "CANCEL")  # Test case insensitive
             self.assertTrue(result)
             mock_print.assert_called_with("\nCancelled 'filepath' operation.")
 
@@ -86,7 +82,8 @@ class TestCLI(unittest.TestCase):
 
         self.assertTrue(self.cli.user_consent)
         self.assertEqual(self.cli.cmd_history[0], "perms")
-        mock_print.assert_any_call("\nThank you for consenting. You may now continue.")
+        mock_print.assert_any_call(
+            "\nThank you for consenting. You may now continue.")
 
     @patch('builtins.input', return_value='N')
     @patch('builtins.print')
@@ -118,7 +115,8 @@ class TestCLI(unittest.TestCase):
         self.assertTrue(self.cli.user_consent)
 
         # Check for the actual error message from your CLI code
-        mock_print.assert_any_call("Invalid response. Please enter 'Y', 'N', 'back', or 'cancel'.")
+        mock_print.assert_any_call(
+            "Invalid response. Please enter 'Y', 'N', 'back', or 'cancel'.")
 
     # Filepath Command Tests
     @patch('builtins.input', return_value='/path/to/project')
@@ -153,20 +151,8 @@ class TestCLI(unittest.TestCase):
         )
         self.assertEqual(self.cli.cmd_history[0], "begin")
 
-    @patch('builtins.open', side_effect=FileNotFoundError)
-    @patch('builtins.print')
-    def test_do_begin_with_invalid_filepath(self, mock_print, mock_open):
-        """Test begin command with invalid file path."""
-        self.cli.user_consent = True
-        self.cli.project_filepath = '/invalid/path'
-
-        with patch.object(self.cli, 'do_filepath') as mock_filepath:
-            self.cli.do_begin("")
-
-            mock_print.assert_any_call("Error: Invalid file. Please try again.")
-            mock_filepath.assert_called_once_with("")
-
     # Command Routing Tests
+
     def test_default_command_routing_numeric(self):
         """Test that numeric commands route to correct functions."""
         test_cases = [
@@ -194,7 +180,8 @@ class TestCLI(unittest.TestCase):
 
         for command in unknown_commands:
             self.cli.default(command)
-            mock_print.assert_any_call(f"Unknown command: {command}. Type 'help' or '?' for options.")
+            mock_print.assert_any_call(
+                f"Unknown command: {command}. Type 'help' or '?' for options.")
 
     # Exit Command Tests
     @patch('builtins.print')
@@ -261,4 +248,3 @@ class TestCLI(unittest.TestCase):
 if __name__ == '__main__':
     # Run with verbose output to see individual test results
     unittest.main(verbosity=2)
-

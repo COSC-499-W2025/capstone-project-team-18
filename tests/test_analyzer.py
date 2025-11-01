@@ -7,6 +7,7 @@ from datetime import datetime
 import pytest
 from src.classes.analyzer import *
 from src.classes.statistic import FileStatCollection
+from src.utils.project_discovery import ProjectFiles
 
 TEST_DIR = Path(__file__).parent / "resources"
 
@@ -119,11 +120,12 @@ def test_base_file_analyzer_nonexistent_file_logs_and_returns_empty():
 
 def test_extract_file_reports_recieves_empty_project(tmp_path):
     """
-    Test that the extraction returns correct messaging upon reciept of an empty project directory
+    Test that the extraction returns None upon reciept of an empty project directory
     """
 
-    analyzer = BaseFileAnalyzer(tmp_path)
-    listReport = analyzer.extract_file_reports("testProject", {})
+    project_discovery = None
+
+    listReport = extract_file_reports(project_discovery)
     assert listReport is None
 
 
@@ -131,9 +133,15 @@ def test_extract_file_reports_returns_project(tmp_path, temp_directory_no_subfol
     """
     Test that the extraction returns a list of FileReports with the accurate # of reports
     """
-    analyzer = BaseFileAnalyzer(tmp_path)
-    listReport = analyzer.extract_file_reports(
-        "testProject", temp_directory_no_subfolder)
+
+    project_file = ProjectFiles(
+        name="TestProject",
+        root_path=str(temp_directory_no_subfolder),
+        file_paths=[str(f) for f in temp_directory_no_subfolder["testProject"]]
+    )
+
+    listReport = extract_file_reports(project_file)
+    assert listReport is not None
     assert len(listReport) == 5 and all(isinstance(report, FileReport)
                                         for report in listReport)
 
@@ -142,10 +150,14 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_dir
     """
     Test that the extraction returns a list of FileReports with the accurate #
     """
-    analyzer = BaseFileAnalyzer(tmp_path)
-    listReport = analyzer.extract_file_reports(
-        "ProjectA", temp_directory_with_subfolder)
+    project_file = ProjectFiles(
+        name="ProjectA",
+        root_path=str(tmp_path),
+        file_paths=[str(f) for f in temp_directory_with_subfolder["ProjectA"]]
+    )
+    listReport = extract_file_reports(project_file)
     print(listReport)
+    assert listReport is not None
     assert len(listReport) == 3 and all(isinstance(report, FileReport)
                                         for report in listReport)
 # ---------- Test TextFileAnalyzer ----------
