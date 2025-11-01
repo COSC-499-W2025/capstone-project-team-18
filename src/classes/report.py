@@ -54,6 +54,91 @@ class FileReport(BaseReport):
 
 
 class ProjectReport(BaseReport):
+    def get_unique_imported_packages(self) -> set:
+        """
+        Returns a set of all unique imported packages/dependencies from code files in the project.
+        """
+        from src.classes.statistic import FileDomain
+        if not hasattr(self, 'file_reports') or self.file_reports is None:
+            return set()
+        packages = set()
+        for report in self.file_reports:
+            file_type = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
+            if file_type == FileDomain.CODE:
+                imports = report.get_value(
+                    FileStatCollection.IMPORTED_PACKAGES.value)
+                if imports:
+                    if isinstance(imports, list):
+                        packages.update(imports)
+                    else:
+                        packages.add(imports)
+        return packages
+
+    def get_average_ari_score(self) -> float:
+        """
+        Returns the average ARI readability score for documentation files in the project.
+        """
+        from src.classes.statistic import FileDomain
+        if not hasattr(self, 'file_reports') or self.file_reports is None:
+            return 0.0
+        ari_scores = []
+        for report in self.file_reports:
+            file_type = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
+            if file_type == FileDomain.DOCUMENTATION:
+                ari = report.get_value(
+                    FileStatCollection.ARI_WRITING_SCORE.value)
+                if ari is not None:
+                    ari_scores.append(ari)
+        if not ari_scores:
+            return 0.0
+        return sum(ari_scores) / len(ari_scores)
+
+    def get_code_to_doc_ratio(self) -> float:
+        """
+        Returns the ratio of code files to documentation files in the project.
+        """
+        from src.classes.statistic import FileDomain
+        if not hasattr(self, 'file_reports') or self.file_reports is None:
+            return 0.0
+        code_files = 0
+        doc_files = 0
+        for report in self.file_reports:
+            file_type = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
+            if file_type == FileDomain.CODE:
+                code_files += 1
+            elif file_type == FileDomain.DOCUMENTATION:
+                doc_files += 1
+        if doc_files == 0:
+            return float('inf') if code_files > 0 else 0.0
+        return code_files / doc_files
+
+    def get_language_distribution(self) -> dict:
+        """
+        Returns a dictionary with the count of files per language in the project.
+        Converts enum keys to strings for test compatibility.
+        """
+        if not hasattr(self, 'file_reports') or self.file_reports is None:
+            return {}
+        lang_count = {}
+        for report in self.file_reports:
+            lang = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
+            if lang:
+                key = lang.name if hasattr(lang, 'name') else str(lang)
+                lang_count[key] = lang_count.get(key, 0) + 1
+        return lang_count
+
+    def get_total_lines_of_code(self) -> int:
+        """
+        Returns the sum of lines of code across all files in the project.
+        """
+        if not hasattr(self, 'file_reports') or self.file_reports is None:
+            return 0
+        total_lines = 0
+        for report in self.file_reports:
+            lines = report.get_value(FileStatCollection.LINES_IN_FILE.value)
+            if lines is not None:
+                total_lines += lines
+        return total_lines
     """
     The ProjectReport class utilizes many FileReports to
     create many Project Statistics about a single project.
@@ -64,64 +149,66 @@ class ProjectReport(BaseReport):
     """
 
     def __init__(self, file_reports: list[FileReport] = None, zip_path: str = None, project_name: str = None):
-            """
-            Initialize ProjectReport with file reports and optional Git analysis from zip file.
-            
-            Args:
-                file_reports: List of FileReport objects to aggregate statistics from
-                zip_path: Optional path to zip file for Git analysis
-                project_name: Optional project name for Git analysis
-            """
-            project_stats = []
-            
-            # Process file reports if provided
-            if file_reports:
-                # Extract all creation dates from file reports, filtering out None values
-                date_created_list = [
-                    report.get_value(FileStatCollection.DATE_CREATED.value) 
-                    for report in file_reports 
-                    if report.get_value(FileStatCollection.DATE_CREATED.value) is not None
-                ]
+        """
+        Initialize ProjectReport with file reports and optional Git analysis from zip file.
 
-                # Extract all modification dates from file reports, filtering out None values  
-                date_modified_list = [
-                    report.get_value(FileStatCollection.DATE_MODIFIED.value) 
-                    for report in file_reports 
-                    if report.get_value(FileStatCollection.DATE_MODIFIED.value) is not None
-                ]
+        Args:
+            file_reports: List of FileReport objects to aggregate statistics from
+            zip_path: Optional path to zip file for Git analysis
+            project_name: Optional project name for Git analysis
+        """
+        project_stats = []
 
-                # Calculate and add project start date (earliest file creation)
-                if date_created_list:
-                    start_date = min(date_created_list)
-                    project_start_stat = Statistic(ProjectStatCollection.PROJECT_START_DATE.value, start_date)
-                    project_stats.append(project_start_stat)
+        # Process file reports if provided
+        if file_reports:
+            # Extract all creation dates from file reports, filtering out None values
+            date_created_list = [
+                report.get_value(FileStatCollection.DATE_CREATED.value)
+                for report in file_reports
+                if report.get_value(FileStatCollection.DATE_CREATED.value) is not None
+            ]
 
-                # Calculate and add project end date (latest file modification)
-                if date_modified_list:
-                    end_date = max(date_modified_list)
-                    project_end_stat = Statistic(ProjectStatCollection.PROJECT_END_DATE.value, end_date)
-                    project_stats.append(project_end_stat)
+            # Extract all modification dates from file reports, filtering out None values
+            date_modified_list = [
+                report.get_value(FileStatCollection.DATE_MODIFIED.value)
+                for report in file_reports
+                if report.get_value(FileStatCollection.DATE_MODIFIED.value) is not None
+            ]
 
-            # Create StatisticIndex with project-level statistics
-            project_statistics = StatisticIndex(project_stats)
-            
-            # Add Git analysis statistics if zip file is provided
-            if zip_path and project_name:
-                git_stats = self._analyze_git_authorship(zip_path, project_name)
-                if git_stats:
-                    for stat in git_stats:
-                        project_statistics.add(stat)
-            
-            # Initialize the base class with the project statistics
-            super().__init__(project_statistics)
-   
+            # Calculate and add project start date (earliest file creation)
+            if date_created_list:
+                start_date = min(date_created_list)
+                project_start_stat = Statistic(
+                    ProjectStatCollection.PROJECT_START_DATE.value, start_date)
+                project_stats.append(project_start_stat)
+
+            # Calculate and add project end date (latest file modification)
+            if date_modified_list:
+                end_date = max(date_modified_list)
+                project_end_stat = Statistic(
+                    ProjectStatCollection.PROJECT_END_DATE.value, end_date)
+                project_stats.append(project_end_stat)
+
+        # Create StatisticIndex with project-level statistics
+        project_statistics = StatisticIndex(project_stats)
+
+        # Add Git analysis statistics if zip file is provided
+        if zip_path and project_name:
+            git_stats = self._analyze_git_authorship(zip_path, project_name)
+            if git_stats:
+                for stat in git_stats:
+                    project_statistics.add(stat)
+
+        # Initialize the base class with the project statistics
+        super().__init__(project_statistics)
+
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
         """Create a ProjectReport directly from a StatisticIndex for testing"""
         inst = cls.__new__(cls)
         BaseReport.__init__(inst, statistics)
         return inst
-    
+
     def _analyze_git_authorship(self, zip_path: str, project_name: str) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
         if not Path(zip_path).exists():
@@ -177,56 +264,55 @@ class UserReport(BaseReport):
     def __init__(self, project_reports: list[ProjectReport]):
         """
         Initialize UserReport with project reports to calculate user-level statistics.
-        
+
         This method calculates user-level statistics by finding:
         - User start date: earliest project start date across all projects
         - User end date: latest project end date across all projects
-        
+
         Args:
             project_reports: List of ProjectReport objects containing project-level statistics
         """
-        
-        
+
         # Extract all project start dates, filtering out None values
         # This creates a list of datetime objects representing when each project started
-        project_start_dates =[
+        project_start_dates = [
             report.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
             for report in project_reports
             if report.get_value(ProjectStatCollection.PROJECT_START_DATE.value) is not None
         ]
-        
+
         # Extract all project end dates, filtering out None values
         # This creates a list of datetime objects representing when each project ended
-        project_end_dates =[
+        project_end_dates = [
             report.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
             for report in project_reports
             if report.get_value(ProjectStatCollection.PROJECT_END_DATE.value) is not None
         ]
-        
+
         # Build list of user-level statistics
         user_stats = []
-        
+
         # Calculate and add user start date (earliest project start)
         # Calculate and add project start date (earliest file creation)
         if project_start_dates:
             start_date = min(project_start_dates)
-            user_start_stat = Statistic(UserStatCollection.USER_START_DATE.value, start_date)
+            user_start_stat = Statistic(
+                UserStatCollection.USER_START_DATE.value, start_date)
             user_stats.append(user_start_stat)
 
         # Calculate and add project end date (latest file modification)
         if project_end_dates:
             end_date = max(project_end_dates)
-            user_end_stat = Statistic(UserStatCollection.USER_END_DATE.value, end_date)
+            user_end_stat = Statistic(
+                UserStatCollection.USER_END_DATE.value, end_date)
             user_stats.append(user_end_stat)
-            
+
         # Create StatisticIndex with user-level statistics
         user_statistics = StatisticIndex(user_stats)
-        
+
         # Initialize the base class with the user statistics
         super().__init__(user_statistics)
-                    
-    
-          
+
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
         inst = cls.__new__(cls)
@@ -282,7 +368,7 @@ class UserReport(BaseReport):
 
         for stat in self.statistics:
             template = stat.get_template()
-            name = template.name 
+            name = template.name
             value = stat.value
 
             if name == UserStatCollection.USER_START_DATE.value.name:
@@ -312,19 +398,20 @@ class UserReport(BaseReport):
                     pass
                 lines.append(f"Your skills include: {skills_line}.")
                 continue
-            
+
             title = self._title_from_name(name)
-            
+
             should_try_date = (
                 template.expected_type in (date, datetime)
                 or isinstance(value, (date, datetime))
-                or isinstance(value, str) 
+                or isinstance(value, str)
             )
-            maybe_dt = self._coerce_datetime(value) if should_try_date else None
-            
+            maybe_dt = self._coerce_datetime(
+                value) if should_try_date else None
+
             if maybe_dt:
                 lines.append(f"{title}: {self._fmt_mdy(maybe_dt)}")
             else:
                 lines.append(f"{title}: {value!r}")
-                
+
         return "\n".join(lines)
