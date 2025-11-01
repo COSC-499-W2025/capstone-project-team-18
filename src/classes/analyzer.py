@@ -13,7 +13,6 @@ from charset_normalizer import from_path
 
 logger = logging.basicConfig(level=logging.DEBUG)
 
-
 class BaseFileAnalyzer:
     """
     Base class for file analysis. Provides a framework for collecting
@@ -190,6 +189,10 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         https://en.wikipedia.org/wiki/Automated_readability_index
         """
 
+        # Handle edge cases to prevent division by zero
+        if word_count == 0 or sentence_count == 0:
+            return 0.0
+        
         return 4.71 * (character_count / word_count) + 0.5 * (word_count / sentence_count) - 21.43
 
 
@@ -348,3 +351,39 @@ class JavaScriptAnalyzer(CodeFileAnalyzer):
         ]
 
         self.stats.extend(stats)
+
+
+def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
+    """
+    Factory function to return the most appropriate analyzer for a given file.
+    This allows FileReport to automatically use the best analyzer.
+    """
+
+    file_path = Path(filepath)
+    extension = file_path.suffix.lower()
+
+    # Natural language files
+    natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
+    if extension in natural_language_extensions:
+        return NaturalLanguageAnalyzer(filepath)
+
+    # Python files
+    if extension == '.py':
+        return PythonAnalyzer(filepath)
+
+    # Java files
+    if extension == '.java':
+        return JavaAnalyzer(filepath)
+
+     # JavScript files
+    if extension in {'.js', '.jsx'}:
+        return JavaScriptAnalyzer(filepath)
+
+     # Text-based files
+    text_extensions = {'.css', '.html', '.xml', '.json', '.yml', '.yaml'}
+    if extension in text_extensions:
+        return TextFileAnalyzer(filepath)
+
+    # Default to base analyzer
+    return BaseFileAnalyzer(filepath)
+
