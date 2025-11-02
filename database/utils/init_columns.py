@@ -15,7 +15,6 @@ from src.classes.statistic import (
     FileStatCollection,
     ProjectStatCollection,
     UserStatCollection,
-    WeightedSkills,
 )
 
 StatCollectionType = t.Union[

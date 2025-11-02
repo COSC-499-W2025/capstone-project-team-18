@@ -87,6 +87,8 @@ class FileReportTable(Base):
     project_report = relationship(
         "ProjectReportTable", back_populates="file_reports")
 
+    filepath = Column(String)  # path to the file when we unzip to the temp dir
+
 
 class ProjectReportTable(Base):
     '''
