@@ -3,18 +3,12 @@ This file will store all of the config and logic that we will need to access and
 '''
 from datetime import date
 
-from datetime import date
-
 from sqlalchemy import ForeignKey
 from sqlalchemy import Table
-from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date
 from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
-
-from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, WeightedSkills
-from .utils.init_columns import make_columns
 
 from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, WeightedSkills
 from .utils.init_columns import make_columns
@@ -88,10 +82,7 @@ class FileReportTable(Base):
 
     # Define a FK and one-to-many relationship with ProjectReport.
     # This will allow us to easily find the related file reports that are used to create
-    # Define a FK and one-to-many relationship with ProjectReport.
-    # This will allow us to easily find the related file reports that are used to create
     # a given project report
-    project_id = Column(Integer, ForeignKey("project_report.id"))
     project_id = Column(Integer, ForeignKey("project_report.id"))
     project_report = relationship(
         "ProjectReportTable", back_populates="file_reports")
@@ -105,11 +96,6 @@ class ProjectReportTable(Base):
     `user_report` table.
 
     Example rows:
-    | id  | is_group_project | project_start_date         | project_end_date           | other columns...   |
-    | --- | ---------------- | -------------------------- | -------------------------- | ------------------ |
-    | 1   | True             | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
-    | 2   | True             | 2024-10-28 14:23:59.187515 | 2024-12-14 15:35:54.56415  | other statistics...|
-    | 3   | False            | 2025-02-18 10:45:23.358411 | 2025-04-23 15:51:46.184716 | other statistics...|
     | id  | is_group_project | project_start_date         | project_end_date           | other columns...   |
     | --- | ---------------- | -------------------------- | -------------------------- | ------------------ |
     | 1   | True             | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
@@ -157,7 +143,7 @@ class UserReportTable(Base):
     )
 
 
-def get_engine(db_path: str):
+def get_engine(db_path):
     '''
     The engine acts as a central sources of all connections to the DB.
     It is a factory & also manages a connection pool for the connections
@@ -169,11 +155,6 @@ def init_db(engine):
     '''
     Create tables with their columns
     '''
-    # Dynamically attach Statistic columns after classes are defined
-    make_columns(FileStatCollection, FileReportTable)
-    make_columns(ProjectStatCollection, ProjectReportTable)
-    make_columns(UserStatCollection, UserReportTable)
-
     # Dynamically attach Statistic columns after classes are defined
     make_columns(FileStatCollection, FileReportTable)
     make_columns(ProjectStatCollection, ProjectReportTable)
