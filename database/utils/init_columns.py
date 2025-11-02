@@ -1,7 +1,7 @@
 '''
 This has two functions which are used to read all of the
 statistic collections (FileStatCollection, ProjectStatCollection,
-UserStatCollection) and dyanmically create columns in their
+UserStatCollection) and dynamically create columns in their
 respective tables as a result.
 '''
 

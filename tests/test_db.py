@@ -62,11 +62,8 @@ def create_file_report(filename: str):
 
 def create_project_report(fr1: FileReport, fr2: FileReport, collaborative: bool):
     '''
-    Given two `FileReport` objects, return a `ProjectReport` object the following statistics:
-        - The project's start date (the earliest creation date of the two files)
-        - The project's end date (the latest modify date of the two files)
-        - The sum of the two files' sizes
-        - Whether or not the project is collaborative
+    Given two `FileReport` objects, return a `ProjectReport` object, with an
+    additional `IS_GROUP_PROJECT` statistic.
     '''
 
     # create project report with given file reports
