@@ -1,5 +1,6 @@
 
 import cmd
+import re
 from app import start_miner
 
 
@@ -13,6 +14,7 @@ class ArtifactMiner(cmd.Cmd):
             "(1) Permissions\n"
             "(2) Set filepath\n"
             "(3) Begin Artifact Miner\n"
+            "(4) Configure Email for Git Stats\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -23,6 +25,7 @@ class ArtifactMiner(cmd.Cmd):
         # Update with user input
         self.project_filepath = ''  # Will be overwritten with user input
         self.user_consent = False  # Milestone #1- Requirement #1, #4
+        self.user_email = ''  # will be user's Git-associated email
 
         title = 'Project Artifact Miner'
         print(f'\n{title}')
@@ -67,7 +70,7 @@ class ArtifactMiner(cmd.Cmd):
         '''User specifies the project's filepath'''
         self.update_history(self.cmd_history, "filepath")
 
-        prompt = "Paste or type the full filepath to your project folder: (or 'back'/'cancel' to return): "
+        prompt = "Paste or type the full filepath to your project folder: (or 'back' / 'cancel' to return): "
         answer = input(prompt).strip()
 
         # Check if user wants to cancel
@@ -138,6 +141,40 @@ class ArtifactMiner(cmd.Cmd):
 
         return False
 
+    def do_email(self, arg):
+        '''
+        Add an email to the user's configuration such that inidividual contributions can be measured in a Git-tracked project
+        '''
+        self.update_history(self.cmd_history, "email")
+
+        prompt = "Enter the email you use for your Git/GitHub account: (or 'back' / 'cancel' to return): "
+        answer = input(prompt).strip()
+
+        # Check if user wants to cancel
+        if self._handle_cancel_input(answer):
+            print("\n" + self.options)
+            return  # Return to main menu
+
+        while (not self.is_valid_email(answer)):
+            prompt = "Please enter a valid email: (or 'back' / 'cancel' to return): "
+            answer = input(prompt).strip()
+
+            # Check if user wants to cancel
+            if self._handle_cancel_input(answer):
+                print("\n" + self.options)
+                return  # Return to main menu
+
+        # Process the filepath
+        self.user_email = answer
+        print("\nEmail successfully received")
+        print(self.user_email)
+        print("\n" + self.options)
+
+    def is_valid_email(self, email: str) -> bool:
+        """Email validation helper method."""
+        EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(EMAIL_REGEX, email))
+
     def default(self, line):
         '''
         Overwrite the `default()` function so that our program
@@ -148,6 +185,7 @@ class ArtifactMiner(cmd.Cmd):
             "1": self.do_perms,
             "2": self.do_filepath,
             "3": self.do_begin,
+            "4": self.do_email,
         }
 
         # Make commands case-insensitive
