@@ -3,12 +3,13 @@ Comprehensive tests for FileReport class in src/classes/report.py
 Tests the automatic file type detection and natural language statistics integration.
 """
 
-import unittest
 import sys
 import os
 from pathlib import Path
 from datetime import datetime
 import tempfile
+import pytest
+import shutil
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,9 +23,6 @@ from src.classes.analyzer import (
     PythonAnalyzer, JavaAnalyzer, JavaScriptAnalyzer, get_appropriate_analyzer
 )
 
-# Test fixtures directory
-TEST_DIR = Path(__file__).parent / "resources"
-
 
 def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "utf-8") -> Path:
     """Helper function to create temporary test files."""
@@ -33,7 +31,15 @@ def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "
     return file_path
 
 
-class TestFileReportBasics(unittest.TestCase):
+@pytest.fixture
+def temp_dir():
+    """Fixture to create and cleanup temporary directory."""
+    temp_path = Path(tempfile.mkdtemp())
+    yield temp_path
+    shutil.rmtree(temp_path, ignore_errors=True)
+
+
+class TestFileReportBasics:
     """Test basic FileReport functionality and inheritance."""
 
     def test_file_report_inheritance(self):
@@ -44,32 +50,30 @@ class TestFileReportBasics(unittest.TestCase):
         file_report = FileReport(stats, "test.py")
 
         # Test inheritance
-        self.assertIsInstance(file_report, BaseReport)
-        self.assertIsInstance(file_report, FileReport)
+        assert isinstance(file_report, BaseReport)
+        assert isinstance(file_report, FileReport)
 
         # Test inherited methods work
-        self.assertEqual(file_report.filepath, "test.py")
-        self.assertIsNotNone(file_report.to_dict())
-        self.assertIsInstance(file_report.to_dict(), dict)
+        assert file_report.filepath == "test.py"
+        assert file_report.to_dict() is not None
+        assert isinstance(file_report.to_dict(), dict)
 
         # Test that repr doesn't crash
         repr_str = repr(file_report)
-        self.assertIsInstance(repr_str, str)
-        self.assertTrue("FileReport" in repr_str)
+        assert isinstance(repr_str, str)
+        assert "FileReport" in repr_str
 
-    def test_get_filename(self):
+    @pytest.mark.parametrize("filepath,expected_filename", [
+        ("/path/to/file.py", "file.py"),
+        ("./relative/path/document.md", "document.md"),
+        ("simple.txt", "simple.txt"),
+        ("/complex/path/with.multiple.dots.js", "with.multiple.dots.js")
+    ])
+    def test_get_filename(self, filepath, expected_filename):
         """Test filename extraction from filepath."""
-        test_cases = [
-            ("/path/to/file.py", "file.py"),
-            ("./relative/path/document.md", "document.md"),
-            ("simple.txt", "simple.txt"),
-            ("/complex/path/with.multiple.dots.js", "with.multiple.dots.js")
-        ]
-
-        for filepath, expected_filename in test_cases:
-            stats = StatisticIndex()
-            file_report = FileReport(stats, filepath)
-            self.assertEqual(file_report.get_filename(), expected_filename)
+        stats = StatisticIndex()
+        file_report = FileReport(stats, filepath)
+        assert file_report.get_filename() == expected_filename
 
     def test_file_report_basic_construction(self):
         """Test basic FileReport construction with statistics."""
@@ -80,28 +84,15 @@ class TestFileReportBasics(unittest.TestCase):
 
         file_report = FileReport(stats, "example.txt")
 
-        self.assertEqual(file_report.filepath, "example.txt")
-        self.assertEqual(
-            file_report.get_value(FileStatCollection.LINES_IN_FILE.value), 25
-        )
-        self.assertEqual(
-            file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value), 1024
-        )
+        assert file_report.filepath == "example.txt"
+        assert file_report.get_value(FileStatCollection.LINES_IN_FILE.value) == 25
+        assert file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value) == 1024
 
 
-class TestFileReportWithAnalysis(unittest.TestCase):
+class TestFileReportWithAnalysis:
     """Test FileReport.create_with_analysis() method with different file types."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
-
-    def tearDown(self):
-        """Clean up temporary files."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
-
-    def test_create_with_analysis_natural_language_md(self):
+    def test_create_with_analysis_natural_language_md(self, temp_dir):
         """Test natural language analysis for Markdown files."""
         content = (
             "# Test Document\n\n"
@@ -112,24 +103,24 @@ class TestFileReportWithAnalysis(unittest.TestCase):
             "Another paragraph for testing purposes."
         )
 
-        file_path = _create_temp_file("test.md", content, self.temp_dir)
+        file_path = _create_temp_file("test.md", content, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Test that natural language statistics are present
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.WORD_COUNT.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.CHARACTER_COUNT.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.SENTENCE_COUNT.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.ARI_WRITING_SCORE.value))
+        assert file_report.get_value(FileStatCollection.WORD_COUNT.value) is not None
+        assert file_report.get_value(FileStatCollection.CHARACTER_COUNT.value) is not None
+        assert file_report.get_value(FileStatCollection.SENTENCE_COUNT.value) is not None
+        assert file_report.get_value(FileStatCollection.ARI_WRITING_SCORE.value) is not None
 
         # Test file type is correctly identified
         file_type = file_report.get_value(FileStatCollection.TYPE_OF_FILE.value)
-        self.assertEqual(file_type, FileDomain.DOCUMENTATION)
+        assert file_type == FileDomain.DOCUMENTATION
 
         # Test basic file statistics are also present
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.DATE_CREATED.value))
+        assert file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value) is not None
+        assert file_report.get_value(FileStatCollection.DATE_CREATED.value) is not None
 
-    def test_create_with_analysis_python_file(self):
+    def test_create_with_analysis_python_file(self, temp_dir):
         """Test analysis for Python files."""
         content = (
             "import os\n"
@@ -146,43 +137,43 @@ class TestFileReportWithAnalysis(unittest.TestCase):
             "    return x + y\n"
         )
 
-        file_path = _create_temp_file("test.py", content, self.temp_dir)
+        file_path = _create_temp_file("test.py", content, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Test Python-specific statistics
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.NUMBER_OF_CLASSES.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.IMPORTED_PACKAGES.value))
+        assert file_report.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value) is not None
+        assert file_report.get_value(FileStatCollection.NUMBER_OF_CLASSES.value) is not None
+        assert file_report.get_value(FileStatCollection.IMPORTED_PACKAGES.value) is not None
 
         # Test file type
         file_type = file_report.get_value(FileStatCollection.TYPE_OF_FILE.value)
-        self.assertEqual(file_type, FileDomain.CODE)
+        assert file_type == FileDomain.CODE
 
         # Test specific counts
         functions = file_report.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value)
         classes = file_report.get_value(FileStatCollection.NUMBER_OF_CLASSES.value)
-        self.assertGreaterEqual(functions, 3)  # __init__, method_one, function_one, function_two
-        self.assertEqual(classes, 1)  # TestClass
+        assert functions >= 3  # __init__, method_one, function_one, function_two
+        assert classes == 1  # TestClass
 
-    def test_create_with_analysis_text_file(self):
+    def test_create_with_analysis_text_file(self, temp_dir):
         """Test analysis for plain text files."""
         content = "Line one\nLine two\nLine three\n"
 
-        file_path = _create_temp_file("test.txt", content, self.temp_dir)
+        file_path = _create_temp_file("test.txt", content, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Test text-based statistics
         lines = file_report.get_value(FileStatCollection.LINES_IN_FILE.value)
-        self.assertEqual(lines, 4)  # Including empty line at end
+        assert lines == 4  # Including empty line at end
 
         # Test that natural language stats are present for .txt files
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.WORD_COUNT.value))
+        assert file_report.get_value(FileStatCollection.WORD_COUNT.value) is not None
 
         # Test file type
         file_type = file_report.get_value(FileStatCollection.TYPE_OF_FILE.value)
-        self.assertEqual(file_type, FileDomain.DOCUMENTATION)
+        assert file_type == FileDomain.DOCUMENTATION
 
-    def test_create_with_analysis_javascript_file(self):
+    def test_create_with_analysis_javascript_file(self, temp_dir):
         """Test analysis for JavaScript files."""
         content = (
             "import React from 'react';\n"
@@ -199,124 +190,113 @@ class TestFileReportWithAnalysis(unittest.TestCase):
             "};\n"
         )
 
-        file_path = _create_temp_file("test.js", content, self.temp_dir)
+        file_path = _create_temp_file("test.js", content, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Test JavaScript-specific statistics
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.NUMBER_OF_CLASSES.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.IMPORTED_PACKAGES.value))
+        assert file_report.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value) is not None
+        assert file_report.get_value(FileStatCollection.NUMBER_OF_CLASSES.value) is not None
+        assert file_report.get_value(FileStatCollection.IMPORTED_PACKAGES.value) is not None
 
         # Test file type
         file_type = file_report.get_value(FileStatCollection.TYPE_OF_FILE.value)
-        self.assertEqual(file_type, FileDomain.CODE)
+        assert file_type == FileDomain.CODE
 
-    def test_create_with_analysis_unknown_file_type(self):
+    def test_create_with_analysis_unknown_file_type(self, temp_dir):
         """Test analysis for unknown file types falls back to base analyzer."""
         content = "Some content"
 
-        file_path = _create_temp_file("test.unknown", content, self.temp_dir)
+        file_path = _create_temp_file("test.unknown", content, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Should have basic file statistics
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value))
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.DATE_CREATED.value))
+        assert file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value) is not None
+        assert file_report.get_value(FileStatCollection.DATE_CREATED.value) is not None
 
         # Should not have specialized statistics
-        self.assertIsNone(file_report.get_value(FileStatCollection.WORD_COUNT.value))
-        self.assertIsNone(file_report.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value))
+        assert file_report.get_value(FileStatCollection.WORD_COUNT.value) is None
+        assert file_report.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value) is None
 
 
-class TestAnalyzerFactoryFunction(unittest.TestCase):
+class TestAnalyzerFactoryFunction:
     """Test the get_appropriate_analyzer factory function by checking extension mapping."""
 
-    def test_analyzer_type_detection_by_extension(self):
-        """Test that the factory function returns correct analyzer types based on file extensions."""
-        # Test natural language files - we'll check the type by examining the extension logic
+    @pytest.mark.parametrize("ext", ['.md', '.txt', '.rst', '.doc', '.docx'])
+    def test_analyzer_type_detection_natural_language_extensions(self, ext):
+        """Test that natural language extensions are recognized."""
         natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
-        for ext in natural_language_extensions:
-            # Create a dummy path just for extension checking
-            test_path = f"test{ext}"
-            file_path = Path(test_path)
-            extension = file_path.suffix.lower()
+        test_path = f"test{ext}"
+        file_path = Path(test_path)
+        extension = file_path.suffix.lower()
 
-            # Verify extension is in natural language set
-            self.assertIn(extension, natural_language_extensions)
+        # Verify extension is in natural language set
+        assert extension in natural_language_extensions
 
-        # Test code files
-        code_extensions = {'.py': 'Python', '.java': 'Java', '.js': 'JavaScript', '.jsx': 'JavaScript'}
-        for ext, lang in code_extensions.items():
-            test_path = f"test{ext}"
-            file_path = Path(test_path)
-            extension = file_path.suffix.lower()
+    @pytest.mark.parametrize("ext,lang", [
+        ('.py', 'Python'),
+        ('.java', 'Java'),
+        ('.js', 'JavaScript'),
+        ('.jsx', 'JavaScript')
+    ])
+    def test_analyzer_type_detection_code_extensions(self, ext, lang):
+        """Test that code extensions are recognized."""
+        test_path = f"test{ext}"
+        file_path = Path(test_path)
+        extension = file_path.suffix.lower()
 
-            # Verify extension mapping
-            if ext == '.py':
-                self.assertEqual(extension, '.py')
-            elif ext == '.java':
-                self.assertEqual(extension, '.java')
-            elif ext in {'.js', '.jsx'}:
-                self.assertIn(extension, {'.js', '.jsx'})
+        # Verify extension mapping
+        if ext == '.py':
+            assert extension == '.py'
+        elif ext == '.java':
+            assert extension == '.java'
+        elif ext in {'.js', '.jsx'}:
+            assert extension in {'.js', '.jsx'}
 
-        # Test text files
+    @pytest.mark.parametrize("ext", ['.css', '.html', '.xml', '.json', '.yml', '.yaml'])
+    def test_analyzer_type_detection_text_extensions(self, ext):
+        """Test that text extensions are recognized."""
         text_extensions = {'.css', '.html', '.xml', '.json', '.yml', '.yaml'}
-        for ext in text_extensions:
-            test_path = f"test{ext}"
-            file_path = Path(test_path)
-            extension = file_path.suffix.lower()
+        test_path = f"test{ext}"
+        file_path = Path(test_path)
+        extension = file_path.suffix.lower()
 
-            # Verify extension is in text set
-            self.assertIn(extension, text_extensions)
+        # Verify extension is in text set
+        assert extension in text_extensions
 
 
-class TestFileReportEdgeCases(unittest.TestCase):
+class TestFileReportEdgeCases:
     """Test edge cases and error handling for FileReport."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
-
-    def tearDown(self):
-        """Clean up temporary files."""
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_create_with_analysis_nonexistent_file(self):
         """Test handling of nonexistent files."""
         # The analyzer will raise an exception, so we expect this to fail
-        with self.assertRaises(Exception):
+        with pytest.raises(Exception):
             FileReport.create_with_analysis("/nonexistent/file.py")
 
-    def test_create_with_analysis_empty_file(self):
+    def test_create_with_analysis_empty_file(self, temp_dir):
         """Test analysis of empty files."""
-        file_path = _create_temp_file("empty.py", "", self.temp_dir)
+        file_path = _create_temp_file("empty.py", "", temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Should have basic file statistics
-        self.assertIsNotNone(file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value))
+        assert file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value) is not None
         size = file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
-        self.assertEqual(size, 0)
+        assert size == 0
 
-    def test_create_with_analysis_case_insensitive_extensions(self):
+    @pytest.mark.parametrize("filename", ["test.MD", "test.PY", "test.JS"])
+    def test_create_with_analysis_case_insensitive_extensions(self, filename, temp_dir):
         """Test that file extension matching is case-insensitive."""
         content = "# Test content. This is a sentence with proper punctuation!"
 
-        test_cases = [
-            "test.MD",
-            "test.PY",
-            "test.JS",
-        ]
+        file_path = _create_temp_file(filename, content, temp_dir)
+        file_report = FileReport.create_with_analysis(str(file_path))
 
-        for filename in test_cases:
-            file_path = _create_temp_file(filename, content, self.temp_dir)
-            file_report = FileReport.create_with_analysis(str(file_path))
+        # Should be analyzed without crashing
+        assert isinstance(file_report, FileReport)
+        # Should have basic file statistics
+        assert file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value) is not None
 
-            # Should be analyzed without crashing
-            self.assertIsInstance(file_report, FileReport)
-            # Should have basic file statistics
-            self.assertIsNotNone(file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value))
-
-    def test_natural_language_statistics_comprehensive(self):
+    def test_natural_language_statistics_comprehensive(self, temp_dir):
         """Test comprehensive natural language statistics measurement."""
         content = (
             "This is a comprehensive test document. "
@@ -327,7 +307,7 @@ class TestFileReportEdgeCases(unittest.TestCase):
             "The automated readability index should be calculated properly."
         )
 
-        file_path = _create_temp_file("comprehensive.md", content, self.temp_dir)
+        file_path = _create_temp_file("comprehensive.md", content, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Test all natural language statistics are present and reasonable
@@ -336,18 +316,18 @@ class TestFileReportEdgeCases(unittest.TestCase):
         sentence_count = file_report.get_value(FileStatCollection.SENTENCE_COUNT.value)
         ari_score = file_report.get_value(FileStatCollection.ARI_WRITING_SCORE.value)
 
-        self.assertIsInstance(word_count, int)
-        self.assertGreater(word_count, 0)
+        assert isinstance(word_count, int)
+        assert word_count > 0
 
-        self.assertIsInstance(char_count, int)
-        self.assertGreater(char_count, 0)
+        assert isinstance(char_count, int)
+        assert char_count > 0
 
-        self.assertIsInstance(sentence_count, int)
-        self.assertGreater(sentence_count, 0)
+        assert isinstance(sentence_count, int)
+        assert sentence_count > 0
 
-        self.assertIsInstance(ari_score, float)
+        assert isinstance(ari_score, float)
 
-    def test_multiple_file_analysis_consistency(self):
+    def test_multiple_file_analysis_consistency(self, temp_dir):
         """Test that analyzing the same file multiple times gives consistent results."""
         content = (
             "def test_function():\n"
@@ -358,59 +338,55 @@ class TestFileReportEdgeCases(unittest.TestCase):
             "        pass\n"
         )
 
-        file_path = _create_temp_file("consistency.py", content, self.temp_dir)
+        file_path = _create_temp_file("consistency.py", content, temp_dir)
 
         # Analyze the same file multiple times
         report1 = FileReport.create_with_analysis(str(file_path))
         report2 = FileReport.create_with_analysis(str(file_path))
 
         # Results should be consistent
-        self.assertEqual(
-            report1.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value),
-            report2.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value)
-        )
-        self.assertEqual(
-            report1.get_value(FileStatCollection.NUMBER_OF_CLASSES.value),
-            report2.get_value(FileStatCollection.NUMBER_OF_CLASSES.value)
-        )
+        assert (report1.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value) ==
+                report2.get_value(FileStatCollection.NUMBER_OF_FUNCTIONS.value))
+        assert (report1.get_value(FileStatCollection.NUMBER_OF_CLASSES.value) ==
+                report2.get_value(FileStatCollection.NUMBER_OF_CLASSES.value))
 
-    def test_ari_score_edge_cases(self):
+    def test_ari_score_edge_cases(self, temp_dir):
         """Test ARI score calculation with edge cases that could cause division by zero."""
 
         # Test with content that has no sentences (no punctuation)
         content_no_sentences = "word word word word word"  # No punctuation
-        file_path = _create_temp_file("no_sentences.md", content_no_sentences, self.temp_dir)
+        file_path = _create_temp_file("no_sentences.md", content_no_sentences, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Should not crash and should return 0.0 for ARI score
         ari_score = file_report.get_value(FileStatCollection.ARI_WRITING_SCORE.value)
-        self.assertEqual(ari_score, 0.0)
+        assert ari_score == 0.0
 
         # Should still have other stats
         word_count = file_report.get_value(FileStatCollection.WORD_COUNT.value)
-        self.assertGreater(word_count, 0)
+        assert word_count > 0
         sentence_count = file_report.get_value(FileStatCollection.SENTENCE_COUNT.value)
-        self.assertEqual(sentence_count, 0)
+        assert sentence_count == 0
 
         # Test with empty content
-        file_path_empty = _create_temp_file("empty.md", "", self.temp_dir)
+        file_path_empty = _create_temp_file("empty.md", "", temp_dir)
         file_report_empty = FileReport.create_with_analysis(str(file_path_empty))
 
         # Should not crash and should return 0.0 for ARI score
         ari_score_empty = file_report_empty.get_value(FileStatCollection.ARI_WRITING_SCORE.value)
-        self.assertEqual(ari_score_empty, 0.0)
+        assert ari_score_empty == 0.0
 
         # Word and sentence counts should be 0
         word_count_empty = file_report_empty.get_value(FileStatCollection.WORD_COUNT.value)
         sentence_count_empty = file_report_empty.get_value(FileStatCollection.SENTENCE_COUNT.value)
-        self.assertEqual(word_count_empty, 0)
-        self.assertEqual(sentence_count_empty, 0)
+        assert word_count_empty == 0
+        assert sentence_count_empty == 0
 
-    def test_text_file_with_proper_sentences(self):
+    def test_text_file_with_proper_sentences(self, temp_dir):
         """Test text file analysis with proper sentence structure."""
         content = "This is sentence one. This is sentence two! Is this sentence three?"
 
-        file_path = _create_temp_file("proper_sentences.txt", content, self.temp_dir)
+        file_path = _create_temp_file("proper_sentences.txt", content, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Should work without division by zero and calculate proper ARI score
@@ -418,17 +394,17 @@ class TestFileReportEdgeCases(unittest.TestCase):
         sentence_count = file_report.get_value(FileStatCollection.SENTENCE_COUNT.value)
         ari_score = file_report.get_value(FileStatCollection.ARI_WRITING_SCORE.value)
 
-        self.assertGreater(word_count, 0)
-        self.assertGreater(sentence_count, 0)
-        self.assertIsInstance(ari_score, float)
+        assert word_count > 0
+        assert sentence_count > 0
+        assert isinstance(ari_score, float)
         # ARI score should be calculated properly (not 0.0) since we have both words and sentences
-        self.assertNotEqual(ari_score, 0.0)
+        assert ari_score != 0.0
 
-    def test_natural_language_file_with_only_words(self):
+    def test_natural_language_file_with_only_words(self, temp_dir):
         """Test natural language analysis with words but no sentence punctuation."""
         content = "just some words without any punctuation marks"
 
-        file_path = _create_temp_file("words_only.md", content, self.temp_dir)
+        file_path = _create_temp_file("words_only.md", content, temp_dir)
         file_report = FileReport.create_with_analysis(str(file_path))
 
         # Should not crash due to division by zero protection
@@ -436,12 +412,12 @@ class TestFileReportEdgeCases(unittest.TestCase):
         sentence_count = file_report.get_value(FileStatCollection.SENTENCE_COUNT.value)
         ari_score = file_report.get_value(FileStatCollection.ARI_WRITING_SCORE.value)
 
-        self.assertGreater(word_count, 0)
-        self.assertEqual(sentence_count, 0)  # No punctuation
-        self.assertEqual(ari_score, 0.0)  # Should be 0.0 due to division by zero protection
+        assert word_count > 0
+        assert sentence_count == 0  # No punctuation
+        assert ari_score == 0.0  # Should be 0.0 due to division by zero protection
 
 
-class TestFileReportStatisticsIntegration(unittest.TestCase):
+class TestFileReportStatisticsIntegration:
     """Test integration between FileReport and StatisticIndex."""
 
     def test_file_report_statistics_integration(self):
@@ -455,15 +431,15 @@ class TestFileReportStatisticsIntegration(unittest.TestCase):
         file_report = FileReport(stats, "test.md")
 
         # Test all statistics are accessible
-        self.assertEqual(file_report.get_value(FileStatCollection.LINES_IN_FILE.value), 100)
-        self.assertEqual(file_report.get_value(FileStatCollection.WORD_COUNT.value), 500)
-        self.assertEqual(file_report.get_value(FileStatCollection.TYPE_OF_FILE.value), FileDomain.DOCUMENTATION)
+        assert file_report.get_value(FileStatCollection.LINES_IN_FILE.value) == 100
+        assert file_report.get_value(FileStatCollection.WORD_COUNT.value) == 500
+        assert file_report.get_value(FileStatCollection.TYPE_OF_FILE.value) == FileDomain.DOCUMENTATION
 
         # Test to_dict works
         result_dict = file_report.to_dict()
-        self.assertIn("LINES_IN_FILE", result_dict)
-        self.assertIn("WORD_COUNT", result_dict)
-        self.assertIn("TYPE_OF_FILE", result_dict)
+        assert "LINES_IN_FILE" in result_dict
+        assert "WORD_COUNT" in result_dict
+        assert "TYPE_OF_FILE" in result_dict
 
     def test_file_report_add_statistic(self):
         """Test adding statistics to FileReport after creation."""
@@ -475,9 +451,7 @@ class TestFileReportStatisticsIntegration(unittest.TestCase):
         file_report.add_statistic(new_stat)
 
         # Verify it was added
-        self.assertEqual(file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value), 2048)
+        assert file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value) == 2048
 
 
-if __name__ == '__main__':
-    # Run unittest tests
-    unittest.main(verbosity=2)
+# Run with: pytest tests/test_file_report.py -v
