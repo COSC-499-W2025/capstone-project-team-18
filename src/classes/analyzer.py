@@ -8,10 +8,33 @@ import datetime
 from pathlib import Path
 import logging
 import re
+from typing import Optional
 import ast
+from utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
 
 logger = logging.basicConfig(level=logging.DEBUG)
+
+
+def extract_file_reports(project_file: Optional[ProjectFiles]) -> Optional[list[FileReport]]:
+    """
+    Method to extract inidvidual fileReports within each project
+    """
+
+    if project_file is None:
+        return None
+
+    # Given a single project for a user and the project's structure return a list with each fileReport
+    projectFiles = project_file.file_paths
+
+    # list of reports for each file in an individual project to be returned
+    reports = []
+    for file in projectFiles:
+        analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file)
+        reports.append(analyzer.analyze())
+
+    return reports
+
 
 class BaseFileAnalyzer:
     """
@@ -77,23 +100,6 @@ class BaseFileAnalyzer:
         self._process()
 
         return FileReport(statistics=self.stats, filepath=self.filepath)
-
-    def extract_file_reports(self, project_title: str, project_structure: dict) -> list[FileReport]:
-        """
-        Method to extract inidvidual fileReports within each project
-        """
-        # Given a single project for a user and the project's structure return a list with each fileReport
-        projectFiles = project_structure.get(project_title)
-
-        # list of reports for each file in an individual project to be returned
-        reports = []
-        if (projectFiles != None):
-            for file in projectFiles:
-                analyzer = BaseFileAnalyzer(file)
-                reports.append(analyzer.analyze())
-        else:
-            return None
-        return reports
 
 
 class TextFileAnalyzer(BaseFileAnalyzer):
