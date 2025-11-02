@@ -36,9 +36,9 @@ int bar(int a) { return a; }
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
     assert stats["NUMBER_OF_FUNCTIONS"] == 2
-    assert stats["NUMBER_OF_STRUCTS"] == 1
-    assert stats["NUMBER_OF_TYPEDEFS"] == 2
-    assert stats["NUMBER_OF_INCLUDES"] == 2
+    assert stats["NUMBER_OF_CLASSES"] == 1  # struct is treated as a class
+    assert "stdio.h" in stats["IMPORTED_PACKAGES"]
+    assert "myheader.h" in stats["IMPORTED_PACKAGES"]
 
 
 def test_c_analyzer_empty_file(tmp_path):
@@ -48,9 +48,8 @@ def test_c_analyzer_empty_file(tmp_path):
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
     assert stats["NUMBER_OF_FUNCTIONS"] == 0
-    assert stats["NUMBER_OF_STRUCTS"] == 0
-    assert stats["NUMBER_OF_TYPEDEFS"] == 0
-    assert stats["NUMBER_OF_INCLUDES"] == 0
+    assert stats["NUMBER_OF_CLASSES"] == 0  # no structs
+    assert stats["IMPORTED_PACKAGES"] == []
 
 
 def test_typescript_analyzer_classes_interfaces_functions_imports(tmp_path):

@@ -355,9 +355,8 @@ class CAnalyzer(CodeFileAnalyzer):
 
     Statistics:
         - NUMBER_OF_FUNCTIONS
-        - NUMBER_OF_STRUCTS
-        - NUMBER_OF_TYPEDEFS
-        - NUMBER_OF_INCLUDES
+        - NUMBER_OF_CLASSES (used for structs)
+        - IMPORTED_PACKAGES (used for #includes)
     """
 
     def _process(self) -> None:
@@ -367,25 +366,20 @@ class CAnalyzer(CodeFileAnalyzer):
         function_count = len(re.findall(
             r'^[\w\s\*]+\s+([a-zA-Z_][\w]*)\s*\([^)]*\)\s*\{', self.text_content, re.MULTILINE))
 
-        # Struct definitions (match 'struct Name { ... };')
+        # Struct definitions (match 'struct Name { ... };') - treating structs as classes
         struct_count = len(re.findall(
             r'struct\s+[a-zA-Z_][\w]*\s*\{[^}]*\}\s*;', self.text_content, re.DOTALL))
 
-        # Typedefs
-        typedef_count = len(re.findall(r'\btypedef\b', self.text_content))
-
-        # Includes
-        include_count = len(re.findall(
-            r'^\s*#include\s+[<"][^>"]+[>"]', self.text_content, re.MULTILINE))
+        # Includes - extract header names for IMPORTED_PACKAGES
+        included_headers = re.findall(
+            r'^\s*#include\s+[<"]([^>"]+)[>"]', self.text_content, re.MULTILINE)
 
         stats = [
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
                       function_count),
-            Statistic(FileStatCollection.NUMBER_OF_STRUCTS.value, struct_count),
-            Statistic(FileStatCollection.NUMBER_OF_TYPEDEFS.value,
-                      typedef_count),
-            Statistic(FileStatCollection.NUMBER_OF_INCLUDES.value,
-                      include_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, struct_count),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      included_headers),
         ]
 
         self.stats.extend(stats)
