@@ -87,6 +87,8 @@ class FileReportTable(Base):
     project_report = relationship(
         "ProjectReportTable", back_populates="file_reports")
 
+    filepath = Column(String)  # path to the file when we unzip to the temp dir
+
 
 class ProjectReportTable(Base):
     '''
@@ -143,7 +145,7 @@ class UserReportTable(Base):
     )
 
 
-def get_engine(db_path):
+def get_engine(db_path: str):
     '''
     The engine acts as a central sources of all connections to the DB.
     It is a factory & also manages a connection pool for the connections
