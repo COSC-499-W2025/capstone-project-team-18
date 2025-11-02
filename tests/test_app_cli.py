@@ -24,6 +24,7 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(self.cli.cmd_history, [])
         self.assertEqual(self.cli.prompt, '(PAF) ')
         self.assertEqual(self.cli.ruler, '-')
+        self.assertEqual(self.cli.user_email, '')
         self.assertIn("Choose one of the following options", self.cli.options)
         self.assertIn("Type 'back' or 'cancel'", self.cli.options)
 
@@ -176,7 +177,7 @@ class TestCLI(unittest.TestCase):
     @patch('builtins.print')
     def test_default_handles_unknown_commands(self, mock_print):
         """Test handling of unknown commands."""
-        unknown_commands = ["unknown", "4", "invalid", "help_me"]
+        unknown_commands = ["unknown", "5", "invalid", "help_me"]
 
         for command in unknown_commands:
             self.cli.default(command)

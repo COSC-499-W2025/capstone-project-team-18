@@ -89,7 +89,7 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "begin")
 
         if self.user_consent:
-            start_miner(self.project_filepath)
+            start_miner(self.project_filepath, self.user_email)
         else:
             print(
                 "\nError: Missing consent. Type perms or 1 to read user permission agreement.")
