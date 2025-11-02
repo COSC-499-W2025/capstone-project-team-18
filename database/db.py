@@ -155,9 +155,16 @@ class UserReportTable(Base):
     # TODO: Implement data that will be stored in UserReport
 
 
-# The engine acts as a central sources of all connections to the DB.
-# It is a factory & also manages a connection pool for the connections
-engine = create_engine(DB_PATH, echo=True, future=True)
+def get_engine(db_path):
+    '''
+    The engine acts as a central sources of all connections to the DB.
+    It is a factory & also manages a connection pool for the connections
+    '''
+    return create_engine(db_path, echo=True, future=True)
 
-# Create tables if they don't exist yet
-Base.metadata.create_all(engine)
+
+def init_db(engine):
+    '''
+    Create tables if they don't exist yet
+    '''
+    Base.metadata.create_all(engine)
