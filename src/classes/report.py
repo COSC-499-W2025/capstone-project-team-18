@@ -54,91 +54,6 @@ class FileReport(BaseReport):
 
 
 class ProjectReport(BaseReport):
-    def get_unique_imported_packages(self) -> set:
-        """
-        Returns a set of all unique imported packages/dependencies from code files in the project.
-        """
-        from src.classes.statistic import FileDomain
-        if not hasattr(self, 'file_reports') or self.file_reports is None:
-            return set()
-        packages = set()
-        for report in self.file_reports:
-            file_type = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
-            if file_type == FileDomain.CODE:
-                imports = report.get_value(
-                    FileStatCollection.IMPORTED_PACKAGES.value)
-                if imports:
-                    if isinstance(imports, list):
-                        packages.update(imports)
-                    else:
-                        packages.add(imports)
-        return packages
-
-    def get_average_ari_score(self) -> float:
-        """
-        Returns the average ARI readability score for documentation files in the project.
-        """
-        from src.classes.statistic import FileDomain
-        if not hasattr(self, 'file_reports') or self.file_reports is None:
-            return 0.0
-        ari_scores = []
-        for report in self.file_reports:
-            file_type = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
-            if file_type == FileDomain.DOCUMENTATION:
-                ari = report.get_value(
-                    FileStatCollection.ARI_WRITING_SCORE.value)
-                if ari is not None:
-                    ari_scores.append(ari)
-        if not ari_scores:
-            return 0.0
-        return sum(ari_scores) / len(ari_scores)
-
-    def get_code_to_doc_ratio(self) -> float:
-        """
-        Returns the ratio of code files to documentation files in the project.
-        """
-        from src.classes.statistic import FileDomain
-        if not hasattr(self, 'file_reports') or self.file_reports is None:
-            return 0.0
-        code_files = 0
-        doc_files = 0
-        for report in self.file_reports:
-            file_type = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
-            if file_type == FileDomain.CODE:
-                code_files += 1
-            elif file_type == FileDomain.DOCUMENTATION:
-                doc_files += 1
-        if doc_files == 0:
-            return float('inf') if code_files > 0 else 0.0
-        return code_files / doc_files
-
-    def get_language_distribution(self) -> dict:
-        """
-        Returns a dictionary with the count of files per language in the project.
-        Converts enum keys to strings for test compatibility.
-        """
-        if not hasattr(self, 'file_reports') or self.file_reports is None:
-            return {}
-        lang_count = {}
-        for report in self.file_reports:
-            lang = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
-            if lang:
-                key = lang.name if hasattr(lang, 'name') else str(lang)
-                lang_count[key] = lang_count.get(key, 0) + 1
-        return lang_count
-
-    def get_total_lines_of_code(self) -> int:
-        """
-        Returns the sum of lines of code across all files in the project.
-        """
-        if not hasattr(self, 'file_reports') or self.file_reports is None:
-            return 0
-        total_lines = 0
-        for report in self.file_reports:
-            lines = report.get_value(FileStatCollection.LINES_IN_FILE.value)
-            if lines is not None:
-                total_lines += lines
-        return total_lines
     """
     The ProjectReport class utilizes many FileReports to
     create many Project Statistics about a single project.
@@ -212,6 +127,91 @@ class ProjectReport(BaseReport):
         inst = cls.__new__(cls)
         BaseReport.__init__(inst, statistics)
         return inst
+
+    def _check_for_file_reports(self) -> list[FileReport]:
+        """
+        Validates that file_reports attribute exists and returns it.
+        
+        Returns:
+            list[FileReport]: The list of file reports
+            
+        Raises:
+            ValueError: If file_reports attribute doesn't exist or is None
+        """
+        if not hasattr(self, 'file_reports') or self.file_reports is None:
+            return []
+        return self.file_reports
+
+    def get_total_lines_of_code(self) -> int:
+        """
+        Calculates the total number of lines across all file reports.
+        
+        Returns:
+            int: Total lines of code summed from all files
+        """
+        file_reports = self._check_for_file_reports()
+        return sum(
+            report.get_value(FileStatCollection.LINES_IN_FILE.value) or 0
+            for report in file_reports
+        )
+
+    def get_language_distribution(self) -> dict[str, int]:
+        """
+        Counts the distribution of file types across all file reports.
+        
+        Returns:
+            dict[str, int]: Mapping of file type names to their counts
+        """
+        file_reports = self._check_for_file_reports()
+        distribution = {}
+        for report in file_reports:
+            file_type = report.get_value(FileStatCollection.TYPE_OF_FILE.value)
+            if file_type:
+                type_name = file_type.value if hasattr(file_type, 'value') else str(file_type)
+                distribution[type_name] = distribution.get(type_name, 0) + 1
+        return distribution
+
+    def get_code_to_doc_ratio(self) -> float:
+        """
+        Calculates the ratio of code files to documentation files.
+        
+        Returns:
+            float: Ratio of code files to documentation files, or 0.0 if no documentation files
+        """
+        dist = self.get_language_distribution()
+        code_count = dist.get('code', 0)
+        doc_count = dist.get('documentation', 0)
+        return code_count / doc_count if doc_count > 0 else 0.0
+
+    def get_average_ari_score(self) -> float:
+        """
+        Calculates the average Automated Readability Index (ARI) score across all documentation files.
+        
+        Returns:
+            float: Average ARI score, or 0.0 if no ARI scores are available
+        """
+        file_reports = self._check_for_file_reports()
+        ari_scores = [
+            report.get_value(FileStatCollection.ARI_WRITING_SCORE.value)
+            for report in file_reports
+            if report.get_value(FileStatCollection.ARI_WRITING_SCORE.value) is not None
+        ]
+        return sum(ari_scores) / len(ari_scores) if ari_scores else 0.0
+
+    def get_unique_imported_packages(self) -> set[str]:
+        """
+        Extracts all unique package names imported across all code file reports.
+        
+        Returns:
+            set[str]: Set of unique package names imported in the project
+        """
+        file_reports = self._check_for_file_reports()
+        all_packages = set()
+        for report in file_reports:
+            packages = report.get_value(FileStatCollection.IMPORTED_PACKAGES.value)
+            if packages:
+                all_packages.update(packages)
+        return all_packages
 
     def _analyze_git_authorship(self, zip_path: str, project_name: str) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
