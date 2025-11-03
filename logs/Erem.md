@@ -11,6 +11,8 @@
 
 **[Week 6, Oct. 06–12](#week-6-oct-6-12)**
 
+**[Week 7, Oct. 07–19](#week-7-oct-0719)**
+
 
 ### Peer Eval
 ![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week3_log.png)
@@ -38,3 +40,18 @@ This week, I worked with Jimi to finalize our DFD and ensure the data flow accur
 
 ### Recap
 With the new requirements for Milestone #1, our team needed to adjust parts of our project design. I worked closely with Alex to update our Level 0 and Level 1 DFDs to reflect the new system structure that he and Sam developed. Throughout the process, I made edits to ensure the diagrams accurately represented the revised data flow and clarified a few points about how the new design would integrate with our existing components. I also participated in team discussions to review the updated architecture and confirm that everyone was aligned before submission.
+
+### Peer Eval
+![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week7_log.png)
+
+
+### Recap
+This week I focused on adding cli functionality and comprehensive testing for the cli. Working primarily with Alex, I contributed to developing the cancel/back navigation feature for the command-line interface, which allows users to return to the main menu from any input prompt. I helped design and implement the `_handle_cancel_input()` helper method that provides consistent cancel handling across all CLI functions, ensuring users can type 'back' or 'cancel' from permissions, filepath, or any other screen.
+
+Additionally, I worked extensively on creating comprehensive test coverage for the CLI functionality. I developed over 20 test cases in `test_app_cli.py` that cover initialization, command routing, user interactions, error handling, and complete workflow integration. The tests use mock-based approaches to simulate user input and verify CLI responses, including edge cases like whitespace handling and invalid commands.
+
+To support these technical implementations, I contributed to updating the CLI documentation with a complete user guide that includes command reference tables, step-by-step workflows, and troubleshooting sections. This week's work directly addresses issues #38 (CLI cancel command) and #41 (CLI test cases), combining them into a cohesive feature update that  improves the user experience and code reliability of our CLI component.
+- This can be found in the PR [here](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/53)
+
+I also reviewed PR's [37](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/37), which was the inital CLI tool creation.
+
