@@ -72,3 +72,26 @@ During the development process, I encountered and resolved several technical cha
 Additionally, I collaborated with team members on code review feedback, implementing suggestions to eliminate redundant conditional checks and improve code efficiency. This work directly supports our project's core functionality of analyzing and reporting on software development metrics and timelines.
 
 The implementation can be found in PR ([#98](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/98)) and addresses issue requirements for project-level statistical aggregation and temporal analysis. I also reviewed Alex's Database Initialization PR ([#96](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/96)) and Sam's github pytest action PR ([#87](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/87)).
+
+
+## Week 9, Oct. 27–Nov. 2
+
+Peer evaluation was ended at 7:50 am early on Sunday. Here is the checklist of what I did this week:
+
+- Deciding on task priorities
+- Coding
+- Reviewing teammate's code
+- Testing for your code
+- Testing teammate's code
+- Documenting your code
+
+
+### Recap
+This week I implemented a comprehensive file analysis system for the `FileReport.create_with_analysis()` method that automatically detects file types and applies specialized analyzers. The system supports natural language files (.md, .txt, .rst) with word count, character count, sentence count, and ARI score statistics, as well as code files (.py, .js, .java) with function/class counting and import analysis.
+
+I addressed key technical challenges including division-by-zero protection in ARI score calculations for edge cases like files without punctuation or empty files. I also implemented the factory pattern `get_appropriate_analyzer()` function for file type routing with case-insensitive extension matching.
+
+For testing, I created an extensive test suite with 25+ test cases covering all analyzers, edge cases, and integration scenarios, then converted the entire suite from unittest to pytest using fixtures, parametrized tests, and pytest best practices.
+
+This work addresses issues #112 (Add Natural Language Statistic to FileReportClass) and #113 (Measure ARI Score for FileReportClass), providing a unified solution for comprehensive project analysis across diverse technology stacks. The implementation can be found in PR ([#131](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/131)). I also reviewed Priyansh's project-level aggregate stats PR ([#132](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/132)) and Sam's CLI incorrect filepath err handling PR ([#138](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/138)).
+
