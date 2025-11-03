@@ -33,8 +33,8 @@ def test_css_analyzer_rules_classes_imports(tmp_path):
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
 
-    assert stats["NUMBER_OF_FUNCTIONS"] >= 4
-    assert stats["NUMBER_OF_CLASSES"] >= 4
+    assert stats["NUMBER_OF_FUNCTIONS"] == 4
+    assert stats["NUMBER_OF_CLASSES"] == 4
     assert "theme.css" in stats["IMPORTED_PACKAGES"]
 
 def test_css_analyzer_empty_file(tmp_path):

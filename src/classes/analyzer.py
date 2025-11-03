@@ -485,6 +485,11 @@ class CSSAnalyzer(CodeFileAnalyzer):
         - NUMBER_OF_FUNCTIONS  (rule blocks: style rules + at-rules with blocks)
         - NUMBER_OF_CLASSES    (distinct `.class` selectors)
         - IMPORTED_PACKAGES    (@import targets)
+
+    Note:
+        NUMBER_OF_FUNCTIONS counts top-level style rules and at-rules that have a block.
+        Nested qualified rules inside at-rules (e.g., selectors within @media) are **not**
+        counted separately.
     """
 
     def _process(self) -> None:
