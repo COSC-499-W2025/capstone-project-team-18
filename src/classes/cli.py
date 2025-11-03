@@ -95,8 +95,9 @@ class ArtifactMiner(cmd.Cmd):
         '''User specifies the project's filepath'''
         self.update_history(self.cmd_history, "filepath")
 
-        prompt = "Paste or type the full filepath to your project folder: (or 'back' / 'cancel' to return): "
-        answer = input(prompt).strip()
+        while True:
+            prompt = "Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return): "
+            answer = input(prompt).strip()
 
             # Check if user wants to cancel
             if self._handle_cancel_input(answer):
