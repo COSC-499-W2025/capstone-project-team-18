@@ -1,12 +1,17 @@
 '''
 This file will store all of the config and logic that we will need to access and modify our database (`db.py`)
 '''
+from datetime import date
+
 from sqlalchemy import ForeignKey
 from sqlalchemy import Table
-from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON
+from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
+
+from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, WeightedSkills
+from .utils.init_columns import make_columns
 
 DB_PATH = "sqlite:///database/data.db"
 
@@ -24,6 +29,7 @@ class UserPreferencesTable(Base):
 
     id = Column(Integer, primary_key=True)
     consent = Column(Boolean)
+
     # E.g. files_to_ignore=['tmp.log', 'README.md']
     files_to_ignore = Column(JSON)
 
@@ -72,25 +78,16 @@ class FileReportTable(Base):
     '''
     __tablename__ = 'file_report'
 
-    # Define the table's columns & their data types
     id = Column(Integer, primary_key=True)  # PK
 
-    # Define a FK and one-to-many relationship with ProjectReport
-    project_id = Column(Integer, ForeignKey(
-        "project_report.id"))  # Define FK column
-
-    # this will allow us to easily find the related file reports that are used to create
+    # Define a FK and one-to-many relationship with ProjectReport.
+    # This will allow us to easily find the related file reports that are used to create
     # a given project report
+    project_id = Column(Integer, ForeignKey("project_report.id"))
     project_report = relationship(
         "ProjectReportTable", back_populates="file_reports")
 
-    # FileReport statistics
-    date_created = Column(DateTime)
-    date_accessed = Column(DateTime)
-    date_modified = Column(DateTime)
-    filesize = Column(Float)
-    # add other statistics here. For example, a python file might have lines of code:
-    # lines_of_code: Mapped[int]
+    filepath = Column(String)  # path to the file when we unzip to the temp dir
 
 
 class ProjectReportTable(Base):
@@ -101,11 +98,11 @@ class ProjectReportTable(Base):
     `user_report` table.
 
     Example rows:
-    | id  | collab_project | start_date                 | end_date                   | total_size | lines_of_code | other columns...   |
-    | --- | -------------- | -------------------------- | -------------------------- | ---------- | ------------- | ------------------ |
-    | 1   | True           | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | 12504      | 840           | other statistics...|
-    | 2   | True           | 2024-10-28 14:23:59.187515 | 2024-12-14 15:35:54.56415  | 26544      | 768           | other statistics...|
-    | 3   | False          | 2025-02-18 10:45:23.358411 | 2025-04-23 15:51:46.184716 | 1024       | 126           | other statistics...|
+    | id  | is_group_project | project_start_date         | project_end_date           | other columns...   |
+    | --- | ---------------- | -------------------------- | -------------------------- | ------------------ |
+    | 1   | True             | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
+    | 2   | True             | 2024-10-28 14:23:59.187515 | 2024-12-14 15:35:54.56415  | other statistics...|
+    | 3   | False            | 2025-02-18 10:45:23.358411 | 2025-04-23 15:51:46.184716 | other statistics...|
 
     Key Columns:
     - `id`: The table's PK
@@ -124,12 +121,6 @@ class ProjectReportTable(Base):
         secondary=association_table,
         back_populates="project_reports",
     )
-
-    collaborative = Column(Boolean)  # True = collab project
-    start_date = Column(DateTime)
-    end_date = Column(DateTime)  # Date that project was last modified
-    total_size = Column(Float)  # The size of the project, in bytes
-    lines_of_code = Column(Integer)  # (optional) lines of code in the project
 
 
 class UserReportTable(Base):
@@ -152,10 +143,9 @@ class UserReportTable(Base):
         secondary=association_table,
         back_populates="user_reports",
     )
-    # TODO: Implement data that will be stored in UserReport
 
 
-def get_engine(db_path):
+def get_engine(db_path: str):
     '''
     The engine acts as a central sources of all connections to the DB.
     It is a factory & also manages a connection pool for the connections
@@ -165,6 +155,11 @@ def get_engine(db_path):
 
 def init_db(engine):
     '''
-    Create tables if they don't exist yet
+    Create tables with their columns
     '''
+    # Dynamically attach Statistic columns after classes are defined
+    make_columns(FileStatCollection, FileReportTable)
+    make_columns(ProjectStatCollection, ProjectReportTable)
+    make_columns(UserStatCollection, UserReportTable)
+
     Base.metadata.create_all(engine)
