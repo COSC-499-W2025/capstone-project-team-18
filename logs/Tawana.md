@@ -1,3 +1,15 @@
+# Week 9 10/27 - 11/02
+
+# Peer Evaluation!
+[Peer Eval THN](./log_images/personal_log_imgs/tawana/tawana_week9_log.png)
+
+# Recap on your week goals
+This week, my focus was on expanding our analyzer framework to support web development files by implementing CSS, HTML, and PHP analyzers. I worked on Issue `#142`, adding dedicated analyzers for each file type to detect relevant language-specific elements—such as rule blocks and class selectors in CSS, linked resources and scripts in HTML, and functions, classes, and imports in PHP.
+
+I also updated the factory routing in get_appropriate_analyzer() to ensure correct analyzer selection for these new file types and created a full test suite (test_web_analyzers.py) to validate their functionality. This addition enhances our system’s overall analysis coverage and ensures consistent behavior across all supported languages.
+
+Additionally, I reviewed Jimi’s PR for Issue `#78` (extrapolating individual contributions for group projects) and Priyansh’s PR for Issue `#122` (C and TypeScript analyzers).
+
 # Week 8 10/20 - 10/26
 
 # Peer Evaluation!
