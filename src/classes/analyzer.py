@@ -122,12 +122,12 @@ class TextFileAnalyzer(BaseFileAnalyzer):
     """
     class CAnalyzer(CodeFileAnalyzer):
         """
-        Analyzer for C source code files (.c).
+        Analyzer for C source code files(.c).
 
         Statistics:
             - NUMBER_OF_FUNCTIONS
-            - NUMBER_OF_CLASSES (used for structs)
-            - IMPORTED_PACKAGES (used for #includes)
+            - NUMBER_OF_CLASSES(used for structs)
+            - IMPORTED_PACKAGES(used for  # includes)
         """
 
         def _process(self) -> None:
@@ -148,7 +148,8 @@ class TextFileAnalyzer(BaseFileAnalyzer):
             stats = [
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
                           function_count),
-                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, struct_count),
+                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
+                          struct_count),
                 Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
                           included_headers),
             ]
@@ -158,7 +159,7 @@ class TextFileAnalyzer(BaseFileAnalyzer):
 
     class TypeScriptAnalyzer(CodeFileAnalyzer):
         """
-        Analyzer for TypeScript source code files (.ts).
+        Analyzer for TypeScript source code files(.ts).
 
         Statistics:
             - NUMBER_OF_FUNCTIONS
@@ -171,7 +172,8 @@ class TextFileAnalyzer(BaseFileAnalyzer):
             super()._process()
 
             # Classes
-            class_count = len(re.findall(r'\bclass\s+(\w+)', self.text_content))
+            class_count = len(re.findall(
+                r'\bclass\s+(\w+)', self.text_content))
 
             # Interfaces
             interface_count = len(re.findall(
@@ -201,7 +203,8 @@ class TextFileAnalyzer(BaseFileAnalyzer):
             stats = [
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
                           function_count),
-                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, class_count),
+                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
+                          class_count),
                 Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
                           interface_count),
                 Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
@@ -298,7 +301,7 @@ class TextFileAnalyzer(BaseFileAnalyzer):
 
 class JavaAnalyzer(CodeFileAnalyzer):
     """
-    Analyzer for Java source code files (.java).
+    Analyzer for Java source code files(.java).
 
     Statistics:
         - NUMBER_OF_FUNCTIONS
@@ -335,7 +338,7 @@ class JavaAnalyzer(CodeFileAnalyzer):
 
 class JavaScriptAnalyzer(CodeFileAnalyzer):
     """
-    Analyzer for JavaScript source code files (.js).
+    Analyzer for JavaScript source code files(.js).
 
     Statistics:
         - NUMBER_OF_FUNCTIONS
@@ -378,12 +381,12 @@ class JavaScriptAnalyzer(CodeFileAnalyzer):
 
 class CAnalyzer(CodeFileAnalyzer):
     """
-    Analyzer for C source code files (.c).
+    Analyzer for C source code files(.c).
 
     Statistics:
         - NUMBER_OF_FUNCTIONS
-        - NUMBER_OF_CLASSES (used for structs)
-        - IMPORTED_PACKAGES (used for #includes)
+        - NUMBER_OF_CLASSES(used for structs)
+        - IMPORTED_PACKAGES(used for  # includes)
     """
 
     def _process(self) -> None:
@@ -414,7 +417,7 @@ class CAnalyzer(CodeFileAnalyzer):
 
 class TypeScriptAnalyzer(CodeFileAnalyzer):
     """
-    Analyzer for TypeScript source code files (.ts).
+    Analyzer for TypeScript source code files(.ts).
 
     Statistics:
         - NUMBER_OF_FUNCTIONS
