@@ -8,7 +8,7 @@ respective tables as a result.
 from datetime import date
 import typing as t
 
-from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date, Enum as SAEnum
+from sqlalchemy import Column, Integer, Boolean, Float, JSON, String, Date
 
 
 from src.classes.statistic import (
@@ -42,7 +42,7 @@ def _sqlalchemy_type_for(expected_type: t.Any):
     type_map = {
         int: Integer,
         str: String,
-        date: DateTime,
+        date: Date,
         float: Float,
         list[str]: JSON,
         bool: Boolean,
