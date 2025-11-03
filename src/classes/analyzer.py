@@ -101,6 +101,22 @@ class BaseFileAnalyzer:
 
         return FileReport(statistics=self.stats, filepath=self.filepath)
 
+    def extract_file_reports(self, project_title: str, project_structure: dict) -> list:
+        """
+        Method to extract individual fileReports within each project
+        """
+        # Given a single project for a user and the project's structure return a list with each fileReport
+        projectFiles = project_structure.get(project_title)
+        # list of reports for each file in an individual project to be returned
+        reports = []
+        if projectFiles is not None:
+            for file in projectFiles:
+                analyzer = BaseFileAnalyzer(file)
+                reports.append(analyzer.analyze())
+        else:
+            return None
+        return reports
+
 
 class TextFileAnalyzer(BaseFileAnalyzer):
     """
@@ -194,10 +210,11 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
 
         https://en.wikipedia.org/wiki/Automated_readability_index
         """
-
         # Handle edge cases to prevent division by zero
         if word_count == 0 or sentence_count == 0:
             return 0.0
+
+    
         
         return 4.71 * (character_count / word_count) + 0.5 * (word_count / sentence_count) - 21.43
 
@@ -359,6 +376,97 @@ class JavaScriptAnalyzer(CodeFileAnalyzer):
         self.stats.extend(stats)
 
 
+class CAnalyzer(CodeFileAnalyzer):
+    """
+    Analyzer for C source code files (.c).
+
+    Statistics:
+        - NUMBER_OF_FUNCTIONS
+        - NUMBER_OF_CLASSES (used for structs)
+        - IMPORTED_PACKAGES (used for #includes)
+    """
+
+    def _process(self) -> None:
+        super()._process()
+
+        # Function definitions (improved heuristic: match return type, name, params, and opening brace)
+        function_count = len(re.findall(
+            r'^[\w\s\*]+\s+([a-zA-Z_][\w]*)\s*\([^)]*\)\s*\{', self.text_content, re.MULTILINE))
+
+        # Struct definitions (match 'struct Name { ... };') - treating structs as classes
+        struct_count = len(re.findall(
+            r'struct\s+[a-zA-Z_][\w]*\s*\{[^}]*\}\s*;', self.text_content, re.DOTALL))
+
+        # Includes - extract header names for IMPORTED_PACKAGES
+        included_headers = re.findall(
+            r'^\s*#include\s+[<"]([^>"]+)[>"]', self.text_content, re.MULTILINE)
+
+        stats = [
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
+                      function_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, struct_count),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      included_headers),
+        ]
+
+        self.stats.extend(stats)
+
+
+class TypeScriptAnalyzer(CodeFileAnalyzer):
+    """
+    Analyzer for TypeScript source code files (.ts).
+
+    Statistics:
+        - NUMBER_OF_FUNCTIONS
+        - NUMBER_OF_CLASSES
+        - NUMBER_OF_INTERFACES
+        - IMPORTED_PACKAGES
+    """
+
+    def _process(self) -> None:
+        super()._process()
+
+        # Classes
+        class_count = len(re.findall(r'\bclass\s+(\w+)', self.text_content))
+
+        # Interfaces
+        interface_count = len(re.findall(
+            r'\binterface\s+(\w+)', self.text_content))
+
+        # Functions (named, arrow, and exported)
+        # Avoid double-counting exported functions
+        named_funcs = set(re.findall(
+            r'\bfunction\s+(\w+)\s*\(', self.text_content))
+        arrow_funcs = set(re.findall(
+            r'\b(?:const|let|var)\s+(\w+)\s*=\s*(?:\([^)]*\)|[\w]+)\s*=>', self.text_content))
+        exported_funcs = set(re.findall(
+            r'export\s+function\s+(\w+)\s*\(', self.text_content))
+        function_count = len(named_funcs | arrow_funcs | exported_funcs)
+
+        # Imports
+        all_imports = (
+            re.findall(r'import\s+.*?\s+from\s+[\'"]([^\'"]+)[\'"]', self.text_content) +
+            re.findall(
+                r'require\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)', self.text_content)
+        )
+        package_imports = list(set(
+            imp.split('/')[0] for imp in all_imports
+            if not imp.startswith('.') and not imp.startswith('/')
+        ))
+
+        stats = [
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
+                      function_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, class_count),
+            Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
+                      interface_count),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      package_imports),
+        ]
+
+        self.stats.extend(stats)
+
+
 def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
@@ -381,15 +489,22 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     if extension == '.java':
         return JavaAnalyzer(filepath)
 
-     # JavScript files
+    # JavaScript files
     if extension in {'.js', '.jsx'}:
         return JavaScriptAnalyzer(filepath)
 
-     # Text-based files
+    # C files
+    if extension == '.c':
+        return CAnalyzer(filepath)
+
+    # TypeScript files
+    if extension in {'.ts', '.tsx'}:
+        return TypeScriptAnalyzer(filepath)
+
+    # Text-based files
     text_extensions = {'.css', '.html', '.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
         return TextFileAnalyzer(filepath)
 
     # Default to base analyzer
     return BaseFileAnalyzer(filepath)
-
