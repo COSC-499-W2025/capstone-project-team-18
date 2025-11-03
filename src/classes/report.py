@@ -49,7 +49,6 @@ class FileReport(BaseReport):
         super().__init__(statistics)
         self.filepath = filepath
 
-
     @classmethod
     def create_with_analysis(cls, filepath: str) -> "FileReport":
         """
@@ -83,7 +82,7 @@ class ProjectReport(BaseReport):
                  file_reports: Optional[list[FileReport]] = None,
                  zip_path: Optional[str] = None,
                  project_name: Optional[str] = None,
-                 user_email: str = None
+                 user_email: Optional[str] = None
                  ):
         """
         Initialize ProjectReport with file reports and optional Git analysis from zip file.
