@@ -8,7 +8,7 @@
 
 ### Burnup Chart
 
-![Image of burnup chart for this week]()
+[Image of burnup chart for this week]
 
 ## Details
 
@@ -26,18 +26,14 @@ priyansh1913 -> Priyansh Mathur
 ### Completed Tasks
 
 Image should include the issue's title, associated task number, ID, and the team member's username that completed/closed the issue
-![image](path)
 
 ### In Progress Tasks
 
 Image should include the issue's title, associated task number, ID, and the team member's username that completed/closed the issue
-![image](path)
 
 
 ### Test Report
 Image should display the results of a script that runs all tests and displays summary of total tests that pass/fail
-![image](path)
-
 
 ### (Optional) Additional Info
 
