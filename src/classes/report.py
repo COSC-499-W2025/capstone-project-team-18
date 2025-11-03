@@ -50,8 +50,23 @@ class FileReport(BaseReport):
         super().__init__(statistics)
         self.filepath = filepath
 
+    @classmethod
+    def create_with_analysis(cls, filepath: str) -> "FileReport":
+        """
+        Create a FileReport with automatic file type detection and analysis.
+        This includes:
+                - Natural Language statistics for appropriate langauge based files
+                - Python statistics for appropriate Python files
+                - Java statistics for appropriate Java files
+                - JavaScript statistics for appropriate JavaScript files
+                - Text-based statistics for appropriate text based files (i.e. css, html, xml, json, yml, yaml)
+        """
+        from .analyzer import get_appropriate_analyzer
+        analyzer = get_appropriate_analyzer(filepath)
+        return analyzer.analyze()
+
     def get_filename(self):
-        raise ValueError("Unimplemented")
+        return Path(self.filepath).name
 
 
 class ProjectReport(BaseReport):
@@ -64,7 +79,11 @@ class ProjectReport(BaseReport):
     of "total lines written."
     """
 
-    def __init__(self, file_reports: list[FileReport] = None, zip_path: str = None, project_name: str = None):
+    def __init__(self,
+                 file_reports: Optional[list[FileReport]] = None,
+                 zip_path: Optional[str] = None,
+                 project_name: Optional[str] = None
+                 ):
         """
         Initialize ProjectReport with file reports and optional Git analysis from zip file.
 
@@ -73,6 +92,7 @@ class ProjectReport(BaseReport):
             zip_path: Optional path to zip file for Git analysis
             project_name: Optional project name for Git analysis
         """
+
         self.project_name = project_name or "Unknown Project"
 
         project_stats = []
@@ -112,7 +132,8 @@ class ProjectReport(BaseReport):
 
         # Add Git analysis statistics if zip file is provided
         if zip_path and project_name:
-            git_stats = self._analyze_git_authorship(zip_path, project_name)
+            git_stats = self._analyze_git_authorship(
+                zip_path, project_name)
             if git_stats:
                 for stat in git_stats:
                     project_statistics.add(stat)
