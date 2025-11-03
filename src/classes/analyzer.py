@@ -214,6 +214,8 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         if word_count == 0 or sentence_count == 0:
             return 0.0
 
+    
+        
         return 4.71 * (character_count / word_count) + 0.5 * (word_count / sentence_count) - 21.43
 
 
