@@ -541,6 +541,41 @@ class HTMLAnalyzer(CodeFileAnalyzer):
         ]
         self.stats.extend(stats)
 
+class PHPAnalyzer(CodeFileAnalyzer):
+    """
+    Analyzer for PHP files (.php).
+
+    Statistics:
+        - NUMBER_OF_FUNCTIONS
+        - NUMBER_OF_CLASSES
+        - NUMBER_OF_INTERFACES
+        - IMPORTED_PACKAGES  (use/import + include/require targets)
+    """
+    def _process(self) -> None:
+        super()._process()
+
+        func_def_names = set(re.findall(r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))
+        short_arrow_defs = re.findall(r'\bfn\s*\(', self.text_content)  # anonymous short functions
+        function_count = len(func_def_names) + len(short_arrow_defs)
+
+        class_count = len(re.findall(r'\bclass\s+[A-Za-z_]\w*', self.text_content))
+        interface_count = len(re.findall(r'\binterface\s+[A-Za-z_]\w*', self.text_content))
+
+        namespace_imports = re.findall(r'\buse\s+([A-Za-z_][\w\\]+)\s*;', self.text_content)
+        includes = re.findall(
+            r'\b(?:require|include|require_once|include_once)\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)',
+            self.text_content
+        )
+        imported_packages = list(set(namespace_imports + includes))
+
+        stats = [
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, function_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, class_count),
+            Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value, interface_count),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+        ]
+        self.stats.extend(stats)
+
 
 def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     """
@@ -581,6 +616,9 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     
     if extension in {'.html', '.htm'}:
         return HTMLAnalyzer(filepath)
+    
+    if extension == '.php':
+        return PHPAnalyzer(filepath)
 
     # Text-based files
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}
