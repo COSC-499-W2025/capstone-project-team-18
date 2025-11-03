@@ -8,6 +8,7 @@ import shutil
 import zipfile
 from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
+from .resume import Resume, ResumeItem
 from typing import Any
 from datetime import datetime, date
 
@@ -92,6 +93,9 @@ class ProjectReport(BaseReport):
             zip_path: Optional path to zip file for Git analysis
             project_name: Optional project name for Git analysis
         """
+
+        self.project_name = project_name or "Unknown Project"
+
         project_stats = []
 
         # Process file reports if provided
@@ -138,11 +142,44 @@ class ProjectReport(BaseReport):
         # Initialize the base class with the project statistics
         super().__init__(project_statistics)
 
+    def generate_resume_item(self) -> ResumeItem:
+        """
+        Generates a ResumeItem from the project report statistics.
+
+        Args:
+            title: Title of the resume item
+            bullet_points: List of bullet points describing the project
+            start_date: Start date of the project
+            end_date: End date of the project
+        """
+
+        # Here we create bullet points based on available statistics
+
+        # TODO: Expand bullet points based on real statistics
+        bullet_points = [
+            f"I helped create this project named {self.project_name}.",
+        ]
+
+        title = self.project_name
+
+        start_date = self.get_value(
+            ProjectStatCollection.PROJECT_START_DATE.value)
+        end_date = self.get_value(
+            ProjectStatCollection.PROJECT_END_DATE.value)
+
+        return ResumeItem(
+            title=title,
+            bullet_points=bullet_points,
+            start_date=start_date,
+            end_date=end_date
+        )
+
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
         """Create a ProjectReport directly from a StatisticIndex for testing"""
         inst = cls.__new__(cls)
         BaseReport.__init__(inst, statistics)
+        inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
         return inst
 
     def _analyze_git_authorship(self, zip_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
@@ -238,6 +275,9 @@ class UserReport(BaseReport):
             project_reports: List of ProjectReport objects containing project-level statistics
         """
 
+        self.resume_items = [project_reports.generate_resume_item()
+                             for project_reports in project_reports]
+
         # Extract all project start dates, filtering out None values
         # This creates a list of datetime objects representing when each project started
         project_start_dates = [
@@ -277,6 +317,20 @@ class UserReport(BaseReport):
 
         # Initialize the base class with the user statistics
         super().__init__(user_statistics)
+
+    def generate_resume(self) -> Resume:
+        """
+        Generates a Resume object based on the ResumeItem
+        that are generated from the ProjectReports. As well
+        as adding skills from the User Statistics.
+        """
+
+        resume = Resume()
+
+        for item in self.resume_items:
+            resume.add_item(item)
+
+        return resume
 
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
