@@ -13,7 +13,18 @@ import ast
 from utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
 
-logger = logging.basicConfig(level=logging.DEBUG)
+#CSS & HTML parsers 
+try:
+    import tinycss2
+except ImportError:
+    tinycss2 = None
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
+
+logging.basicConfig(level=logging.INFO)  
+logger = logging.getLogger(__name__)
 
 
 def extract_file_reports(project_file: Optional[ProjectFiles]) -> Optional[list[FileReport]]:
@@ -466,6 +477,228 @@ class TypeScriptAnalyzer(CodeFileAnalyzer):
 
         self.stats.extend(stats)
 
+class CSSAnalyzer(CodeFileAnalyzer):
+    """
+    Analyzer for CSS source files (.css).
+
+    Statistics:
+        - NUMBER_OF_FUNCTIONS  (rule blocks: style rules + at-rules with blocks)
+        - NUMBER_OF_CLASSES    (distinct `.class` selectors)
+        - IMPORTED_PACKAGES    (@import targets)
+
+    Note:
+        NUMBER_OF_FUNCTIONS counts top-level style rules and at-rules that have a block.
+        Nested qualified rules inside at-rules (e.g., selectors within @media) are **not**
+        counted separately.
+    """
+
+    def _process(self) -> None:
+        super()._process()
+
+        # Empty file: emit zero/empty stats so keys always exist
+        if not self.text_content.strip():
+            logger.debug(f"{self.__class__.__name__}: Empty file {self.filepath}")
+            self.stats.extend([
+                Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
+                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
+                Statistic(FileStatCollection.IMPORTED_PACKAGES.value, []),
+            ])
+            return
+
+        if tinycss2 is not None:
+            rules = tinycss2.parse_stylesheet(
+                self.text_content,
+                skip_comments=True,
+                skip_whitespace=True,
+            )
+
+            rule_count = 0
+            class_tokens: set[str] = set()
+            imports: list[str] = []
+
+            def extract_classes_from_prelude(prelude) -> list[str]:
+                selector_text = tinycss2.serialize(prelude or [])
+                return re.findall(r'\.([a-zA-Z_-][\w-]*)', selector_text)
+
+            def extract_imports_from_prelude(prelude) -> list[str]:
+                found: list[str] = []
+                for t in (prelude or []):
+                    if t.type == "string":
+                        found.append(t.value)
+                    elif t.type == "url":
+                        found.append(t.value)
+                    elif t.type == "function" and getattr(t, "name", "").lower() == "url":
+                        for a in (t.arguments or []):
+                            if a.type == "string":
+                                found.append(a.value)
+                return found
+
+            for r in rules:
+                if r.type == "at-rule":
+                    at_kw = (r.at_keyword or "").lower()
+
+                    if at_kw == "import":
+                        imports.extend(extract_imports_from_prelude(r.prelude))
+
+                    # Count at-rule blocks and inspect nested qualified rules
+                    if r.content is not None:
+                        rule_count += 1
+                        nested_rules = tinycss2.parse_rule_list(r.content)
+                        for nr in nested_rules:
+                            if nr.type == "qualified-rule":
+                                class_tokens.update(extract_classes_from_prelude(nr.prelude))
+
+                elif r.type == "qualified-rule":
+                    rule_count += 1
+                    class_tokens.update(extract_classes_from_prelude(r.prelude))
+
+            imported_packages = list(set(imports))
+
+        else:
+            # ---- Regex fallback (keeps analyzer usable if tinycss2 isn't installed) ----
+            logger.debug("CSSAnalyzer: tinycss2 not installed; using regex fallback.")
+            cleaned = re.sub(r'/\*.*?\*/', '', self.text_content, flags=re.DOTALL)
+
+            # Count style rules and at-rule blocks (best-effort)
+            rule_blocks = re.findall(r'[^{@][^{]+\{[^{}]*\}|@[^{}]+\{[^{}]*\}', cleaned)
+            rule_count = len(rule_blocks)
+
+            # Distinct .class selectors (including inside at-rule blocks)
+            class_tokens = set(re.findall(r'\.([a-zA-Z_-][\w-]*)', cleaned))
+
+            # Capture @import "x.css" and @import url("x.css")
+            imports = re.findall(
+                r'@import\s+(?:url\(\s*[\'"]?([^\'")]+)[\'"]?\s*\)|[\'"]([^\'"]+)[\'"])',
+                cleaned
+            )
+            imported_packages = list({a or b for a, b in imports})
+
+        self.stats.extend([
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, rule_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, len(class_tokens)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+        ])
+
+class HTMLAnalyzer(CodeFileAnalyzer):
+    """
+    Analyzer for HTML files (.html, .htm).
+
+    Statistics:
+        - NUMBER_OF_FUNCTIONS  (count of <script> blocks, inline + external)
+        - NUMBER_OF_CLASSES    (distinct class tokens across elements)
+        - IMPORTED_PACKAGES    (external resources: <script src>, <link href>, <img src>)
+    """
+
+    def _process(self) -> None:
+        super()._process()
+
+        # Empty file: emit zero/empty stats so keys always exist
+        if not self.text_content.strip():
+            logger.debug(f"{self.__class__.__name__}: Empty file {self.filepath}")
+            self.stats.extend([
+                Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
+                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
+                Statistic(FileStatCollection.IMPORTED_PACKAGES.value, []),
+            ])
+            return
+
+        if BeautifulSoup is not None:
+            try:
+                soup = BeautifulSoup(self.text_content, "lxml")
+            except Exception:
+                soup = BeautifulSoup(self.text_content, "html.parser")
+
+            # Scripts (inline + external)
+            script_count = len(soup.find_all("script"))
+
+            # Distinct class tokens
+            class_tokens: set[str] = set()
+            for el in soup.find_all(class_=True):
+                for c in el.get("class", []):
+                    if c:
+                        class_tokens.add(c)
+
+            # External resources
+            script_srcs = [s["src"] for s in soup.find_all("script", src=True)]
+            link_hrefs  = [l["href"] for l in soup.find_all("link", href=True)]
+            img_srcs    = [i["src"] for i in soup.find_all("img", src=True)]
+            imported_packages = list({*script_srcs, *link_hrefs, *img_srcs})
+
+        else:
+            # ---- Regex fallback (if bs4 isn't installed) ----
+            logger.debug("HTMLAnalyzer: BeautifulSoup not installed; using regex fallback.")
+            # <script> blocks (inline + external)
+            script_count = len(re.findall(r'<\s*script\b', self.text_content, re.IGNORECASE))
+
+            # class="...", class='...', or class=token
+            class_attrs = re.findall(
+                r'class\s*=\s*(?:"(.*?)"|\'(.*?)\'|([^\s>]+))',
+                self.text_content, re.IGNORECASE | re.DOTALL
+            )
+            class_tokens: set[str] = set()
+            for a, b, c in class_attrs:
+                raw = a or b or c or ""
+                for tok in re.split(r'\s+', raw.strip()):
+                    if tok:
+                        class_tokens.add(tok)
+
+            # External resources
+            srcs  = re.findall(r'<\s*script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', self.text_content, re.IGNORECASE)
+            links = re.findall(r'<\s*link[^>]*\bhref\s*=\s*["\']([^"\']+)["\']',  self.text_content, re.IGNORECASE)
+            imgs  = re.findall(r'<\s*img[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']',    self.text_content, re.IGNORECASE)
+            imported_packages = list(set(srcs + links + imgs))
+
+        self.stats.extend([
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, script_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, len(class_tokens)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+        ])
+
+class PHPAnalyzer(CodeFileAnalyzer):
+    """
+    Analyzer for PHP files (.php).
+
+    Statistics:
+        - NUMBER_OF_FUNCTIONS
+        - NUMBER_OF_CLASSES
+        - NUMBER_OF_INTERFACES
+        - IMPORTED_PACKAGES  (use/import + include/require targets)
+    """
+    def _process(self) -> None:
+        super()._process()
+
+        if not self.text_content.strip():
+            logging.debug(f"{self.__class__.__name__}: Empty file {self.filepath}")
+            self.stats.extend([
+                Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
+                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
+                Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value, 0),
+                Statistic(FileStatCollection.IMPORTED_PACKAGES.value, []),
+                ])
+            return
+
+        func_def_names = set(re.findall(r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))
+        short_arrow_defs = re.findall(r'\bfn\s*\(', self.text_content)  
+        function_count = len(func_def_names) + len(short_arrow_defs)
+
+        class_count = len(re.findall(r'\bclass\s+[A-Za-z_]\w*', self.text_content))
+        interface_count = len(re.findall(r'\binterface\s+[A-Za-z_]\w*', self.text_content))
+
+        namespace_imports = re.findall(r'\buse\s+([A-Za-z_][\w\\]+)\s*;', self.text_content)
+        includes = re.findall(
+            r'\b(?:require|include|require_once|include_once)\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)',
+            self.text_content
+        )
+        imported_packages = list(set(namespace_imports + includes))
+
+        stats = [
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, function_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, class_count),
+            Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value, interface_count),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+        ]
+        self.stats.extend(stats)
+
 
 def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     """
@@ -500,11 +733,24 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
         return TypeScriptAnalyzer(filepath)
+    
+    # CSS files
+    if extension == '.css':
+        return CSSAnalyzer(filepath)
+    
+    # HTML or HTM files
+    if extension in {'.html', '.htm'}:
+        return HTMLAnalyzer(filepath)
+    
+    # PHP files
+    if extension == '.php':
+        return PHPAnalyzer(filepath)
 
     # Text-based files
-    text_extensions = {'.css', '.html', '.xml', '.json', '.yml', '.yaml'}
+    text_extensions = {'.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
         return TextFileAnalyzer(filepath)
 
     # Default to base analyzer
     return BaseFileAnalyzer(filepath)
+
