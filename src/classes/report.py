@@ -49,8 +49,24 @@ class FileReport(BaseReport):
         super().__init__(statistics)
         self.filepath = filepath
 
+
+    @classmethod
+    def create_with_analysis(cls, filepath: str) -> "FileReport":
+        """
+        Create a FileReport with automatic file type detection and analysis.
+        This includes:
+                - Natural Language statistics for appropriate langauge based files
+                - Python statistics for appropriate Python files
+                - Java statistics for appropriate Java files
+                - JavaScript statistics for appropriate JavaScript files
+                - Text-based statistics for appropriate text based files (i.e. css, html, xml, json, yml, yaml)
+        """
+        from .analyzer import get_appropriate_analyzer
+        analyzer = get_appropriate_analyzer(filepath)
+        return analyzer.analyze()
+
     def get_filename(self):
-        raise ValueError("Unimplemented")
+        return Path(self.filepath).name
 
 
 class ProjectReport(BaseReport):

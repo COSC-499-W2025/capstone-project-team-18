@@ -1,7 +1,32 @@
+"""
+This file contains the command line interface (CLI) for the Artifact Miner application.
+"""
 
 import cmd
 import re
+import os
 from app import start_miner
+
+
+def _is_valid_filepath_to_zip(filepath: str) -> int:
+    """
+    Helper function to validate the provided filepath.
+    A valid filepath must exist and be a zipped file.
+
+    Int code returns:
+    0 - valid filepath to a zip file
+    1 - invalid filepath
+    2 - filepath does not point to a zip file
+    3 - filepath does not exist
+    """
+
+    if not os.path.exists(filepath):
+        return 3
+    if not os.path.isfile(filepath):
+        return 1
+    if not filepath.endswith('.zip'):
+        return 2
+    return 0
 
 
 class ArtifactMiner(cmd.Cmd):
@@ -73,10 +98,23 @@ class ArtifactMiner(cmd.Cmd):
         prompt = "Paste or type the full filepath to your project folder: (or 'back' / 'cancel' to return): "
         answer = input(prompt).strip()
 
-        # Check if user wants to cancel
-        if self._handle_cancel_input(answer):
-            print("\n" + self.options)
-            return  # Return to main menu
+            # Check if user wants to cancel
+            if self._handle_cancel_input(answer):
+                print("\n" + self.options)
+                return  # Return to main menu
+
+            # Validate the filepath
+            error_code = _is_valid_filepath_to_zip(answer)
+            if error_code == 0:
+                break  # Valid filepath found, exit the loop
+            elif error_code == 1:
+                print("\nError: The provided filepath is invalid. Please try again.\n")
+            elif error_code == 2:
+                print(
+                    "\nError: The provided filepath does not point to a zip file. Please try again.\n")
+            elif error_code == 3:
+                print(
+                    "\nError: The provided filepath does not exist. Please try again.\n")
 
         # Process the filepath
         self.project_filepath = answer
