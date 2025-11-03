@@ -8,6 +8,8 @@ This week, my focus was on expanding our analyzer framework to support web devel
 
 I also updated the factory routing in get_appropriate_analyzer() to ensure correct analyzer selection for these new file types and created a full test suite (test_web_analyzers.py) to validate their functionality. This addition enhances our system’s overall analysis coverage and ensures consistent behavior across all supported languages.
 
+Additionally, I reviewed Jimi’s PR for Issue `#78` (extrapolating individual contributions for group projects) and Priyansh’s PR for Issue `#122` (C and TypeScript analyzers).
+
 # Week 8 10/20 - 10/26
 
 # Peer Evaluation!
