@@ -466,7 +466,6 @@ class TypeScriptAnalyzer(CodeFileAnalyzer):
 
         self.stats.extend(stats)
 
-
 class CSSAnalyzer(CodeFileAnalyzer):
     """
     Analyzer for CSS files (.css).
@@ -496,6 +495,48 @@ class CSSAnalyzer(CodeFileAnalyzer):
         stats = [
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, rule_count),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, len(class_selectors)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+        ]
+        self.stats.extend(stats)
+
+class HTMLAnalyzer(CodeFileAnalyzer):
+    """
+    Analyzer for HTML files (.html, .htm).
+
+    Statistics:
+        - NUMBER_OF_FUNCTIONS  (treated as number of <script> blocks)
+        - NUMBER_OF_CLASSES    (distinct class tokens)
+        - IMPORTED_PACKAGES    (external resources: script/src, link/href, img/src)
+    """
+    def _process(self) -> None:
+        super()._process()
+
+        # Count <script> blocks
+        script_blocks = re.findall(r'<\s*script\b', self.text_content, re.IGNORECASE)
+        script_count = len(script_blocks)
+
+        # Distinct class tokens from class="a b c"
+        class_attrs = re.findall(
+            r'class\s*=\s*"(.*?)"|class\s*=\s*\'(.*?)\'',
+            self.text_content,
+            re.IGNORECASE | re.DOTALL
+        )
+        class_tokens = set()
+        for a, b in class_attrs:
+            raw = a or b or ""
+            for tok in re.split(r'\s+', raw.strip()):
+                if tok:
+                    class_tokens.add(tok)
+
+        # External resources
+        srcs = re.findall(r'<\s*script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', self.text_content, re.IGNORECASE)
+        links = re.findall(r'<\s*link[^>]*\bhref\s*=\s*["\']([^"\']+)["\']', self.text_content, re.IGNORECASE)
+        imgs = re.findall(r'<\s*img[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', self.text_content, re.IGNORECASE)
+        imported_packages = list(set(srcs + links + imgs))
+
+        stats = [
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, script_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, len(class_tokens)),
             Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
         ]
         self.stats.extend(stats)
@@ -534,9 +575,15 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
         return TypeScriptAnalyzer(filepath)
+    
+    if extension == '.css':
+        return CSSAnalyzer(filepath)
+    
+    if extension in {'.html', '.htm'}:
+        return HTMLAnalyzer(filepath)
 
     # Text-based files
-    text_extensions = {'.css', '.html', '.xml', '.json', '.yml', '.yaml'}
+    text_extensions = {'.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
         return TextFileAnalyzer(filepath)
 
