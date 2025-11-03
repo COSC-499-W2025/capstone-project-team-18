@@ -14,6 +14,8 @@
 
 **[Week 8, Oct. 20-26](#week-8-oct-20-26)**
 
+**[Week 9, Oct. 27-Nov. 2](#week-9-oct-27-nov-2)**
+
 ---
 
 ## Week 3, Sept. 15-21
@@ -91,3 +93,17 @@ This week's goal was to implement critical features for our end-to-end workflow 
 I completed Issue #67, implementing project discovery from zip files with Git-based group detection—a core feature enabling our workflow to start from user uploads. This included creating 6 comprehensive tests covering multiple projects, Mac zip structures, and Git authorship analysis. I also implemented Issue #90, creating JavaAnalyzer and JavaScriptAnalyzer classes using regex-based parsing to extend analysis beyond Python. Both analyzers count classes, functions, and imports, with full test coverage including test fixtures (example_java.java, example_javascript.js).
 
 Additionally, I reviewed PR #87 GitHub Pytest Action by Sam, which adds CI/CD to automatically run tests on every PR. I also reviewed PR #91 on user-readable UserReport formatting by Tawana, providing feedback on test coverage and code consistency.
+
+## Week 9, Oct. 27-Nov. 2
+
+### Peer Eval
+![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week9_log.png)
+
+### Recap
+This week, our team aimed to strengthen the platform’s core by expanding multi-language code analysis, improve reporting, enhancing resume file handling, and refining database flexibility.
+
+I completed Issue #130 by implementing project-level aggregate statistics in ProjectReport. This feature aggregates statistics across all files in a project, allowing users to view comprehensive metrics such as total lines of code, number of classes, and functions at the project level. The implementation required updating the ProjectReport class, integrating aggregation logic, and ensuring compatibility with existing reporting workflows.
+
+I also created the C and TypeScript analyzer PR which completes Issue #122, which extends our code analysis capabilities to new languages. The new analyzers use regex-based parsing to count classes, functions, and imports in C and TypeScript files, mirroring the approach used for Java and JavaScript. This update improves the flexibility of our statistics system and supports more diverse codebases. I wrote and validated tests for these analyzers to ensure accurate results and robust integration.
+
+Both PRs are foundational for expanding our platform's functionality and data aggregation. Additionally,I reviewed two PRs: 'changes for dynamic column generation' by Alex , and 'Created Very Basic Resume Class Structure' by Sam. My feedback focused on code correctness, maintainability, and alignment with project goals.
