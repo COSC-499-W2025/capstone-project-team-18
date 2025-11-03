@@ -33,7 +33,7 @@
 
 ### Burnup Chart
 
-[Image of burnup chart for this week]
+![burnup](/logs/log_images/team_log_imgs/burnup_week9.png)
 
 ## Details
 
@@ -59,8 +59,5 @@ priyansh1913 -> Priyansh Mathur
 
 
 ### Test Report
-Image should display the results of a script that runs all tests and displays summary of total tests that pass/fail
 
-### (Optional) Additional Info
-
-Any additional info/context that we might want to add can be written here.
+![test report](/logs/log_images/test_log_imgs/week9.png)
