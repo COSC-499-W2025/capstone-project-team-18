@@ -1,3 +1,13 @@
+# Week 8 10/20 - 10/26
+
+# Peer Evaluation!
+[Peer Eval THN](./log_images/personal_log_imgs/tawana/tawana_week8_log.png)
+
+# Recap on your week goals
+This week, my focus was on implementing a key feature for user-level reporting within our statistics system. I worked on Issue #71: Display a Friendly Representation of UserReport Class, adding a method in the UserReport class to convert stored statistics into readable user-facing messages, along with a full supporting test suite to ensure correct formatting and behavior.
+
+I also reviewed and tested Issue #40: Add File Metadata to FileReport and Issue #68: Generate File Reports After Project Extraction, to help ensure quality and consistency across our codebase. 
+
 # Week 7 10/13 - 10/19
 
 # Peer Evaluation!
