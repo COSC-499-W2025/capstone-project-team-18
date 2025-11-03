@@ -199,6 +199,12 @@ class ProjectStatCollection(Enum):
         expected_type=dict,
     )
 
+    USER_COMMIT_PERCENTAGE = ProjectStatisticTemplate(
+        name="USER_COMMIT_PERCENTAGE",
+        description="percentage of commits authored by user in a Git-tracked project",
+        expected_type=float,
+    )
+
 
 class UserStatCollection(Enum):
     USER_START_DATE = UserStatisticTemplate(

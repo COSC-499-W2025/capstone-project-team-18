@@ -8,6 +8,7 @@ import shutil
 import zipfile
 from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
+from .resume import Resume, ResumeItem
 from typing import Any
 from datetime import datetime, date
 
@@ -49,7 +50,6 @@ class FileReport(BaseReport):
         super().__init__(statistics)
         self.filepath = filepath
 
-
     @classmethod
     def create_with_analysis(cls, filepath: str) -> "FileReport":
         """
@@ -82,7 +82,8 @@ class ProjectReport(BaseReport):
     def __init__(self,
                  file_reports: Optional[list[FileReport]] = None,
                  zip_path: Optional[str] = None,
-                 project_name: Optional[str] = None
+                 project_name: Optional[str] = None,
+                 user_email: Optional[str] = None
                  ):
         """
         Initialize ProjectReport with file reports and optional Git analysis from zip file.
@@ -92,6 +93,9 @@ class ProjectReport(BaseReport):
             zip_path: Optional path to zip file for Git analysis
             project_name: Optional project name for Git analysis
         """
+
+        self.project_name = project_name or "Unknown Project"
+
         project_stats = []
 
         # Process file reports if provided
@@ -129,7 +133,8 @@ class ProjectReport(BaseReport):
 
         # Add Git analysis statistics if zip file is provided
         if zip_path and project_name:
-            git_stats = self._analyze_git_authorship(zip_path, project_name)
+            git_stats = self._analyze_git_authorship(
+                zip_path, project_name, user_email)
             if git_stats:
                 for stat in git_stats:
                     project_statistics.add(stat)
@@ -137,14 +142,47 @@ class ProjectReport(BaseReport):
         # Initialize the base class with the project statistics
         super().__init__(project_statistics)
 
+    def generate_resume_item(self) -> ResumeItem:
+        """
+        Generates a ResumeItem from the project report statistics.
+
+        Args:
+            title: Title of the resume item
+            bullet_points: List of bullet points describing the project
+            start_date: Start date of the project
+            end_date: End date of the project
+        """
+
+        # Here we create bullet points based on available statistics
+
+        # TODO: Expand bullet points based on real statistics
+        bullet_points = [
+            f"I helped create this project named {self.project_name}.",
+        ]
+
+        title = self.project_name
+
+        start_date = self.get_value(
+            ProjectStatCollection.PROJECT_START_DATE.value)
+        end_date = self.get_value(
+            ProjectStatCollection.PROJECT_END_DATE.value)
+
+        return ResumeItem(
+            title=title,
+            bullet_points=bullet_points,
+            start_date=start_date,
+            end_date=end_date
+        )
+
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
         """Create a ProjectReport directly from a StatisticIndex for testing"""
         inst = cls.__new__(cls)
         BaseReport.__init__(inst, statistics)
+        inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
         return inst
 
-    def _analyze_git_authorship(self, zip_path: str, project_name: str) -> Optional[list[Statistic]]:
+    def _analyze_git_authorship(self, zip_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
         if not Path(zip_path).exists():
             return None
@@ -161,8 +199,26 @@ class ProjectReport(BaseReport):
 
             try:
                 repo = Repo(Path(temp) / project_name)
-                all_authors = {c.author.email for c in repo.iter_commits()}
+
+                # Sum all commits to check perecentage by
+                commit_count_by_author = {}
+                for commit in repo.iter_commits():
+                    author_email = commit.author.email
+                    commit_count_by_author[author_email] = commit_count_by_author.get(
+                        author_email, 0) + 1
+
+                all_authors = set(commit_count_by_author.keys())
                 total_authors = len(all_authors)
+                total_commits = sum(commit_count_by_author.values())
+
+                # Calculate user's commit percentage if project has multiple authors
+                user_commit_percentage = None
+                if total_authors > 1 and user_email:
+                    user_commits = commit_count_by_author.get(
+                        user_email, 0)
+                    if total_commits > 0:
+                        user_commit_percentage = (
+                            user_commits / total_commits) * 100
 
                 authors_per_file = {}
                 for item in repo.tree().traverse():
@@ -174,7 +230,7 @@ class ProjectReport(BaseReport):
                         except Exception:
                             continue
 
-                return [
+                stats = [
                     Statistic(
                         ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
                     Statistic(
@@ -182,6 +238,17 @@ class ProjectReport(BaseReport):
                     Statistic(
                         ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
                 ]
+
+                # Add user commit percentage if applicable
+                if user_commit_percentage is not None:
+                    stats.append(
+                        Statistic(
+                            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
+                            round(user_commit_percentage, 2)
+                        )
+                    )
+
+                return stats
             except InvalidGitRepositoryError:
                 return None
         except (zipfile.BadZipFile, FileNotFoundError):
@@ -207,6 +274,9 @@ class UserReport(BaseReport):
         Args:
             project_reports: List of ProjectReport objects containing project-level statistics
         """
+
+        self.resume_items = [project_reports.generate_resume_item()
+                             for project_reports in project_reports]
 
         # Extract all project start dates, filtering out None values
         # This creates a list of datetime objects representing when each project started
@@ -247,6 +317,20 @@ class UserReport(BaseReport):
 
         # Initialize the base class with the user statistics
         super().__init__(user_statistics)
+
+    def generate_resume(self) -> Resume:
+        """
+        Generates a Resume object based on the ResumeItem
+        that are generated from the ProjectReports. As well
+        as adding skills from the User Statistics.
+        """
+
+        resume = Resume()
+
+        for item in self.resume_items:
+            resume.add_item(item)
+
+        return resume
 
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
