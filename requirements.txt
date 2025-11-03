@@ -15,4 +15,3 @@ smmap==5.0.2
 SQLAlchemy==2.0.44
 typing_extensions==4.15.0
 tzdata==2025.2
-pydriller==2.9
