@@ -13,6 +13,11 @@
 
 **[Week 7, Oct. 07–19](#week-7-oct-0719)**
 
+**[Week 8, Oct. 20–26](#week-8-oct-2026)**
+
+**[Week 9, Oct. 27 – Nov. 02](#week-9-oct-27--nov-02)**
+
+
 
 ### Peer Eval
 ![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week3_log.png)
@@ -76,15 +81,8 @@ The implementation can be found in PR ([#98](https://github.com/COSC-499-W2025/c
 
 ## Week 9, Oct. 27–Nov. 2
 
-Peer evaluation was ended at 7:50 am early on Sunday. Here is the checklist of what I did this week:
 
-- Deciding on task priorities
-- Coding
-- Reviewing teammate's code
-- Testing for your code
-- Testing teammate's code
-- Documenting your code
-
+![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week9_log.png)
 
 ### Recap
 This week I implemented a comprehensive file analysis system for the `FileReport.create_with_analysis()` method that automatically detects file types and applies specialized analyzers. The system supports natural language files (.md, .txt, .rst) with word count, character count, sentence count, and ARI score statistics, as well as code files (.py, .js, .java) with function/class counting and import analysis.
