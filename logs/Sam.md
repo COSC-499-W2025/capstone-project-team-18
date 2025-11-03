@@ -1,3 +1,18 @@
+# Week 9 10/27-11/02
+
+Peer evaluation was ended at 7:50 am early on Sunday. Here is the checklist of what I did this week:
+
+- Assigning people to tasks
+- Deciding on task priorities
+- Coding
+- Reviewing teammate's code
+- Testing for your code
+- Testing teammate's code
+- Documenting your code
+- Helping others with their work
+
+This week I worked on our project discovery functionaility in our code so it could be more extendable, more robust (be able to handle any folder depth) and handle reading files from a temporary directory rather than the zipped file itself (#105). I then tied up all of the work from last week into a completed end-to-end workflow by creating a core application loop (#121). I then created a resume class structure and wrote code to generate a very basic resume (#129). I added a little check into the CLI so when a user tries to provide a filepath that is incorrect, does not exist, or does not point to a valid zipped file, the CLI will print an error and prompt the user to input the files again (#138). Lastly, I reviewed the following pull requests (#135, #131, #126, #115)
+
 # Week 8 10/20 - 10/26
 
 ![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week8_log.png)
