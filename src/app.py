@@ -12,7 +12,7 @@ from classes.report import ProjectReport, UserReport
 import tempfile
 
 
-def start_miner(zipped_file: str) -> None:
+def start_miner(zipped_file: str, email: str = None) -> None:
     """
     This function defines the main application
     logic for the Artifact Miner. Currently,
@@ -35,7 +35,8 @@ def start_miner(zipped_file: str) -> None:
 
         pr = ProjectReport(
             project_name=project.name,
-            file_reports=file_reports
+            file_reports=file_reports,
+            user_email=email
         )
 
         project_reports.append(pr)

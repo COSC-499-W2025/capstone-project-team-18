@@ -82,7 +82,8 @@ class ProjectReport(BaseReport):
     def __init__(self,
                  file_reports: Optional[list[FileReport]] = None,
                  zip_path: Optional[str] = None,
-                 project_name: Optional[str] = None
+                 project_name: Optional[str] = None,
+                 user_email: Optional[str] = None
                  ):
         """
         Initialize ProjectReport with file reports and optional Git analysis from zip file.
@@ -133,7 +134,7 @@ class ProjectReport(BaseReport):
         # Add Git analysis statistics if zip file is provided
         if zip_path and project_name:
             git_stats = self._analyze_git_authorship(
-                zip_path, project_name)
+                zip_path, project_name, user_email)
             if git_stats:
                 for stat in git_stats:
                     project_statistics.add(stat)
@@ -181,7 +182,7 @@ class ProjectReport(BaseReport):
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
         return inst
 
-    def _analyze_git_authorship(self, zip_path: str, project_name: str) -> Optional[list[Statistic]]:
+    def _analyze_git_authorship(self, zip_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
         if not Path(zip_path).exists():
             return None
@@ -198,8 +199,26 @@ class ProjectReport(BaseReport):
 
             try:
                 repo = Repo(Path(temp) / project_name)
-                all_authors = {c.author.email for c in repo.iter_commits()}
+
+                # Sum all commits to check perecentage by
+                commit_count_by_author = {}
+                for commit in repo.iter_commits():
+                    author_email = commit.author.email
+                    commit_count_by_author[author_email] = commit_count_by_author.get(
+                        author_email, 0) + 1
+
+                all_authors = set(commit_count_by_author.keys())
                 total_authors = len(all_authors)
+                total_commits = sum(commit_count_by_author.values())
+
+                # Calculate user's commit percentage if project has multiple authors
+                user_commit_percentage = None
+                if total_authors > 1 and user_email:
+                    user_commits = commit_count_by_author.get(
+                        user_email, 0)
+                    if total_commits > 0:
+                        user_commit_percentage = (
+                            user_commits / total_commits) * 100
 
                 authors_per_file = {}
                 for item in repo.tree().traverse():
@@ -211,7 +230,7 @@ class ProjectReport(BaseReport):
                         except Exception:
                             continue
 
-                return [
+                stats = [
                     Statistic(
                         ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
                     Statistic(
@@ -219,6 +238,17 @@ class ProjectReport(BaseReport):
                     Statistic(
                         ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
                 ]
+
+                # Add user commit percentage if applicable
+                if user_commit_percentage is not None:
+                    stats.append(
+                        Statistic(
+                            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
+                            round(user_commit_percentage, 2)
+                        )
+                    )
+
+                return stats
             except InvalidGitRepositoryError:
                 return None
         except (zipfile.BadZipFile, FileNotFoundError):

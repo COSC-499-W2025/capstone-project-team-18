@@ -45,6 +45,7 @@ def test_cli_initialization(cli):
     assert cli.project_filepath == ''
     assert cli.user_consent is False
     assert cli.cmd_history == []
+    assert cli.user_email == ''
     assert cli.prompt == '(PAF) '
     assert cli.ruler == '-'
     assert "Choose one of the following options" in cli.options
@@ -226,7 +227,8 @@ def test_do_begin_without_consent(cli):
 @pytest.mark.parametrize("command,expected_method", [
     ("1", "do_perms"),
     ("2", "do_filepath"),
-    ("3", "do_begin")
+    ("3", "do_begin"),
+    ("4", "do_email")
 ])
 def test_default_command_routing_numeric(cli, command, expected_method):
     """Test that numeric commands route to correct functions."""
@@ -245,7 +247,7 @@ def test_default_command_case_insensitive(cli):
 
 def test_default_handles_unknown_commands(cli):
     """Test handling of unknown commands."""
-    unknown_commands = ["unknown", "4", "invalid", "help_me"]
+    unknown_commands = ["unknown", "5", "invalid", "help_me"]
     with patch('builtins.print') as mock_print:
         for command in unknown_commands:
             cli.default(command)

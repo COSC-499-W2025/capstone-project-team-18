@@ -12,6 +12,7 @@ python3 app.py
 | `1` | Grant permissions |
 | `2` | Set file path |
 | `3` | Begin analysis |
+| `4` | Email Configuration |
 | `back`/`cancel` | Return to main menu |
 | `exit` | Quit application |
 
@@ -34,11 +35,20 @@ Enter filepath: /path/to/project
 - Enter any valid path
 - `back`/`cancel` = Main menu
 
+### 3. Email Configuration
+```
+(PAF) 4
+Enter email: jane@example.com
+```
+- Enter any valid path
+- `back`/`cancel` = Main menu
+
+
 ### 3. Begin
 ```
 (PAF) 3
 ```
-Requires steps 1 & 2 completed first.
+Requires steps 1 & 2 completed first, step 3 is optional.
 
 ## Example Session
 ```bash
@@ -50,6 +60,10 @@ Thank you for consenting.
 Enter filepath: ./myproject
 Filepath successfully received
 
+(PAF) 4
+Enter email: john@example.com
+Email successfully received
+
 (PAF) 3
 [Analysis begins...]
 ```
@@ -57,6 +71,7 @@ Filepath successfully received
 ## Error Messages
 - **"Missing consent"** → Complete step 1
 - **"Invalid file"** → Check file path in step 2
+- **"Invalid email"** → Check email in step 3
 - **"Unknown command"** → Use 1, 2, 3, or help
 
 ## Testing
