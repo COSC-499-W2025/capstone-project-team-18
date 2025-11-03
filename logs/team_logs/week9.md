@@ -50,11 +50,12 @@ priyansh1913 -> Priyansh Mathur
 
 ### Completed Tasks
 
-Image should include the issue's title, associated task number, ID, and the team member's username that completed/closed the issue
+![Completed Tasks](/logs/log_images/team_log_imgs/issues/completedIssuesFullView_week9.png)
+![Completed Tasks](/logs/log_images/team_log_imgs/issues/completedIssues_week9.png)
 
 ### In Progress Tasks
 
-Image should include the issue's title, associated task number, ID, and the team member's username that completed/closed the issue
+![In Progress Tasks](/logs/log_images/team_log_imgs/issues/issuesInProgress_week9.png)
 
 
 ### Test Report
