@@ -12,7 +12,9 @@
 
 **[Week 7, Oct. 13-19](#week-7-oct-1319)**
 
-**[Week 8, Oct. 20-26](#week-7-oct-2026)**
+**[Week 8, Oct. 20-26](#week-8-oct-2026)**
+
+**[Week 9, Oct. 27-Nov. 2](#week-9-oct-27-nov-2)**
 
 
 
@@ -76,3 +78,13 @@ This week's goals were to flesh out classes for our code and create a baseline f
 ### Recap
 
 This week's goals were to create an end-to-end workflow for the artifact miner which made minor assessments about files given a zip file. This would allow us to expand upon this flow, adding complexity and depth. The week started with a monday meeting where we examined requirements, their related dev area and assigned them amongst each other. Then we meet on Wednseday to track our progress again. This week I focused on generating FileReports for a project. This acted as a bridge for the other methods being worked on. Additionally, I fleshed out the issues page, project board and merged and tested my team's PRs.
+
+## Week 9, Oct. 27 - Nov. 2
+
+### Peer Eval
+
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week9_log.png)
+
+### Recap
+
+This week's goals were to exapnd on the end-to-end workflow for the artifact miner which made minor assessments about files and projects given a zip file. This week individually I began our expansion into tracking Git based ocntibution features. I added a commit percenatge STATISTIC which given a repo with mulitple authors tracks how many commits are from the user. This is an expansion of the `_analyze_git_authorship` function in `report.py`. I wrote tests for this file and reviewed the error handling filepath changes and changes to the database.
