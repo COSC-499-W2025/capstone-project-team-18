@@ -506,9 +506,8 @@ def test_git_authorship_empty_repository():
 
         # Empty repo should have 0 authors
         # print(total_authors)
-        assert total_authors is not None
-        assert total_authors == 0
-        assert is_group is False  # 0 authors = not a group
+        assert total_authors is None
+        assert is_group is None  # 0 authors = not a group
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)

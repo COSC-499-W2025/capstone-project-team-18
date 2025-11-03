@@ -198,13 +198,7 @@ class ProjectReport(BaseReport):
 
                 return stats
             except InvalidGitRepositoryError:
-                stats = [
-                    Statistic(
-                        ProjectStatCollection.IS_GROUP_PROJECT.value, False),
-                    Statistic(
-                        ProjectStatCollection.TOTAL_AUTHORS.value, 0),
-                ]
-                return stats
+                return None
         except (zipfile.BadZipFile, FileNotFoundError):
             return None
         finally:
