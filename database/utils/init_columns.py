@@ -62,7 +62,6 @@ def make_columns(stat_collection: StatCollectionType, table_cls: type) -> None:
     Example:
       `make_columns(FileStatCollection, FileReportTable)`
     """
-    print(stat_collection)
     for member in stat_collection:
         template = member.value  # StatisticTemplate
         col_name = template.name.lower()  # e.g., "LINES_IN_FILE" -> "lines_in_file"
