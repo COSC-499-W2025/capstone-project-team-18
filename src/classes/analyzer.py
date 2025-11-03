@@ -467,6 +467,40 @@ class TypeScriptAnalyzer(CodeFileAnalyzer):
         self.stats.extend(stats)
 
 
+class CSSAnalyzer(CodeFileAnalyzer):
+    """
+    Analyzer for CSS files (.css).
+
+    Statistics:
+        - NUMBER_OF_FUNCTIONS  (treated as number of rule blocks)
+        - NUMBER_OF_CLASSES    (distinct `.class` selectors)
+        - IMPORTED_PACKAGES    (@import targets)
+    """
+    def _process(self) -> None:
+        super()._process()
+
+        # Rule blocks like `selector { ... }` (skip leading @ that aren't blocks)
+        rule_blocks = re.findall(r'[^@{}][^{]+\{[^}]*\}', self.text_content, re.DOTALL)
+        rule_count = len(rule_blocks)
+
+        # Distinct .class selectors
+        class_selectors = set(re.findall(r'\.([a-zA-Z_-][\w-]*)', self.text_content))
+
+        # @import url(...) or "..."
+        imports = re.findall(
+            r'@import\s+(?:url\(\s*[\'"]?([^\'")]+)[\'"]?\s*\)|[\'"]([^\'"]+)[\'"])',
+            self.text_content
+        )
+        imported_packages = [a or b for a, b in imports]
+
+        stats = [
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, rule_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, len(class_selectors)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+        ]
+        self.stats.extend(stats)
+
+
 def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
@@ -508,3 +542,4 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
 
     # Default to base analyzer
     return BaseFileAnalyzer(filepath)
+
