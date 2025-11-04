@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
-from database.db import (
+from src.database.db import (
     Base,
     UserPreferencesTable,
     FileReportTable,
