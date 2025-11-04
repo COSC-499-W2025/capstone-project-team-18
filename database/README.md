@@ -41,7 +41,7 @@ erDiagram
         int word_count
         int character_count
         int sentence_count
-        float ari_writing score
+        float ari_writing_score
         int number_of_functions
         int number_of_classes
         int number_of_interfaces
@@ -73,9 +73,9 @@ erDiagram
     }
 
     %% Relationships
-    PROJECT_REPORT ||--o{ FILE_REPORT : "has many"
-    PROJECT_REPORT ||--o{ ASSOCIATION_TABLE : "linked to users"
-    USER_REPORT ||--o{ ASSOCIATION_TABLE : "linked to projects"
+    FILE_REPORT }o--|| PROJECT_REPORT : "belongs to"
+    ASSOCIATION_TABLE }o--|| PROJECT_REPORT : "project"
+    ASSOCIATION_TABLE }o--|| USER_REPORT : "user"
 ```
 
 # Examples
