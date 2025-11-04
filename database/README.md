@@ -1,3 +1,6 @@
+# UPDATE THE MERMAID DIAGRAM
+
+
 # The Database
 
 ## What Data Are We Storing?
@@ -18,31 +21,50 @@ erDiagram
     USER_PREFERENCES {
         int id PK
         boolean consent
-        string files_to_ignore
-        datetime file_start_time
-        datetime file_end_time
+        JSON files_to_ignore
+        date file_start_time
+        date file_end_time
     }
 
     FILE_REPORT {
         int id PK
         int project_id FK
-        datetime date_created
-        datetime date_accessed
-        datetime date_modified
-        float file_size
+        string filepath
+        int lines_in_file
+        date date_created
+        date date_modified
+        date date_accessed
+        int file_size_bytes
+        float ratio_of_individual_contribution
+        JSON skills_demonstrated
+        JSON type_of_file
+        int word_count
+        int character_count
+        int sentence_count
+        float ari_writing score
+        int number_of_functions
+        int number_of_classes
+        int number_of_interfaces
+        JSON imported_packages
     }
 
     PROJECT_REPORT {
         int id PK
-        boolean collaborative
-        datetime start_date
-        datetime end_date
-        float total_size
-        int lines_of_code
+        string project_name
+        date project_start_date
+        date project_end_date
+        JSON project_skills_demonstrated
+        bool is_group_project
+        int total_authors
+        JSON authors_per_file
+        float user_commit_percentage
     }
 
     USER_REPORT {
         int id PK
+        date user_start_date
+        date user_end_date
+        JSON user_skills
     }
 
     ASSOCIATION_TABLE {
