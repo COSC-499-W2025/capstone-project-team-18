@@ -10,7 +10,7 @@ from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
 from .resume import Resume, ResumeItem
 from typing import Any
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, MINYEAR
 
 
 class BaseReport:
@@ -94,42 +94,12 @@ class ProjectReport(BaseReport):
             project_name: Optional project name for Git analysis
         """
 
+        self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
+        self.project_statistics = StatisticIndex()
 
-        project_stats = []
-
-        # Process file reports if provided
-        if file_reports:
-            # Extract all creation dates from file reports, filtering out None values
-            date_created_list = [
-                report.get_value(FileStatCollection.DATE_CREATED.value)
-                for report in file_reports
-                if report.get_value(FileStatCollection.DATE_CREATED.value) is not None
-            ]
-
-            # Extract all modification dates from file reports, filtering out None values
-            date_modified_list = [
-                report.get_value(FileStatCollection.DATE_MODIFIED.value)
-                for report in file_reports
-                if report.get_value(FileStatCollection.DATE_MODIFIED.value) is not None
-            ]
-
-            # Calculate and add project start date (earliest file creation)
-            if date_created_list:
-                start_date = min(date_created_list)
-                project_start_stat = Statistic(
-                    ProjectStatCollection.PROJECT_START_DATE.value, start_date)
-                project_stats.append(project_start_stat)
-
-            # Calculate and add project end date (latest file modification)
-            if date_modified_list:
-                end_date = max(date_modified_list)
-                project_end_stat = Statistic(
-                    ProjectStatCollection.PROJECT_END_DATE.value, end_date)
-                project_stats.append(project_end_stat)
-
-        # Create StatisticIndex with project-level statistics
-        project_statistics = StatisticIndex(project_stats)
+        # Aggregate statistics from file reports
+        self._determine_start_end_dates()
 
         # Add Git analysis statistics if zip file is provided
         if zip_path and project_name:
@@ -137,10 +107,52 @@ class ProjectReport(BaseReport):
                 zip_path, project_name, user_email)
             if git_stats:
                 for stat in git_stats:
-                    project_statistics.add(stat)
+                    self.project_statistics.add(stat)
 
         # Initialize the base class with the project statistics
-        super().__init__(project_statistics)
+        super().__init__(self.project_statistics)
+
+    def _determine_start_end_dates(self) -> None:
+        """
+        Calculates a project start and end date based on
+        the file reports available. Logs statistics to
+        self.project_statistics.
+
+        Note here. Currently when we unzip with Linux's
+        "unzip" utility, it sets the date created to the
+        current date, not the date in the zip file. The
+        dates we need to analyze are the date modified
+        and the date accessed.
+        """
+
+        # Set the value to 1 day in the future
+        latest_date = datetime.now() + timedelta(days=1)
+        earliest_date = datetime(MINYEAR, 1, 1, 0, 0, 0, 0)
+
+        start_date = latest_date
+        end_date = earliest_date
+
+        for report in self.file_reports:
+            curr_start_date = report.get_value(
+                FileStatCollection.DATE_CREATED.value)
+            curr_end_date = report.get_value(
+                FileStatCollection.DATE_MODIFIED.value)
+
+            if curr_start_date is not None and curr_start_date < start_date:
+                start_date = curr_start_date
+
+            if curr_end_date is not None and curr_end_date > end_date:
+                end_date = curr_end_date
+
+        if end_date != earliest_date:
+            project_end_stat = Statistic(
+                ProjectStatCollection.PROJECT_END_DATE.value, end_date)
+            self.project_statistics.add(project_end_stat)
+
+        if start_date != latest_date:
+            project_start_stat = Statistic(
+                ProjectStatCollection.PROJECT_START_DATE.value, start_date)
+            self.project_statistics.add(project_start_stat)
 
     def generate_resume_item(self) -> ResumeItem:
         """

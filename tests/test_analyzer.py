@@ -8,6 +8,7 @@ import pytest
 from src.classes.analyzer import *
 from src.classes.statistic import FileStatCollection
 from src.utils.project_discovery import ProjectFiles
+from src.utils.zipped_utils import unzip_file
 
 TEST_DIR = Path(__file__).parent / "resources"
 
@@ -146,6 +147,26 @@ def test_extract_file_reports_returns_project(tmp_path, temp_directory_no_subfol
                                         for report in listReport)
 
 
+def test_created_modifiyed_and_accessed_dates(tmp_path):
+    """
+    Tests that for a file, we have that the date created
+    is the earliest date, then date modifiyed, then
+    date accessed
+    """
+
+    unzip_file("tests/resources/mac_projects.zip", tmp_path)
+
+    file_path = tmp_path / "Projects" / "ProjectA" / "a_1.txt"
+
+    report = BaseFileAnalyzer(file_path).analyze()
+
+    date_accessed = report.get_value(FileStatCollection.DATE_ACCESSED.value)
+    date_modified = report.get_value(FileStatCollection.DATE_MODIFIED.value)
+    date_created = report.get_value(FileStatCollection.DATE_CREATED.value)
+
+    assert date_created <= date_modified and date_modified <= date_accessed
+
+
 def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_directory_with_subfolder):
     """
     Test that the extraction returns a list of FileReports with the accurate #
@@ -160,6 +181,7 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_dir
     assert listReport is not None
     assert len(listReport) == 3 and all(isinstance(report, FileReport)
                                         for report in listReport)
+
 # ---------- Test TextFileAnalyzer ----------
 
 
