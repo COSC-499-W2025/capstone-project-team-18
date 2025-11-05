@@ -169,7 +169,6 @@ def temp_db(tmp_path: Path):
     with Session(engine) as session:
 
         # add file report & project report rows to the DB
-        session.add_all([stmt1, stmt2, stmt3, stmt4])
         session.add_all([stmt6, stmt7])
 
         session.commit()  # write the rows to the DB
