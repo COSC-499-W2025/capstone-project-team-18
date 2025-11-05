@@ -132,17 +132,6 @@ def get_row(report: FileReport | ProjectReport | UserReport):
     return new_row
 
 
-def create_user_preferences():
-    # store user preferences
-    preferences = UserPreferencesTable(
-        consent=True,
-        files_to_ignore=['README.md', 'tmp.log', '.gitignore'],
-        file_start_time=datetime.datetime.now(),
-        file_end_time=datetime.datetime.now() + timedelta(hours=3)
-    )
-    return preferences
-
-
 @pytest.fixture
 def temp_db(tmp_path: Path):
     '''
@@ -179,9 +168,6 @@ def temp_db(tmp_path: Path):
     stmt7.file_reports.append(stmt1)  # type: ignore
 
     with Session(engine) as session:
-
-        preferences = create_user_preferences()
-        session.add(preferences)  # add preferences to the DB
 
         # add file report & project report rows to the DB
         session.add_all([stmt1, stmt2, stmt3, stmt4])
@@ -248,16 +234,3 @@ def test_project_to_user_many_to_many(temp_db):
         for p in user.project_reports:
             assert user in p.user_reports
 """
-
-
-def test_user_preferences_data_inserted(temp_db):
-    '''
-    Verify that user preferences data was inserted during fixture setup.
-    '''
-    with Session(temp_db) as session:
-        prefs = session.query(UserPreferencesTable).first()
-        assert prefs is not None
-        assert prefs.consent is True
-        assert prefs.files_to_ignore is not None
-        assert isinstance(prefs.files_to_ignore, list)
-        assert len(prefs.files_to_ignore) == 3

@@ -20,25 +20,6 @@ class Base(DeclarativeBase):
     pass
 
 
-class UserPreferencesTable(Base):
-    '''
-    This table will only contain 1 row.
-    Its logic needs to be fixed to ensure this
-    '''
-    __tablename__ = 'user_preferences'
-
-    id = Column(Integer, primary_key=True)
-    consent = Column(Boolean)
-
-    # E.g. files_to_ignore=['tmp.log', 'README.md']
-    files_to_ignore = Column(JSON)
-
-    # Ignore all files that are younger or older than these values
-    file_start_time = Column(DateTime)
-    file_end_time = Column(DateTime)
-    # TODO: Implement other user preferences.
-
-
 '''
 Since project_report and user_report have a bi-directional relationship,
 we need an association table to track which project reports are used to
@@ -122,6 +103,8 @@ class ProjectReportTable(Base):
         back_populates="project_reports",
     )
 
+    project_name = Column(String)
+
 
 class UserReportTable(Base):
     '''
@@ -163,3 +146,8 @@ def init_db(engine):
     make_columns(UserStatCollection, UserReportTable)
 
     Base.metadata.create_all(engine)
+
+
+if __name__ == "__main__":
+    eng = get_engine(DB_PATH)
+    init_db(engine=eng)
