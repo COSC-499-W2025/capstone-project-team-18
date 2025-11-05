@@ -1,7 +1,8 @@
 '''
 This file will store all of the config and logic that we will need to access and modify our database (`db.py`)
 '''
-from datetime import date
+from typing import List
+
 
 from sqlalchemy import ForeignKey
 from sqlalchemy import Table
@@ -29,8 +30,9 @@ Example Rows:
 | project_report_id | user_report_id |
 | ----------------- | -------------- |
 | 1                 | 1              |
-| 3                 | 1              |
 | 2                 | 2              |
+| 3                 | 1              |
+| ...               | ...            |
 '''
 association_table = Table(
     "association_table",
@@ -47,11 +49,13 @@ class FileReportTable(Base):
     many-to-one relationship with the `project_report` table.
 
     Example rows:
-    | id  | project_id | date_created               | date_modified              | other columns...    |
-    | --- | ---------- | -------------------------- | -------------------------- | ------------------- |
-    | 23  | 2          | 2024-06-13 10:32:16.489461 | 2025-10-25 02:59:13.556961 | other statistics... |
-    | 24  | 2          | 2024-06-19 13:04:46.782516 | 2025-09-18 00:10:32.587164 | other statistics... |
-    | 24  | 3          | 2025-03-26 15:13:29.549154 | 2025-07-12 19:43:22.186141 | other statistics... |
+    | id  | project_id | filepath                                          | lines_in_code | date_created               | date_modified              | other columns...   |
+    | --- | ---------- | ------------------------------------------------- | ------------- | -------------------------- | -------------------------- | ------------------ |
+    | 1   | 1          | /tmp/proj_one/app.py                              | 265           | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
+    | 2   | 2          | /tmp/proj_two/src/app/page.tsx                    | 189           | 2024-10-28 10:03:59.187515 | 2024-12-14 15:35:54.564158 | other statistics...|
+    | 3   | 2          | /tmp/proj_two/src/apps/components/navbar/page.tsx | 122           | 2025-03-26 15:13:29.549154 | 2025-07-12 19:43:22.186141 | other statistics...|
+    | 4   | 3          | /tmp/proj_three/clock.py                          | 241           | 2025-01-05 04:48:26.875495 | 2025-10-21 13:51:15.185489 | other statistics...|
+    | ... | ...        | ...                                               | ...           | ...                        | ...                        | ...                |
 
     Key Columns:
     - `id`: The table's PK
@@ -59,14 +63,14 @@ class FileReportTable(Base):
     '''
     __tablename__ = 'file_report'
 
-    id = Column(Integer, primary_key=True)  # PK
+    id: Mapped[int] = mapped_column(primary_key=True)  # PK
 
-    # Define a FK and one-to-many relationship with ProjectReport.
+    # Define a FK and many-to-one relationship with ProjectReport.
     # This will allow us to easily find the related file reports that are used to create
     # a given project report
-    project_id = Column(Integer, ForeignKey("project_report.id"))
-    project_report = relationship(
-        "ProjectReportTable", back_populates="file_reports")
+    project_id: Mapped[int] = mapped_column(ForeignKey("project_report.id"))
+    project_report: Mapped["ProjectReportTable"] = relationship(
+        back_populates="file_reports")
 
     filepath = Column(String)  # path to the file when we unzip to the temp dir
 
@@ -79,28 +83,32 @@ class ProjectReportTable(Base):
     `user_report` table.
 
     Example rows:
-    | id  | is_group_project | project_start_date         | project_end_date           | other columns...   |
-    | --- | ---------------- | -------------------------- | -------------------------- | ------------------ |
-    | 1   | True             | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
-    | 2   | True             | 2024-10-28 14:23:59.187515 | 2024-12-14 15:35:54.56415  | other statistics...|
-    | 3   | False            | 2025-02-18 10:45:23.358411 | 2025-04-23 15:51:46.184716 | other statistics...|
+    | id  | project_name    | project_start_date         | project_end_date           | other columns...   |
+    | --- | --------------- | -------------------------- | -------------------------- | ------------------ |
+    | 1   | "project-one"   | 2024-06-13 10:32:16.489461 | 2025-10-25 02:59:13.556961 | other statistics...|
+    | 2   | "project-two"   | 2024-06-19 13:04:46.782516 | 2025-09-18 00:10:32.587164 | other statistics...|
+    | 3   | "project-three" |2025-01-05 04:48:26.875495  | 2025-10-21 13:51:15.185489 | other statistics...|
+    | ... | ...             | ...                        | ...                        | ...                |
 
     Key Columns:
     - `id`: The table's PK
     '''
     __tablename__ = 'project_report'
 
-    id = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)  # PK
 
-    # Establish one-to-many relationship with FileReport
-    file_reports = relationship(
-        "FileReportTable", back_populates="project_report")
+    file_reports: Mapped[List["FileReportTable"]] = relationship(
+        back_populates="project_report",
+        # see https://docs.sqlalchemy.org/en/20/orm/cascades.html#cascades
+        cascade="all, delete-orphan",
+    )
 
     # Many-to-many with UserReport via association table
     user_reports = relationship(
         "UserReportTable",
         secondary=association_table,
         back_populates="project_reports",
+        cascade="save-update, merge",
     )
 
     project_name = mapped_column(String)
@@ -114,17 +122,25 @@ class UserReportTable(Base):
     table *and* the `project_report` table to track which project reports are used to make which user
     reports.
 
+    Example rows:
+    | id  | user_start_date            | user_end_date              | user_skills                               | other columns...    |
+    | --- | -------------------------- | -------------------------- | ----------------------------------------- | ------------------- |
+    | 1   | 2024-06-13 10:32:16.489461 | 2025-10-25 02:59:13.556961 | ["Python",  "unix"]                       | other statistics... |
+    | 2   | 2024-06-19 13:04:46.782516 | 2025-09-18 00:10:32.587164 | ["Python", "Typescript", "Node", "Flask"] | other statistics... |
+    | ... | ...                        | ...                        | ...                                       | ...                 |
+
     Key Columns:
     - `id`: The table's PK
     '''
     __tablename__ = 'user_report'
 
-    id = Column(Integer, primary_key=True)
+    id = mapped_column(Integer, primary_key=True)
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",
         secondary=association_table,
         back_populates="user_reports",
+        cascade="save-update, merge",
     )
 
 
