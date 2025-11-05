@@ -9,6 +9,7 @@ from datetime import date
 import typing as t
 
 from sqlalchemy import Column, Integer, Boolean, Float, JSON, String, Date
+from sqlalchemy.orm import mapped_column
 
 
 from src.classes.statistic import (
@@ -75,6 +76,7 @@ def make_columns(stat_collection: StatCollectionType, table_cls: type) -> None:
 
         # Only create the column if the table doesn't have it yet
         if not hasattr(table_cls, col_name):
-            setattr(table_cls, col_name, Column(t.cast(t.Any, type_engine)))
+            setattr(table_cls, col_name, mapped_column(
+                t.cast(t.Any, type_engine)))
 
     # no return because columns are attached via `setattr`
