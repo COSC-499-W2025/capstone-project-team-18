@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 
 from database.db import (
     Base,
-    UserPreferencesTable,
     FileReportTable,
     ProjectReportTable,
     UserReportTable,
@@ -186,7 +185,7 @@ def test_tables_exist(temp_db):
     inspector = inspect(temp_db)
     tables = set(inspector.get_table_names())
     assert {"file_report", "project_report",
-            "user_report", "user_preferences", "association_table"} <= tables
+            "user_report", "association_table"} <= tables
 
 
 def test_sample_data_inserted(temp_db):
@@ -194,7 +193,7 @@ def test_sample_data_inserted(temp_db):
     with Session(temp_db) as session:
         file_count = session.query(FileReportTable).count()
         project_count = session.query(ProjectReportTable).count()
-        user_count = session.query(UserReportTable).count()
+        # user_count = session.query(UserReportTable).count()
 
         assert file_count == 4  # 4 file reports
         assert project_count == 2  # 2 project reports
