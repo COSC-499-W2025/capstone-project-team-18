@@ -11,9 +11,8 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
-from src.database.db import (
+from database.db import (
     Base,
-    UserPreferencesTable,
     FileReportTable,
     ProjectReportTable,
     UserReportTable,
@@ -132,17 +131,6 @@ def get_row(report: FileReport | ProjectReport | UserReport):
     return new_row
 
 
-def create_user_preferences():
-    # store user preferences
-    preferences = UserPreferencesTable(
-        consent=True,
-        files_to_ignore=['README.md', 'tmp.log', '.gitignore'],
-        file_start_time=datetime.datetime.now(),
-        file_end_time=datetime.datetime.now() + timedelta(hours=3)
-    )
-    return preferences
-
-
 @pytest.fixture
 def temp_db(tmp_path: Path):
     '''
@@ -180,11 +168,7 @@ def temp_db(tmp_path: Path):
 
     with Session(engine) as session:
 
-        preferences = create_user_preferences()
-        session.add(preferences)  # add preferences to the DB
-
         # add file report & project report rows to the DB
-        session.add_all([stmt1, stmt2, stmt3, stmt4])
         session.add_all([stmt6, stmt7])
 
         session.commit()  # write the rows to the DB
@@ -200,7 +184,7 @@ def test_tables_exist(temp_db):
     inspector = inspect(temp_db)
     tables = set(inspector.get_table_names())
     assert {"file_report", "project_report",
-            "user_report", "user_preferences", "association_table"} <= tables
+            "user_report", "association_table"} <= tables
 
 
 def test_sample_data_inserted(temp_db):
@@ -208,7 +192,7 @@ def test_sample_data_inserted(temp_db):
     with Session(temp_db) as session:
         file_count = session.query(FileReportTable).count()
         project_count = session.query(ProjectReportTable).count()
-        user_count = session.query(UserReportTable).count()
+        # user_count = session.query(UserReportTable).count()
 
         assert file_count == 4  # 4 file reports
         assert project_count == 2  # 2 project reports
@@ -248,16 +232,3 @@ def test_project_to_user_many_to_many(temp_db):
         for p in user.project_reports:
             assert user in p.user_reports
 """
-
-
-def test_user_preferences_data_inserted(temp_db):
-    '''
-    Verify that user preferences data was inserted during fixture setup.
-    '''
-    with Session(temp_db) as session:
-        prefs = session.query(UserPreferencesTable).first()
-        assert prefs is not None
-        assert prefs.consent is True
-        assert prefs.files_to_ignore is not None
-        assert isinstance(prefs.files_to_ignore, list)
-        assert len(prefs.files_to_ignore) == 3

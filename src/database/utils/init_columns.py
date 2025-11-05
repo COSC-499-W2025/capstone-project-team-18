@@ -8,7 +8,8 @@ respective tables as a result.
 from datetime import date
 import typing as t
 
-from sqlalchemy import Column, Integer, Boolean, Float, JSON, String, Date
+from sqlalchemy import Integer, Boolean, Float, JSON, String, Date
+from sqlalchemy.orm import mapped_column
 
 
 from src.classes.statistic import (
@@ -17,6 +18,7 @@ from src.classes.statistic import (
     UserStatCollection,
 )
 
+# [type[src.classes.statistic.FileStatCollection], type[src.classes.statistic.ProjectStatCollection], type[src.classes.statistic.UserStatCollection]]
 StatCollectionType = t.Union[
     type[FileStatCollection],
     type[ProjectStatCollection],
@@ -65,16 +67,10 @@ def make_columns(stat_collection: StatCollectionType, table_cls: type) -> None:
     for member in stat_collection:
         template = member.value  # StatisticTemplate
         col_name = template.name.lower()  # e.g., "LINES_IN_FILE" -> "lines_in_file"
-        sa_type = _sqlalchemy_type_for(template.expected_type)
-
-        # _sqlalchemy_type_for may return either a type class (Integer) or an
-        # instance (Integer()). This line instantiates the obj if it's a class
-        # and keeps the obj if it's already instantiated. This ensures that
-        # the column we are creating is always of a valid TypeEngine instance
-        type_engine = sa_type() if isinstance(sa_type, type) else sa_type
+        column_type = _sqlalchemy_type_for(template.expected_type)
 
         # Only create the column if the table doesn't have it yet
         if not hasattr(table_cls, col_name):
-            setattr(table_cls, col_name, Column(t.cast(t.Any, type_engine)))
+            setattr(table_cls, col_name, mapped_column(column_type))
 
     # no return because columns are attached via `setattr`
