@@ -1,16 +1,14 @@
 '''
 This file will store all of the config and logic that we will need to access and modify our database (`db.py`)
 '''
-from datetime import date
-
 from sqlalchemy import ForeignKey
 from sqlalchemy import Table
-from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date
+from sqlalchemy import Column, Integer, DateTime, Boolean, JSON, String
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 
-from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, WeightedSkills
+from classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
 from .utils.init_columns import make_columns
 
 DB_PATH = "sqlite:///database/data.db"
