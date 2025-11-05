@@ -5,12 +5,12 @@ from datetime import date
 
 from sqlalchemy import ForeignKey
 from sqlalchemy import Table
-from sqlalchemy import Column, Integer, DateTime, Boolean, Float, JSON, String, Date
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import create_engine
 
-from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, WeightedSkills
+from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
 from .utils.init_columns import make_columns
 
 DB_PATH = "sqlite:///database/data.db"
@@ -90,7 +90,7 @@ class ProjectReportTable(Base):
     '''
     __tablename__ = 'project_report'
 
-    id = Column(Integer, primary_key=True)  # PK
+    id = mapped_column(Integer, primary_key=True)
 
     # Establish one-to-many relationship with FileReport
     file_reports = relationship(
@@ -103,7 +103,7 @@ class ProjectReportTable(Base):
         back_populates="project_reports",
     )
 
-    project_name = Column(String)
+    project_name = mapped_column(String)
 
 
 class UserReportTable(Base):
@@ -148,6 +148,8 @@ def init_db(engine):
     Base.metadata.create_all(engine)
 
 
+'''
 if __name__ == "__main__":
     eng = get_engine(DB_PATH)
     init_db(engine=eng)
+'''
