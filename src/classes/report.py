@@ -100,8 +100,11 @@ class ProjectReport(BaseReport):
 
         self.project_name = project_name or "Unknown Project"
         self.file_reports = file_reports or []
+        self.statistics = StatisticIndex()
 
         project_stats = []
+
+        self._find_coding_languages_ratio()
 
         # Process file reports if provided
         if file_reports:
@@ -134,7 +137,7 @@ class ProjectReport(BaseReport):
                 project_stats.append(project_end_stat)
 
         # Create StatisticIndex with project-level statistics
-        project_statistics = StatisticIndex(project_stats)
+        self.statistics.extend(project_stats)
 
         # Add Git analysis statistics if zip file is provided
         if zip_path and project_name:
@@ -142,10 +145,10 @@ class ProjectReport(BaseReport):
                 zip_path, project_name, user_email)
             if git_stats:
                 for stat in git_stats:
-                    project_statistics.add(stat)
+                    self.statistics.add(stat)
 
         # Initialize the base class with the project statistics
-        super().__init__(project_statistics)
+        super().__init__(self.statistics)
 
     def generate_resume_item(self) -> ResumeItem:
         """
@@ -201,9 +204,13 @@ class ProjectReport(BaseReport):
             langauges_to_loc[coding_language] = loc + \
                 langauges_to_loc.get(coding_language, 0)
 
+        if len(langauges_to_loc) == 0:
+            # Don't log this stat if it isn't a coding project
+            return
+
         # Calcuate the loc as percentages of the total
         total = sum(langauges_to_loc.values())
-        language_ratio = {k: (v / total) * 100 for k,
+        language_ratio = {k: (v / total) for k,
                           v in langauges_to_loc.items()}
 
         self.statistics.add(
