@@ -5,7 +5,6 @@ interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
 
-from utils.zipped_utils import unzip_file
 from utils.project_discovery import discover_projects
 from classes.analyzer import extract_file_reports
 from classes.report import ProjectReport, UserReport
@@ -22,11 +21,8 @@ def start_miner(zipped_file: str, email: str = None) -> None:
         - zipped_file : str The filepath to the zipped file.
     """
 
-    # Unzip the zipped file into temporary directory
-    unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
-    unzip_file(zipped_file, unzipped_dir)
-
-    project_list = discover_projects(unzipped_dir)
+    # Extraction logic handled elsewhere; assume zipped_file is ready for discovery
+    project_list = discover_projects(zipped_file)
 
     # For each project, extract file reports and create ProjectReports
     project_reports = []
