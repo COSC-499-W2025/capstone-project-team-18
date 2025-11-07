@@ -24,7 +24,8 @@ def _is_valid_filepath_to_zip(filepath: str) -> int:
         return 3
     if not os.path.isfile(filepath):
         return 1
-    if not filepath.endswith('.zip'):
+    valid_exts = ('.zip', '.tar.gz', '.gz', '.7z')
+    if not any(filepath.endswith(ext) for ext in valid_exts):
         return 2
     return 0
 
