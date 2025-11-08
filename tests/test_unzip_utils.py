@@ -56,6 +56,7 @@ def test_unzip_file():
         if os.path.exists(extract_dir):
             shutil.rmtree(extract_dir)
         creator(archive, fname, content)
+        os.makedirs(extract_dir, exist_ok=True)  # Ensure extraction dir exists
         unzip_file(archive, extract_dir)
         extracted_file = os.path.join(extract_dir, fname)
         assert os.path.exists(
