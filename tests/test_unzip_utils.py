@@ -64,7 +64,6 @@ def test_unzip_file():
         with open(extracted_file, 'r') as f:
             assert f.read(
             ) == content, f"Extracted file content does not match for {archive}!"
-        print(f"Unzip test passed for {archive}")
 
 
 if __name__ == "__main__":

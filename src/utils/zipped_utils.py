@@ -57,27 +57,18 @@ def unzip_file(zipped_file: str, extract_to: str) -> None:
     except ImportError:
         py7zr = None
     ext = os.path.splitext(zipped_file)[1].lower()
-    # Handle .tar.gz and .gz
-    if zipped_file.endswith('.tar.gz'):
-        if os_name == 'windows':
-            # Use tar via cmd (Windows 10+ has tar)
+    # Combine .tar.gz and .gz handling since both use tar extraction
+    if zipped_file.endswith('.tar.gz') or ext == '.gz':
+        try:
             subprocess.run(['tar', '-xzf', zipped_file,
                            '-C', extract_to], check=True)
-        else:
-            subprocess.run(['tar', '-xzf', zipped_file,
-                           '-C', extract_to], check=True)
-    elif ext == '.gz':
-        if os_name == 'windows':
-            # Use tar or 7z for .gz on Windows
-            try:
-                subprocess.run(['tar', '-xzf', zipped_file,
-                               '-C', extract_to], check=True)
-            except Exception:
+        except subprocess.CalledProcessError:
+            # Fallback: On Windows, try 7z if tar fails for .gz
+            if os_name == 'windows' and ext == '.gz':
                 subprocess.run(
                     ['7z', 'x', zipped_file, f'-o{extract_to}'], check=True)
-        else:
-            subprocess.run(['tar', '-xzf', zipped_file,
-                           '-C', extract_to], check=True)
+            else:
+                raise
     elif ext == '.zip':
         if os_name == 'windows':
             # Use PowerShell Expand-Archive
