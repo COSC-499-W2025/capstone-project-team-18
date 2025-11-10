@@ -29,6 +29,10 @@ class BaseReport:
         return self.statistics.get(template)
 
     def get_value(self, template: StatisticTemplate) -> Any:
+        """
+        Retrieves the value of a Statistic from the index by its template.
+        Returns None if not found.
+        """
         return self.statistics.get_value(template)
 
     def to_dict(self) -> dict[str, Any]:
@@ -95,8 +99,12 @@ class ProjectReport(BaseReport):
         """
 
         self.project_name = project_name or "Unknown Project"
+        self.file_reports = file_reports or []
+        self.statistics = StatisticIndex()
 
         project_stats = []
+
+        self._find_coding_languages_ratio()
 
         # Process file reports if provided
         if file_reports:
@@ -129,7 +137,7 @@ class ProjectReport(BaseReport):
                 project_stats.append(project_end_stat)
 
         # Create StatisticIndex with project-level statistics
-        project_statistics = StatisticIndex(project_stats)
+        self.statistics.extend(project_stats)
 
         # Add Git analysis statistics if zip file is provided
         if zip_path and project_name:
@@ -137,10 +145,10 @@ class ProjectReport(BaseReport):
                 zip_path, project_name, user_email)
             if git_stats:
                 for stat in git_stats:
-                    project_statistics.add(stat)
+                    self.statistics.add(stat)
 
         # Initialize the base class with the project statistics
-        super().__init__(project_statistics)
+        super().__init__(self.statistics)
 
     def generate_resume_item(self) -> ResumeItem:
         """
@@ -173,6 +181,40 @@ class ProjectReport(BaseReport):
             start_date=start_date,
             end_date=end_date
         )
+
+    def _find_coding_languages_ratio(self) -> None:
+        """
+        Creates the project level statistic of
+        CODING_LANGUAGE_RATIO.
+        """
+
+        langauges_to_loc = {}
+
+        # Map coding language to lines of code
+        for report in self.file_reports:
+
+            coding_language = report.get_value(
+                FileStatCollection.CODING_LANGUAGE.value)
+
+            if coding_language is None:
+                continue
+
+            loc = report.get_value(FileStatCollection.LINES_IN_FILE.value)
+
+            langauges_to_loc[coding_language] = loc + \
+                langauges_to_loc.get(coding_language, 0)
+
+        if len(langauges_to_loc) == 0:
+            # Don't log this stat if it isn't a coding project
+            return
+
+        # Calcuate the loc as percentages of the total
+        total = sum(langauges_to_loc.values())
+        language_ratio = {k: (v / total) for k,
+                          v in langauges_to_loc.items()}
+
+        self.statistics.add(
+            Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, language_ratio))
 
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
