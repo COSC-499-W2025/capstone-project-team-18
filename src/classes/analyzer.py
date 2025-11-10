@@ -57,7 +57,6 @@ class BaseFileAnalyzer:
 
     Statistics:
         - DATE_CREATED
-        - DATE_ACCESSED
         - DATE_MODIFIED
     """
 
@@ -83,14 +82,13 @@ class BaseFileAnalyzer:
             Special note here:
 
             Linux corrupts the st_birthtime to be the time that
-            the file was unzipped. So, we treat that as the DATE_ACCESSED.
+            the file was unzipped.
             Linux's date access actually contains the true birthtime so
             we treat that as DATE_CREATED
             """
 
             timestamps = {
                 FileStatCollection.DATE_CREATED.value: metadata.st_atime,
-                FileStatCollection.DATE_ACCESSED.value: getattr(metadata, "st_birthtime", metadata.st_ctime),
                 FileStatCollection.DATE_MODIFIED.value: metadata.st_mtime,
             }
 

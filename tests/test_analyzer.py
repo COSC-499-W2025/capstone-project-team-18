@@ -94,13 +94,11 @@ def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_tex
     # Core stats exist
     size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
     created = report.get_value(FileStatCollection.DATE_CREATED.value)
-    accessed = report.get_value(FileStatCollection.DATE_ACCESSED.value)
     modified = report.get_value(FileStatCollection.DATE_MODIFIED.value)
 
     # Validate types and basic expectations
     assert isinstance(size, int) and size > 0
     assert isinstance(created, datetime.datetime)
-    assert isinstance(accessed, datetime.datetime)
     assert isinstance(modified, datetime.datetime)
 
     # Size should match the actual file size
@@ -160,11 +158,10 @@ def test_created_modifiyed_and_accessed_dates(tmp_path):
 
     report = BaseFileAnalyzer(file_path).analyze()
 
-    date_accessed = report.get_value(FileStatCollection.DATE_ACCESSED.value)
     date_modified = report.get_value(FileStatCollection.DATE_MODIFIED.value)
     date_created = report.get_value(FileStatCollection.DATE_CREATED.value)
 
-    assert date_created <= date_modified and date_modified <= date_accessed
+    assert date_created <= date_modified
 
 
 def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_directory_with_subfolder):

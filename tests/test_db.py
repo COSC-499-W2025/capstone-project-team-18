@@ -51,7 +51,6 @@ def create_file_report(filename: str):
     statistics = StatisticIndex([
         Statistic(FileStatCollection.LINES_IN_FILE.value, lines_in_file),
         Statistic(FileStatCollection.DATE_CREATED.value, random_create),
-        Statistic(FileStatCollection.DATE_ACCESSED.value, random_access),
         Statistic(FileStatCollection.DATE_MODIFIED.value, random_modified),
         Statistic(FileStatCollection.FILE_SIZE_BYTES.value, random_filesize),
     ])
@@ -104,8 +103,6 @@ def get_row(report: FileReport | ProjectReport | UserReport):
                 FileStatCollection.DATE_CREATED.value),
             date_modified=report.get_value(
                 FileStatCollection.DATE_MODIFIED.value),
-            date_accessed=report.get_value(
-                FileStatCollection.DATE_ACCESSED.value),
             file_size_bytes=report.get_value(
                 FileStatCollection.FILE_SIZE_BYTES.value),
         )
