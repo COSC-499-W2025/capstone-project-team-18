@@ -1,3 +1,13 @@
+# Week 10 11/03 - 11/09
+
+![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week10_log.png)
+
+This week, I completed a milestone requirement of "For a coding project, identify the programming language." For every coding language file, we log if it is Python, Ruby, Rust, etc. I also created a "project-level statistic" to measure how much of the coding project is in what language by lines of code (e.g. this project is 20% ruby 50% python 30% shell) PR #168. I also refactor our project start and end date calcuations to be more space efficent. In that same PR I also researched and fixed a bug that was happening with our date created file collection. I also reviewed the database explaination PR #167 and a PR that related to expand the files that we can unzip #169. Although I didn't get as much work I as I wanted (I was pretty busy this week), these are tasks needed to get done to keep hammering away at Milestone #1.
+
+Looking forward to next week, here are the key milestone requirements I want to achieve:
+- Rank importance of each project based on user's contributions
+- Distinguish individual projects from collaborative projects
+
 # Week 9 10/27-11/02
 
 Peer evaluation was ended at 7:50 am early on Sunday. Here is the checklist of what I did this week:
