@@ -139,7 +139,7 @@ def temp_db(tmp_path: Path):
     Yields the engine for use in tests.
     '''
     db_path = tmp_path / "temp_db.db"
-    engine = create_engine(f"sqlite///{db_path}")
+    engine = create_engine(f"sqlite:///{db_path}")
     init_db(engine)  # add columns to temp DB
 
     # Create fake file reports
