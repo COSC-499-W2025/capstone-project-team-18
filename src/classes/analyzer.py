@@ -239,7 +239,10 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
     def _get_file_commit_percentage(self, filepath: str):
         try:
-            repo = Repo(filepath)
+            # Allow passing either a file path or a repo/worktree path. Search parent
+            # directories so passing a file path (e.g. '/path/to/repo/file.py') still
+            # locates the repository.
+            repo = Repo(Path(filepath).parent, search_parent_directories=True)
 
             # gets blame for each line
             blame_info = repo.blame('HEAD', filepath)
@@ -247,18 +250,24 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             commit_count = 0
             line_count = 0
             for commit, lines in blame_info:
-                line_count = len(lines)
+                line_count += len(lines)
                 if commit.author.email == self.email:
                     commit_count += len(lines)
 
-            return (commit_count / line_count) * 100
-        except InvalidGitRepositoryError as e:
-            # need to clarify behavior in case of error
-            logger.debug("Exception {e}")
+            if line_count == 0:
+                return 0.0
 
-    def _is_git_repo(self, path):
+            return round((commit_count / line_count) * 100, 2)
+        except InvalidGitRepositoryError as e:
+            logger.debug(f"InvalidGitRepositoryError: {e}")
+            return None
+        except Exception as e:
+            logger.debug(f"Exception while computing commit percentage: {e}")
+            return None
+
+    def _is_git_repo(self, path: str):
         try:
-            _ = Repo(path).git_dir
+            _ = Repo(Path(path).parent).git_dir
             return True
         except InvalidGitRepositoryError:
             return False
