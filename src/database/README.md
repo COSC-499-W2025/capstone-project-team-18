@@ -98,10 +98,10 @@ erDiagram
 
 | id  | project_id | filepath                                          | lines_in_code | date_created               | date_modified              | other columns...   |
 | --- | ---------- | ------------------------------------------------- | ------------- | -------------------------- | -------------------------- | ------------------ |
-| 1   | 1          | /tmp/proj_one/app.py                              | 265           | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
-| 2   | 2          | /tmp/proj_two/src/app/page.tsx                    | 189           | 2024-10-28 10:03:59.187515 | 2024-12-14 15:35:54.564158 | other statistics...|
-| 3   | 2          | /tmp/proj_two/src/apps/components/navbar/page.tsx | 122           | 2025-03-26 15:13:29.549154 | 2025-07-12 19:43:22.186141 | other statistics...|
-| 4   | 3          | /tmp/proj_three/clock.py                          | 241           | 2025-01-05 04:48:26.875495 | 2025-10-21 13:51:15.185489 | other statistics...|
+| 1   | 1          | /proj_one/app.py                              | 265           | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
+| 2   | 2          | /proj_two/src/app/page.tsx                    | 189           | 2024-10-28 10:03:59.187515 | 2024-12-14 15:35:54.564158 | other statistics...|
+| 3   | 2          | /proj_two/src/apps/components/navbar/page.tsx | 122           | 2025-03-26 15:13:29.549154 | 2025-07-12 19:43:22.186141 | other statistics...|
+| 4   | 3          | /proj_three/clock.py                          | 241           | 2025-01-05 04:48:26.875495 | 2025-10-21 13:51:15.185489 | other statistics...|
 | ... | ...        | ...                                               | ...           | ...                        | ...                        | ...                |
 
 - *id*: Primary Key
@@ -191,7 +191,7 @@ For this section and the following section ([Getting Rows from a Table](#getting
 Suppose that a `FileReport` object called `fr` is generated after analyzing a very basic Python file which contains the following:
 
 ```Python
-self.filepath = "/tmp/proj_one/app.py"
+self.filepath = "/proj_one/app.py"
 self.statistics = StatisticIndex([
     Statistic(FileStatCollection.LINES_IN_FILE.value, 265),
     Statistic(FileStatCollection.DATE_CREATED.value, datetime(2024-11-15 09:45:15.218714)), # just assume this is correct
@@ -205,7 +205,7 @@ A standard SQL `INSERT` query to add this data as a row into the *file_report* t
 INSERT INTO file_report(project_id, filepath, date_created, date_modified)
         VALUES(
                 1,
-                "/tmp/proj_one/app.py",
+                "/proj_one/app.py",
                 265,
                 '2024-11-15 09:45:15.218714',
                 '2025-03-25 11:53:12.237414'
@@ -231,7 +231,7 @@ This populates the *file_report* table with:
 
 | id  | project_id | filepath                                          | lines_in_code | date_created               | date_modified              | other columns...   |
 | --- | ---------- | ------------------------------------------------- | ------------- | -------------------------- | -------------------------- | ------------------ |
-| 1   |            | /tmp/proj_one/app.py                              | 265           | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 |                    |
+| 1   |            | /proj_one/app.py                              | 265           | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 |                    |
 
 Note: We don't need to specify the *id* variable. SQLAlchemy will automatically increment this for us for each new row.
 
@@ -244,8 +244,8 @@ You may have noticed that the FK reference to the project report with *id = 1* i
 Suppose we want to get all file reports that were used to create the project report whose *id* is 2. That is, we want these rows:
 | id  | project_id | filepath                                          | lines_in_code | date_created               | date_modified              | other columns...   |
 | --- | ---------- | ------------------------------------------------- | ------------- | -------------------------- | -------------------------- | ------------------ |
-| 2   | 2          | /tmp/proj_two/src/app/page.tsx                    | 189           | 2024-10-28 10:03:59.187515 | 2024-12-14 15:35:54.564158 | other statistics...|
-| 3   | 2          | /tmp/proj_two/src/apps/components/navbar/page.tsx | 122           | 2025-03-26 15:13:29.549154 | 2025-07-12 19:43:22.186141 | other statistics...|
+| 2   | 2          | /proj_two/src/app/page.tsx                    | 189           | 2024-10-28 10:03:59.187515 | 2024-12-14 15:35:54.564158 | other statistics...|
+| 3   | 2          | /proj_two/src/apps/components/navbar/page.tsx | 122           | 2025-03-26 15:13:29.549154 | 2025-07-12 19:43:22.186141 | other statistics...|
 
 
 With SQL we can achieve this with:
@@ -258,7 +258,9 @@ The SQLAlchemy equivalent of this is:
 
 ```Python
 with Session(engine) as session:
-    select_stmt = session.query(FileReportTable).filter(FileReportTable.project_report_id == 1).all()
+    result = session.execute(
+        select(FileReportTable).filter(FileReportTable.project_report_id == 1)
+    )
     file_reports = result.scalars().all()
 ```
 
