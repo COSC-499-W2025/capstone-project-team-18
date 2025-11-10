@@ -18,6 +18,8 @@
 
 **[Week 9, Oct. 27 – Nov. 02](#week-9-oct-27--nov-02)**
 
+**[Week 10, Nov. 03 – Nov. 09](#week-10-nov-03--nov-09)**
+
 ## Week 3, Sept. 15–21
 
 ![Peer eval](./log_images/personal_log_imgs/alex/week3.png)
@@ -99,3 +101,32 @@ With an ORM, we can easily store our `FileReports`, `ProjectReports`, and `UserR
 Then, I had to rewrite the fixtures in `test_db.py` that set up a temporary database because the columns in the database were hardcoded rather than generated on the fly.
 
 I also reviewed Erem's PR ([#131](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/131)) and Priyansh's PR ([#132](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/132))
+
+## Week 10, Nov. 03 – Nov. 09
+
+![Peer Eval](/logs/log_images/personal_log_imgs/alex/week10.png)
+
+### Recap
+
+This week, I wrote a large and concise document on our database, including:
+- The database's structure,
+- Example rows for each table
+- What SQLAlchemy is, what an ORM is, and how to read/write to tables
+- The database's configuration:
+    - The `Base` class
+    - Defining the tables
+    - The `engine`
+    - Initializing columns in a dynmaic way
+- Using the `session` object
+- Connecting the database to the rest of our app
+
+Additionally, while doing research to make sure that the document was as correct and concise as possible, I learned a lot more about SQLAlchemy, like the fact that I had to one-to-many relationship between the `project_report` and `file_report` table incorrectly configured.
+
+As a result, I ended up rewriting some of the table-defining logic in `db.py`, and I had to rewrite some of the initialization stage of the test cases for the database.
+
+The PR for this feature is [#159](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/159)
+
+I also moved the `/database` directory into the `/src` directory and made sure that all functionality (imports, etc.) was updated accordingly.
+- The PR for this is [#154](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/154)
+
+Lastly, I reviewed Sam's PR [#155](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/155), and Priyansh's PR [#170](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/170).
