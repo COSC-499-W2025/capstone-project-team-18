@@ -51,11 +51,8 @@ def unzip_file(zipped_file: str, extract_to: str) -> None:
     import zipfile
     import tarfile
     import shutil
+    import py7zr
     os_name = get_os_name()
-    try:
-        import py7zr
-    except ImportError:
-        py7zr = None
     ext = os.path.splitext(zipped_file)[1].lower()
     # Combine .tar.gz and .gz handling since both use tar extraction
     if zipped_file.endswith('.tar.gz') or ext == '.gz':
