@@ -161,6 +161,13 @@ class FileStatCollection(Enum):
         expected_type=list,
     )
 
+    # percenatge is not greatest indicator as any minor change is associated with ownership
+    PERCENTAGE_LINES_COMMITTED = FileStatisticTemplate(
+        name="PERCENTAGE_LINES_COMMITTED",
+        description="perecntage of lines attributed to individual in file",
+
+    )
+
 
 class ProjectStatCollection(Enum):
     PROJECT_START_DATE = ProjectStatisticTemplate(
@@ -202,6 +209,12 @@ class ProjectStatCollection(Enum):
     USER_COMMIT_PERCENTAGE = ProjectStatisticTemplate(
         name="USER_COMMIT_PERCENTAGE",
         description="percentage of commits authored by user in a Git-tracked project",
+        expected_type=float,
+    )
+
+    TOTAL_CONTRIBUTION_PERCENTAGE = ProjectStatisticTemplate(
+        name="TOTAL_CONTRIBUTION_PERCENTAGE",
+        description="percentage of lines authored by user in a Git-tracked project",
         expected_type=float,
     )
 
