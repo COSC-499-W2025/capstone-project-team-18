@@ -92,12 +92,8 @@ def unzip_file(zipped_file: str, extract_to: str) -> None:
                 subprocess.run(
                     ['7z', 'x', zipped_file, f'-o{extract_to}'], check=True)
             except Exception:
-                if py7zr is not None:
-                    with py7zr.SevenZipFile(zipped_file, 'r') as archive:
-                        archive.extractall(path=extract_to)
-                else:
-                    raise ValueError(
-                        "py7zr not installed and 7z extraction failed.")
+                with py7zr.SevenZipFile(zipped_file, 'r') as archive:
+                    archive.extractall(path=extract_to)
         else:
             raise ValueError(f"Unsupported OS for .7z extraction: {os_name}")
     else:
