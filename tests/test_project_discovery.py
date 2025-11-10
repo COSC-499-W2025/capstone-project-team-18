@@ -38,8 +38,8 @@ def multi_project_zip(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def git_zip(tmp_path: Path) -> Path:
-    """Creates zip with individual project (1 author) and group project (2 authors)."""
+def git_dir(tmp_path: Path) -> Path:
+    """Creates directory with individual project (1 author) and group project (2 authors)."""
     # Individual project with single author
     solo_dir = tmp_path / "SoloProject"
     solo_dir.mkdir()
@@ -68,13 +68,7 @@ def git_zip(tmp_path: Path) -> Path:
     repo2.index.add(["feature2.py"])
     repo2.index.commit("Add feature 2")
 
-    zip_path = tmp_path / "MixedProjects.zip"
-    with zipfile.ZipFile(zip_path, 'w') as zf:
-        for project_dir in [solo_dir, team_dir]:
-            for file_path in project_dir.rglob('*'):
-                if file_path.is_file():
-                    zf.write(file_path, file_path.relative_to(tmp_path))
-    return zip_path
+    return tmp_path
 
 
 def test_discover_multiple_projects(multi_project_zip: Path, tmp_path: Path):
@@ -105,17 +99,17 @@ def test_discover_multiple_projects(multi_project_zip: Path, tmp_path: Path):
     assert len(get_files("FinalProject")) == 3
 
 
-def test_identify_project_type(git_zip: Path):
+def test_identify_project_type(git_dir: Path):
     """Verifies Git-based detection of individual vs group projects."""
     # Single author = individual (False)
-    solo_report = ProjectReport(zip_path=str(
-        git_zip), project_name="SoloProject")
+    solo_report = ProjectReport(project_path=str(
+        git_dir), project_name="SoloProject")
     assert solo_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value).value is False
 
     # Multiple authors = group (True)
-    team_report = ProjectReport(zip_path=str(
-        git_zip), project_name="TeamProject")
+    team_report = ProjectReport(project_path=str(
+        git_dir), project_name="TeamProject")
     assert team_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value).value is True
 
@@ -137,7 +131,8 @@ def test_no_git_projects(tmp_path: Path):
     assert found and len(found[0].file_paths) == 2
     # No Git repo = no statistics
     # (ProjectReport still expects zip_path, so this part is unchanged)
-    report = ProjectReport(zip_path=str(zip_path), project_name="BasicProject")
+    report = ProjectReport(project_path=str(
+        extract_dir), project_name="BasicProject")
     assert report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value) is None
 
@@ -185,11 +180,11 @@ def test_mac_zip_structure(tmp_path: Path):
     assert len(get_files("ProjectB")) == 3
 
 
-def test_project_report_git_analysis(git_zip: Path):
+def test_project_report_git_analysis(git_dir: Path):
     """Verifies ProjectReport correctly analyzes Git authorship statistics."""
     # Test individual project (1 author)
-    solo_report = ProjectReport(zip_path=str(
-        git_zip), project_name="SoloProject")
+    solo_report = ProjectReport(project_path=str(
+        git_dir), project_name="SoloProject")
 
     is_group = solo_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -206,8 +201,8 @@ def test_project_report_git_analysis(git_zip: Path):
     assert authors_per_file.value["solo_work.py"] == 1
 
     # Test group project (2 authors)
-    team_report = ProjectReport(zip_path=str(
-        git_zip), project_name="TeamProject")
+    team_report = ProjectReport(project_path=str(
+        git_dir), project_name="TeamProject")
 
     is_group = team_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
