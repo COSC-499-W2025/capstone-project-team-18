@@ -45,4 +45,3 @@ coverage.xml
 # dotenv environment variables
 .env
 .env.*
-database/data.db
