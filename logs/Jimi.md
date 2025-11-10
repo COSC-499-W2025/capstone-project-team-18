@@ -16,6 +16,9 @@
 
 **[Week 9, Oct. 27-Nov. 2](#week-9-oct-27-nov-2)**
 
+**[Week 10, Nov. 3-9](#week-8-nov-39)**
+
+
 
 
 
@@ -87,4 +90,14 @@ This week's goals were to create an end-to-end workflow for the artifact miner w
 
 ### Recap
 
-This week's goals were to exapnd on the end-to-end workflow for the artifact miner which made minor assessments about files and projects given a zip file. This week individually I began our expansion into tracking Git based ocntibution features. I added a commit percenatge STATISTIC which given a repo with mulitple authors tracks how many commits are from the user. This is an expansion of the `_analyze_git_authorship` function in `report.py`. I wrote tests for this file and reviewed the error handling filepath changes and changes to the database.
+This week's goals were to expand on the end-to-end workflow for the artifact miner which made minor assessments about files and projects given a zip file. This week individually I began our expansion into tracking Git based contribution features. I added a commit percentage STATISTIC which given a repo with multiple authors tracks how many commits are from the user. This is an expansion of the `_analyze_git_authorship` function in `report.py`. I wrote tests for this file and reviewed the error handling filepath changes and changes to the database.
+
+## Week 10, Nov. 3-9
+
+### Peer Eval
+
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week10_log.png)
+
+### Recap
+
+This week's goals as a team were to create more specifications within the project and work towards the demo for Milestone 1. I worked on expanding the depth of the individual contribution milestone. After adding a project wide contribution metric, this week I worked on using `git blame` to analyze this statistic for individual files. This will be expanded upon in the future, by aggregating across a project and getting an overview of 'ownership' in a project. Beyond this week and even Milestone 1, is analyzing sections committed by the user to find key skills and insights. As part of the group, I extensively reviewed Priyansh's PRs on our handling of zip files as we had spent time discussing it in class. I also reviewed Sam's language identifier and the documentation on the DB by Alex, which both gave a clear indication of the project direction.
