@@ -93,3 +93,15 @@ For testing, I created an extensive test suite with 25+ test cases covering all 
 
 This work addresses issues #112 (Add Natural Language Statistic to FileReportClass) and #113 (Measure ARI Score for FileReportClass), providing a unified solution for comprehensive project analysis across diverse technology stacks. The implementation can be found in PR ([#131](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/131)). I also reviewed Priyansh's project-level aggregate stats PR ([#132](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/132)) and Sam's CLI incorrect filepath err handling PR ([#138](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/138)).
 
+
+
+## Week 10, Nov. 3-9
+
+### Peer Eval
+
+![Peer Eval SS](./log_images/personal_log_imgs/erem/erem_week10_log.png)
+
+### Recap
+This week I implemented the foundational JSON preferences system for our CLI application, establishing persistent user data storage across sessions. I developed the complete UserPreferences class with core methods for loading, saving, updating, and retrieving user preferences, then integrated this system into existing CLI commands (do_perms, do_filepath, do_email, do_begin) to automatically persist user consent, project filepaths, and email configurations.
+
+The implementation involved a significant amount of code including comprehensive error handling, backwards compatibility support, and proper file system management within the database folder structure. This work represents the first PR stage of the  CLI User Prefrences and can be found in PR [#181](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/181), laying the groundwork for advanced user credential management and configuration options in subsequent releases. I also reviewed Alex's PR [154](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/154).
