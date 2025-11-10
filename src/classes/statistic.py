@@ -165,7 +165,7 @@ class FileStatCollection(Enum):
     PERCENTAGE_LINES_COMMITTED = FileStatisticTemplate(
         name="PERCENTAGE_LINES_COMMITTED",
         description="perecntage of lines attributed to individual in file",
-
+        expected_type=float,
     )
 
 
