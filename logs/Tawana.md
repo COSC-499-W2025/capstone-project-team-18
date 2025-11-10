@@ -1,3 +1,13 @@
+# Week 10 11/03 - 11/09
+
+# Peer Evaluation!
+[Peer Eval THN](./log_images/personal_log_imgs/tawana/tawana_week10_log.png)
+
+# Recap on your week goals
+This week, my focus was completing Issue `#164`, which implements the “Produce a chronological list of projects” requirement from Milestone #1. I added UserReport.get_chronological_projects(), which formats and outputs projects ordered by start date, includes start/end dates, and automatically numbers entries. A full test suite (tests/test_user_report_projects.py) was added to validate correctness, sorting behavior, formatting, and edge cases (e.g., missing dates).
+
+Additionally, I reviewed multiple PRs this week to support team progress. I reviewed Reviewed Alex’s PR `#159` - database documentation + relationship cleanup and `#154` - moved /database into /src and updated imports. I also reviewed Jimi’s PR `#163` - updated Git Analyze to support directory input instead of zip and Priyansh's PR `#125` - OS detection for unzip/extraction logic. 
+
 # Week 9 10/27 - 11/02
 
 # Peer Evaluation!
