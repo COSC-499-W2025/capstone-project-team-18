@@ -3,7 +3,7 @@ This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
 from .report import FileReport
-from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain
+from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage
 import datetime
 from pathlib import Path
 import logging
@@ -234,8 +234,26 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         if self._is_git_repo(self.filepath):
             stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
                                    self._get_file_commit_percentage(self.filepath)))
-
+            
         self.stats.extend(stats)
+
+        self._find_coding_language()
+
+    def _find_coding_language(self) -> None:
+        """
+        Find the coding language by file extension.
+        We do it here (instead of the sub class analyzers)
+        because we can offer support for more languages
+        that we do not have analyzers for.
+
+        """
+        # Get suffix of file
+        suffix = Path(self.filepath).suffix.lower()
+
+        for language in CodingLanguage:
+            # Each language.value is a tuple (name, extensions)
+            if suffix in language.value[1]:
+                return self.stats.add(Statistic(FileStatCollection.CODING_LANGUAGE.value, language))
 
     def _get_file_commit_percentage(self, filepath: str):
         try:
@@ -802,6 +820,10 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
         return TextFileAnalyzer(filepath)
+
+    for language in CodingLanguage:
+        if extension in language.value[1]:
+            return CodeFileAnalyzer(filepath)
 
     # Default to base analyzer
     return BaseFileAnalyzer(filepath)

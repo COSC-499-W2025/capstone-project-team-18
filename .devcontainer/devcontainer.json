@@ -28,10 +28,6 @@
         }
     },
 
-    "postCreateCommand": "bash utils/postCreateScript.sh",
+    "postCreateCommand": "bash utils/postCreateScript.sh"
 
-    // Pass host OS into the container
-    "containerEnv": {
-        "HOST_OS": "${localEnv:OS}"
-    }
 }

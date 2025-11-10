@@ -1,189 +1,251 @@
-import unittest
-import sys
-import os
+from pathlib import Path
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, CodingLanguage
+from src.classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
+from src.classes.report import ProjectReport, FileReport
 from datetime import datetime
 
-# Add the parent directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.classes.report import ProjectReport, FileReport
-from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection
+def test_project_dates():
+    # Create mock file reports with different dates
+    file1_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 1, 1)),
+        Statistic(FileStatCollection.DATE_MODIFIED.value,
+                  datetime(2023, 1, 15))
+    ])
+    file1 = FileReport(file1_stats, "file1.py")
 
-class TestProjectReport(unittest.TestCase):
-    def test_project_dates(self):
-        # Create mock file reports with different dates
-        file1_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 1, 1)),
-            Statistic(FileStatCollection.DATE_MODIFIED.value, datetime(2023, 1, 15))
+    file2_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 2, 1)),
+        Statistic(FileStatCollection.DATE_MODIFIED.value,
+                  datetime(2023, 2, 20))
+    ])
+    file2 = FileReport(file2_stats, "file2.py")
+
+    # Create project report
+    project = ProjectReport([file1, file2])
+
+    # Test project start date (earliest created)
+    start_date = project.get_value(
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    assert start_date == datetime(2023, 1, 1)
+
+    # Test project end date (latest modified)
+    end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+    assert end_date == datetime(2023, 2, 20)
+
+
+def test_empty_file_reports_list():
+    """Test that empty file reports list doesn't crash"""
+    project = ProjectReport([])
+
+    # Should not have start or end dates
+    start_date = project.get_value(
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+
+    assert start_date is None
+    assert end_date is None
+
+
+def test_single_file_report():
+    """Test with only one file report"""
+    file_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_CREATED.value,
+                  datetime(2023, 5, 10)),
+        Statistic(FileStatCollection.DATE_MODIFIED.value,
+                  datetime(2023, 5, 15))
+    ])
+    file_report = FileReport(file_stats, "single_file.py")
+
+    project = ProjectReport([file_report])
+
+    # Start and end should be the same file's dates
+    start_date = project.get_value(
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+
+    assert start_date == datetime(2023, 5, 10)
+    assert end_date == datetime(2023, 5, 15)
+
+
+def test_files_with_missing_dates():
+    """Test files that have None values for dates"""
+    # File with only creation date
+    file1_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 3, 1))
+    ])
+    file1 = FileReport(file1_stats, "file1.py")
+
+    # File with only modification date
+    file2_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_MODIFIED.value,
+                  datetime(2023, 3, 20))
+    ])
+    file2 = FileReport(file2_stats, "file2.py")
+
+    # File with both dates
+    file3_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 3, 5)),
+        Statistic(FileStatCollection.DATE_MODIFIED.value,
+                  datetime(2023, 3, 15))
+    ])
+    file3 = FileReport(file3_stats, "file3.py")
+
+    project = ProjectReport([file1, file2, file3])
+
+    # Should use earliest creation date from available files
+    start_date = project.get_value(
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    assert start_date == datetime(2023, 3, 1)
+
+    # Should use latest modification date from available files
+    end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+    assert end_date == datetime(2023, 3, 20)
+
+
+def test_files_with_no_dates():
+    """Test files that have no date statistics at all"""
+    file_stats = StatisticIndex([])  # No statistics
+    file_report = FileReport(file_stats, "no_dates.py")
+
+    project = ProjectReport([file_report])
+
+    # Should have no dates
+    start_date = project.get_value(
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+
+    assert start_date is None
+    assert end_date is None
+
+
+def test_wrong_date_assumptions():
+    """Test that dates are calculated correctly with assertFalse"""
+    file1_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 1, 1)),
+        Statistic(FileStatCollection.DATE_MODIFIED.value,
+                  datetime(2023, 1, 15))
+    ])
+    file1 = FileReport(file1_stats, "file1.py")
+
+    file2_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 2, 1)),
+        Statistic(FileStatCollection.DATE_MODIFIED.value,
+                  datetime(2023, 2, 20))
+    ])
+    file2 = FileReport(file2_stats, "file2.py")
+
+    project = ProjectReport([file1, file2])
+
+    start_date = project.get_value(
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+
+    # Assert wrong assumptions are false
+    assert start_date != datetime(2023, 2, 1)  # Wrong start date
+    assert end_date != datetime(2023, 1, 15)   # Wrong end date
+    assert start_date != end_date             # Start != End
+    # Start should be before end
+    assert start_date <= end_date
+
+
+def test_multiple_files_complex_dates():
+    """Test with many files and complex date patterns"""
+    files = []
+
+    # Create 5 files with various dates
+    dates = [
+        (datetime(2023, 1, 5), datetime(2023, 1, 10)),   # Earliest creation
+        (datetime(2023, 3, 1), datetime(2023, 3, 25)),
+        (datetime(2023, 2, 15), datetime(2023, 4, 30)),  # Latest modification
+        (datetime(2023, 1, 20), datetime(2023, 2, 5)),
+        (datetime(2023, 2, 1), datetime(2023, 3, 15))
+    ]
+
+    for i, (created, modified) in enumerate(dates):
+        stats = StatisticIndex([
+            Statistic(FileStatCollection.DATE_CREATED.value, created),
+            Statistic(FileStatCollection.DATE_MODIFIED.value, modified)
         ])
-        file1 = FileReport(file1_stats, "file1.py")
-        
-        file2_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 2, 1)), 
-            Statistic(FileStatCollection.DATE_MODIFIED.value, datetime(2023, 2, 20))
-        ])
-        file2 = FileReport(file2_stats, "file2.py")
-        
-        # Create project report
-        project = ProjectReport([file1, file2])
-        
-        # Test project start date (earliest created)
-        start_date = project.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-        self.assertEqual(start_date, datetime(2023, 1, 1))
-        
-        # Test project end date (latest modified) 
-        end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-        self.assertEqual(end_date, datetime(2023, 2, 20))
+        files.append(FileReport(stats, f"file{i}.py"))
 
-    def test_empty_file_reports_list(self):
-        """Test that empty file reports list doesn't crash"""
-        project = ProjectReport([])
-        
-        # Should not have start or end dates
-        start_date = project.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-        end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-        
-        self.assertIsNone(start_date)
-        self.assertIsNone(end_date)
+    project = ProjectReport(files)
 
-    def test_single_file_report(self):
-        """Test with only one file report"""
-        file_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 5, 10)),
-            Statistic(FileStatCollection.DATE_MODIFIED.value, datetime(2023, 5, 15))
-        ])
-        file_report = FileReport(file_stats, "single_file.py")
-        
-        project = ProjectReport([file_report])
-        
-        # Start and end should be the same file's dates
-        start_date = project.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-        end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-        
-        self.assertEqual(start_date, datetime(2023, 5, 10))
-        self.assertEqual(end_date, datetime(2023, 5, 15))
+    start_date = project.get_value(
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
 
-    def test_files_with_missing_dates(self):
-        """Test files that have None values for dates"""
-        # File with only creation date
-        file1_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 3, 1))
-        ])
-        file1 = FileReport(file1_stats, "file1.py")
-        
-        # File with only modification date
-        file2_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_MODIFIED.value, datetime(2023, 3, 20))
-        ])
-        file2 = FileReport(file2_stats, "file2.py")
-        
-        # File with both dates
-        file3_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 3, 5)),
-            Statistic(FileStatCollection.DATE_MODIFIED.value, datetime(2023, 3, 15))
-        ])
-        file3 = FileReport(file3_stats, "file3.py")
-        
-        project = ProjectReport([file1, file2, file3])
-        
-        # Should use earliest creation date from available files
-        start_date = project.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-        self.assertEqual(start_date, datetime(2023, 3, 1))
-        
-        # Should use latest modification date from available files
-        end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-        self.assertEqual(end_date, datetime(2023, 3, 20))
+    # Should be earliest creation and latest modification
+    assert start_date == datetime(2023, 1, 5)
+    assert end_date == datetime(2023, 4, 30)
 
-    def test_files_with_no_dates(self):
-        """Test files that have no date statistics at all"""
-        file_stats = StatisticIndex([])  # No statistics
-        file_report = FileReport(file_stats, "no_dates.py")
-        
-        project = ProjectReport([file_report])
-        
-        # Should have no dates
-        start_date = project.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-        end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-        
-        self.assertIsNone(start_date)
-        self.assertIsNone(end_date)
+    # Assert false conditions
+    assert start_date != datetime(
+        2023, 1, 20)  # Not the second earliest
+    assert end_date != datetime(2023, 3, 25)  # Not the second latest
 
-    def test_wrong_date_assumptions(self):
-        """Test that dates are calculated correctly with assertFalse"""
-        file1_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 1, 1)),
-            Statistic(FileStatCollection.DATE_MODIFIED.value, datetime(2023, 1, 15))
-        ])
-        file1 = FileReport(file1_stats, "file1.py")
-        
-        file2_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 2, 1)), 
-            Statistic(FileStatCollection.DATE_MODIFIED.value, datetime(2023, 2, 20))
-        ])
-        file2 = FileReport(file2_stats, "file2.py")
-        
-        project = ProjectReport([file1, file2])
-        
-        start_date = project.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-        end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-        
-        # Assert wrong assumptions are false
-        self.assertFalse(start_date == datetime(2023, 2, 1))  # Wrong start date
-        self.assertFalse(end_date == datetime(2023, 1, 15))   # Wrong end date
-        self.assertFalse(start_date == end_date)              # Start != End
-        self.assertFalse(start_date > end_date)               # Start should be before end
 
-    def test_multiple_files_complex_dates(self):
-        """Test with many files and complex date patterns"""
-        files = []
-        
-        # Create 5 files with various dates
-        dates = [
-            (datetime(2023, 1, 5), datetime(2023, 1, 10)),   # Earliest creation
-            (datetime(2023, 3, 1), datetime(2023, 3, 25)),   
-            (datetime(2023, 2, 15), datetime(2023, 4, 30)),  # Latest modification
-            (datetime(2023, 1, 20), datetime(2023, 2, 5)),
-            (datetime(2023, 2, 1), datetime(2023, 3, 15))
-        ]
-        
-        for i, (created, modified) in enumerate(dates):
-            stats = StatisticIndex([
-                Statistic(FileStatCollection.DATE_CREATED.value, created),
-                Statistic(FileStatCollection.DATE_MODIFIED.value, modified)
-            ])
-            files.append(FileReport(stats, f"file{i}.py"))
-        
-        project = ProjectReport(files)
-        
-        start_date = project.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-        end_date = project.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-        
-        # Should be earliest creation and latest modification
-        self.assertEqual(start_date, datetime(2023, 1, 5))
-        self.assertEqual(end_date, datetime(2023, 4, 30))
-        
-        # Assert false conditions
-        self.assertFalse(start_date == datetime(2023, 1, 20))  # Not the second earliest
-        self.assertFalse(end_date == datetime(2023, 3, 25))    # Not the second latest
+def test_project_report_inheritance():
+    """Test that ProjectReport properly inherits from BaseReport"""
+    file_stats = StatisticIndex([
+        Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 1, 1)),
+        Statistic(FileStatCollection.DATE_MODIFIED.value,
+                  datetime(2023, 1, 15))
+    ])
+    file_report = FileReport(file_stats, "test.py")
 
-    def test_project_report_inheritance(self):
-        """Test that ProjectReport properly inherits from BaseReport"""
-        file_stats = StatisticIndex([
-            Statistic(FileStatCollection.DATE_CREATED.value, datetime(2023, 1, 1)),
-            Statistic(FileStatCollection.DATE_MODIFIED.value, datetime(2023, 1, 15))
-        ])
-        file_report = FileReport(file_stats, "test.py")
-        
-        project = ProjectReport([file_report])
-        
-        # Test inherited methods work
-        self.assertIsNotNone(project.to_dict())
-        self.assertIsInstance(project.to_dict(), dict)
-        
-        # Test that repr doesn't crash
-        repr_str = repr(project)
-        self.assertIsInstance(repr_str, str)
-        self.assertTrue("ProjectReport" in repr_str)
+    project = ProjectReport([file_report])
 
-if __name__ == '__main__':
-    unittest.main()
+    # Test inherited methods work
+    assert project.to_dict() is not None
+    assert isinstance(project.to_dict(), dict)
+
+    # Test that repr doesn't crash
+    repr_str = repr(project)
+    assert isinstance(repr_str, str)
+    assert "ProjectReport" in repr_str
+
+
+def test_coding_ratio_in_normal_project(tmp_path):
+    """
+    Tests that we have approiate coding ratio
+    of files
+    """
+
+    files = ["file.c",
+             "file2.c",
+             "file3.py",
+             "file4.rb",
+             "file5.py",
+             "file6.docx",
+             "file7.md"]
+
+    expected_ratio = {
+        CodingLanguage.C: (2/5),
+        CodingLanguage.PYTHON: (2/5),
+        CodingLanguage.RUBY: (1/5)
+    }
+
+    # We should see C language be 0.4, py be 0.4 and ruby be 0.2
+
+    reports = []
+
+    # Make files and log their reports
+    for file in files:
+        path = tmp_path / file
+        Path(path).write_text("")
+
+        reports.append(get_appropriate_analyzer(path).analyze())
+
+    project_report = ProjectReport(reports)
+
+    coding_language_ratio = project_report.get_value(
+        ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
+
+    assert len(coding_language_ratio) == len(expected_ratio)
+    assert isinstance(coding_language_ratio, dict)
+
+    for language in expected_ratio.keys():
+        ratio = coding_language_ratio.get(language, None)
+
+        assert ratio == expected_ratio.get(language)
