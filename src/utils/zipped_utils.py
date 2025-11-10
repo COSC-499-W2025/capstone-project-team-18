@@ -11,28 +11,16 @@ def get_os_name() -> str:
     Tries to use the HOST_OS environment variable (set by the dev container) if available.
     'windows' for Windows, 'macos' for macOS, 'linux' for Linux, 'unknown' otherwise.
     """
-    import os
-    host_os = os.environ.get('HOST_OS', '').lower()
-    if host_os:
-        if 'windows' in host_os:
-            return 'windows'
-        elif 'darwin' in host_os or 'mac' in host_os:
-            return 'macos'
-        elif 'linux' in host_os:
-            return 'linux'
-        else:
-            return host_os
+    import platform
+    system = platform.system().lower()
+    if system == 'windows':
+        return 'windows'
+    elif system == 'darwin':
+        return 'macos'
+    elif system == 'linux':
+        return 'linux'
     else:
-        import platform
-        system = platform.system().lower()
-        if system == 'windows':
-            return 'windows'
-        elif system == 'darwin':
-            return 'macos'
-        elif system == 'linux':
-            return 'linux'
-        else:
-            return 'unknown'
+        return 'unknown'
 
 
 def unzip_file(zipped_file: str, extract_to: str) -> None:
