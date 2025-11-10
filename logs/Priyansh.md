@@ -16,6 +16,8 @@
 
 **[Week 9, Oct. 27-Nov. 2](#week-9-oct-27-nov-2)**
 
+**[Week 10, Nov. 3-9](#week-10-nov-3-9)**
+
 ---
 
 ## Week 3, Sept. 15-21
@@ -107,3 +109,21 @@ I completed Issue #130 by implementing project-level aggregate statistics in Pro
 I also created the C and TypeScript analyzer PR which completes Issue #122, which extends our code analysis capabilities to new languages. The new analyzers use regex-based parsing to count classes, functions, and imports in C and TypeScript files, mirroring the approach used for Java and JavaScript. This update improves the flexibility of our statistics system and supports more diverse codebases. I wrote and validated tests for these analyzers to ensure accurate results and robust integration.
 
 Both PRs are foundational for expanding our platform's functionality and data aggregation. Additionally, I reviewed three PRs: 'changes for dynamic column generation' by Alex, 'Created Very Basic Resume Class Structure' by Sam, and '142: CSS HTML PHP analyzers by Tawana'. My feedback focused on code correctness, maintainability, and alignment with project goals.
+
+## Week 10, Nov. 3-9
+
+### Peer Eval
+![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week10_log.png)
+
+### Recap
+The team’s efforts this week focused on improving platform portability, database organization, and documentation completeness, setting a strong foundation for the next phase of development.
+
+I completed Issue #125 by implementing robust OS detection logic in the codebase. This allows the platform to accurately determine the host operating system in both dev containers and end-user environments, enabling the correct extraction command for Windows, macOS, and Linux. I added and validated new tests for host OS detection to ensure reliability.
+
+I also completed Issue #59 by adding comprehensive support for extracting .zip, .tar.gz, .gz, and .7z files. The extraction logic now uses system tools when available and Python libraries as a fallback, ensuring reliable multi-format extraction on all platforms. I updated and expanded tests to verify extraction for each format, and cleaned up requirements and devcontainer configuration to remove development-only environment variables.
+
+Additionally, I reviewed and approved PR #167 (database documentation), focusing on code quality, clarity, and maintainability.
+
+These changes significantly improved the platform’s portability, reliability, and maintainability.
+
+
