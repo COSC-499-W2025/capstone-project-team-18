@@ -453,11 +453,8 @@ class UserReport(BaseReport):
     ) -> list | str:
         """
         Return the user's projects ordered by start date.
-
-        This implementation always includes both start and end dates
-        in the formatted output and always numbers entries (numbering is
-        applied to both string and list outputs). The function keeps the
-        signature for backward compatibility.
+        This implementation includes inclusion of start & end dates
+        and numbering for both string and list outputs.
         """
         include_end_date = True
         numbered = True
@@ -465,11 +462,15 @@ class UserReport(BaseReport):
         if not getattr(self, "project_reports", None):
             return "" if as_string else []
 
-        entries = []
+        entries: list[dict] = []
         for pr in self.project_reports:
             title = getattr(pr, "project_name", None) or "Untitled Project"
-            start_dt = self._coerce_datetime(pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value))
-            end_dt = self._coerce_datetime(pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value))
+            start_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            )
+            end_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+            )
 
             if start_dt:
                 formatted = f"{title} - Started {self._fmt_mdy_short(start_dt)}"
@@ -482,10 +483,18 @@ class UserReport(BaseReport):
 
             entries.append({"title": title, "start_date": start_dt, "formatted": formatted})
 
-        entries.sort(key=lambda e: (e["start_date"] is None, e["start_date"]), reverse=newest_first)
+        dated = [e for e in entries if e["start_date"] is not None]
+        undated = [e for e in entries if e["start_date"] is None]
 
-        lines = [e["formatted"] for e in entries]
-        lines = [f"{i+1}. {ln}" for i, ln in enumerate(lines)]
+        # Sort dated projects by start_date (oldest -> newest)
+        dated.sort(key=lambda e: e["start_date"])
+        if newest_first:
+            dated.reverse()
+
+        ordered = dated + undated
+
+        # Build numbered lines (numbering always applied)
+        lines = [f"{i+1}. {e['formatted']}" for i, e in enumerate(ordered)]
 
         if as_string:
             return "\n".join(lines)
