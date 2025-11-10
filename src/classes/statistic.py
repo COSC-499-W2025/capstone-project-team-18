@@ -164,7 +164,7 @@ class FileStatCollection(Enum):
     # percenatge is not greatest indicator as any minor change is associated with ownership
     PERCENTAGE_LINES_COMMITTED = FileStatisticTemplate(
         name="PERCENTAGE_LINES_COMMITTED",
-        description="perecntage of lines attributed to individual in file",
+        description="percentage of lines attributed to individal in file",
         expected_type=float,
     )
 

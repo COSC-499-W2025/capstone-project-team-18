@@ -12,7 +12,7 @@ from typing import Optional
 import ast
 from utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
-from git import Repo
+from git import Repo, InvalidGitRepositoryError
 
 # CSS & HTML parsers
 try:
@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[str]) -> Optional[list[FileReport]]:
+def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[str] = None) -> Optional[list[FileReport]]:
     """
     Method to extract individual fileReports within each project
     """
@@ -69,7 +69,7 @@ class BaseFileAnalyzer:
         - DATE_MODIFIED
     """
 
-    def __init__(self, filepath: str, email: Optional[str]):
+    def __init__(self, filepath: str, email: Optional[str] = None):
         self.filepath = filepath
         self.email = email
         self.stats = StatisticIndex()
@@ -121,7 +121,7 @@ class TextFileAnalyzer(BaseFileAnalyzer):
 
     This class will parse a file that contains text and log the
     raw line count, but more specific type of stats are given
-    to the sublcasses which are: CodeFileAnalyzer and
+    to the subclasses which are: CodeFileAnalyzer and
     NaturalLanguageAnalyzer.
 
     Attributes:
@@ -230,36 +230,37 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         stats = [
             Statistic(FileStatCollection.TYPE_OF_FILE.value,
                       FileDomain.CODE),
-            Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
-                      self._get_file_commit_percentage(self.filepath, self._is_git_repo(self.filepath))),
         ]
+        if self._is_git_repo(self.filepath):
+            stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                                   self._get_file_commit_percentage(self.filepath)))
 
         self.stats.extend(stats)
 
-    def _get_file_commit_percentage(self, filepath: str, isGit: bool):
-        if isGit:
-            try:
-                repo = Repo(filepath)
+    def _get_file_commit_percentage(self, filepath: str):
+        try:
+            repo = Repo(filepath)
 
-                # get blame for each line
-                blame_info = repo.blame('HEAD', filepath)
+            # gets blame for each line
+            blame_info = repo.blame('HEAD', filepath)
 
-                commit_count = 0
-                line_count = 0
-                for commit, lines in blame_info:
-                    line_count = len(lines)
-                    if commit.author.email == report
+            commit_count = 0
+            line_count = 0
+            for commit, lines in blame_info:
+                line_count = len(lines)
+                if commit.author.email == self.email:
                     commit_count += len(lines)
 
-                percentage = (commit_count / line_count) * 100
-            except Exception as e:
-                return f"An error occurred: {e}"
+            return (commit_count / line_count) * 100
+        except InvalidGitRepositoryError as e:
+            # need to clarify behavior in case of error
+            logger.debug("Exception {e}")
 
-    def _is_git_repo(path):
+    def _is_git_repo(self, path):
         try:
-            _ = git.Repo(path, search_parent_directories=True).git_dir
+            _ = Repo(path).git_dir
             return True
-        except git.exc.InvalidGitRepositoryError:
+        except InvalidGitRepositoryError:
             return False
 
 
