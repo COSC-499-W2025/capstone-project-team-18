@@ -81,7 +81,7 @@ class ProjectReport(BaseReport):
 
     def __init__(self,
                  file_reports: Optional[list[FileReport]] = None,
-                 zip_path: Optional[str] = None,
+                 project_path: Optional[str] = None,
                  project_name: Optional[str] = None,
                  user_email: Optional[str] = None
                  ):
@@ -90,7 +90,7 @@ class ProjectReport(BaseReport):
 
         Args:
             file_reports: List of FileReport objects to aggregate statistics from
-            zip_path: Optional path to zip file for Git analysis
+            project_path: Optional path to project for Git analysis
             project_name: Optional project name for Git analysis
         """
 
@@ -132,9 +132,9 @@ class ProjectReport(BaseReport):
         project_statistics = StatisticIndex(project_stats)
 
         # Add Git analysis statistics if zip file is provided
-        if zip_path and project_name:
+        if project_path and project_name:
             git_stats = self._analyze_git_authorship(
-                zip_path, project_name, user_email)
+                project_path, project_name, user_email)
             if git_stats:
                 for stat in git_stats:
                     project_statistics.add(stat)
@@ -182,79 +182,65 @@ class ProjectReport(BaseReport):
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
         return inst
 
-    def _analyze_git_authorship(self, zip_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
+    def _analyze_git_authorship(self, project_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
-        if not Path(zip_path).exists():
+        if not Path(project_path + "/" + project_name).exists():
             return None
 
-        temp = tempfile.mkdtemp()
         try:
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                files = [f for f in zf.namelist(
-                ) if f.startswith(f"{project_name}/")]
-                if not files:
-                    return None
-                for path in files:
-                    zf.extract(path, temp)
+            repo = Repo(Path(project_path) / project_name)
 
-            try:
-                repo = Repo(Path(temp) / project_name)
+            # Sum all commits to check perecentage by
+            commit_count_by_author = {}
+            for commit in repo.iter_commits():
+                author_email = commit.author.email
+                commit_count_by_author[author_email] = commit_count_by_author.get(
+                    author_email, 0) + 1
 
-                # Sum all commits to check perecentage by
-                commit_count_by_author = {}
-                for commit in repo.iter_commits():
-                    author_email = commit.author.email
-                    commit_count_by_author[author_email] = commit_count_by_author.get(
-                        author_email, 0) + 1
+            all_authors = set(commit_count_by_author.keys())
+            total_authors = len(all_authors)
+            total_commits = sum(commit_count_by_author.values())
 
-                all_authors = set(commit_count_by_author.keys())
-                total_authors = len(all_authors)
-                total_commits = sum(commit_count_by_author.values())
+            # Calculate user's commit percentage if project has multiple authors
+            user_commit_percentage = None
+            if total_authors > 1 and user_email:
+                user_commits = commit_count_by_author.get(
+                    user_email, 0)
+                if total_commits > 0:
+                    user_commit_percentage = (
+                        user_commits / total_commits) * 100
 
-                # Calculate user's commit percentage if project has multiple authors
-                user_commit_percentage = None
-                if total_authors > 1 and user_email:
-                    user_commits = commit_count_by_author.get(
-                        user_email, 0)
-                    if total_commits > 0:
-                        user_commit_percentage = (
-                            user_commits / total_commits) * 100
+            authors_per_file = {}
+            for item in repo.tree().traverse():
+                if item.type == 'blob':
+                    try:
+                        file_authors = {
+                            c.author.email for c in repo.iter_commits(paths=item.path)}
+                        authors_per_file[item.path] = len(file_authors)
+                    except Exception:
+                        continue
 
-                authors_per_file = {}
-                for item in repo.tree().traverse():
-                    if item.type == 'blob':
-                        try:
-                            file_authors = {
-                                c.author.email for c in repo.iter_commits(paths=item.path)}
-                            authors_per_file[item.path] = len(file_authors)
-                        except Exception:
-                            continue
+            stats = [
+                Statistic(
+                    ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
+                Statistic(
+                    ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
+                Statistic(
+                    ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
+            ]
 
-                stats = [
+            # Add user commit percentage if applicable
+            if user_commit_percentage is not None:
+                stats.append(
                     Statistic(
-                        ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
-                    Statistic(
-                        ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
-                    Statistic(
-                        ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
-                ]
-
-                # Add user commit percentage if applicable
-                if user_commit_percentage is not None:
-                    stats.append(
-                        Statistic(
-                            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
-                            round(user_commit_percentage, 2)
-                        )
+                        ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
+                        round(user_commit_percentage, 2)
                     )
+                )
 
-                return stats
-            except InvalidGitRepositoryError:
-                return None
-        except (zipfile.BadZipFile, FileNotFoundError):
+            return stats
+        except InvalidGitRepositoryError:
             return None
-        finally:
-            shutil.rmtree(temp, ignore_errors=True)
 
 
 class UserReport(BaseReport):
