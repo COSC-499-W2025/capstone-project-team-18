@@ -77,6 +77,13 @@ priyansh1913 -> Priyansh Mathur
 
 - **PR #154** (Issue #153): **Alex Taschuk** - Moved the entire `database` directory into `src` and updated all related imports, improving code organization and project structure.
 
+**Closed Issues:**
+
+![Closed Issue 1](../log_images/team_log_imgs/close_issue1.png)
+![Closed Issue 2](../log_images/team_log_imgs/close_issue2.png)
+![Closed Issue 3](../log_images/team_log_imgs/close_issue3.png)
+![Closed Issue 4](../log_images/team_log_imgs/close_issue4.png)
+![Closed Issue 5](../log_images/team_log_imgs/close_issue5.png)
 
 
 ### In Progress Tasks
@@ -95,5 +102,7 @@ priyansh1913 -> Priyansh Mathur
 
 All 158 tests passing on the develop branch as of the latest merge, demonstrating robust code quality and comprehensive test coverage across all features.
 
-### Additional Info
+![Test Report](../log_images/team_log_imgs/tests_week10.png)
+
+
 
