@@ -12,8 +12,9 @@ from typing import Optional
 import ast
 from utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
+from git import Repo
 
-#CSS & HTML parsers 
+# CSS & HTML parsers
 try:
     import tinycss2
 except ImportError:
@@ -23,13 +24,13 @@ try:
 except ImportError:
     BeautifulSoup = None
 
-logging.basicConfig(level=logging.INFO)  
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def extract_file_reports(project_file: Optional[ProjectFiles]) -> Optional[list[FileReport]]:
+def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[str]) -> Optional[list[FileReport]]:
     """
-    Method to extract inidvidual fileReports within each project
+    Method to extract individual fileReports within each project
     """
 
     if project_file is None:
@@ -41,7 +42,7 @@ def extract_file_reports(project_file: Optional[ProjectFiles]) -> Optional[list[
     # list of reports for each file in an individual project to be returned
     reports = []
     for file in projectFiles:
-        analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file)
+        analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file, email)
         reports.append(analyzer.analyze())
 
     return reports
@@ -68,8 +69,9 @@ class BaseFileAnalyzer:
         - DATE_MODIFIED
     """
 
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, email: Optional[str]):
         self.filepath = filepath
+        self.email = email
         self.stats = StatisticIndex()
 
     def _process(self) -> None:
@@ -112,22 +114,6 @@ class BaseFileAnalyzer:
 
         return FileReport(statistics=self.stats, filepath=self.filepath)
 
-    def extract_file_reports(self, project_title: str, project_structure: dict) -> list:
-        """
-        Method to extract individual fileReports within each project
-        """
-        # Given a single project for a user and the project's structure return a list with each fileReport
-        projectFiles = project_structure.get(project_title)
-        # list of reports for each file in an individual project to be returned
-        reports = []
-        if projectFiles is not None:
-            for file in projectFiles:
-                analyzer = BaseFileAnalyzer(file)
-                reports.append(analyzer.analyze())
-        else:
-            return None
-        return reports
-
 
 class TextFileAnalyzer(BaseFileAnalyzer):
     """
@@ -139,7 +125,7 @@ class TextFileAnalyzer(BaseFileAnalyzer):
     NaturalLanguageAnalyzer.
 
     Attributes:
-        text_context : str The string repersentation of
+        text_context : str The string representation of
         the text in the file
 
     Statistics:
@@ -225,8 +211,6 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         if word_count == 0 or sentence_count == 0:
             return 0.0
 
-    
-        
         return 4.71 * (character_count / word_count) + 0.5 * (word_count / sentence_count) - 21.43
 
 
@@ -237,6 +221,7 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
     Statistics:
         - TYPE_OF_FILE
+        - PERCENTAGE_LINES_COMMITTED
     """
 
     def _process(self) -> None:
@@ -244,10 +229,38 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
         stats = [
             Statistic(FileStatCollection.TYPE_OF_FILE.value,
-                      FileDomain.CODE)
+                      FileDomain.CODE),
+            Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                      self._get_file_commit_percentage(self.filepath, self._is_git_repo(self.filepath))),
         ]
 
         self.stats.extend(stats)
+
+    def _get_file_commit_percentage(self, filepath: str, isGit: bool):
+        if isGit:
+            try:
+                repo = Repo(filepath)
+
+                # get blame for each line
+                blame_info = repo.blame('HEAD', filepath)
+
+                commit_count = 0
+                line_count = 0
+                for commit, lines in blame_info:
+                    line_count = len(lines)
+                    if commit.author.email == report
+                    commit_count += len(lines)
+
+                percentage = (commit_count / line_count) * 100
+            except Exception as e:
+                return f"An error occurred: {e}"
+
+    def _is_git_repo(path):
+        try:
+            _ = git.Repo(path, search_parent_directories=True).git_dir
+            return True
+        except git.exc.InvalidGitRepositoryError:
+            return False
 
 
 class PythonAnalyzer(CodeFileAnalyzer):
@@ -477,6 +490,7 @@ class TypeScriptAnalyzer(CodeFileAnalyzer):
 
         self.stats.extend(stats)
 
+
 class CSSAnalyzer(CodeFileAnalyzer):
     """
     Analyzer for CSS source files (.css).
@@ -497,7 +511,8 @@ class CSSAnalyzer(CodeFileAnalyzer):
 
         # Empty file: emit zero/empty stats so keys always exist
         if not self.text_content.strip():
-            logger.debug(f"{self.__class__.__name__}: Empty file {self.filepath}")
+            logger.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
@@ -546,21 +561,26 @@ class CSSAnalyzer(CodeFileAnalyzer):
                         nested_rules = tinycss2.parse_rule_list(r.content)
                         for nr in nested_rules:
                             if nr.type == "qualified-rule":
-                                class_tokens.update(extract_classes_from_prelude(nr.prelude))
+                                class_tokens.update(
+                                    extract_classes_from_prelude(nr.prelude))
 
                 elif r.type == "qualified-rule":
                     rule_count += 1
-                    class_tokens.update(extract_classes_from_prelude(r.prelude))
+                    class_tokens.update(
+                        extract_classes_from_prelude(r.prelude))
 
             imported_packages = list(set(imports))
 
         else:
             # ---- Regex fallback (keeps analyzer usable if tinycss2 isn't installed) ----
-            logger.debug("CSSAnalyzer: tinycss2 not installed; using regex fallback.")
-            cleaned = re.sub(r'/\*.*?\*/', '', self.text_content, flags=re.DOTALL)
+            logger.debug(
+                "CSSAnalyzer: tinycss2 not installed; using regex fallback.")
+            cleaned = re.sub(r'/\*.*?\*/', '',
+                             self.text_content, flags=re.DOTALL)
 
             # Count style rules and at-rule blocks (best-effort)
-            rule_blocks = re.findall(r'[^{@][^{]+\{[^{}]*\}|@[^{}]+\{[^{}]*\}', cleaned)
+            rule_blocks = re.findall(
+                r'[^{@][^{]+\{[^{}]*\}|@[^{}]+\{[^{}]*\}', cleaned)
             rule_count = len(rule_blocks)
 
             # Distinct .class selectors (including inside at-rule blocks)
@@ -575,9 +595,12 @@ class CSSAnalyzer(CodeFileAnalyzer):
 
         self.stats.extend([
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, rule_count),
-            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, len(class_tokens)),
-            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
+                      len(class_tokens)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
         ])
+
 
 class HTMLAnalyzer(CodeFileAnalyzer):
     """
@@ -594,7 +617,8 @@ class HTMLAnalyzer(CodeFileAnalyzer):
 
         # Empty file: emit zero/empty stats so keys always exist
         if not self.text_content.strip():
-            logger.debug(f"{self.__class__.__name__}: Empty file {self.filepath}")
+            logger.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
@@ -620,15 +644,17 @@ class HTMLAnalyzer(CodeFileAnalyzer):
 
             # External resources
             script_srcs = [s["src"] for s in soup.find_all("script", src=True)]
-            link_hrefs  = [l["href"] for l in soup.find_all("link", href=True)]
-            img_srcs    = [i["src"] for i in soup.find_all("img", src=True)]
+            link_hrefs = [l["href"] for l in soup.find_all("link", href=True)]
+            img_srcs = [i["src"] for i in soup.find_all("img", src=True)]
             imported_packages = list({*script_srcs, *link_hrefs, *img_srcs})
 
         else:
             # ---- Regex fallback (if bs4 isn't installed) ----
-            logger.debug("HTMLAnalyzer: BeautifulSoup not installed; using regex fallback.")
+            logger.debug(
+                "HTMLAnalyzer: BeautifulSoup not installed; using regex fallback.")
             # <script> blocks (inline + external)
-            script_count = len(re.findall(r'<\s*script\b', self.text_content, re.IGNORECASE))
+            script_count = len(re.findall(
+                r'<\s*script\b', self.text_content, re.IGNORECASE))
 
             # class="...", class='...', or class=token
             class_attrs = re.findall(
@@ -643,16 +669,23 @@ class HTMLAnalyzer(CodeFileAnalyzer):
                         class_tokens.add(tok)
 
             # External resources
-            srcs  = re.findall(r'<\s*script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', self.text_content, re.IGNORECASE)
-            links = re.findall(r'<\s*link[^>]*\bhref\s*=\s*["\']([^"\']+)["\']',  self.text_content, re.IGNORECASE)
-            imgs  = re.findall(r'<\s*img[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']',    self.text_content, re.IGNORECASE)
+            srcs = re.findall(
+                r'<\s*script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', self.text_content, re.IGNORECASE)
+            links = re.findall(
+                r'<\s*link[^>]*\bhref\s*=\s*["\']([^"\']+)["\']',  self.text_content, re.IGNORECASE)
+            imgs = re.findall(
+                r'<\s*img[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']',    self.text_content, re.IGNORECASE)
             imported_packages = list(set(srcs + links + imgs))
 
         self.stats.extend([
-            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, script_count),
-            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, len(class_tokens)),
-            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
+                      script_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
+                      len(class_tokens)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
         ])
+
 
 class PHPAnalyzer(CodeFileAnalyzer):
     """
@@ -664,27 +697,33 @@ class PHPAnalyzer(CodeFileAnalyzer):
         - NUMBER_OF_INTERFACES
         - IMPORTED_PACKAGES  (use/import + include/require targets)
     """
+
     def _process(self) -> None:
         super()._process()
 
         if not self.text_content.strip():
-            logging.debug(f"{self.__class__.__name__}: Empty file {self.filepath}")
+            logging.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value, 0),
                 Statistic(FileStatCollection.IMPORTED_PACKAGES.value, []),
-                ])
+            ])
             return
 
-        func_def_names = set(re.findall(r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))
-        short_arrow_defs = re.findall(r'\bfn\s*\(', self.text_content)  
+        func_def_names = set(re.findall(
+            r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))
+        short_arrow_defs = re.findall(r'\bfn\s*\(', self.text_content)
         function_count = len(func_def_names) + len(short_arrow_defs)
 
-        class_count = len(re.findall(r'\bclass\s+[A-Za-z_]\w*', self.text_content))
-        interface_count = len(re.findall(r'\binterface\s+[A-Za-z_]\w*', self.text_content))
+        class_count = len(re.findall(
+            r'\bclass\s+[A-Za-z_]\w*', self.text_content))
+        interface_count = len(re.findall(
+            r'\binterface\s+[A-Za-z_]\w*', self.text_content))
 
-        namespace_imports = re.findall(r'\buse\s+([A-Za-z_][\w\\]+)\s*;', self.text_content)
+        namespace_imports = re.findall(
+            r'\buse\s+([A-Za-z_][\w\\]+)\s*;', self.text_content)
         includes = re.findall(
             r'\b(?:require|include|require_once|include_once)\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)',
             self.text_content
@@ -692,10 +731,13 @@ class PHPAnalyzer(CodeFileAnalyzer):
         imported_packages = list(set(namespace_imports + includes))
 
         stats = [
-            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, function_count),
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
+                      function_count),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, class_count),
-            Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value, interface_count),
-            Statistic(FileStatCollection.IMPORTED_PACKAGES.value, imported_packages),
+            Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
+                      interface_count),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
         ]
         self.stats.extend(stats)
 
@@ -733,15 +775,15 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
         return TypeScriptAnalyzer(filepath)
-    
+
     # CSS files
     if extension == '.css':
         return CSSAnalyzer(filepath)
-    
+
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
         return HTMLAnalyzer(filepath)
-    
+
     # PHP files
     if extension == '.php':
         return PHPAnalyzer(filepath)
@@ -753,4 +795,3 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
 
     # Default to base analyzer
     return BaseFileAnalyzer(filepath)
-
