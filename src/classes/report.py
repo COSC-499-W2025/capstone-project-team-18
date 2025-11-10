@@ -434,3 +434,60 @@ class UserReport(BaseReport):
                 lines.append(f"{title}: {value!r}")
 
         return "\n".join(lines)
+    
+    @staticmethod
+    def _fmt_mdy_short(d: datetime | date | None) -> str:
+        """Format as 'Mon D, YYYY' (e.g. 'Jan 12, 2023')."""
+        if d is None:
+            return "an unknown date"
+        if isinstance(d, date) and not isinstance(d, datetime):
+            d = datetime(d.year, d.month, d.day)
+        return d.strftime("%b %d, %Y")
+
+    def get_chronological_projects(
+        self,
+        as_string: bool = True,
+        include_end_date: bool = False,
+        newest_first: bool = False,
+        numbered: bool = False,
+    ) -> list | str:
+        """
+        Return the user's projects ordered by start date.
+
+        This implementation always includes both start and end dates
+        in the formatted output and always numbers entries (numbering is
+        applied to both string and list outputs). The function keeps the
+        signature for backward compatibility.
+        """
+        include_end_date = True
+        numbered = True
+
+        if not getattr(self, "project_reports", None):
+            return "" if as_string else []
+
+        entries = []
+        for pr in self.project_reports:
+            title = getattr(pr, "project_name", None) or "Untitled Project"
+            start_dt = self._coerce_datetime(pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value))
+            end_dt = self._coerce_datetime(pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value))
+
+            if start_dt:
+                formatted = f"{title} - Started {self._fmt_mdy_short(start_dt)}"
+            else:
+                formatted = f"{title} - Start date unknown"
+            if end_dt:
+                formatted += f" (Ended {self._fmt_mdy_short(end_dt)})"
+            else:
+                formatted += " (End date unknown)"
+
+            entries.append({"title": title, "start_date": start_dt, "formatted": formatted})
+
+        entries.sort(key=lambda e: (e["start_date"] is None, e["start_date"]), reverse=newest_first)
+
+        lines = [e["formatted"] for e in entries]
+        lines = [f"{i+1}. {ln}" for i, ln in enumerate(lines)]
+
+        if as_string:
+            return "\n".join(lines)
+
+        return lines
