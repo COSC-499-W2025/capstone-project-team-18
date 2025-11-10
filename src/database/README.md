@@ -319,7 +319,7 @@ According to the SQLAlchemy [docs](https://docs.sqlalchemy.org/en/20/orm/quickst
 
 Simply put, whenever we need a connection to the database somewhere, the `engine` will create that connection for us (it also manages a connection pool for the connections).
 
-In `db.py` there is a `get_engine` function that allows us to easily connect to the database where and whenever we want to. Creating a new engine is as simple as `engine = get_engine("sqlite:///database/data.db")`
+In `db.py` there is a `get_engine` function that allows us to easily connect to the database where and whenever we want to. Creating a new engine is as simple as `engine = get_engine()`
 
 **Aside**: `db.py` also has an `init_db` function. This function is unique in that it is only used to populate our `.db` file with the tables and their columns, so it's not something that will be accessed regularly. In fact, once we have a fully functioning app, the only times that it will be called are when the user runs the app for the first time, and any time the app is updated to ensure that database is updated too.
 

@@ -144,12 +144,12 @@ class UserReportTable(Base):
     )
 
 
-def get_engine(db_path: str):
+def get_engine():
     '''
     The engine acts as a central sources of all connections to the DB.
     It is a factory & also manages a connection pool for the connections
     '''
-    return create_engine(db_path, echo=True, future=True)
+    return create_engine(DB_PATH, echo=True, future=True)
 
 
 def init_db(engine):
@@ -166,6 +166,6 @@ def init_db(engine):
 
 '''
 if __name__ == "__main__":
-    eng = get_engine(DB_PATH)
+    eng = get_engine()
     init_db(engine=eng)
 '''

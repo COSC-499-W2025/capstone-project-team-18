@@ -10,13 +10,14 @@ import random
 import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+
 
 from database.db import (
     Base,
     FileReportTable,
     ProjectReportTable,
     UserReportTable,
-    get_engine,
     init_db
 )
 from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
@@ -138,7 +139,7 @@ def temp_db(tmp_path: Path):
     Yields the engine for use in tests.
     '''
     db_path = tmp_path / "temp_db.db"
-    engine = get_engine(f"sqlite:///{db_path}")
+    engine = create_engine(f"sqlite///{db_path}")
     init_db(engine)  # add columns to temp DB
 
     # Create fake file reports
