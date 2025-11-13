@@ -156,7 +156,7 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_dir
         file_paths=[str(f) for f in temp_directory_with_subfolder["ProjectA"]]
     )
     listReport = extract_file_reports(project_file)
-    print(listReport)
+    # print(listReport)
     assert listReport is not None
     assert len(listReport) == 3 and all(isinstance(report, FileReport)
                                         for report in listReport)
