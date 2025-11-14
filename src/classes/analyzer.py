@@ -226,7 +226,6 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         if word_count == 0 or sentence_count == 0:
             return 0.0
 
-
         return 4.71 * (character_count / word_count) + 0.5 * (word_count / sentence_count) - 21.43
 
 
@@ -492,7 +491,6 @@ class TypeScriptAnalyzer(CodeFileAnalyzer):
         self.stats.extend(stats)
 
 
-
 class CSSAnalyzer(CodeFileAnalyzer):
     """
     Analyzer for CSS source files (.css).
@@ -620,7 +618,6 @@ class CSSAnalyzer(CodeFileAnalyzer):
         ])
 
 
-
 class HTMLAnalyzer(CodeFileAnalyzer):
     """
     Analyzer for HTML files (.html, .htm).
@@ -737,7 +734,6 @@ class PHPAnalyzer(CodeFileAnalyzer):
         - IMPORTED_PACKAGES  (use/import + include/require targets)
     """
 
-
     def _process(self) -> None:
         super()._process()
 
@@ -751,7 +747,6 @@ class PHPAnalyzer(CodeFileAnalyzer):
                 Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value, 0),
                 Statistic(FileStatCollection.IMPORTED_PACKAGES.value, []),
-            ])
             ])
             return
 
@@ -834,16 +829,13 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     if extension in {'.ts', '.tsx'}:
         return TypeScriptAnalyzer(filepath)
 
-
     # CSS files
     if extension == '.css':
         return CSSAnalyzer(filepath)
 
-
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
         return HTMLAnalyzer(filepath)
-
 
     # PHP files
     if extension == '.php':

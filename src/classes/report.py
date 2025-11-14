@@ -104,6 +104,7 @@ class ProjectReport(BaseReport):
 
         # Aggregate statistics from file reports
         self._determine_start_end_dates()
+        self._find_coding_languages_ratio()
 
         # Add Git analysis statistics if zip file is provided
         if zip_path and project_name:
@@ -221,7 +222,7 @@ class ProjectReport(BaseReport):
         language_ratio = {k: (v / total) for k,
                           v in langauges_to_loc.items()}
 
-        self.statistics.add(
+        self.project_statistics.add(
             Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, language_ratio))
 
     @classmethod
