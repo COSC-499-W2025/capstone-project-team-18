@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 import pytest
 from src.classes.analyzer import *
-from src.classes.statistic import FileStatCollection
+from src.classes.statistic import FileStatCollection, CodingLanguage
 from src.utils.project_discovery import ProjectFiles
 from src.utils.zipped_utils import unzip_file
 
@@ -174,7 +174,7 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_dir
         file_paths=[str(f) for f in temp_directory_with_subfolder["ProjectA"]]
     )
     listReport = extract_file_reports(project_file)
-    print(listReport)
+    # print(listReport)
     assert listReport is not None
     assert len(listReport) == 3 and all(isinstance(report, FileReport)
                                         for report in listReport)
@@ -301,6 +301,50 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path: Path):
     assert REAL_SENTENCE_COUNT == measured_sentence_count, f"Expected {REAL_SENTENCE_COUNT}, got {measured_sentence_count}"
     assert REAL_ARI_SCORE == measured_ari_score, f"Expected {REAL_ARI_SCORE}, got {measured_ari_score}"
     assert REAL_TYPE_OF_FILE == measured_type_of_file, f"Expected {REAL_TYPE_OF_FILE}, got {measured_type_of_file}"
+
+# ---------- Test CodingAnalyzer ---------
+
+
+def test_determines_correct_coding_language(tmp_path):
+    """
+    Ensure that in a project with many different
+    coding files, that the Statistic CODING_LANGUAGE
+    is correctly recorded.
+    """
+
+    file_extensions_to_test = (
+        (CodingLanguage.PYTHON, ".py"),
+        (CodingLanguage.JAVA, ".java"),
+        (CodingLanguage.CSHARP, ".cs"),
+        (CodingLanguage.RUBY, ".rb"),
+        (CodingLanguage.GO, ".go"),
+        (CodingLanguage.TYPESCRIPT, ".ts")
+    )
+
+    for value, extension in file_extensions_to_test:
+
+        path = _create_temp_file("temp" + extension, "", tmp_path)
+
+        report = CodeFileAnalyzer(str(path)).analyze()
+
+        assert report.get_value(
+            FileStatCollection.CODING_LANGUAGE.value) == value
+
+
+def test_unkown_coding_language(tmp_path):
+    """
+    In the situation where there is a file extension
+    with no known coding language, then we don't record
+    a CODING_LANGUAGE value. In theory this shouldn't
+    happen because this file would never be pased down to
+    the CodeFileAnalyzer class, but just in case we log it here
+    """
+
+    path = _create_temp_file("temp" + ".xyx", "", tmp_path)
+
+    report = CodeFileAnalyzer(str(path)).analyze()
+
+    assert report.get_value(FileStatCollection.CODING_LANGUAGE.value) == None
 
 # ---------- Test PythonAnalyzer ----------
 

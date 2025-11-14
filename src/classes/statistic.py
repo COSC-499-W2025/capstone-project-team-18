@@ -26,6 +26,25 @@ class FileDomain(Enum):
     TEST = "test"
     DOCUMENTATION = "documentation"
 
+
+class CodingLanguage(Enum):
+    PYTHON = ("python", {".py", ".pyw", ".pyx", ".pxd", ".pxi"})
+    JAVASCRIPT = ("javascript", {".js", ".jsx", ".mjs"})
+    JAVA = ("java", {".java", ".jar", ".class"})
+    CPP = ("c++", {".cpp", ".cc", ".cxx", ".hpp", ".hh", ".h"})
+    C = ("c", {".c", ".h"})
+    CSHARP = ("c#", {".cs", ".csx"})
+    PHP = ("php", {".php", ".phtml", ".php3", ".php4", ".php5", ".phps"})
+    RUBY = ("ruby", {".rb", ".rbw", ".rake", ".gemspec"})
+    SWIFT = ("swift", {".swift"})
+    GO = ("go", {".go"})
+    RUST = ("rust", {".rs", ".rlib"})
+    TYPESCRIPT = ("typescript", {".ts", ".tsx"})
+    HTML = ("html", {".html", ".htm", ".xhtml"})
+    CSS = ("css", {".css", ".scss", ".sass", ".less"})
+    SQL = ("sql", {".sql", ".ddl", ".dml"})
+    SHELL = ("shell", {".sh", ".bash", ".zsh", ".fish"})
+
 # The following are StatisticTemplate classes. A StatisticTemplate is simply a
 # description of a data point. It has a name, description, expected value, and it is either
 # a statistic about a single file, one project, or the user's behavior.
@@ -155,6 +174,12 @@ class FileStatCollection(Enum):
         expected_type=list,
     )
 
+    CODING_LANGUAGE = FileStatisticTemplate(
+        name="CODING_LANGUAGE",
+        description="the coding language of the file",
+        expected_type=CodingLanguage
+    )
+
 
 class ProjectStatCollection(Enum):
     PROJECT_START_DATE = ProjectStatisticTemplate(
@@ -197,6 +222,12 @@ class ProjectStatCollection(Enum):
         name="USER_COMMIT_PERCENTAGE",
         description="percentage of commits authored by user in a Git-tracked project",
         expected_type=float,
+    )
+
+    CODING_LANGUAGE_RATIO = ProjectStatisticTemplate(
+        name="CODING_LANGUAGE_RATIO",
+        description="ratio, by lines of code, of coding languages in a project",
+        expected_type=dict[CodingLanguage, float]
     )
 
 
