@@ -12,17 +12,11 @@ from typing import Optional
 import ast
 from utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
+import tinycss2
+from bs4 import BeautifulSoup
 
-# CSS & HTML parsers
-try:
-    import tinycss2
-except ImportError:
-    tinycss2 = None
-try:
-    from bs4 import BeautifulSoup
-except ImportError:
-    BeautifulSoup = None
 
+logging.basicConfig(level=logging.INFO)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -64,7 +58,6 @@ class BaseFileAnalyzer:
 
     Statistics:
         - DATE_CREATED
-        - DATE_ACCESSED
         - DATE_MODIFIED
     """
 
@@ -86,9 +79,17 @@ class BaseFileAnalyzer:
             metadata = Path(self.filepath).stat()
 
             # Map file statistic templates to their corresponding timestamp values
+            """
+            Special note here:
+
+            Linux corrupts the st_birthtime to be the time that
+            the file was unzipped.
+            Linux's date access actually contains the true birthtime so
+            we treat that as DATE_CREATED
+            """
+
             timestamps = {
-                FileStatCollection.DATE_CREATED.value: getattr(metadata, "st_birthtime", metadata.st_ctime),
-                FileStatCollection.DATE_ACCESSED.value: metadata.st_atime,
+                FileStatCollection.DATE_CREATED.value: metadata.st_atime,
                 FileStatCollection.DATE_MODIFIED.value: metadata.st_mtime,
             }
 
@@ -112,7 +113,7 @@ class BaseFileAnalyzer:
 
         return FileReport(statistics=self.stats, filepath=self.filepath)
 
-    def extract_file_reports(self, project_title: str, project_structure: dict) -> list:
+    def extract_file_reports(self, project_title: str, project_structure: dict) -> Optional[list[FileReport]]:
         """
         Method to extract individual fileReports within each project
         """
@@ -512,6 +513,8 @@ class CSSAnalyzer(CodeFileAnalyzer):
         if not self.text_content.strip():
             logger.debug(
                 f"{self.__class__.__name__}: Empty file {self.filepath}")
+            logger.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
@@ -562,9 +565,13 @@ class CSSAnalyzer(CodeFileAnalyzer):
                             if nr.type == "qualified-rule":
                                 class_tokens.update(
                                     extract_classes_from_prelude(nr.prelude))
+                                class_tokens.update(
+                                    extract_classes_from_prelude(nr.prelude))
 
                 elif r.type == "qualified-rule":
                     rule_count += 1
+                    class_tokens.update(
+                        extract_classes_from_prelude(r.prelude))
                     class_tokens.update(
                         extract_classes_from_prelude(r.prelude))
 
@@ -576,8 +583,14 @@ class CSSAnalyzer(CodeFileAnalyzer):
                 "CSSAnalyzer: tinycss2 not installed; using regex fallback.")
             cleaned = re.sub(r'/\*.*?\*/', '',
                              self.text_content, flags=re.DOTALL)
+            logger.debug(
+                "CSSAnalyzer: tinycss2 not installed; using regex fallback.")
+            cleaned = re.sub(r'/\*.*?\*/', '',
+                             self.text_content, flags=re.DOTALL)
 
             # Count style rules and at-rule blocks (best-effort)
+            rule_blocks = re.findall(
+                r'[^{@][^{]+\{[^{}]*\}|@[^{}]+\{[^{}]*\}', cleaned)
             rule_blocks = re.findall(
                 r'[^{@][^{]+\{[^{}]*\}|@[^{}]+\{[^{}]*\}', cleaned)
             rule_count = len(rule_blocks)
@@ -594,6 +607,10 @@ class CSSAnalyzer(CodeFileAnalyzer):
 
         self.stats.extend([
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, rule_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
+                      len(class_tokens)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
                       len(class_tokens)),
             Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
@@ -616,6 +633,8 @@ class HTMLAnalyzer(CodeFileAnalyzer):
 
         # Empty file: emit zero/empty stats so keys always exist
         if not self.text_content.strip():
+            logger.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             logger.debug(
                 f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
@@ -645,13 +664,19 @@ class HTMLAnalyzer(CodeFileAnalyzer):
             script_srcs = [s["src"] for s in soup.find_all("script", src=True)]
             link_hrefs = [l["href"] for l in soup.find_all("link", href=True)]
             img_srcs = [i["src"] for i in soup.find_all("img", src=True)]
+            link_hrefs = [l["href"] for l in soup.find_all("link", href=True)]
+            img_srcs = [i["src"] for i in soup.find_all("img", src=True)]
             imported_packages = list({*script_srcs, *link_hrefs, *img_srcs})
 
         else:
             # ---- Regex fallback (if bs4 isn't installed) ----
             logger.debug(
                 "HTMLAnalyzer: BeautifulSoup not installed; using regex fallback.")
+            logger.debug(
+                "HTMLAnalyzer: BeautifulSoup not installed; using regex fallback.")
             # <script> blocks (inline + external)
+            script_count = len(re.findall(
+                r'<\s*script\b', self.text_content, re.IGNORECASE))
             script_count = len(re.findall(
                 r'<\s*script\b', self.text_content, re.IGNORECASE))
 
@@ -674,9 +699,21 @@ class HTMLAnalyzer(CodeFileAnalyzer):
                 r'<\s*link[^>]*\bhref\s*=\s*["\']([^"\']+)["\']',  self.text_content, re.IGNORECASE)
             imgs = re.findall(
                 r'<\s*img[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']',    self.text_content, re.IGNORECASE)
+            srcs = re.findall(
+                r'<\s*script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', self.text_content, re.IGNORECASE)
+            links = re.findall(
+                r'<\s*link[^>]*\bhref\s*=\s*["\']([^"\']+)["\']',  self.text_content, re.IGNORECASE)
+            imgs = re.findall(
+                r'<\s*img[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']',    self.text_content, re.IGNORECASE)
             imported_packages = list(set(srcs + links + imgs))
 
         self.stats.extend([
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
+                      script_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
+                      len(class_tokens)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
                       script_count),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
@@ -703,6 +740,8 @@ class PHPAnalyzer(CodeFileAnalyzer):
         if not self.text_content.strip():
             logging.debug(
                 f"{self.__class__.__name__}: Empty file {self.filepath}")
+            logging.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
@@ -714,13 +753,22 @@ class PHPAnalyzer(CodeFileAnalyzer):
         func_def_names = set(re.findall(
             r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))
         short_arrow_defs = re.findall(r'\bfn\s*\(', self.text_content)
+        func_def_names = set(re.findall(
+            r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))
+        short_arrow_defs = re.findall(r'\bfn\s*\(', self.text_content)
         function_count = len(func_def_names) + len(short_arrow_defs)
 
         class_count = len(re.findall(
             r'\bclass\s+[A-Za-z_]\w*', self.text_content))
         interface_count = len(re.findall(
             r'\binterface\s+[A-Za-z_]\w*', self.text_content))
+        class_count = len(re.findall(
+            r'\bclass\s+[A-Za-z_]\w*', self.text_content))
+        interface_count = len(re.findall(
+            r'\binterface\s+[A-Za-z_]\w*', self.text_content))
 
+        namespace_imports = re.findall(
+            r'\buse\s+([A-Za-z_][\w\\]+)\s*;', self.text_content)
         namespace_imports = re.findall(
             r'\buse\s+([A-Za-z_][\w\\]+)\s*;', self.text_content)
         includes = re.findall(
@@ -732,7 +780,13 @@ class PHPAnalyzer(CodeFileAnalyzer):
         stats = [
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
                       function_count),
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
+                      function_count),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, class_count),
+            Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
+                      interface_count),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
             Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
                       interface_count),
             Statistic(FileStatCollection.IMPORTED_PACKAGES.value,

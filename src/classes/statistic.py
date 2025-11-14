@@ -102,12 +102,6 @@ class FileStatCollection(Enum):
         expected_type=date,
     )
 
-    DATE_ACCESSED = FileStatisticTemplate(
-        name="DATE_ACCESSED",
-        description="last date the file was accessed",
-        expected_type=date,
-    )
-
     FILE_SIZE_BYTES = FileStatisticTemplate(
         name="FILE_SIZE_BYTES",
         description="number of bytes in the file",
