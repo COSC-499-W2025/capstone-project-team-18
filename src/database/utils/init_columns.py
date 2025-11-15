@@ -72,5 +72,3 @@ def make_columns(stat_collection: StatCollectionType):
             setattr(cls, col_name, mapped_column(column_type))
         return cls
     return decorator
-
-    # no return because columns are attached via `setattr`
