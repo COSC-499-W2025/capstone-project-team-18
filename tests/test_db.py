@@ -18,7 +18,6 @@ from database.db import (
     FileReportTable,
     ProjectReportTable,
     UserReportTable,
-    init_db
 )
 from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.classes.report import FileReport, ProjectReport, UserReport
@@ -137,7 +136,7 @@ def temp_db(tmp_path: Path):
     '''
     db_path = tmp_path / "temp_db.db"
     engine = create_engine(f"sqlite:///{db_path}")
-    init_db(engine)  # add columns to temp DB
+    Base.metadata.create_all(engine) # add columns to temp DB
 
     # Create fake file reports
     fr1 = create_file_report("file1.py")

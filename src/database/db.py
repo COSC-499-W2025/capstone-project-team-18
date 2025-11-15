@@ -3,15 +3,13 @@ This file will store all of the config and logic that we will need to access and
 '''
 from typing import List
 
+from sqlalchemy import ForeignKey, Table, Column, Integer, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, Session
+from enum import Enum
+from dataclasses import is_dataclass, asdict
 
-from sqlalchemy import ForeignKey
-from sqlalchemy import Table
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import create_engine
 
-from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
+from classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, StatisticIndex, Statistic
 from .utils.init_columns import make_columns
 
 DB_PATH = "sqlite:///database/data.db"
@@ -42,7 +40,7 @@ association_table = Table(
     Column("user_report_id", ForeignKey("user_report.id"), primary_key=True),
 )
 
-
+@make_columns(FileStatCollection)
 class FileReportTable(Base):
     '''
     This table will store generated file reports. It has a
@@ -72,9 +70,9 @@ class FileReportTable(Base):
     project_report: Mapped["ProjectReportTable"] = relationship(
         back_populates="file_reports")
 
-    filepath = Column(String)  # path to the file when we unzip to the temp dir
+    filepath = mapped_column(String)  # path to the file when we unzip to the temp dir
 
-
+@make_columns(ProjectStatCollection)
 class ProjectReportTable(Base):
     '''
     This table will store generated project reports. It has a
@@ -113,7 +111,7 @@ class ProjectReportTable(Base):
 
     project_name = mapped_column(String)
 
-
+@make_columns(UserStatCollection)
 class UserReportTable(Base):
     '''
     This table is **INCOMPLETE**. The table will store generated user reports, which are made using
@@ -144,28 +142,26 @@ class UserReportTable(Base):
     )
 
 
+def __repr__(table: FileReportTable | ProjectReportTable | UserReportTable):
+    '''
+    Prints the rows of a given table in a dict-like format.
+    '''
+    cols = table.__table__.columns.keys()
+    d = {c: getattr(table, c) for c in cols}
+    return str(d)
+
+
 def get_engine():
     '''
     The engine acts as a central sources of all connections to the DB.
     It is a factory & also manages a connection pool for the connections
     '''
-    return create_engine(DB_PATH, echo=True, future=True)
+    return create_engine(DB_PATH, future=True)
 
-
-def init_db(engine):
-    '''
-    Create tables with their columns
-    '''
-    # Dynamically attach Statistic columns after classes are defined
-    make_columns(FileStatCollection, FileReportTable)
-    make_columns(ProjectStatCollection, ProjectReportTable)
-    make_columns(UserStatCollection, UserReportTable)
-
-    Base.metadata.create_all(engine)
-
-
-'''
 if __name__ == "__main__":
+    '''
+    Run `python -m src.database.db`
+    to initialize the database.
+    '''
     eng = get_engine()
-    init_db(engine=eng)
-'''
+    Base.metadata.create_all(eng)
