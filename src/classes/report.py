@@ -10,7 +10,7 @@ from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
 from .resume import Resume, ResumeItem
 from typing import Any
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, MINYEAR
 
 
 class BaseReport:
@@ -85,7 +85,7 @@ class ProjectReport(BaseReport):
 
     def __init__(self,
                  file_reports: Optional[list[FileReport]] = None,
-                 zip_path: Optional[str] = None,
+                 project_path: Optional[str] = None,
                  project_name: Optional[str] = None,
                  user_email: Optional[str] = None
                  ):
@@ -94,61 +94,70 @@ class ProjectReport(BaseReport):
 
         Args:
             file_reports: List of FileReport objects to aggregate statistics from
-            zip_path: Optional path to zip file for Git analysis
+            project_path: Optional path to project for Git analysis
             project_name: Optional project name for Git analysis
         """
 
-        self.project_name = project_name or "Unknown Project"
         self.file_reports = file_reports or []
-        self.statistics = StatisticIndex()
+        self.project_name = project_name or "Unknown Project"
+        self.project_statistics = StatisticIndex()
 
-        project_stats = []
-
+        # Aggregate statistics from file reports
+        self._determine_start_end_dates()
         self._find_coding_languages_ratio()
 
-        # Process file reports if provided
-        if file_reports:
-            # Extract all creation dates from file reports, filtering out None values
-            date_created_list = [
-                report.get_value(FileStatCollection.DATE_CREATED.value)
-                for report in file_reports
-                if report.get_value(FileStatCollection.DATE_CREATED.value) is not None
-            ]
-
-            # Extract all modification dates from file reports, filtering out None values
-            date_modified_list = [
-                report.get_value(FileStatCollection.DATE_MODIFIED.value)
-                for report in file_reports
-                if report.get_value(FileStatCollection.DATE_MODIFIED.value) is not None
-            ]
-
-            # Calculate and add project start date (earliest file creation)
-            if date_created_list:
-                start_date = min(date_created_list)
-                project_start_stat = Statistic(
-                    ProjectStatCollection.PROJECT_START_DATE.value, start_date)
-                project_stats.append(project_start_stat)
-
-            # Calculate and add project end date (latest file modification)
-            if date_modified_list:
-                end_date = max(date_modified_list)
-                project_end_stat = Statistic(
-                    ProjectStatCollection.PROJECT_END_DATE.value, end_date)
-                project_stats.append(project_end_stat)
-
-        # Create StatisticIndex with project-level statistics
-        self.statistics.extend(project_stats)
-
         # Add Git analysis statistics if zip file is provided
-        if zip_path and project_name:
+        if project_path and project_name:
             git_stats = self._analyze_git_authorship(
-                zip_path, project_name, user_email)
+                project_path, project_name, user_email)
             if git_stats:
                 for stat in git_stats:
-                    self.statistics.add(stat)
+                    self.project_statistics.add(stat)
 
         # Initialize the base class with the project statistics
-        super().__init__(self.statistics)
+        super().__init__(self.project_statistics)
+
+    def _determine_start_end_dates(self) -> None:
+        """
+        Calculates a project start and end date based on
+        the file reports available. Logs statistics to
+        self.project_statistics.
+
+        Note here. Currently when we unzip with Linux's
+        "unzip" utility, it sets the date created to the
+        current date, not the date in the zip file. The
+        dates we need to analyze are the date modified
+        and the date accessed.
+        """
+
+        # Set the value to 1 day in the future
+        latest_date = datetime.now() + timedelta(days=1)
+        earliest_date = datetime(MINYEAR, 1, 1, 0, 0, 0, 0)
+
+        start_date = latest_date
+        end_date = earliest_date
+
+        for report in self.file_reports:
+            curr_start_date = report.get_value(
+                FileStatCollection.DATE_CREATED.value)
+            curr_end_date = report.get_value(
+                FileStatCollection.DATE_MODIFIED.value)
+
+            if curr_start_date is not None and curr_start_date < start_date:
+                start_date = curr_start_date
+
+            if curr_end_date is not None and curr_end_date > end_date:
+                end_date = curr_end_date
+
+        if end_date != earliest_date:
+            project_end_stat = Statistic(
+                ProjectStatCollection.PROJECT_END_DATE.value, end_date)
+            self.project_statistics.add(project_end_stat)
+
+        if start_date != latest_date:
+            project_start_stat = Statistic(
+                ProjectStatCollection.PROJECT_START_DATE.value, start_date)
+            self.project_statistics.add(project_start_stat)
 
     def generate_resume_item(self) -> ResumeItem:
         """
@@ -213,7 +222,7 @@ class ProjectReport(BaseReport):
         language_ratio = {k: (v / total) for k,
                           v in langauges_to_loc.items()}
 
-        self.statistics.add(
+        self.project_statistics.add(
             Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, language_ratio))
 
     @classmethod
@@ -224,79 +233,65 @@ class ProjectReport(BaseReport):
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
         return inst
 
-    def _analyze_git_authorship(self, zip_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
+    def _analyze_git_authorship(self, project_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
-        if not Path(zip_path).exists():
+        if not Path(project_path + "/" + project_name).exists():
             return None
 
-        temp = tempfile.mkdtemp()
         try:
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                files = [f for f in zf.namelist(
-                ) if f.startswith(f"{project_name}/")]
-                if not files:
-                    return None
-                for path in files:
-                    zf.extract(path, temp)
+            repo = Repo(Path(project_path) / project_name)
 
-            try:
-                repo = Repo(Path(temp) / project_name)
+            # Sum all commits to check perecentage by
+            commit_count_by_author = {}
+            for commit in repo.iter_commits():
+                author_email = commit.author.email
+                commit_count_by_author[author_email] = commit_count_by_author.get(
+                    author_email, 0) + 1
 
-                # Sum all commits to check perecentage by
-                commit_count_by_author = {}
-                for commit in repo.iter_commits():
-                    author_email = commit.author.email
-                    commit_count_by_author[author_email] = commit_count_by_author.get(
-                        author_email, 0) + 1
+            all_authors = set(commit_count_by_author.keys())
+            total_authors = len(all_authors)
+            total_commits = sum(commit_count_by_author.values())
 
-                all_authors = set(commit_count_by_author.keys())
-                total_authors = len(all_authors)
-                total_commits = sum(commit_count_by_author.values())
+            # Calculate user's commit percentage if project has multiple authors
+            user_commit_percentage = None
+            if total_authors > 1 and user_email:
+                user_commits = commit_count_by_author.get(
+                    user_email, 0)
+                if total_commits > 0:
+                    user_commit_percentage = (
+                        user_commits / total_commits) * 100
 
-                # Calculate user's commit percentage if project has multiple authors
-                user_commit_percentage = None
-                if total_authors > 1 and user_email:
-                    user_commits = commit_count_by_author.get(
-                        user_email, 0)
-                    if total_commits > 0:
-                        user_commit_percentage = (
-                            user_commits / total_commits) * 100
+            authors_per_file = {}
+            for item in repo.tree().traverse():
+                if item.type == 'blob':
+                    try:
+                        file_authors = {
+                            c.author.email for c in repo.iter_commits(paths=item.path)}
+                        authors_per_file[item.path] = len(file_authors)
+                    except Exception:
+                        continue
 
-                authors_per_file = {}
-                for item in repo.tree().traverse():
-                    if item.type == 'blob':
-                        try:
-                            file_authors = {
-                                c.author.email for c in repo.iter_commits(paths=item.path)}
-                            authors_per_file[item.path] = len(file_authors)
-                        except Exception:
-                            continue
+            stats = [
+                Statistic(
+                    ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
+                Statistic(
+                    ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
+                Statistic(
+                    ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
+            ]
 
-                stats = [
+            # Add user commit percentage if applicable
+            if user_commit_percentage is not None:
+                stats.append(
                     Statistic(
-                        ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
-                    Statistic(
-                        ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
-                    Statistic(
-                        ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
-                ]
-
-                # Add user commit percentage if applicable
-                if user_commit_percentage is not None:
-                    stats.append(
-                        Statistic(
-                            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
-                            round(user_commit_percentage, 2)
-                        )
+                        ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
+                        round(user_commit_percentage, 2)
                     )
+                )
 
-                return stats
-            except InvalidGitRepositoryError:
-                return None
-        except (zipfile.BadZipFile, FileNotFoundError):
+            return stats
+        except InvalidGitRepositoryError:
             return None
-        finally:
-            shutil.rmtree(temp, ignore_errors=True)
 
 
 class UserReport(BaseReport):

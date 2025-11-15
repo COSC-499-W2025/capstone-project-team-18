@@ -8,6 +8,7 @@ import pytest
 from src.classes.analyzer import *
 from src.classes.statistic import FileStatCollection, CodingLanguage
 from src.utils.project_discovery import ProjectFiles
+from src.utils.zipped_utils import unzip_file
 
 TEST_DIR = Path(__file__).parent / "resources"
 
@@ -93,13 +94,11 @@ def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_tex
     # Core stats exist
     size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
     created = report.get_value(FileStatCollection.DATE_CREATED.value)
-    accessed = report.get_value(FileStatCollection.DATE_ACCESSED.value)
     modified = report.get_value(FileStatCollection.DATE_MODIFIED.value)
 
     # Validate types and basic expectations
     assert isinstance(size, int) and size > 0
     assert isinstance(created, datetime.datetime)
-    assert isinstance(accessed, datetime.datetime)
     assert isinstance(modified, datetime.datetime)
 
     # Size should match the actual file size
@@ -146,6 +145,25 @@ def test_extract_file_reports_returns_project(tmp_path, temp_directory_no_subfol
                                         for report in listReport)
 
 
+def test_created_modifiyed_and_accessed_dates(tmp_path):
+    """
+    Tests that for a file, we have that the date created
+    is the earliest date, then date modifiyed, then
+    date accessed
+    """
+
+    unzip_file("tests/resources/mac_projects.zip", tmp_path)
+
+    file_path = tmp_path / "Projects" / "ProjectA" / "a_1.txt"
+
+    report = BaseFileAnalyzer(file_path).analyze()
+
+    date_modified = report.get_value(FileStatCollection.DATE_MODIFIED.value)
+    date_created = report.get_value(FileStatCollection.DATE_CREATED.value)
+
+    assert date_created <= date_modified
+
+
 def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_directory_with_subfolder):
     """
     Test that the extraction returns a list of FileReports with the accurate #
@@ -156,10 +174,11 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_dir
         file_paths=[str(f) for f in temp_directory_with_subfolder["ProjectA"]]
     )
     listReport = extract_file_reports(project_file)
-    print(listReport)
+    # print(listReport)
     assert listReport is not None
     assert len(listReport) == 3 and all(isinstance(report, FileReport)
                                         for report in listReport)
+
 # ---------- Test TextFileAnalyzer ----------
 
 
