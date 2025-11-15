@@ -217,13 +217,19 @@ def test_do_filepath_user_cancels(cli):
 
 def test_do_begin_without_consent(cli):
     """Test begin command without user consent."""
+
+    # Explicit about the starting state for this test
+    cli.user_consent = False
+    cli.project_filepath = ''
+
     with patch('builtins.print') as mock_print:
         cli.do_begin("")
         mock_print.assert_any_call(
             "\nError: Missing consent. Type perms or 1 to read user permission agreement."
         )
         assert cli.cmd_history[0] == "begin"
-
+        mock_start.assert_not_called()
+        
 # Command Routing Tests
 
 
