@@ -213,10 +213,15 @@ class ArtifactMiner(cmd.Cmd):
                     print("\nThank you for consenting. Consent saved to preferences.")
                 else:
                     print("\nConsent recorded but failed to save to preferences file.")
+                print("\n" + self.options)
                 break
+
             elif answer == 'N':  # user doesn't consent
+                self.user_consent = False
+                self.preferences.update_consent(False)
                 print("Consent not given. Exiting application...")
                 return True  # tells cmdloop() to exit
+
             else:  # invalid input from user
                 # Make sure this matches your actual error message
                 print("Invalid response. Please enter 'Y', 'N', 'back', or 'cancel'.")
@@ -257,6 +262,8 @@ class ArtifactMiner(cmd.Cmd):
         # Save filepath to preferences
         success = self.preferences.update_project_filepath(answer)
         print("\nFilepath successfully received and saved to preferences")
+        if not success:
+            print("Warning: Failed to save filepath to preferences file.")
         print(self.project_filepath)
         print("\n" + self.options)
 
@@ -264,12 +271,22 @@ class ArtifactMiner(cmd.Cmd):
         '''Begin the mining process. User must give consent and provide filepath prior.'''
         self.update_history(self.cmd_history, "begin")
 
-        if self.user_consent:
-            start_miner(self.project_filepath, self.user_email)
-        else:
-            print(
-                "\nError: Missing consent. Type perms or 1 to read user permission agreement.")
+        if not self.user_consent:
+            print("\nError: Missing consent. Type perms or 1 to read user permission agreement.")
             print("\n" + self.options)
+            return
+
+        # Use filepath from preferences if not set in instance variable
+        if not self.project_filepath:
+            self.project_filepath = self.preferences.get_project_filepath()
+
+        if not self.project_filepath:
+            print("\nError: No project filepath configured. Please set a filepath first.")
+            print("\n" + self.options)
+            return
+
+        print(f"\nBeginning analysis of: {self.project_filepath}")
+        start_miner(self.project_filepath, self.user_email)
 
     def update_history(self, cmd_history: list, cmd: str):
         '''
@@ -348,7 +365,6 @@ class ArtifactMiner(cmd.Cmd):
         print(self.user_email)
         if not success:
             print("Warning: Failed to save email to preferences file.")
-        print(self.user_email)
         print("\n" + self.options)
 
     def is_valid_email(self, email: str) -> bool:

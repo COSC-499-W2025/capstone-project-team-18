@@ -150,7 +150,7 @@ def test_do_perms_user_consents(cli):
         assert cli.user_consent is True
         assert cli.cmd_history[0] == "perms"
         mock_print.assert_any_call(
-            "\nThank you for consenting. You may now continue.")
+            "\nThank you for consenting. Consent saved to preferences.")
 
 
 def test_do_perms_user_declines(cli):
@@ -196,7 +196,7 @@ def test_do_filepath_valid_path(cli):
         cli.do_filepath("")
         assert cli.project_filepath == test_path
         assert cli.cmd_history[0] == "filepath"
-        mock_print.assert_any_call("\nFilepath successfully received")
+        mock_print.assert_any_call("\nFilepath successfully received and saved to preferences")
         mock_print.assert_any_call(test_path)
 
 
