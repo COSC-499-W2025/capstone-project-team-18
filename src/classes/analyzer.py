@@ -302,7 +302,7 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
     def _is_git_repo(self, path: str):
         try:
-            _ = Repo(Path(path).parent).git_dir
+            _ = Repo(Path(path).parent, search_parent_directories=True).git_dir
             return True
         except InvalidGitRepositoryError:
             return False
