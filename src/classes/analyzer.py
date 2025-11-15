@@ -12,6 +12,7 @@ from typing import Optional
 import ast
 from utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
+from git import Repo, InvalidGitRepositoryError
 import tinycss2
 from bs4 import BeautifulSoup
 
@@ -21,9 +22,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def extract_file_reports(project_file: Optional[ProjectFiles]) -> Optional[list[FileReport]]:
+def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[str] = None) -> Optional[list[FileReport]]:
     """
-    Method to extract inidvidual fileReports within each project
+    Method to extract individual fileReports within each project
     """
 
     if project_file is None:
@@ -35,7 +36,7 @@ def extract_file_reports(project_file: Optional[ProjectFiles]) -> Optional[list[
     # list of reports for each file in an individual project to be returned
     reports = []
     for file in projectFiles:
-        analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file)
+        analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file, email)
         reports.append(analyzer.analyze())
 
     return reports
@@ -61,8 +62,9 @@ class BaseFileAnalyzer:
         - DATE_MODIFIED
     """
 
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, email: Optional[str] = None):
         self.filepath = filepath
+        self.email = email
         self.stats = StatisticIndex()
 
     def _process(self) -> None:
@@ -136,11 +138,11 @@ class TextFileAnalyzer(BaseFileAnalyzer):
 
     This class will parse a file that contains text and log the
     raw line count, but more specific type of stats are given
-    to the sublcasses which are: CodeFileAnalyzer and
+    to the subclasses which are: CodeFileAnalyzer and
     NaturalLanguageAnalyzer.
 
     Attributes:
-        text_context : str The string repersentation of
+        text_context : str The string representation of
         the text in the file
 
     Statistics:
@@ -236,13 +238,21 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
     Statistics:
         - TYPE_OF_FILE
+        - PERCENTAGE_LINES_COMMITTED
     """
 
     def _process(self) -> None:
         super()._process()
 
-        self.stats.add(Statistic(FileStatCollection.TYPE_OF_FILE.value,
-                                 FileDomain.CODE))
+        stats = [
+            Statistic(FileStatCollection.TYPE_OF_FILE.value,
+                      FileDomain.CODE),
+        ]
+        if self._is_git_repo(self.filepath):
+            stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                                   self._get_file_commit_percentage(self.filepath)))
+            
+        self.stats.extend(stats)
 
         self._find_coding_language()
 
@@ -261,6 +271,41 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             # Each language.value is a tuple (name, extensions)
             if suffix in language.value[1]:
                 return self.stats.add(Statistic(FileStatCollection.CODING_LANGUAGE.value, language))
+
+    def _get_file_commit_percentage(self, filepath: str):
+        try:
+            # Allow passing either a file path or a repo/worktree path. Search parent
+            # directories so passing a file path (e.g. '/path/to/repo/file.py') still
+            # locates the repository.
+            repo = Repo(Path(filepath).parent, search_parent_directories=True)
+
+            # gets blame for each line
+            blame_info = repo.blame('HEAD', filepath)
+
+            commit_count = 0
+            line_count = 0
+            for commit, lines in blame_info:
+                line_count += len(lines)
+                if commit.author.email == self.email:
+                    commit_count += len(lines)
+
+            if line_count == 0:
+                return 0.0
+
+            return round((commit_count / line_count) * 100, 2)
+        except InvalidGitRepositoryError as e:
+            logger.debug(f"InvalidGitRepositoryError: {e}")
+            return None
+        except Exception as e:
+            logger.debug(f"Exception while computing commit percentage: {e}")
+            return None
+
+    def _is_git_repo(self, path: str):
+        try:
+            _ = Repo(Path(path).parent, search_parent_directories=True).git_dir
+            return True
+        except InvalidGitRepositoryError:
+            return False
 
 
 class PythonAnalyzer(CodeFileAnalyzer):

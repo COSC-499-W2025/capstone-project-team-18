@@ -19,7 +19,8 @@ def start_miner(zipped_file: str, email: str = None) -> None:
     results are printed to the terminal
 
     Args:
-        - zipped_file : str The filepath to the zipped file.
+        - zipped_file : The filepath to the zipped file.
+        - email: Email associated with git account
     """
 
     # Unzip the zipped file into temporary directory
@@ -31,7 +32,7 @@ def start_miner(zipped_file: str, email: str = None) -> None:
     # For each project, extract file reports and create ProjectReports
     project_reports = []
     for project in project_list:
-        file_reports = extract_file_reports(project)
+        file_reports = extract_file_reports(project, email)
 
         pr = ProjectReport(
             project_name=project.name,

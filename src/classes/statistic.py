@@ -174,6 +174,13 @@ class FileStatCollection(Enum):
         expected_type=list,
     )
 
+    # percenatge is not greatest indicator as any minor change is associated with ownership
+    PERCENTAGE_LINES_COMMITTED = FileStatisticTemplate(
+        name="PERCENTAGE_LINES_COMMITTED",
+        description="percentage of lines attributed to individal in file",
+        expected_type=float,
+    )
+    
     CODING_LANGUAGE = FileStatisticTemplate(
         name="CODING_LANGUAGE",
         description="the coding language of the file",
@@ -224,6 +231,12 @@ class ProjectStatCollection(Enum):
         expected_type=float,
     )
 
+    TOTAL_CONTRIBUTION_PERCENTAGE = ProjectStatisticTemplate(
+        name="TOTAL_CONTRIBUTION_PERCENTAGE",
+        description="percentage of lines authored by user in a Git-tracked project",
+        expected_type=float,
+    )
+    
     CODING_LANGUAGE_RATIO = ProjectStatisticTemplate(
         name="CODING_LANGUAGE_RATIO",
         description="ratio, by lines of code, of coding languages in a project",
