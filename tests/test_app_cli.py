@@ -202,6 +202,9 @@ def test_do_filepath_valid_path(cli):
 
 def test_do_filepath_user_cancels(cli):
     """Test filepath command when user cancels."""
+    # Reset filepath to ensure clean test state
+    cli.project_filepath = ''
+    
     with patch('builtins.input', return_value='cancel'), \
             patch('builtins.print'):
         result = cli.do_filepath("")

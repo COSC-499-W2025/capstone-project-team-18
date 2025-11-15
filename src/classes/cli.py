@@ -136,6 +136,10 @@ class ArtifactMiner(cmd.Cmd):
     def __init__(self):
         super().__init__()
 
+        # Default user consent to false, and empty pathfile
+        self.user_consent = False
+        self.project_filepath = ''
+
         # Initialize preferences system FIRST
         self.preferences = UserPreferences()
 
@@ -241,6 +245,8 @@ class ArtifactMiner(cmd.Cmd):
 
             # Check if user wants to cancel
             if self._handle_cancel_input(answer):
+                self.project_filepath = ''
+                self.cmd_history.clear()
                 print("\n" + self.options)
                 return  # Return to main menu
 
