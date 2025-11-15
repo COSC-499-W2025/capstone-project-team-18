@@ -207,8 +207,12 @@ class ArtifactMiner(cmd.Cmd):
             answer = answer.upper()
             if answer == 'Y':  # user consents
                 self.user_consent = True
-                print("\nThank you for consenting. You may now continue.")
-                print("\n" + self.options)
+                # Save consent to preferences
+                success = self.preferences.update_consent(True)
+                if success:
+                    print("\nThank you for consenting. Consent saved to preferences.")
+                else:
+                    print("\nConsent recorded but failed to save to preferences file.")
                 break
             elif answer == 'N':  # user doesn't consent
                 print("Consent not given. Exiting application...")
@@ -221,6 +225,11 @@ class ArtifactMiner(cmd.Cmd):
         '''User specifies the project's filepath'''
         self.update_history(self.cmd_history, "filepath")
 
+        # Show current filepath if exists
+        current_path = self.preferences.get_project_filepath()
+        if current_path:
+            print(f"Current filepath: {current_path}")
+        
         while True:
             prompt = "Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return): "
             answer = input(prompt).strip()
@@ -245,7 +254,9 @@ class ArtifactMiner(cmd.Cmd):
 
         # Process the filepath
         self.project_filepath = answer
-        print("\nFilepath successfully received")
+        # Save filepath to preferences
+        success = self.preferences.update_project_filepath(answer)
+        print("\nFilepath successfully received and saved to preferences")
         print(self.project_filepath)
         print("\n" + self.options)
 
@@ -329,9 +340,14 @@ class ArtifactMiner(cmd.Cmd):
                 print("\n" + self.options)
                 return  # Return to main menu
 
-        # Process the filepath
+        # Process the email
         self.user_email = answer
-        print("\nEmail successfully received")
+        # Save email to preferences
+        success = self.preferences.update_user_email(answer)
+        print("\nEmail successfully received and saved to preferences")
+        print(self.user_email)
+        if not success:
+            print("Warning: Failed to save email to preferences file.")
         print(self.user_email)
         print("\n" + self.options)
 
