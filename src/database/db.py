@@ -9,10 +9,10 @@ from enum import Enum
 from dataclasses import is_dataclass, asdict
 
 
-from classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, StatisticIndex, Statistic
+from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, StatisticIndex, Statistic
 from .utils.init_columns import make_columns
 
-DB_PATH = "sqlite:///database/data.db"
+DB_PATH = "sqlite:///src/database/data.db"
 
 
 class Base(DeclarativeBase):
@@ -39,6 +39,7 @@ association_table = Table(
         "project_report.id"), primary_key=True),
     Column("user_report_id", ForeignKey("user_report.id"), primary_key=True),
 )
+
 
 @make_columns(FileStatCollection)
 class FileReportTable(Base):
@@ -70,7 +71,9 @@ class FileReportTable(Base):
     project_report: Mapped["ProjectReportTable"] = relationship(
         back_populates="file_reports")
 
-    filepath = mapped_column(String)  # path to the file when we unzip to the temp dir
+    # path to the file when we unzip to the temp dir
+    filepath = mapped_column(String)
+
 
 @make_columns(ProjectStatCollection)
 class ProjectReportTable(Base):
@@ -110,6 +113,7 @@ class ProjectReportTable(Base):
     )
 
     project_name = mapped_column(String)
+
 
 @make_columns(UserStatCollection)
 class UserReportTable(Base):
@@ -157,6 +161,7 @@ def get_engine():
     It is a factory & also manages a connection pool for the connections
     '''
     return create_engine(DB_PATH, future=True)
+
 
 if __name__ == "__main__":
     '''

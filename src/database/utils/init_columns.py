@@ -12,7 +12,7 @@ from sqlalchemy import Integer, Boolean, Float, JSON, String, Date
 from sqlalchemy.orm import mapped_column
 
 
-from classes.statistic import (
+from src.classes.statistic import (
     FileStatCollection,
     ProjectStatCollection,
     UserStatCollection,
