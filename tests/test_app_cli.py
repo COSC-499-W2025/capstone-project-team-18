@@ -271,6 +271,12 @@ def test_default_command_routing_numeric(cli, command, expected_method):
         cli.default(command)
         mock_method.assert_called_once_with("")
 
+def test_default_command_routing_numeric_login(cli):
+    """Test that '5' routes to do_login."""
+    with patch.object(cli, 'do_login') as mock_login, \
+         patch('builtins.input', side_effect=['back']):  # Mock input to avoid stdin issues
+        cli.default('5')
+        mock_login.assert_called_once_with('')
 
 def test_default_command_case_insensitive(cli):
     """Test that commands work regardless of case."""
@@ -282,7 +288,7 @@ def test_default_command_case_insensitive(cli):
 
 def test_default_handles_unknown_commands(cli):
     """Test handling of unknown commands."""
-    unknown_commands = ["unknown", "5", "invalid", "help_me"]
+    unknown_commands = ["unknown", "6", "invalid", "help_me"]
     with patch('builtins.print') as mock_print:
         for command in unknown_commands:
             cli.default(command)

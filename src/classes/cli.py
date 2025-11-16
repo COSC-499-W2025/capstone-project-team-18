@@ -110,6 +110,8 @@ class UserPreferences:
         """Update user email preference."""
         return self.update("user_email", email)
 
+
+
 def _is_valid_filepath_to_zip(filepath: str) -> int:
     """
     Helper function to validate the provided filepath.
@@ -150,12 +152,17 @@ class ArtifactMiner(cmd.Cmd):
             "(2) Set filepath\n"
             "(3) Begin Artifact Miner\n"
             "(4) Configure Email for Git Stats\n"
+            "(5) User Login\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
         self.prompt = '(PAF) '
         self.ruler = '-'  # overwrite default separator line ('=')
         self.cmd_history = []  # will store the user's previous 3 commands
+
+        # Update user login
+        self.user_name = ''
+        self.user_password = ''
 
         # Update with user input
         self.project_filepath = ''  # Will be overwritten with user input
@@ -181,6 +188,8 @@ class ArtifactMiner(cmd.Cmd):
         self.user_consent = prefs.get('consent', False)
         self.project_filepath = prefs.get('project_filepath', '')
         self.user_email = prefs.get('user_email', '')
+        self.user_name = prefs.get('user_name', '')
+        self.user_password = prefs.get('user_password', '')
 
         if self.preferences.preferences_file.exists():
             print(f"Loaded preferences from: {self.preferences.get_preferences_file_path()}")
@@ -238,7 +247,7 @@ class ArtifactMiner(cmd.Cmd):
         current_path = self.preferences.get_project_filepath()
         if current_path:
             print(f"Current filepath: {current_path}")
-        
+
         while True:
             prompt = "Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return): "
             answer = input(prompt).strip()
@@ -294,6 +303,52 @@ class ArtifactMiner(cmd.Cmd):
         print(f"\nBeginning analysis of: {self.project_filepath}")
         start_miner(self.project_filepath, self.user_email)
 
+    def do_login(self, arg):
+        '''Configure user login credentials'''
+        self.update_history(self.cmd_history, "login")
+
+        # Show current credentials if they exist
+        current_name, current_password, current_email = self.preferences.get_user_credentials()
+        if current_name:
+            print(f"Current user: {current_name}")
+            print("Password: [hidden]")
+
+        print("\nEnter your login credentials:")
+
+        # Get username with retry loop
+        while True:
+            name = input("Enter your name: (or 'back'/'cancel' to return): ").strip()
+            if self._handle_cancel_input(name):
+                print("\n" + self.options)
+                return
+            if name:
+                break
+            print("Name cannot be empty. Please try again.")
+
+        # Get password with retry loop
+        while True:
+            password = input("Enter your password: (or 'back'/'cancel' to return): ").strip()
+            if self._handle_cancel_input(password):
+                print("\n" + self.options)
+                return
+            if password:
+                break
+            print("Password cannot be empty. Please try again.")
+
+        # Save credentials
+        self.user_name = name
+        self.user_password = password
+        success = self.preferences.update_credentials(name, password, self.user_email)
+
+        if success:
+            print(f"\nLogin credentials saved successfully!")
+            print(f"User: {name}")
+            print("Password: [hidden]")
+        else:
+            print("Warning: Failed to save credentials to preferences file.")
+
+        print("\n" + self.options)
+
     def update_history(self, cmd_history: list, cmd: str):
         '''
         We will track the user's history (entered commands) so that they can go back if they wish.
@@ -320,6 +375,10 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_filepath(arg)
                 case "begin":
                     return self.do_begin(arg)
+                case "email":
+                    return self.do_email(arg)
+                case "login":
+                    return self.do_login(arg)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
@@ -389,6 +448,7 @@ class ArtifactMiner(cmd.Cmd):
             "2": self.do_filepath,
             "3": self.do_begin,
             "4": self.do_email,
+            "5": self.do_login,
         }
 
         # Make commands case-insensitive
