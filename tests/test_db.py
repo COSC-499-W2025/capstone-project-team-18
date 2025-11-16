@@ -13,12 +13,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 
 
-from database.db import (
+from src.database.db import (
     Base,
     FileReportTable,
     ProjectReportTable,
     UserReportTable,
 )
+from src.database.utils.database_modify import create_row
 from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.classes.report import FileReport, ProjectReport, UserReport
 
@@ -136,7 +137,7 @@ def temp_db(tmp_path: Path):
     '''
     db_path = tmp_path / "temp_db.db"
     engine = create_engine(f"sqlite:///{db_path}")
-    Base.metadata.create_all(engine) # add columns to temp DB
+    Base.metadata.create_all(engine)  # add columns to temp DB
 
     # Create fake file reports
     fr1 = create_file_report("file1.py")
@@ -229,3 +230,40 @@ def test_project_to_user_many_to_many(temp_db):
         for p in user.project_reports:
             assert user in p.user_reports
 """
+
+
+def test_create_row():
+    '''
+    Test that the `create_row()` function in `/src/database/utils/database_modify.py`
+    properly returns a new row for a given report object.
+    '''
+    # Check that a row is properly created from a FileReport
+    file_report = create_file_report("test.txt")
+    row = create_row(file_report)
+
+    assert type(row) == FileReportTable
+    assert row.filepath == "test.txt"
+    assert row.date_created == file_report.get_value(  # type: ignore
+        FileStatCollection.DATE_CREATED.value)
+
+    # Check that a row is properly created from a ProjectReport
+    file_report_2 = create_file_report("test_2.py")
+    project_report = create_project_report(file_report, file_report_2, False,)
+    proj_row = create_row(project_report)
+
+    assert type(proj_row) == ProjectReportTable
+    assert proj_row.project_start_date == project_report.get_value(  # type: ignore
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    assert proj_row.project_name == "Unknown Project"
+
+    # Check that a row is properly created from a UserReport
+    file_report_3 = create_file_report('test_3.py')
+    file_report_4 = create_file_report('test_4.txt')
+    project_report_2 = create_project_report(
+        file_report_3, file_report_4, True)
+    user_report = create_user_report(project_report, project_report_2)
+    user_row = create_row(user_report)
+
+    assert type(user_row) == UserReportTable
+    assert user_row.user_start_date == user_report.get_value(  # type: ignore
+        UserStatCollection.USER_START_DATE.value)
