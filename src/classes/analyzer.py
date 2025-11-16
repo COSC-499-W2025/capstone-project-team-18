@@ -36,7 +36,10 @@ def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[s
     # list of reports for each file in an individual project to be returned
     reports = []
     for file in projectFiles:
-        analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file, email)
+
+        analyzer = get_appropriate_analyzer(
+            project_file.root_path + "/" + file, email)
+
         reports.append(analyzer.analyze())
 
     return reports
@@ -149,8 +152,11 @@ class TextFileAnalyzer(BaseFileAnalyzer):
         - LINES_IN_FILE
     """
 
-    def __init__(self, filepath: str):
-        super().__init__(filepath)
+    def __init__(self, filepath: str, email: Optional[str] = None):
+        super().__init__(filepath, email)
+
+    def _process(self) -> None:
+        super()._process()
 
         # Open the file and use the charset_normalizer package to automatically
         # detect the file's encoding
@@ -160,9 +166,6 @@ class TextFileAnalyzer(BaseFileAnalyzer):
             logging.debug(
                 f"{self.__class__} tried to open {self.filepath} but got error {e}")
             raise
-
-    def _process(self) -> None:
-        super()._process()
 
         lines_broken = self.text_content.split("\n")
 
@@ -251,7 +254,7 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         if self._is_git_repo(self.filepath):
             stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
                                    self._get_file_commit_percentage(self.filepath)))
-            
+
         self.stats.extend(stats)
 
         self._find_coding_language()
@@ -840,7 +843,7 @@ class PHPAnalyzer(CodeFileAnalyzer):
         self.stats.extend(stats)
 
 
-def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
+def get_appropriate_analyzer(filepath: str, email: Optional[str] = None) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
     This allows FileReport to automatically use the best analyzer.
@@ -852,39 +855,35 @@ def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:
-        return NaturalLanguageAnalyzer(filepath)
+        return NaturalLanguageAnalyzer(filepath, email)
 
     # Python files
     if extension == '.py':
-        return PythonAnalyzer(filepath)
-
+        return PythonAnalyzer(filepath, email)
     # Java files
     if extension == '.java':
-        return JavaAnalyzer(filepath)
+        return JavaAnalyzer(filepath, email)
 
     # JavaScript files
     if extension in {'.js', '.jsx'}:
-        return JavaScriptAnalyzer(filepath)
-
+        return JavaScriptAnalyzer(filepath, email)
     # C files
     if extension == '.c':
-        return CAnalyzer(filepath)
+        return CAnalyzer(filepath, email)
 
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
-        return TypeScriptAnalyzer(filepath)
-
+        return TypeScriptAnalyzer(filepath, email)
     # CSS files
     if extension == '.css':
-        return CSSAnalyzer(filepath)
+        return CSSAnalyzer(filepath, email)
 
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
-        return HTMLAnalyzer(filepath)
-
+        return HTMLAnalyzer(filepath, email)
     # PHP files
     if extension == '.php':
-        return PHPAnalyzer(filepath)
+        return PHPAnalyzer(filepath, email)
 
     # Text-based files
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}

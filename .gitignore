@@ -51,3 +51,8 @@ database/data.db
 test_unzip.tar.gz
 test_unzip.zip
 test_unzip_extract/hello_targz.txt
+Projects_Modified_on_nov_16.zip
+artifact_miner_reports.json
+test_unzip.7z
+test_unzip_extract/hello_7z.txt
+src/database/preferences.json

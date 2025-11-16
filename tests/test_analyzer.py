@@ -128,15 +128,20 @@ def test_extract_file_reports_recieves_empty_project(tmp_path):
     assert listReport is None
 
 
-def test_extract_file_reports_returns_project(tmp_path, temp_directory_no_subfolder):
+def test_extract_file_reports_returns_project(tmp_path):
     """
     Test that the extraction returns a list of FileReports with the accurate # of reports
     """
 
+    files = ["t1est1.txt", "test2.txt", "test3.txt", "test4.txt", "test5.txt"]
+
+    for filename in files:
+        _create_temp_file(filename, "Sample content", tmp_path)
+
     project_file = ProjectFiles(
         name="TestProject",
-        root_path=str(temp_directory_no_subfolder),
-        file_paths=[str(f) for f in temp_directory_no_subfolder["testProject"]]
+        root_path=str(tmp_path),
+        file_paths=files
     )
 
     listReport = extract_file_reports(project_file)
@@ -164,16 +169,25 @@ def test_created_modifiyed_and_accessed_dates(tmp_path):
     assert date_created <= date_modified
 
 
-def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, temp_directory_with_subfolder):
+def test_extract_file_reports_recieves_project_with_subfolder(tmp_path):
     """
     Test that the extraction returns a list of FileReports with the accurate #
     """
+
+    _create_temp_file("a_1.txt", "File One", tmp_path)
+    _create_temp_file("a_2.txt", "File Two", tmp_path)
+    subfolder = tmp_path / "subfolder"
+    subfolder.mkdir()
+    _create_temp_file("a_3.txt", "File Three", subfolder)
+
     project_file = ProjectFiles(
         name="ProjectA",
         root_path=str(tmp_path),
-        file_paths=[str(f) for f in temp_directory_with_subfolder["ProjectA"]]
+        file_paths=["a_1.txt", "a_2.txt", "subfolder/a_3.txt"]
     )
+
     listReport = extract_file_reports(project_file)
+
     # print(listReport)
     assert listReport is not None
     assert len(listReport) == 3 and all(isinstance(report, FileReport)
@@ -202,6 +216,7 @@ def test_text_file_reading_many_encodings(tmp_path: Path):
         )
 
         analyzer = TextFileAnalyzer(str(file_path))
+        analyzer.analyze()
 
         assert analyzer.text_content == content, (
             f"TextFileAnalyzer could not recreate content with encoding {encoding}"
