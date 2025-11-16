@@ -4,8 +4,9 @@ want to access data from the database. In SQL, this would be
 queries like INSERT, UPDATE, etc.
 '''
 
-from classes.report import FileReport, ProjectReport, UserReport
-from ..db import FileReportTable, ProjectReportTable, UserReportTable, __repr__
+from src.classes.report import FileReport, ProjectReport, UserReport
+from src.database.db import FileReportTable, ProjectReportTable, UserReportTable, __repr__
+
 
 def create_row(report: FileReport | ProjectReport | UserReport):
     '''
@@ -16,15 +17,17 @@ def create_row(report: FileReport | ProjectReport | UserReport):
     table (i.e., a new `FileReportTable` object) is
     returned) if a `FileReport` object is passed in.
     '''
-
-    if type(report) == FileReport:
+    if isinstance(report, FileReport):
         row = FileReportTable()
         row.filepath = report.filepath
-    elif type(report) == ProjectReport:
+    elif isinstance(report, ProjectReport):
         row = ProjectReportTable()
-        row.project_name = report.project_name
-    else:
+        if report.project_name:
+            row.project_name = report.project_name
+    elif isinstance(report, UserReport):
         row = UserReportTable()
+    else:
+        raise ValueError(f"Unknown report type: {type(report)}")
 
     # `report.statistics` is a StatisticIndex and is iterable over Statistic
     for stat in report.statistics:
@@ -37,6 +40,4 @@ def create_row(report: FileReport | ProjectReport | UserReport):
         # add the statistic to the row
         if hasattr(row, col_name):
             setattr(row, col_name, value)
-
-    print(f"\nrow obj: {__repr__(row)}")
     return row
