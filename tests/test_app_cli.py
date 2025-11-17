@@ -34,8 +34,33 @@ def test_is_valid_filepath_to_zip(tmp_path):
 @pytest.fixture
 def cli():
     """Fixture providing a CLI instance with suppressed initialization output."""
-    with patch('builtins.print'):  # Suppress initialization output
-        return ArtifactMiner()
+    with patch('builtins.print'), \
+         patch('src.classes.cli.UserPreferences') as mock_prefs_class:
+
+        # Mock the UserPreferences instance and its methods
+        mock_prefs = mock_prefs_class.return_value
+        mock_prefs.load_preferences.return_value = {
+            "consent": False,
+            "project_filepath": "",
+            "user_email": "",
+            "user_name": "",
+            "user_password": ""
+        }
+        mock_prefs.get_project_filepath.return_value = ""
+        mock_prefs.get_user_credentials.return_value = ("", "", "")
+        mock_prefs.preferences_file.exists.return_value = False
+        mock_prefs.get_preferences_file_path.return_value = "/mock/preferences.json"
+
+        # Create CLI instance with mocked preferences
+        cli_instance = ArtifactMiner()
+
+        # Ensure clean state for each test
+        cli_instance.project_filepath = ''
+        cli_instance.user_consent = False
+        cli_instance.user_email = ''
+        cli_instance.cmd_history = []
+
+        yield cli_instance
 
 # Initialization and Setup Tests
 
@@ -150,7 +175,7 @@ def test_do_perms_user_consents(cli):
         assert cli.user_consent is True
         assert cli.cmd_history[0] == "perms"
         mock_print.assert_any_call(
-            "\nThank you for consenting. You may now continue.")
+            "\nThank you for consenting. Consent saved to preferences.")
 
 
 def test_do_perms_user_declines(cli):
@@ -196,12 +221,15 @@ def test_do_filepath_valid_path(cli):
         cli.do_filepath("")
         assert cli.project_filepath == test_path
         assert cli.cmd_history[0] == "filepath"
-        mock_print.assert_any_call("\nFilepath successfully received")
+        mock_print.assert_any_call("\nFilepath successfully received and saved to preferences")
         mock_print.assert_any_call(test_path)
 
 
 def test_do_filepath_user_cancels(cli):
     """Test filepath command when user cancels."""
+    # Reset filepath to ensure clean test state
+    cli.project_filepath = ''
+
     with patch('builtins.input', return_value='cancel'), \
             patch('builtins.print'):
         result = cli.do_filepath("")
@@ -214,12 +242,19 @@ def test_do_filepath_user_cancels(cli):
 
 def test_do_begin_without_consent(cli):
     """Test begin command without user consent."""
-    with patch('builtins.print') as mock_print:
+
+    # Explicit about the starting state for this test
+    cli.user_consent = False
+    cli.project_filepath = ''
+
+    with patch('builtins.print') as mock_print, \
+        patch('src.classes.cli.start_miner') as mock_start:
         cli.do_begin("")
         mock_print.assert_any_call(
             "\nError: Missing consent. Type perms or 1 to read user permission agreement."
         )
         assert cli.cmd_history[0] == "begin"
+        mock_start.assert_not_called()
 
 # Command Routing Tests
 
@@ -236,6 +271,12 @@ def test_default_command_routing_numeric(cli, command, expected_method):
         cli.default(command)
         mock_method.assert_called_once_with("")
 
+def test_default_command_routing_numeric_login(cli):
+    """Test that '5' routes to do_login."""
+    with patch.object(cli, 'do_login') as mock_login, \
+         patch('builtins.input', side_effect=['back']):  # Mock input to avoid stdin issues
+        cli.default('5')
+        mock_login.assert_called_once_with('')
 
 def test_default_command_case_insensitive(cli):
     """Test that commands work regardless of case."""
@@ -247,7 +288,7 @@ def test_default_command_case_insensitive(cli):
 
 def test_default_handles_unknown_commands(cli):
     """Test handling of unknown commands."""
-    unknown_commands = ["unknown", "5", "invalid", "help_me"]
+    unknown_commands = ["unknown", "6", "invalid", "help_me"]
     with patch('builtins.print') as mock_print:
         for command in unknown_commands:
             cli.default(command)

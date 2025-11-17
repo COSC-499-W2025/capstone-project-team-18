@@ -10,8 +10,8 @@ from classes.statistic import ProjectStatCollection
 
 
 @pytest.fixture
-def unequal_contribution_zip(tmp_path: Path) -> Path:
-    """Creates zip with project having unequal contributions (Bob: 2 commits, Charlie: 1)."""
+def unequal_contribution_dir(tmp_path: Path) -> Path:
+    """Creates a directory with project having unequal contributions (Bob: 2 commits, Charlie: 1)."""
     team_dir = tmp_path / "UnequalProject"
     team_dir.mkdir()
     repo = Repo.init(team_dir)
@@ -35,17 +35,13 @@ def unequal_contribution_zip(tmp_path: Path) -> Path:
     repo.index.add(["file3.py"])
     repo.index.commit("Charlie's commit")
 
-    zip_path = tmp_path / "unequal.zip"
-    with zipfile.ZipFile(zip_path, 'w') as zf:
-        for file_path in team_dir.rglob('*'):
-            if file_path.is_file():
-                zf.write(file_path, file_path.relative_to(tmp_path))
-    return zip_path
+    # Return the parent temp directory which contains the project folder
+    return tmp_path
 
 
 @pytest.fixture
-def shared_file_zip(tmp_path: Path) -> Path:
-    """Creates zip with single file modified by 3 different authors."""
+def shared_file_dir(tmp_path: Path) -> Path:
+    """Creates a directory with single file modified by 3 different authors."""
     project_dir = tmp_path / "SharedFile"
     project_dir.mkdir()
     repo = Repo.init(project_dir)
@@ -74,33 +70,23 @@ def shared_file_zip(tmp_path: Path) -> Path:
     repo.index.add(["shared.py"])
     repo.index.commit("Charlie's modification")
 
-    zip_path = tmp_path / "shared.zip"
-    with zipfile.ZipFile(zip_path, 'w') as zf:
-        for file_path in project_dir.rglob('*'):
-            if file_path.is_file():
-                zf.write(file_path, file_path.relative_to(tmp_path))
-    return zip_path
+    return tmp_path
 
 
 @pytest.fixture
-def no_git_zip(tmp_path: Path) -> Path:
-    """Creates zip with project that has no Git repository."""
+def no_git_dir(tmp_path: Path) -> Path:
+    """Creates directory with project that has no Git repository."""
     project_dir = tmp_path / "NoGitProject"
     project_dir.mkdir()
     (project_dir / "main.py").write_text("print('No git')")
     (project_dir / "utils.py").write_text("# Utils")
 
-    zip_path = tmp_path / "nogit.zip"
-    with zipfile.ZipFile(zip_path, 'w') as zf:
-        for file_path in project_dir.rglob('*'):
-            if file_path.is_file():
-                zf.write(file_path, file_path.relative_to(tmp_path))
-    return zip_path
+    return tmp_path
 
 
 @pytest.fixture
-def git_zip(tmp_path: Path) -> Path:
-    """Creates zip with individual project (1 author) and group project (2 authors)."""
+def git_dir(tmp_path: Path) -> Path:
+    """Creates directory with individual project (1 author) and group project (2 authors)."""
     # Individual project with single author
     solo_dir = tmp_path / "SoloProject"
     solo_dir.mkdir()
@@ -129,42 +115,31 @@ def git_zip(tmp_path: Path) -> Path:
     repo2.index.add(["feature2.py"])
     repo2.index.commit("Add feature 2")
 
-    zip_path = tmp_path / "MixedProjects.zip"
-    with zipfile.ZipFile(zip_path, 'w') as zf:
-        for project_dir in [solo_dir, team_dir]:
-            for file_path in project_dir.rglob('*'):
-                if file_path.is_file():
-                    zf.write(file_path, file_path.relative_to(tmp_path))
-    return zip_path
+    return tmp_path
 
 
 @pytest.fixture
-def empty_repo_zip(tmp_path: Path) -> Path:
-    """Creates zip with initialized Git repository but no commits."""
+def empty_repo_dir(tmp_path: Path) -> Path:
+    """Creates directory with initialized Git repository but no commits."""
     project_dir = tmp_path / "EmptyRepo"
     project_dir.mkdir()
     Repo.init(project_dir)
 
-    zip_path = tmp_path / "empty.zip"
-    with zipfile.ZipFile(zip_path, 'w') as zf:
-        for file_path in project_dir.rglob('*'):
-            if file_path.is_file():
-                zf.write(file_path, file_path.relative_to(tmp_path))
-    return zip_path
+    return tmp_path
 
 
 @pytest.fixture
-def corrupted_zip(tmp_path: Path) -> Path:
-    """Creates an invalid zip file."""
-    bad_zip = tmp_path / "corrupted.zip"
-    bad_zip.write_text("This is not a zip file")
-    return bad_zip
+def corrupted_file(tmp_path: Path) -> Path:
+    """Creates an invalid file (not a directory) to simulate corrupted input."""
+    bad_file = tmp_path / "corrupted.file"
+    bad_file.write_text("This is not a project directory")
+    return bad_file
 
 
-def test_git_authorship_single_author(git_zip: Path):
+def test_git_authorship_single_author(git_dir: Path):
     """Test Git authorship analysis with single author"""
-    solo_report = ProjectReport(zip_path=str(
-        git_zip), project_name="SoloProject")
+    solo_report = ProjectReport(project_path=str(
+        git_dir), project_name="SoloProject")
 
     is_group = solo_report.get_value(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -180,10 +155,10 @@ def test_git_authorship_single_author(git_zip: Path):
     assert authors_per_file.get("solo_work.py") == 1
 
 
-def test_git_authorship_multiple_authors(git_zip: Path):
+def test_git_authorship_multiple_authors(git_dir: Path):
     """Test Git authorship analysis with multiple authors"""
-    team_report = ProjectReport(zip_path=str(
-        git_zip), project_name="TeamProject")
+    team_report = ProjectReport(project_path=str(
+        git_dir), project_name="TeamProject")
 
     is_group = team_report.get_value(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -228,16 +203,9 @@ def test_git_authorship_user_commit_percentage():
         repo.index.add(["file3.py"])
         repo.index.commit("Charlie's commit")
 
-        # Create zip
-        zip_path = Path(temp_dir) / "unequal.zip"
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for file_path in team_dir.rglob('*'):
-                if file_path.is_file():
-                    zf.write(file_path, file_path.relative_to(temp_dir))
-
-        # Test with Bob's email
+        # Test with Bob's email (project already unzipped into temp_dir)
         report_bob = ProjectReport(
-            zip_path=str(zip_path),
+            project_path=str(temp_dir),
             project_name="UnequalProject",
             user_email="bob@example.com"
         )
@@ -249,7 +217,7 @@ def test_git_authorship_user_commit_percentage():
 
         # Test with Charlie's email
         report_charlie = ProjectReport(
-            zip_path=str(zip_path),
+            project_path=str(temp_dir),
             project_name="UnequalProject",
             user_email="charlie@example.com"
         )
@@ -263,10 +231,10 @@ def test_git_authorship_user_commit_percentage():
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_git_authorship_no_user_email_provided(git_zip):
+def test_git_authorship_no_user_email_provided(git_dir):
     """Test that user commit percentage is None when no email provided"""
     team_report = ProjectReport(
-        zip_path=str(git_zip),
+        project_path=str(git_dir),
         project_name="TeamProject",
         user_email=None
     )
@@ -282,10 +250,10 @@ def test_git_authorship_no_user_email_provided(git_zip):
     assert user_percentage is None
 
 
-def test_git_authorship_single_author_no_percentage(git_zip):
+def test_git_authorship_single_author_no_percentage(git_dir):
     """Test that single-author projects don't calculate user percentage"""
     solo_report = ProjectReport(
-        zip_path=str(git_zip),
+        project_path=str(git_dir),
         project_name="SoloProject",
         user_email="alice@example.com"
     )
@@ -301,10 +269,10 @@ def test_git_authorship_single_author_no_percentage(git_zip):
     assert user_percentage is None
 
 
-def test_git_authorship_user_not_in_project(git_zip):
+def test_git_authorship_user_not_in_project(git_dir):
     """Test user commit percentage when user email not found in project"""
     team_report = ProjectReport(
-        zip_path=str(git_zip),
+        project_path=str(git_dir),
         project_name="TeamProject",
         user_email="nonexistent@example.com"
     )
@@ -320,7 +288,7 @@ def test_git_authorship_user_not_in_project(git_zip):
 def test_git_authorship_invalid_zip_path():
     """Test handling of nonexistent zip file"""
     report = ProjectReport(
-        zip_path="/nonexistent/path/to/file.zip",
+        project_path="/nonexistent/path/to/nonexistent_project",
         project_name="AnyProject"
     )
 
@@ -332,10 +300,10 @@ def test_git_authorship_invalid_zip_path():
     assert total_authors is None
 
 
-def test_git_authorship_nonexistent_project_name(git_zip):
+def test_git_authorship_nonexistent_project_name(git_dir):
     """Test handling of project name not in zip file"""
     report = ProjectReport(
-        zip_path=str(git_zip),
+        project_path=str(git_dir),
         project_name="NonexistentProject"
     )
 
@@ -350,26 +318,18 @@ def test_git_authorship_nonexistent_project_name(git_zip):
     assert authors_per_file is None
 
 
-def test_git_authorship_corrupted_zip():
+def test_git_authorship_corrupted_zip(corrupted_file: Path):
     """Test handling of corrupted/invalid zip file"""
-    temp_dir = tempfile.mkdtemp()
-    try:
-        # Create a file that's not a valid zip
-        bad_zip = Path(temp_dir) / "corrupted.zip"
-        bad_zip.write_text("This is not a zip file")
+    # Pass a path that exists but is not a project directory
+    report = ProjectReport(
+        project_path=str(corrupted_file),
+        project_name="AnyProject"
+    )
 
-        report = ProjectReport(
-            zip_path=str(bad_zip),
-            project_name="AnyProject"
-        )
-
-        # Should handle BadZipFile exception gracefully
-        is_group = report.get_value(
-            ProjectStatCollection.IS_GROUP_PROJECT.value)
-        assert is_group is None
-
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
+    # Should handle invalid input gracefully
+    is_group = report.get_value(
+        ProjectStatCollection.IS_GROUP_PROJECT.value)
+    assert is_group is None
 
 
 def test_git_authorship_no_git_repository():
@@ -382,15 +342,8 @@ def test_git_authorship_no_git_repository():
         (project_dir / "main.py").write_text("print('No git')")
         (project_dir / "utils.py").write_text("# Utils")
 
-        # Create zip
-        zip_path = Path(temp_dir) / "nogit.zip"
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for file_path in project_dir.rglob('*'):
-                if file_path.is_file():
-                    zf.write(file_path, file_path.relative_to(temp_dir))
-
         report = ProjectReport(
-            zip_path=str(zip_path),
+            project_path=str(temp_dir),
             project_name="NoGitProject"
         )
 
@@ -407,10 +360,10 @@ def test_git_authorship_no_git_repository():
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_git_authorship_multiple_files_single_author(git_zip):
+def test_git_authorship_multiple_files_single_author(git_dir):
     """Test authors_per_file with multiple files but single author"""
     solo_report = ProjectReport(
-        zip_path=str(git_zip),
+        project_path=str(git_dir),
         project_name="SoloProject"
     )
 
@@ -456,14 +409,7 @@ def test_git_authorship_file_with_multiple_contributors():
         repo.index.add(["shared.py"])
         repo.index.commit("Charlie's modification")
 
-        # Create zip
-        zip_path = Path(temp_dir) / "shared.zip"
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for file_path in project_dir.rglob('*'):
-                if file_path.is_file():
-                    zf.write(file_path, file_path.relative_to(temp_dir))
-
-        report = ProjectReport(zip_path=str(zip_path),
+        report = ProjectReport(project_path=str(temp_dir),
                                project_name="SharedFile")
 
         authors_per_file = report.get_value(
@@ -489,14 +435,7 @@ def test_git_authorship_empty_repository():
         project_dir.mkdir()
         Repo.init(project_dir)  # Initialize but make no commits
 
-        # Create zip
-        zip_path = Path(temp_dir) / "empty.zip"
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for file_path in project_dir.rglob('*'):
-                if file_path.is_file():
-                    zf.write(file_path, file_path.relative_to(temp_dir))
-
-        report = ProjectReport(zip_path=str(zip_path),
+        report = ProjectReport(project_path=str(project_dir),
                                project_name="EmptyRepo")
 
         total_authors = report.get_value(
@@ -505,7 +444,6 @@ def test_git_authorship_empty_repository():
             ProjectStatCollection.IS_GROUP_PROJECT.value)
 
         # Empty repo should have 0 authors
-        # print(total_authors)
         assert total_authors is None
         assert is_group is None  # 0 authors = not a group
 
@@ -539,15 +477,8 @@ def test_git_authorship_percentage_rounding():
         repo.index.add(["file3.py"])
         repo.index.commit("Bob commit 2")
 
-        # Create zip
-        zip_path = Path(temp_dir) / "rounding.zip"
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for file_path in project_dir.rglob('*'):
-                if file_path.is_file():
-                    zf.write(file_path, file_path.relative_to(temp_dir))
-
         report = ProjectReport(
-            zip_path=str(zip_path),
+            project_path=str(temp_dir),
             project_name="RoundingProject",
             user_email="alice@example.com"
         )
@@ -564,10 +495,10 @@ def test_git_authorship_percentage_rounding():
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_git_authorship_false_assumptions(git_zip):
+def test_git_authorship_false_assumptions(git_dir):
     """Test with assert False to verify wrong assumptions fail"""
     team_report = ProjectReport(
-        zip_path=str(git_zip),
+        project_path=str(git_dir),
         project_name="TeamProject"
     )
 

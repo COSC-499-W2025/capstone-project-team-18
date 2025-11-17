@@ -22,7 +22,8 @@ def start_miner(zipped_file: str, email: str = None) -> None:
     results are printed to the terminal
 
     Args:
-        - zipped_file : str The filepath to the zipped file.
+        - zipped_file : The filepath to the zipped file.
+        - email: Email associated with git account
     """
 
     # Unzip the zipped file into temporary directory
