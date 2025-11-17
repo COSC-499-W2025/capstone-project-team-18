@@ -16,6 +16,7 @@ from src.classes.statistic import (
     FileStatCollection,
     ProjectStatCollection,
     UserStatCollection,
+    CodingLanguage
 )
 
 # [type[src.classes.statistic.FileStatCollection], type[src.classes.statistic.ProjectStatCollection], type[src.classes.statistic.UserStatCollection]]
@@ -36,7 +37,7 @@ def _sqlalchemy_type_for(expected_type: t.Any):
     - str -> String
     - datetime.date -> Date
     - float -> Float
-    - list[str], list[WeightedSkills], dict -> JSON
+    - list[str], list[WeightedSkills], dict, CodingLanguage, set -> JSON
     - bool -> Boolean
     - Fallback: JSON
     """
@@ -49,6 +50,8 @@ def _sqlalchemy_type_for(expected_type: t.Any):
         list[str]: JSON,
         bool: Boolean,
         dict: JSON,
+        CodingLanguage: JSON,
+        set: JSON,
     }
 
     # E.g. return FileStatCollection.expected_type or JSON if not in found
