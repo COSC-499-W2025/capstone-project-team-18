@@ -105,3 +105,14 @@ This work addresses issues #112 (Add Natural Language Statistic to FileReportCla
 This week I implemented the foundational JSON preferences system for our CLI application, establishing persistent user data storage across sessions. I developed the complete UserPreferences class with core methods for loading, saving, updating, and retrieving user preferences, then integrated this system into existing CLI commands (do_perms, do_filepath, do_email, do_begin) to automatically persist user consent, project filepaths, and email configurations.
 
 The implementation involved a significant amount of code including comprehensive error handling, backwards compatibility support, and proper file system management within the database folder structure. This work represents the first PR stage of the  CLI User Prefrences and can be found in PR [#181](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/181), laying the groundwork for advanced user credential management and configuration options in subsequent releases. I also reviewed Alex's PR [154](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/154).
+
+## Week 11, Nov. 10-6
+
+### Peer Eval
+
+(No Peer eval this week)
+
+### Recap
+This week I completed the second stage of the CLI User Preferences system implementation. I finalized PR [#181](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/181) by addressing all requested changes including fixing test failures, removing duplicate method definitions, and ensuring proper preference loading consistency.
+
+Building on that foundation, I successfully implemented and merged PR [#186](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/186) which added the complete user login and credentials system. This included developing the `do_login()` method with input validation and retry loops, adding credential storage methods to UserPreferences, and integrating the new "(5) User Login" option into the CLI command routing system. The implementation features secure password display, persistent credential storage, and proper integration with existing preference management.
