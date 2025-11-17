@@ -12,6 +12,39 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from app import start_miner
 
+
+def normalize_path(user_path: str) -> str:
+    r"""
+    Normalize a user-provided file path so it works cross-platform.
+    - Expands ~ to home directory
+    - Converts backslashes and slashes for consistency
+    - Normalizes redundant separators and up-level references
+    - On Windows, maps Mac-style /Users/<username>/ paths to C:\\Users\\<username>\\
+    - On Mac, maps Windows-style C:\\Users\\<username>\\ paths to /Users/<username>/
+    """
+    if not user_path:
+        return user_path
+    # On Mac, map C:\Users\<username>\... or C:/Users/<username>/... to /Users/<username>/...
+    if sys.platform == 'darwin':
+        match = re.match(r'^[cC]:[\\/]+Users[\\/]+([^\\/]+)[\\/]+(.+)', user_path)
+        if match:
+            username, rest = match.groups()
+            user_path = f"/Users/{username}/{rest}"
+    # Expand ~ to home directory
+    user_path = os.path.expanduser(user_path)
+    # On Windows, map /Users/<username>/... to C:\Users\<username>\...
+    if os.name == 'nt':
+        match = re.match(r'^/Users/([^/\\]+)/(.+)', user_path)
+        if match:
+            username, rest = match.groups()
+            user_path = f"C:\\Users\\{username}\\{rest}"
+    # Convert all slashes to OS separator
+    user_path = user_path.replace('\\', os.sep).replace('/', os.sep)
+    # Normalize path (removes redundant .., . etc.)
+    user_path = os.path.normpath(user_path)
+    return user_path
+
+
 class UserPreferences:
     """Manages User Preferences with JSON storage in database folder"""
 
@@ -110,6 +143,7 @@ class UserPreferences:
         """Update user email preference."""
         return self.update("user_email", email)
 
+
 def _is_valid_filepath_to_zip(filepath: str) -> int:
     """
     Helper function to validate the provided filepath.
@@ -171,7 +205,8 @@ class ArtifactMiner(cmd.Cmd):
         print(self.options)
 
         # Show preferences file location
-        print(f"Preferences stored in: {self.preferences.get_preferences_file_path()}")
+        print(
+            f"Preferences stored in: {self.preferences.get_preferences_file_path()}")
 
     def _load_existing_preferences(self):
         """Load existing preferences and set instance variables."""
@@ -183,9 +218,11 @@ class ArtifactMiner(cmd.Cmd):
         self.user_email = prefs.get('user_email', '')
 
         if self.preferences.preferences_file.exists():
-            print(f"Loaded preferences from: {self.preferences.get_preferences_file_path()}")
+            print(
+                f"Loaded preferences from: {self.preferences.get_preferences_file_path()}")
         else:
-            print(f"Created new preferences file at: {self.preferences.get_preferences_file_path()}")
+            print(
+                f"Created new preferences file at: {self.preferences.get_preferences_file_path()}")
 
     def do_perms(self, arg):
         '''
@@ -238,7 +275,7 @@ class ArtifactMiner(cmd.Cmd):
         current_path = self.preferences.get_project_filepath()
         if current_path:
             print(f"Current filepath: {current_path}")
-        
+
         while True:
             prompt = "Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return): "
             answer = input(prompt).strip()
@@ -250,8 +287,11 @@ class ArtifactMiner(cmd.Cmd):
                 print("\n" + self.options)
                 return  # Return to main menu
 
-            # Validate the filepath
-            error_code = _is_valid_filepath_to_zip(answer)
+            # Normalize the user input path
+            normalized_path = normalize_path(answer)
+
+            # Validate the normalized filepath
+            error_code = _is_valid_filepath_to_zip(normalized_path)
             if error_code == 0:
                 break  # Valid filepath found, exit the loop
             elif error_code == 1:
@@ -264,9 +304,9 @@ class ArtifactMiner(cmd.Cmd):
                     "\nError: The provided filepath does not exist. Please try again.\n")
 
         # Process the filepath
-        self.project_filepath = answer
+        self.project_filepath = normalized_path
         # Save filepath to preferences
-        success = self.preferences.update_project_filepath(answer)
+        success = self.preferences.update_project_filepath(normalized_path)
         print("\nFilepath successfully received and saved to preferences")
         if not success:
             print("Warning: Failed to save filepath to preferences file.")
@@ -278,7 +318,8 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "begin")
 
         if not self.user_consent:
-            print("\nError: Missing consent. Type perms or 1 to read user permission agreement.")
+            print(
+                "\nError: Missing consent. Type perms or 1 to read user permission agreement.")
             print("\n" + self.options)
             return
 
