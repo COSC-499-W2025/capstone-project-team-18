@@ -5,7 +5,7 @@ This file contains the command line interface (CLI) for the Artifact Miner appli
 import cmd
 import re
 import os
-from app import start_miner
+from src.app import start_miner
 
 
 def _is_valid_filepath_to_zip(filepath: str) -> int:
