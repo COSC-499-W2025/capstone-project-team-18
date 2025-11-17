@@ -5,6 +5,7 @@ interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
 
+from typing import Optional
 from utils.zipped_utils import unzip_file
 from utils.project_discovery import discover_projects
 from classes.analyzer import extract_file_reports
@@ -12,7 +13,7 @@ from classes.report import ProjectReport, UserReport
 import tempfile
 
 
-def start_miner(zipped_file: str, email: str = None) -> None:
+def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     """
     This function defines the main application
     logic for the Artifact Miner. Currently,
@@ -36,6 +37,7 @@ def start_miner(zipped_file: str, email: str = None) -> None:
 
         pr = ProjectReport(
             project_name=project.name,
+            project_path=project.root_path,
             file_reports=file_reports,
             user_email=email
         )
