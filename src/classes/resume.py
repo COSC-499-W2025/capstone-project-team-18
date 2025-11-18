@@ -46,9 +46,11 @@ class Resume:
     def generate_resume(self) -> str:
         resume = ""
         for item in self.items:
-            resume += f"Title: {item.title}\n"
-            resume += "Bullet Points:\n"
+            resume += f"{item.title} : {item.start_date} - {item.end_date}\n"
             for bullet in item.bullet_points:
-                resume += f" - {bullet}\n"
-            resume += f"Duration: {item.start_date} - {item.end_date}\n\n"
+                resume += f"   - {bullet}\n"
+            resume += "\n"
         return resume
+
+    def __str__(self) -> str:
+        return self.generate_resume()
