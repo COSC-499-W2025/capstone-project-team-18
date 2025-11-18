@@ -6,13 +6,13 @@ interact with to begin the artifact miner.
 """
 from sqlalchemy.orm import Session
 
-from utils.zipped_utils import unzip_file
-from utils.project_discovery import discover_projects
-from classes.analyzer import extract_file_reports
-from classes.report import ProjectReport, UserReport
+from src.utils.zipped_utils import unzip_file
+from src.utils.project_discovery import discover_projects
+from src.classes.analyzer import extract_file_reports
+from src.classes.report import ProjectReport, UserReport
 import tempfile
-from database.db import get_engine
-from database.utils.database_modify import create_row
+from src.database.db import get_engine
+from src.database.utils.database_modify import create_row
 
 
 def start_miner(zipped_file: str, email: str = None) -> None:
@@ -32,7 +32,7 @@ def start_miner(zipped_file: str, email: str = None) -> None:
 
     project_list = discover_projects(unzipped_dir)
 
-    file_report_rows = [] # will store FileReportTable objs
+    file_report_rows = []  # will store FileReportTable objs
     engine = get_engine()
     with Session(engine) as session:
 
@@ -41,10 +41,11 @@ def start_miner(zipped_file: str, email: str = None) -> None:
         project_report_rows = []  # Stores ProjectReportTable objs
 
         for project in project_list:
-            file_reports = extract_file_reports(project) # get the project's FileReports
+            file_reports = extract_file_reports(
+                project)  # get the project's FileReports
 
             if file_reports is None:
-                continue # skip if directory is empty
+                continue  # skip if directory is empty
 
             # create the rows for the file reports
             for fr in file_reports:
@@ -57,7 +58,8 @@ def start_miner(zipped_file: str, email: str = None) -> None:
                 file_reports=file_reports,
                 user_email=email
             )
-            project_reports.append(project_report) # store ProjectReports for UserReport
+            # store ProjectReports for UserReport
+            project_reports.append(project_report)
 
             # create project_report row and configure FK relations
             project_row = create_row(report=project_report)
@@ -79,5 +81,5 @@ def start_miner(zipped_file: str, email: str = None) -> None:
 
 
 if __name__ == '__main__':
-    from classes.cli import ArtifactMiner
+    from src.classes.cli import ArtifactMiner
     ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
