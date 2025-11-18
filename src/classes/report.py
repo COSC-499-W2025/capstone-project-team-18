@@ -8,7 +8,7 @@ import shutil
 import zipfile
 from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
-from .resume import Resume, ResumeItem
+from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
 
@@ -170,22 +170,15 @@ class ProjectReport(BaseReport):
             end_date: End date of the project
         """
 
-        # Here we create bullet points based on available statistics
-
-        # TODO: Expand bullet points based on real statistics
-        bullet_points = [
-            f"I helped create this project named {self.project_name}.",
-        ]
-
-        title = self.project_name
-
         start_date = self.get_value(
             ProjectStatCollection.PROJECT_START_DATE.value)
         end_date = self.get_value(
             ProjectStatCollection.PROJECT_END_DATE.value)
 
+        bullet_points = bullet_point_builder(self)
+
         return ResumeItem(
-            title=title,
+            title=self.project_name,
             bullet_points=bullet_points,
             start_date=start_date,
             end_date=end_date
