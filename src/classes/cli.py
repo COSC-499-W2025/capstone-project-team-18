@@ -6,6 +6,12 @@ import cmd
 import re
 import os
 from src.app import start_miner
+import sys
+import json
+from pathlib import Path
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+
 
 class UserPreferences:
     """Manages User Preferences with JSON storage in database folder"""
@@ -28,7 +34,7 @@ class UserPreferences:
             "user_email": ""
         }
 
-    def load_preferences(self) -> Dict[str, Any]:
+    def load_preferences(self) -> dict[str, Any]:
         """Load preferences from JSON file or create with defaults."""
         if not self.preferences_file.exists():
             self.save_preferences(self.default_preferences)
@@ -106,7 +112,6 @@ class UserPreferences:
         return self.update("user_email", email)
 
 
-
 def _is_valid_filepath_to_zip(filepath: str) -> int:
     """
     Helper function to validate the provided filepath.
@@ -173,7 +178,8 @@ class ArtifactMiner(cmd.Cmd):
         print(self.options)
 
         # Show preferences file location
-        print(f"Preferences stored in: {self.preferences.get_preferences_file_path()}")
+        print(
+            f"Preferences stored in: {self.preferences.get_preferences_file_path()}")
 
     def _load_existing_preferences(self):
         """Load existing preferences and set instance variables."""
@@ -187,9 +193,11 @@ class ArtifactMiner(cmd.Cmd):
         self.user_password = prefs.get('user_password', '')
 
         if self.preferences.preferences_file.exists():
-            print(f"Loaded preferences from: {self.preferences.get_preferences_file_path()}")
+            print(
+                f"Loaded preferences from: {self.preferences.get_preferences_file_path()}")
         else:
-            print(f"Created new preferences file at: {self.preferences.get_preferences_file_path()}")
+            print(
+                f"Created new preferences file at: {self.preferences.get_preferences_file_path()}")
 
     def do_perms(self, arg):
         '''
@@ -282,7 +290,8 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "begin")
 
         if not self.user_consent:
-            print("\nError: Missing consent. Type perms or 1 to read user permission agreement.")
+            print(
+                "\nError: Missing consent. Type perms or 1 to read user permission agreement.")
             print("\n" + self.options)
             return
 
@@ -312,7 +321,8 @@ class ArtifactMiner(cmd.Cmd):
 
         # Get username with retry loop
         while True:
-            name = input("Enter your name: (or 'back'/'cancel' to return): ").strip()
+            name = input(
+                "Enter your name: (or 'back'/'cancel' to return): ").strip()
             if self._handle_cancel_input(name):
                 print("\n" + self.options)
                 return
@@ -322,7 +332,8 @@ class ArtifactMiner(cmd.Cmd):
 
         # Get password with retry loop
         while True:
-            password = input("Enter your password: (or 'back'/'cancel' to return): ").strip()
+            password = input(
+                "Enter your password: (or 'back'/'cancel' to return): ").strip()
             if self._handle_cancel_input(password):
                 print("\n" + self.options)
                 return
@@ -333,7 +344,8 @@ class ArtifactMiner(cmd.Cmd):
         # Save credentials
         self.user_name = name
         self.user_password = password
-        success = self.preferences.update_credentials(name, password, self.user_email)
+        success = self.preferences.update_credentials(
+            name, password, self.user_email)
 
         if success:
             print(f"\nLogin credentials saved successfully!")
