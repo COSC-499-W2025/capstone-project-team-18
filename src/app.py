@@ -65,15 +65,13 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
             )
             # store ProjectReports for UserReport
             project_reports.append(project_report)
-
-        # create project_report row and configure FK relations
-        project_row = create_row(report=project_report)
-        project_row.file_reports.extend(file_report_rows)  # type: ignore
-        project_report_rows.append(project_row)
+            # create project_report row and configure FK relations
+            project_row = create_row(report=project_report)
+            project_row.file_reports.extend(file_report_rows)  # type: ignore
+            project_report_rows.append(project_row)
 
     # make a UserReport with the ProjectReports
     user_report = UserReport(project_reports)
-
     # create a user_report row and configure FK relations
     user_row = create_row(report=user_report)
     user_row.project_reports.extend(project_report_rows)  # type: ignore
