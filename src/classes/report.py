@@ -6,8 +6,9 @@ from pathlib import Path
 import tempfile
 import shutil
 import zipfile
+from git import Repo, InvalidGitRepositoryError
+from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
 from git import NoSuchPathError, Repo, InvalidGitRepositoryError
-from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
 from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
@@ -105,6 +106,7 @@ class ProjectReport(BaseReport):
         # Aggregate statistics from file reports
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
+        self._calculate_ari_score()
         self._weighted_skills()
 
         # Add Git analysis statistics if zip file is provided
@@ -183,6 +185,16 @@ class ProjectReport(BaseReport):
             curr_end_date = report.get_value(
                 FileStatCollection.DATE_MODIFIED.value)
 
+            # Coerce date to datetime for safe comparisons
+            if isinstance(curr_start_date, date) and not isinstance(curr_start_date, datetime):
+                curr_start_date = datetime(
+                    curr_start_date.year, curr_start_date.month, curr_start_date.day
+                )
+            if isinstance(curr_end_date, date) and not isinstance(curr_end_date, datetime):
+                curr_end_date = datetime(
+                    curr_end_date.year, curr_end_date.month, curr_end_date.day
+                )
+
             if curr_start_date is not None and curr_start_date < start_date:
                 start_date = curr_start_date
 
@@ -257,6 +269,26 @@ class ProjectReport(BaseReport):
 
         self.project_statistics.add(
             Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, language_ratio))
+
+    def _calculate_ari_score(self):
+        '''
+        Uses all of the FileReports that make up the ProjectReport
+        to calculate the average ARI writing score for the project
+        using all files that have the `ARI_WRITING_SCORE` stat.
+        '''
+        avg_score = 0
+        scores_count = 0  # the number of FileReports that have an ARI stat
+        for report in self.file_reports:
+            curr_score = report.get_value(
+                FileStatCollection.ARI_WRITING_SCORE.value)
+            if curr_score is None:
+                continue
+            scores_count += 1
+            avg_score += curr_score
+        if scores_count > 0:
+            avg_score /= scores_count
+        self.project_statistics.add(
+            Statistic(ProjectStatCollection.AVG_ARI_WRITING_SCORE.value, float(avg_score)))
 
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
@@ -354,46 +386,104 @@ class UserReport(BaseReport):
 
         self.resume_items = [project_reports.generate_resume_item()
                              for project_reports in project_reports]
-
-        # Extract all project start dates, filtering out None values
-        # This creates a list of datetime objects representing when each project started
-        project_start_dates = [
-            report.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-            for report in project_reports
-            if report.get_value(ProjectStatCollection.PROJECT_START_DATE.value) is not None
-        ]
-
-        # Extract all project end dates, filtering out None values
-        # This creates a list of datetime objects representing when each project ended
-        project_end_dates = [
-            report.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-            for report in project_reports
-            if report.get_value(ProjectStatCollection.PROJECT_END_DATE.value) is not None
-        ]
+        self.project_reports = project_reports or []
 
         # Build list of user-level statistics
-        user_stats = []
+        self.user_stats = StatisticIndex()
 
-        # Calculate and add user start date (earliest project start)
-        # Calculate and add project start date (earliest file creation)
-        if project_start_dates:
-            start_date = min(project_start_dates)
-            user_start_stat = Statistic(
-                UserStatCollection.USER_START_DATE.value, start_date)
-            user_stats.append(user_start_stat)
+        # Function calls to generate statistics
+        self._determine_start_end_dates()
+        self._find_coding_languages_ratio()
+        self._calculate_user_ari()
 
-        # Calculate and add project end date (latest file modification)
-        if project_end_dates:
-            end_date = max(project_end_dates)
-            user_end_stat = Statistic(
-                UserStatCollection.USER_END_DATE.value, end_date)
-            user_stats.append(user_end_stat)
-
-        # Create StatisticIndex with user-level statistics
-        user_statistics = StatisticIndex(user_stats)
+    def _determine_start_end_dates(self):
+        # Loop through and find the earliest start date and latest end date of all projects
+        latest_date = datetime.now() + timedelta(days=1)  # 1 day in the future
+        earliest_date = datetime(MINYEAR, 1, 1, 0, 0, 0, 0)
+        # For checking that the time range is valid
+        start_date = latest_date
+        end_date = earliest_date
+        for pr in self.project_reports:
+            curr_start_date = self._coerce_datetime(
+                pr.get_value(
+                    ProjectStatCollection.PROJECT_START_DATE.value)
+            )
+            curr_end_date = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+            )
+            if curr_start_date is not None and curr_start_date < start_date:
+                start_date = curr_start_date
+            if curr_end_date is not None and curr_end_date > end_date:
+                end_date = curr_end_date
+            # Make sure that the values were actually updated
+            if start_date != latest_date:
+                user_start_stat = Statistic(
+                    UserStatCollection.USER_START_DATE.value, start_date)
+                self.user_stats.add(user_start_stat)
+            if end_date != earliest_date:
+                user_end_stat = Statistic(
+                    UserStatCollection.USER_END_DATE.value, end_date)
+                self.user_stats.add(user_end_stat)
 
         # Initialize the base class with the user statistics
-        super().__init__(user_statistics)
+        super().__init__(self.user_stats)
+
+    def _find_coding_languages_ratio(self):
+        '''
+        Calculates the ratio of all coding languages
+        present in the `ProjectReports` used to
+        create the `UserReport` for the
+        `USER_CODING_LANGUAGE_RATIO` statistic.
+        '''
+        lang_ratio = {}
+
+        for proj_report in self.project_reports:
+            proj_lang_ratio = proj_report.get_value(
+                ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
+
+            if proj_lang_ratio is None:
+                continue
+
+            for curr_lang, ratio in proj_lang_ratio.items():
+                if curr_lang is None:
+                    continue
+
+                if curr_lang in lang_ratio:
+                    # language & ratio have already been added from another report
+                    lang_ratio[curr_lang] += ratio
+                else:
+                    # add new language & ratio
+                    lang_ratio[curr_lang] = ratio
+
+        if len(lang_ratio) < 1:
+            return  # don't log this stat b/c there are no coding languages
+
+        # now, we need to compute the even division the ratio of each language between all projects
+        for lang, ratio in lang_ratio.items():
+            ratio /= len(lang_ratio)
+            lang_ratio[lang] = ratio
+
+        self.user_stats.add(
+            Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio))
+
+    def _calculate_user_ari(self):
+        '''
+        Uses all of the ProjectReports that make up the UserReport
+        to calculate the average ARI writing score for the user
+        '''
+        avg_score = 0
+        scores_count = 0  # the number of FileReports that have an ARI stat
+        for report in self.project_reports:
+            curr_score = report.get_value(
+                ProjectStatCollection.AVG_ARI_WRITING_SCORE.value)
+            if curr_score is None:
+                continue
+            scores_count += 1
+            avg_score += curr_score
+        if scores_count > 0:
+            avg_score /= scores_count
+        self.user_stats.add(
+            Statistic(UserStatCollection.USER_ARI_WRITING_SCORE.value, float(avg_score)))
 
     def generate_resume(self) -> Resume:
         """
@@ -496,6 +586,30 @@ class UserReport(BaseReport):
                 continue
 
             title = self._title_from_name(name)
+
+            if name == UserStatCollection.USER_ARI_WRITING_SCORE.value.name:
+                score = 0
+                score += self.get_value(
+                    UserStatCollection.USER_ARI_WRITING_SCORE.value)
+                skills_line = f"Your Automated readability index (ARI) score: {score}"
+
+            # Try to print the user's coding languages and its percent relative to all coding languages from the user
+            if name == UserStatCollection.USER_CODING_LANGUAGE_RATIO.value.name:
+                ratio_line = "coding languages not found"
+                try:
+                    lang_ratios = value
+                    langs_sorted = sorted(
+                        lang_ratios.items(), key=lambda x: x[1], reverse=True)
+                    parts: list[str] = []
+                    for lang, ratio in langs_sorted:
+                        lang_name = lang.value[0]
+                        percent = f"{int(ratio * 100)}%"
+                        parts.append(f"{lang_name} ({percent})")
+                except Exception:
+                    ratio_line = "coding languages not found"
+                ratio_line = f"Your coding languages: {', '.join(parts)}."
+                lines.append(ratio_line)
+                continue
 
             should_try_date = (
                 template.expected_type in (date, datetime)

@@ -12,15 +12,15 @@ from src.classes.report import ProjectReport
 def test_coding_language_bp_multiple():
     ratio = {CodingLanguage.PYTHON: 0.6, CodingLanguage.JAVASCRIPT: 0.4}
     bp = coding_language_bp(ratio)
-    assert "python" in bp
-    assert "javascript" in bp
+    assert "Python" in bp
+    assert "Javascript" in bp
     assert bp.startswith("Implemented code mainly in")
 
 
 def test_coding_language_bp_single():
     ratio = {CodingLanguage.PYTHON: 1.0}
     bp = coding_language_bp(ratio)
-    assert bp == "Project was coded using the python language"
+    assert bp == "Project was coded using the Python language"
 
 
 def test_coding_language_bp_small_shares():
