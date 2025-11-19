@@ -6,7 +6,7 @@ from pathlib import Path
 import tempfile
 import shutil
 import zipfile
-from git import Repo, InvalidGitRepositoryError
+from git import NoSuchPathError, Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
 from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
@@ -232,12 +232,16 @@ class ProjectReport(BaseReport):
         try:
             repo = Repo(Path(project_path))
 
-            # Sum all commits to check perecentage by
-            commit_count_by_author = {}
-            for commit in repo.iter_commits():
-                author_email = commit.author.email
-                commit_count_by_author[author_email] = commit_count_by_author.get(
-                    author_email, 0) + 1
+            # Check if repository has any commits
+            try:
+                commit_count_by_author = {}
+                for commit in repo.iter_commits():
+                    author_email = commit.author.email
+                    commit_count_by_author[author_email] = commit_count_by_author.get(
+                        author_email, 0) + 1
+            except ValueError:
+                # Empty repository with no commits
+                return None
 
             all_authors = set([author for author in commit_count_by_author.keys(
             ) if not author.endswith('@users.noreply.github.com')])
@@ -283,6 +287,9 @@ class ProjectReport(BaseReport):
                 )
 
             return stats
+        except NoSuchPathError:
+            raise FileNotFoundError(
+                f"Project path '{project_path}' does not exist.")
         except InvalidGitRepositoryError:
             return None
 

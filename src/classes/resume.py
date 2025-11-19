@@ -103,7 +103,7 @@ def bullet_point_builder(project_report: "ProjectReport") -> list[str]:
     if is_group:
         if total_authors:
             bullet_points.append(
-                f"Collaborated with {total_authors} contributors")
+                f"Collaborated in a team of {total_authors - 1} contributors")
         else:
             bullet_points.append("Collaborated with multiple contributors")
     else:
