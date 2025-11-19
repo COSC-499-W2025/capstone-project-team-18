@@ -19,6 +19,12 @@ class WeightedSkills:
     skill_name: str
     weight: float
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "skill_name": self.skill_name,
+            "weight": self.weight
+        }
+
 
 class FileDomain(Enum):
     DESIGN = "design"

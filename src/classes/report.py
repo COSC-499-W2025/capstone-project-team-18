@@ -105,6 +105,7 @@ class ProjectReport(BaseReport):
         # Aggregate statistics from file reports
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
+        self._weighted_skills()
 
         # Add Git analysis statistics if zip file is provided
         if project_path and project_name:
@@ -116,6 +117,45 @@ class ProjectReport(BaseReport):
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
+
+    def _weighted_skills(self) -> None:
+        """
+        Creates the project level statistic of
+        WEIGHTED_SKILLS.
+
+        We do this by analyzing the
+        imported packages in coding files.
+
+        We weight the skills based on how many
+        files import the package.
+        """
+
+        skill_to_count = {}
+
+        # Map coding language to lines of code
+        for report in self.file_reports:
+
+            imported_packages: Optional[list[str]] = report.get_value(
+                FileStatCollection.IMPORTED_PACKAGES.value)
+
+            if imported_packages is None:
+                continue
+
+            for package in imported_packages:
+                skill_to_count[package] = skill_to_count.get(package, 0) + 1
+
+        if len(skill_to_count) == 0:
+            # Don't log this stat if it isn't a coding project
+            return
+
+        total = sum(skill_to_count.values())
+        weighted_skills = [
+            WeightedSkills(skill_name=k, weight=v / total)
+            for k, v in skill_to_count.items()
+        ]
+
+        self.project_statistics.add(
+            Statistic(ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value, weighted_skills))
 
     def _determine_start_end_dates(self) -> None:
         """
