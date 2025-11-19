@@ -8,7 +8,8 @@ import shutil
 import zipfile
 from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
-from .resume import Resume, ResumeItem
+from git import NoSuchPathError, Repo, InvalidGitRepositoryError
+from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
 
@@ -106,6 +107,7 @@ class ProjectReport(BaseReport):
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
         self._calculate_ari_score()
+        self._weighted_skills()
 
         # Add Git analysis statistics if zip file is provided
         if project_path and project_name:
@@ -117,6 +119,45 @@ class ProjectReport(BaseReport):
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
+
+    def _weighted_skills(self) -> None:
+        """
+        Creates the project level statistic of
+        WEIGHTED_SKILLS.
+
+        We do this by analyzing the
+        imported packages in coding files.
+
+        We weight the skills based on how many
+        files import the package.
+        """
+
+        skill_to_count = {}
+
+        # Map coding language to lines of code
+        for report in self.file_reports:
+
+            imported_packages: Optional[list[str]] = report.get_value(
+                FileStatCollection.IMPORTED_PACKAGES.value)
+
+            if imported_packages is None:
+                continue
+
+            for package in imported_packages:
+                skill_to_count[package] = skill_to_count.get(package, 0) + 1
+
+        if len(skill_to_count) == 0:
+            # Don't log this stat if it isn't a coding project
+            return
+
+        total = sum(skill_to_count.values())
+        weighted_skills = [
+            WeightedSkills(skill_name=k, weight=v / total)
+            for k, v in skill_to_count.items()
+        ]
+
+        self.project_statistics.add(
+            Statistic(ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value, weighted_skills))
 
     def _determine_start_end_dates(self) -> None:
         """
@@ -181,22 +222,15 @@ class ProjectReport(BaseReport):
             end_date: End date of the project
         """
 
-        # Here we create bullet points based on available statistics
-
-        # TODO: Expand bullet points based on real statistics
-        bullet_points = [
-            f"I helped create this project named {self.project_name}.",
-        ]
-
-        title = self.project_name
-
         start_date = self.get_value(
             ProjectStatCollection.PROJECT_START_DATE.value)
         end_date = self.get_value(
             ProjectStatCollection.PROJECT_END_DATE.value)
 
+        bullet_points = bullet_point_builder(self)
+
         return ResumeItem(
-            title=title,
+            title=self.project_name,
             bullet_points=bullet_points,
             start_date=start_date,
             end_date=end_date
@@ -266,20 +300,24 @@ class ProjectReport(BaseReport):
 
     def _analyze_git_authorship(self, project_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
-        if not Path(project_path + "/" + project_name).exists():
-            return None
 
         try:
-            repo = Repo(Path(project_path) / project_name)
+            repo = Repo(Path(project_path))
 
-            # Sum all commits to check perecentage by
-            commit_count_by_author = {}
-            for commit in repo.iter_commits():
-                author_email = commit.author.email
-                commit_count_by_author[author_email] = commit_count_by_author.get(
-                    author_email, 0) + 1
+            # Check if repository has any commits
+            try:
+                commit_count_by_author = {}
+                for commit in repo.iter_commits():
+                    author_email = commit.author.email
+                    commit_count_by_author[author_email] = commit_count_by_author.get(
+                        author_email, 0) + 1
+            except ValueError:
+                # Empty repository with no commits
+                return None
 
-            all_authors = set(commit_count_by_author.keys())
+            all_authors = set([author for author in commit_count_by_author.keys(
+            ) if not author.endswith('@users.noreply.github.com')])
+
             total_authors = len(all_authors)
             total_commits = sum(commit_count_by_author.values())
 
@@ -321,6 +359,9 @@ class ProjectReport(BaseReport):
                 )
 
             return stats
+        except NoSuchPathError:
+            raise FileNotFoundError(
+                f"Project path '{project_path}' does not exist.")
         except InvalidGitRepositoryError:
             return None
 

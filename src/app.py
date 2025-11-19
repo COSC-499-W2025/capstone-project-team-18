@@ -80,7 +80,15 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     session.add_all([user_row])  # type: ignore
     session.commit()
 
+    print("-------- Analysis Reports --------\n")
+
+    print("-------- Resume --------\n")
+    print(user_report.generate_resume())
+    print("------------------------\n")
+
+    print("-------- Portfolio --------\n")
     print(user_report.to_user_readable_string())
+    print("\n-------------------------\n")
 
 
 if __name__ == '__main__':

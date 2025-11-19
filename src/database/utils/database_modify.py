@@ -65,6 +65,11 @@ def create_row(report: FileReport | ProjectReport | UserReport):
                 value = {lang.value[0]: ratio for lang, ratio in value.items()}
             else:
                 continue
+        if isinstance(value, list):
+            if col_name == 'weighted_skills':
+                value = [s.to_dict() for s in value]
+            else:
+                continue
 
         # add the statistic to the row if column exists
         if hasattr(row, col_name):
