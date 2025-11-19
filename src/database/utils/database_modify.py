@@ -45,7 +45,7 @@ def create_row(report: FileReport | ProjectReport | UserReport):
 
         # Long Explanation
         # ----------------------------------------------------------
-        # Some values that are stored in statistic templates can't 
+        # Some values that are stored in statistic templates can't
         # be translated into JSON by SQLAlchemy for one reason or
         # another. E.g. CODING_LANGUAGE_RATIO's expected_type stores
         # a dict where the keys are CodingLangauge enums, and the
@@ -54,14 +54,14 @@ def create_row(report: FileReport | ProjectReport | UserReport):
         # CodingLanguage enum to a primitive type. So, we check for
         # these enum and either convert them to a string (for
         # something like FileDomain), or we get the first value of
-        # the CodingLanguage enum object (a string of the coding 
+        # the CodingLanguage enum object (a string of the coding
         # language)
         # ----------------------------------------------------------
 
         if isinstance(value, Enum):
-            value = value.value # e.g., FileDomain enums have a simple string .value
+            value = value.value  # e.g., FileDomain enums have a simple string .value
         if isinstance(value, dict):
-            if col_name == 'coding_language_ratio':
+            if col_name == 'coding_language_ratio' or 'user_coding_language_ratio':
                 value = {lang.value[0]: ratio for lang, ratio in value.items()}
             else:
                 continue
