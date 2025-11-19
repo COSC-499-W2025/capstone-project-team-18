@@ -6,16 +6,17 @@ interact with to begin the artifact miner.
 """
 from sqlalchemy.orm import Session
 
+from typing import Optional
 from src.utils.zipped_utils import unzip_file
 from src.utils.project_discovery import discover_projects
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
 import tempfile
-from src.database.db import get_engine
+from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
 
 
-def start_miner(zipped_file: str, email: str = None) -> None:
+def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     """
     This function defines the main application
     logic for the Artifact Miner. Currently,
@@ -34,15 +35,18 @@ def start_miner(zipped_file: str, email: str = None) -> None:
 
     file_report_rows = []  # will store FileReportTable objs
     engine = get_engine()
-    with Session(engine) as session:
 
+    # Create tables if they do not exist
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
         # For each project, extract file reports and create ProjectReports
         project_reports = []  # Stores ProjectReport objs
         project_report_rows = []  # Stores ProjectReportTable objs
 
         for project in project_list:
             file_reports = extract_file_reports(
-                project)  # get the project's FileReports
+                project, email)  # get the project's FileReports
 
             if file_reports is None:
                 continue  # skip if directory is empty
@@ -55,29 +59,30 @@ def start_miner(zipped_file: str, email: str = None) -> None:
             # make a ProjectReport with the FileReports
             project_report = ProjectReport(
                 project_name=project.name,
+                project_path=project.root_path,
                 file_reports=file_reports,
                 user_email=email
             )
             # store ProjectReports for UserReport
             project_reports.append(project_report)
 
-            # create project_report row and configure FK relations
-            project_row = create_row(report=project_report)
-            project_row.file_reports.extend(file_report_rows)  # type: ignore
-            project_report_rows.append(project_row)
+        # create project_report row and configure FK relations
+        project_row = create_row(report=project_report)
+        project_row.file_reports.extend(file_report_rows)  # type: ignore
+        project_report_rows.append(project_row)
 
-        # make a UserReport with the ProjectReports
-        user_report = UserReport(project_reports)
+    # make a UserReport with the ProjectReports
+    user_report = UserReport(project_reports)
 
-        # create a user_report row and configure FK relations
-        user_row = create_row(report=user_report)
-        user_row.project_reports.extend(project_report_rows)  # type: ignore
+    # create a user_report row and configure FK relations
+    user_row = create_row(report=user_report)
+    user_row.project_reports.extend(project_report_rows)  # type: ignore
 
-        # Insert all of the rows into the database
-        session.add_all([user_row])  # type: ignore
-        session.commit()
+    # Insert all of the rows into the database
+    session.add_all([user_row])  # type: ignore
+    session.commit()
 
-        print(user_report.to_user_readable_string())
+    print(user_report.to_user_readable_string())
 
 
 if __name__ == '__main__':

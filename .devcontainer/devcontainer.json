@@ -10,6 +10,10 @@
 		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
 
+    "remoteEnv": {
+        "PYTHONPATH": "${containerWorkspaceFolder}"
+    },
+
     // The extensions installed in the resulting VSCode Version
     "customizations": {
         "vscode": {
