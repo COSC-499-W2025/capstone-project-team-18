@@ -252,8 +252,13 @@ class CodeFileAnalyzer(TextFileAnalyzer):
                       FileDomain.CODE),
         ]
         if self._is_git_repo(self.filepath):
-            stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
-                                   self._get_file_commit_percentage(self.filepath)))
+
+            file_commit_percentage = self._get_file_commit_percentage(
+                self.filepath)
+
+            if file_commit_percentage is not None:
+                stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                                       file_commit_percentage))
 
         self.stats.extend(stats)
 
