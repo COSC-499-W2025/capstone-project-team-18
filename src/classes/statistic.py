@@ -180,7 +180,7 @@ class FileStatCollection(Enum):
         description="percentage of lines attributed to individal in file",
         expected_type=float,
     )
-    
+
     CODING_LANGUAGE = FileStatisticTemplate(
         name="CODING_LANGUAGE",
         description="the coding language of the file",
@@ -236,7 +236,7 @@ class ProjectStatCollection(Enum):
         description="percentage of lines authored by user in a Git-tracked project",
         expected_type=float,
     )
-    
+
     CODING_LANGUAGE_RATIO = ProjectStatisticTemplate(
         name="CODING_LANGUAGE_RATIO",
         description="ratio, by lines of code, of coding languages in a project",
