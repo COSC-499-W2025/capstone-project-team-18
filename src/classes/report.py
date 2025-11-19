@@ -228,11 +228,9 @@ class ProjectReport(BaseReport):
 
     def _analyze_git_authorship(self, project_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
         """Analyzes Git commit history to determine authorship statistics."""
-        if not Path(project_path + "/" + project_name).exists():
-            return None
 
         try:
-            repo = Repo(Path(project_path) / project_name)
+            repo = Repo(Path(project_path))
 
             # Sum all commits to check perecentage by
             commit_count_by_author = {}
@@ -241,7 +239,9 @@ class ProjectReport(BaseReport):
                 commit_count_by_author[author_email] = commit_count_by_author.get(
                     author_email, 0) + 1
 
-            all_authors = set(commit_count_by_author.keys())
+            all_authors = set([author for author in commit_count_by_author.keys(
+            ) if not author.endswith('@users.noreply.github.com')])
+
             total_authors = len(all_authors)
             total_commits = sum(commit_count_by_author.values())
 
