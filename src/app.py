@@ -4,133 +4,93 @@ It provides logic for the CLI that the user will
 interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
-import cmd
-from classes.analyzer import BaseFileAnalyzer, TextFileAnalyzer
+from sqlalchemy.orm import Session
+
+from typing import Optional
+from src.utils.zipped_utils import unzip_file
+from src.utils.project_discovery import discover_projects
+from src.classes.analyzer import extract_file_reports
+from src.classes.report import ProjectReport, UserReport
+import tempfile
+from src.database.db import get_engine, Base
+from src.database.utils.database_modify import create_row
 
 
-class ArtifactMiner(cmd.Cmd):
-    def __init__(self):
-        super().__init__()
+def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
+    """
+    This function defines the main application
+    logic for the Artifact Miner. Currently,
+    results are printed to the terminal
 
-        # Config for CLI
-        self.options = (
-            "Choose one of the following options:\n"
-            "(1) Permissions\n"
-            "(2) Set filepath\n"
-            "(3) Begin Artifact Miner\n"
-            "Type help or ? to list commands\n"
-        )
-        self.prompt = '(PAF) '
-        self.ruler = '-'  # overwrite default seaparator line ('=')
-        self.cmd_history = []  # will store the user's previous 3 commands
+    Args:
+        - zipped_file : The filepath to the zipped file.
+        - email: Email associated with git account
+    """
 
-        # Update with user input
-        self.project_filepath = ''  # Will be overwritten with user input
-        self.user_consent = False  # Milestone #1- Requirement #1, #4
+    # Unzip the zipped file into temporary directory
+    unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
+    unzip_file(zipped_file, unzipped_dir)
 
-        title = 'Project Artifact Miner'
-        print(f'\n{title}')
-        print(self.ruler * len(self.options.splitlines()[0]))
-        print(self.options)
+    project_list = discover_projects(unzipped_dir)
 
-    def update_history(self, cmd_history: list, cmd: str):
-        '''
-        We will track the user's history (entered commands) so that they can go back if they wish.
-        This function updated the `cmd_history` list to do so.
-        '''
-        if len(cmd_history) == 3:  # we'll only track their 3 most recent commands
-            cmd_history.pop()  # remove the last item
-        cmd_history.insert(0, cmd)  # add new command
-        return cmd_history
+    file_report_rows = []  # will store FileReportTable objs
+    engine = get_engine()
 
-    def do_perms(self, arg):
-        '''
-        Provides consent statement. User may enter Y/N to agree or disagree.
-        '''
-        self.update_history(self.cmd_history, "perms")
-        # TODO: agreement doesn't print properly if the terminal isn't wide enough
-        agreement = (
-            "Do you consent to this program accessing all files and/or folders"
-            "\nin the filepath you provide and (if applicable) permission to use"
-            "\nthe files and/or folders in 3rd party software?\n(Y/N):"
-        )
-        while True:
-            answer = input(agreement).strip().upper()
-            if answer == 'Y':  # user consents
-                self.user_consent = True
-                print("\nThank you for consenting. You may now continue.")
-                print(self.options)
-                break
-            elif answer == 'N':  # user doesn't consent
-                print("Consent not given. Exiting application...")
-                return True  # tells cmdloop() to exit
-            else:  # invalid input from user
-                print("Invalid response. Please enter 'Y' or 'N'.")
+    # Create tables if they do not exist
+    Base.metadata.create_all(engine)
 
-    def do_filepath(self, arg):
-        '''User specifies the project's filepath'''
-        self.update_history(self.cmd_history, "filepath")
+    with Session(engine) as session:
+        # For each project, extract file reports and create ProjectReports
+        project_reports = []  # Stores ProjectReport objs
+        project_report_rows = []  # Stores ProjectReportTable objs
 
-        prompt = "Paste or type the full filepath to your project folder: "
-        self.project_filepath = input(prompt).strip()
-        print("\nFilepath successfully received")
-        print(self.project_filepath)
-        print(self.options)
+        for project in project_list:
+            file_reports = extract_file_reports(
+                project, email)  # get the project's FileReports
 
-    def do_begin(self, arg):
-        '''Begin the mining process. User must give consent and provide filepath prior.'''
-        self.update_history(self.cmd_history, "begin")
+            if file_reports is None:
+                continue  # skip if directory is empty
 
-        if self.user_consent:
-            try:  # verify valid filepath
-                with open(self.project_filepath) as project:
-                    # TODO: Implement logic for report generation
-                    print()
-            except FileNotFoundError:
-                print("Error: Invalid file. Please try again.")
-                self.do_filepath(arg)
-        else:
-            print(
-                "\nError: Missing consent. Type perms or 1 to read user permission agreement.")
-            print(self.options)
+            # create the rows for the file reports
+            for fr in file_reports:
+                file_report = create_row(fr)
+                file_report_rows.append(file_report)
 
-    def do_back(self, arg):
-        '''Return to the previous screen'''
-        print(str(self.cmd_history))
-        if len(self.cmd_history) > 0:
-            match self.cmd_history[-1]:
-                case "perms":
-                    self.cmd_history.pop()
-                    return self.do_perms(arg)
-                case "filepath":
-                    self.cmd_history.pop()
-                    return self.do_filepath(arg)
-                case "begin":
-                    self.cmd_history.pop()
-                    return self.do_begin(arg)
+            # make a ProjectReport with the FileReports
+            project_report = ProjectReport(
+                project_name=project.name,
+                project_path=project.root_path,
+                file_reports=file_reports,
+                user_email=email
+            )
+            # store ProjectReports for UserReport
+            project_reports.append(project_report)
+            # create project_report row and configure FK relations
+            project_row = create_row(report=project_report)
+            project_row.file_reports.extend(file_report_rows)  # type: ignore
+            project_report_rows.append(project_row)
 
-    def default(self, line):
-        '''
-        Overwrite the `default()` function so that our program
-        accepts, for example, either '1' or 'perms' as input to
-        call the `do_perms()` function.
-        '''
-        commands = {
-            "1": self.do_perms,
-            "2": self.do_filepath,
-            "3": self.do_begin,
-        }
-        func = commands.get(line.strip())
-        if func:
-            return func("")
-        else:
-            print(f"Unknown command: {line}. Type 'help' or '?' for options.")
+    # make a UserReport with the ProjectReports
+    user_report = UserReport(project_reports)
+    # create a user_report row and configure FK relations
+    user_row = create_row(report=user_report)
+    user_row.project_reports.extend(project_report_rows)  # type: ignore
 
-    def do_exit(self, arg):
-        '''Exits the program.'''
-        print('Exiting the program...')
-        return True
+    # Insert all of the rows into the database
+    session.add_all([user_row])  # type: ignore
+    session.commit()
+
+    print("-------- Analysis Reports --------\n")
+
+    print("-------- Resume --------\n")
+    print(user_report.generate_resume())
+    print("------------------------\n")
+
+    print("-------- Portfolio --------\n")
+    print(user_report.to_user_readable_string())
+    print("\n-------------------------\n")
 
 
 if __name__ == '__main__':
+    from src.classes.cli import ArtifactMiner
     ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
