@@ -105,6 +105,7 @@ class ProjectReport(BaseReport):
         # Aggregate statistics from file reports
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
+        self._calculate_ari_score()
 
         # Add Git analysis statistics if zip file is provided
         if project_path and project_name:
@@ -235,6 +236,26 @@ class ProjectReport(BaseReport):
         self.project_statistics.add(
             Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, language_ratio))
 
+    def _calculate_ari_score(self):
+        '''
+        Uses all of the FileReports that make up the ProjectReport
+        to calculate the average ARI writing score for the project
+        using all files that have the `ARI_WRITING_SCORE` stat.
+        '''
+        avg_score = 0
+        scores_count = 0  # the number of FileReports that have an ARI stat
+        for report in self.file_reports:
+            curr_score = report.get_value(
+                FileStatCollection.ARI_WRITING_SCORE.value)
+            if curr_score is None:
+                continue
+            scores_count += 1
+            avg_score += curr_score
+        if scores_count > 0:
+            avg_score /= scores_count
+        self.project_statistics.add(
+            Statistic(ProjectStatCollection.AVG_ARI_WRITING_SCORE.value, float(avg_score)))
+
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
         """Create a ProjectReport directly from a StatisticIndex for testing"""
@@ -332,6 +353,7 @@ class UserReport(BaseReport):
         # Function calls to generate statistics
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
+        self._calculate_user_ari()
 
     def _determine_start_end_dates(self):
         # Loop through and find the earliest start date and latest end date of all projects
@@ -395,15 +417,32 @@ class UserReport(BaseReport):
         if len(lang_ratio) < 1:
             return  # don't log this stat b/c there are no coding languages
 
-        print(len(lang_ratio))
         # now, we need to compute the even division the ratio of each language between all projects
         for lang, ratio in lang_ratio.items():
-            print(f'curr lang: {lang}, ratio: {ratio}')
             ratio /= len(lang_ratio)
             lang_ratio[lang] = ratio
 
         self.user_stats.add(
             Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio))
+
+    def _calculate_user_ari(self):
+        '''
+        Uses all of the ProjectReports that make up the UserReport
+        to calculate the average ARI writing score for the user
+        '''
+        avg_score = 0
+        scores_count = 0  # the number of FileReports that have an ARI stat
+        for report in self.project_reports:
+            curr_score = report.get_value(
+                ProjectStatCollection.AVG_ARI_WRITING_SCORE.value)
+            if curr_score is None:
+                continue
+            scores_count += 1
+            avg_score += curr_score
+        if scores_count > 0:
+            avg_score /= scores_count
+        self.user_stats.add(
+            Statistic(UserStatCollection.USER_ARI_WRITING_SCORE.value, float(avg_score)))
 
     def generate_resume(self) -> Resume:
         """
@@ -506,6 +545,12 @@ class UserReport(BaseReport):
                 continue
 
             title = self._title_from_name(name)
+
+            if name == UserStatCollection.USER_ARI_WRITING_SCORE.value.name:
+                score = 0
+                score += self.get_value(
+                    UserStatCollection.USER_ARI_WRITING_SCORE.value)
+                skills_line = f"Your Automated readability index (ARI) score: {score}"
 
             # Try to print the user's coding languages and its percent relative to all coding languages from the user
             if name == UserStatCollection.USER_CODING_LANGUAGE_RATIO.value.name:

@@ -28,22 +28,22 @@ class FileDomain(Enum):
 
 
 class CodingLanguage(Enum):
-    PYTHON = ("python", [".py", ".pyw", ".pyx", ".pxd", ".pxi"])
-    JAVASCRIPT = ("javascript", [".js", ".jsx", ".mjs"])
-    JAVA = ("java", [".java", ".jar", ".class"])
-    CPP = ("c++", [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".h"])
-    C = ("c", [".c", ".h"])
-    CSHARP = ("c#", [".cs", ".csx"])
-    PHP = ("php", [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"])
-    RUBY = ("ruby", [".rb", ".rbw", ".rake", ".gemspec"])
-    SWIFT = ("swift", [".swift"])
-    GO = ("go", [".go"])
-    RUST = ("rust", [".rs", ".rlib"])
-    TYPESCRIPT = ("typescript", [".ts", ".tsx"])
-    HTML = ("html", [".html", ".htm", ".xhtml"])
-    CSS = ("css", [".css", ".scss", ".sass", ".less"])
-    SQL = ("sql", [".sql", ".ddl", ".dml"])
-    SHELL = ("shell", [".sh", ".bash", ".zsh", ".fish"])
+    PYTHON = ("Python", [".py", ".pyw", ".pyx", ".pxd", ".pxi"])
+    JAVASCRIPT = ("Javascript", [".js", ".jsx", ".mjs"])
+    JAVA = ("Java", [".java", ".jar", ".class"])
+    CPP = ("C++", [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".h"])
+    C = ("C", [".c", ".h"])
+    CSHARP = ("C#", [".cs", ".csx"])
+    PHP = ("PHP", [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"])
+    RUBY = ("Ruby", [".rb", ".rbw", ".rake", ".gemspec"])
+    SWIFT = ("Swift", [".swift"])
+    GO = ("Go", [".go"])
+    RUST = ("Rust", [".rs", ".rlib"])
+    TYPESCRIPT = ("Typescript", [".ts", ".tsx"])
+    HTML = ("HTML", [".html", ".htm", ".xhtml"])
+    CSS = ("CSS", [".css", ".scss", ".sass", ".less"])
+    SQL = ("SQL", [".sql", ".ddl", ".dml"])
+    SHELL = ("Shell", [".sh", ".bash", ".zsh", ".fish"])
 
 # The following are StatisticTemplate classes. A StatisticTemplate is simply a
 # description of a data point. It has a name, description, expected value, and it is either
@@ -180,7 +180,7 @@ class FileStatCollection(Enum):
         description="percentage of lines attributed to individal in file",
         expected_type=float,
     )
-    
+
     CODING_LANGUAGE = FileStatisticTemplate(
         name="CODING_LANGUAGE",
         description="the coding language of the file",
@@ -236,11 +236,17 @@ class ProjectStatCollection(Enum):
         description="percentage of lines authored by user in a Git-tracked project",
         expected_type=float,
     )
-    
+
     CODING_LANGUAGE_RATIO = ProjectStatisticTemplate(
         name="CODING_LANGUAGE_RATIO",
         description="ratio, by lines of code, of coding languages in a project",
         expected_type=dict[CodingLanguage, float]
+    )
+
+    AVG_ARI_WRITING_SCORE = ProjectStatisticTemplate(
+        name="AVG_ARI_WRITING_SCORE",
+        description="The average ARI score of all FileReports",
+        expected_type=float
     )
 
 
@@ -261,6 +267,16 @@ class UserStatCollection(Enum):
         name="USER_SKILLS",
         description="the skills this user has",
         expected_type=list[WeightedSkills],
+    )
+    USER_CODING_LANGUAGE_RATIO = UserStatisticTemplate(
+        name="USER_CODING_LANGUAGE_RATIO",
+        description="ratio, by lines of code, of coding languages in the user's projects",
+        expected_type=dict[CodingLanguage, float]
+    )
+    USER_ARI_WRITING_SCORE = ProjectStatisticTemplate(
+        name="USER_ARI_WRITING_SCORE",
+        description="The average ARI score of all ProjectReports",
+        expected_type=float
     )
 
 
