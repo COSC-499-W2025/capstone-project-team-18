@@ -61,8 +61,16 @@ def create_row(report: FileReport | ProjectReport | UserReport):
         if isinstance(value, Enum):
             value = value.value  # e.g., FileDomain enums have a simple string .value
         if isinstance(value, dict):
-            if col_name == 'coding_language_ratio' or 'user_coding_language_ratio':
-                value = {lang.value[0]: ratio for lang, ratio in value.items()}
+            if col_name == 'coding_language_ratio' or col_name == 'user_coding_language_ratio':
+                if len(value.items()) > 0:
+
+                    for lang, ratio in value.items():
+
+                        if type(lang) == str:
+                            print(f"{lang}: {ratio}")
+
+                    value = {lang.value[0]: ratio for lang,
+                             ratio in value.items()}
             else:
                 continue
         if isinstance(value, list):
