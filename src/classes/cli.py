@@ -312,7 +312,7 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "login")
 
         # Show current credentials if they exist
-        current_name, current_password, current_email = self.preferences.get_user_credentials()
+        current_name, current_password, current_email = self.preferences.get_credentials()
         if current_name:
             print(f"Current user: {current_name}")
             print("Password: [hidden]")
