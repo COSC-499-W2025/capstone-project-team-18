@@ -35,7 +35,7 @@ def test_is_valid_filepath_to_zip(tmp_path):
 def cli():
     """Fixture providing a CLI instance with suppressed initialization output."""
     with patch('builtins.print'), \
-         patch('src.classes.cli.UserPreferences') as mock_prefs_class:
+            patch('src.classes.cli.UserPreferences') as mock_prefs_class:
 
         # Mock the UserPreferences instance and its methods
         mock_prefs = mock_prefs_class.return_value
@@ -47,7 +47,7 @@ def cli():
             "user_password": ""
         }
         mock_prefs.get_project_filepath.return_value = ""
-        mock_prefs.get_user_credentials.return_value = ("", "", "")
+        mock_prefs.get_credentials.return_value = ("", "", "")
         mock_prefs.preferences_file.exists.return_value = False
         mock_prefs.get_preferences_file_path.return_value = "/mock/preferences.json"
 
@@ -221,7 +221,8 @@ def test_do_filepath_valid_path(cli):
         cli.do_filepath("")
         assert cli.project_filepath == test_path
         assert cli.cmd_history[0] == "filepath"
-        mock_print.assert_any_call("\nFilepath successfully received and saved to preferences")
+        mock_print.assert_any_call(
+            "\nFilepath successfully received and saved to preferences")
         mock_print.assert_any_call(test_path)
 
 
@@ -248,7 +249,7 @@ def test_do_begin_without_consent(cli):
     cli.project_filepath = ''
 
     with patch('builtins.print') as mock_print, \
-        patch('src.classes.cli.start_miner') as mock_start:
+            patch('src.classes.cli.start_miner') as mock_start:
         cli.do_begin("")
         mock_print.assert_any_call(
             "\nError: Missing consent. Type perms or 1 to read user permission agreement."
@@ -271,12 +272,14 @@ def test_default_command_routing_numeric(cli, command, expected_method):
         cli.default(command)
         mock_method.assert_called_once_with("")
 
+
 def test_default_command_routing_numeric_login(cli):
     """Test that '5' routes to do_login."""
     with patch.object(cli, 'do_login') as mock_login, \
-         patch('builtins.input', side_effect=['back']):  # Mock input to avoid stdin issues
+            patch('builtins.input', side_effect=['back']):  # Mock input to avoid stdin issues
         cli.default('5')
         mock_login.assert_called_once_with('')
+
 
 def test_default_command_case_insensitive(cli):
     """Test that commands work regardless of case."""
