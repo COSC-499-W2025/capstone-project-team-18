@@ -6,6 +6,7 @@ from git import Repo
 import pytest
 
 from classes.analyzer import get_appropriate_analyzer
+from classes.statistic import FileStatCollection
 
 
 def test_is_git_repo_true_and_false(tmp_path: Path):
@@ -78,3 +79,29 @@ def test_get_file_commit_percentage_two_authors(tmp_path: Path):
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_file_not_comitted_in_git_repo(tmp_path: Path):
+    """
+    Test that if there is a file in a git repo that has not been committed yet,
+    the _get_file_commit_percentage method returns None and does not create
+    a statistic
+    """
+
+    repo_dir = tmp_path / "RepoWithUncommittedFile"
+    repo_dir.mkdir()
+    repo = Repo.init(repo_dir)
+
+    # create a python file but do not commit it
+    file_path = repo_dir / "uncommitted.py"
+    file_path.write_text("print('uncommitted file')\n")
+    with repo.config_writer() as cfg:
+        cfg.set_value("user", "name", "Charlie")
+        cfg.set_value("user", "email", "charlie@example.com")
+
+    analyzer = get_appropriate_analyzer(str(file_path))
+
+    fr = analyzer.analyze()
+
+    assert fr.get_value(
+        FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) is None
