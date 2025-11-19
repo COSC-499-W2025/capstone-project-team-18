@@ -2,7 +2,8 @@ from src.classes.report import UserReport, ProjectReport, FileReport
 from src.classes.statistic import (
     StatisticIndex, Statistic, StatisticTemplate,
     UserStatCollection, WeightedSkills, ProjectStatCollection,
-    FileStatCollection
+    FileStatCollection,
+    CodingLanguage
 )
 from datetime import date
 from datetime import datetime
@@ -17,21 +18,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Pytest-style tests for existing functionality
 
 def test_to_user_readable_string():
+    lang_ratio = {CodingLanguage.PYTHON: 0.8528,
+                  CodingLanguage.CSS: 0.1002, CodingLanguage.TYPESCRIPT: 0.0470}
     idx = StatisticIndex([
         Statistic(UserStatCollection.USER_START_DATE.value, date(2023, 9, 20)),
         Statistic(UserStatCollection.USER_END_DATE.value,
                   date(2025, 10, 20)),
-        Statistic(UserStatCollection.USER_SKILLS.value, [
-            WeightedSkills("Python", 0.9),
-            WeightedSkills("Pandas", 0.7),
-            WeightedSkills("SQL", 0.6),
-        ]),
+        Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio),
     ])
     report = UserReport.from_statistics(idx)
     out = report.to_user_readable_string()
+    print(out)
     assert "You started your first project on 9/20/2023!" in out
     assert "Your latest contribution was on 10/20/2025." in out
-    assert "Your skills include: " in out
+    assert "Your coding languages: Python (85%), CSS (10%), Typescript (4%)"
+    # assert "Your skills include: " in out
 
 
 def test_to_user_readable_string_empty():
