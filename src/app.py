@@ -12,7 +12,7 @@ from src.utils.project_discovery import discover_projects
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
 import tempfile
-from src.database.db import get_engine
+from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
 
 
@@ -35,6 +35,10 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
 
     file_report_rows = []  # will store FileReportTable objs
     engine = get_engine()
+
+    # Create tables if they do not exist
+    Base.metadata.create_all(engine)
+
     with Session(engine) as session:
         # For each project, extract file reports and create ProjectReports
         project_reports = []  # Stores ProjectReport objs
