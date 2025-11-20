@@ -92,6 +92,23 @@ def test_discover_multiple_projects(multi_project_zip: Path, tmp_path: Path):
     assert len(get_files("FinalProject")) == 3
 
 
+def test_discover_git_projects(git_dir: Path):
+    """Verifies discovery of projects with Git repositories."""
+    result = discover_projects(str(git_dir))
+    project_names = {p.name for p in result}
+    assert {"SoloProject", "TeamProject"} <= project_names
+    # Verify file counts
+    for p in result:
+        if p.name == "SoloProject":
+            assert len(p.file_paths) == 1 and "solo_work.py" in p.file_paths
+            assert p.repo is not None
+        elif p.name == "TeamProject":
+            assert len(p.file_paths) == 2
+            assert "feature1.py" in p.file_paths
+            assert "feature2.py" in p.file_paths
+            assert p.repo is not None
+
+
 def test_identify_project_type(git_dir: Path):
     """Verifies Git-based detection of individual vs group projects."""
     # Single author = individual (False)
