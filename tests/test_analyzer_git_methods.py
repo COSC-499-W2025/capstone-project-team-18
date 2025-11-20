@@ -5,8 +5,9 @@ from git import Repo
 
 import pytest
 
-from classes.analyzer import get_appropriate_analyzer
+from classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
 from classes.statistic import FileStatCollection
+from src.utils.project_discovery import ProjectFiles
 
 
 def test_is_git_repo_true_and_false(tmp_path: Path):
@@ -14,6 +15,7 @@ def test_is_git_repo_true_and_false(tmp_path: Path):
     repo_dir = tmp_path / "RepoProject"
     repo_dir.mkdir()
     repo = Repo.init(repo_dir)
+
     # create a python file and commit so analyzer can read it
     file_path = repo_dir / "file.py"
     file_path.write_text("print('hello')\n")
@@ -23,8 +25,8 @@ def test_is_git_repo_true_and_false(tmp_path: Path):
     repo.index.add([str(file_path.relative_to(repo_dir))])
     repo.index.commit("Initial commit")
 
-    analyzer = get_appropriate_analyzer(str(file_path))
-    assert analyzer._is_git_repo(str(file_path)) is True
+    analyzer = get_appropriate_analyzer(str(file_path), repo)
+    assert analyzer._is_git_repo() is True
 
     # Non-repo case
     nonrepo_dir = tmp_path / "NoGit"
@@ -32,7 +34,7 @@ def test_is_git_repo_true_and_false(tmp_path: Path):
     nr_file = nonrepo_dir / "nr.py"
     nr_file.write_text("print('no git')\n")
     analyzer_nr = get_appropriate_analyzer(str(nr_file))
-    assert analyzer_nr._is_git_repo(str(nr_file)) is False
+    assert analyzer_nr._is_git_repo() is False
 
 
 def test_get_file_commit_percentage_two_authors(tmp_path: Path):
@@ -63,17 +65,19 @@ def test_get_file_commit_percentage_two_authors(tmp_path: Path):
         repo.index.commit("Bob creates 5 lines")
 
         # Analyzer for the file
-        analyzer = get_appropriate_analyzer(str(file_path))
+        analyzer = get_appropriate_analyzer(str(file_path), repo)
+
+        assert isinstance(analyzer, CodeFileAnalyzer)
 
         # Alice percentage should be ~33.33
         analyzer.email = "alice@example.com"
-        alice_pct = analyzer._get_file_commit_percentage(str(file_path))
+        alice_pct = analyzer._get_file_commit_percentage()
         assert alice_pct is not None
         assert pytest.approx(alice_pct, 0.01) == 20.00
 
         # Bob percentage should be ~66.67
         analyzer.email = "bob@example.com"
-        bob_pct = analyzer._get_file_commit_percentage(str(file_path))
+        bob_pct = analyzer._get_file_commit_percentage()
         assert bob_pct is not None
         assert pytest.approx(bob_pct, 0.01) == 80.00
 

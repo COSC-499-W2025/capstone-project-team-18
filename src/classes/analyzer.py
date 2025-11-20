@@ -71,6 +71,16 @@ class BaseFileAnalyzer:
         self.email = email
         self.stats = StatisticIndex()
 
+    def _is_git_repo(self) -> bool:
+        """
+        Check if the file is part of a Git repository.
+        """
+
+        if self.repo is not None:
+            return True
+
+        return False
+
     def _process(self) -> None:
         """
         A private function that collects basic statistics available for any file.
@@ -249,14 +259,12 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             Statistic(FileStatCollection.TYPE_OF_FILE.value,
                       FileDomain.CODE),
         ]
-        if self._is_git_repo(self.filepath):
 
-            file_commit_percentage = self._get_file_commit_percentage(
-                self.filepath)
+        file_commit_percentage = self._get_file_commit_percentage()
 
-            if file_commit_percentage is not None:
-                stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
-                                       file_commit_percentage))
+        if file_commit_percentage is not None:
+            stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                                   file_commit_percentage))
 
         self.stats.extend(stats)
 
@@ -278,15 +286,14 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             if suffix in language.value[1]:
                 return self.stats.add(Statistic(FileStatCollection.CODING_LANGUAGE.value, language))
 
-    def _get_file_commit_percentage(self, filepath: str):
-        try:
-            # Allow passing either a file path or a repo/worktree path. Search parent
-            # directories so passing a file path (e.g. '/path/to/repo/file.py') still
-            # locates the repository.
-            repo = Repo(Path(filepath).parent, search_parent_directories=True)
+    def _get_file_commit_percentage(self) -> Optional[float]:
 
+        if self.repo is None or self.email is None:
+            return None
+
+        try:
             # gets blame for each line
-            blame_info = repo.blame('HEAD', filepath)
+            blame_info = self.repo.blame('HEAD', self.filepath)
 
             commit_count = 0
             line_count = 0
@@ -305,13 +312,6 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         except Exception as e:
             logger.debug(f"Exception while computing commit percentage: {e}")
             return None
-
-    def _is_git_repo(self, path: str):
-        try:
-            _ = Repo(Path(path).parent, search_parent_directories=True).git_dir
-            return True
-        except InvalidGitRepositoryError:
-            return False
 
 
 class PythonAnalyzer(CodeFileAnalyzer):
