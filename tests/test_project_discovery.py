@@ -4,13 +4,6 @@ import zipfile
 import pytest
 from git import Repo
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = REPO_ROOT / "src"
-CLASSES_DIR = SRC_DIR / "classes"
-
-for p in (str(CLASSES_DIR), str(SRC_DIR)):
-    if p not in sys.path:
-        sys.path.insert(0, p)
 
 from src.utils.project_discovery import discover_projects, ProjectFiles  # type: ignore  # noqa: E402
 from src.classes.report import ProjectReport  # type: ignore  # noqa: E402
@@ -103,13 +96,16 @@ def test_identify_project_type(git_dir: Path):
     """Verifies Git-based detection of individual vs group projects."""
     # Single author = individual (False)
     solo_report = ProjectReport(project_path=str(
-        git_dir / "SoloProject"), project_name="SoloProject")
+        git_dir / "SoloProject"), project_name="SoloProject",
+        project_repo=Repo(str(git_dir / "SoloProject")))
+
     assert solo_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value).value is False
 
     # Multiple authors = group (True)
     team_report = ProjectReport(project_path=str(
-        git_dir / "TeamProject"), project_name="TeamProject")
+        git_dir / "TeamProject"), project_name="TeamProject",
+        project_repo=Repo(str(git_dir / "TeamProject")))
     assert team_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value).value is True
 
@@ -184,7 +180,7 @@ def test_project_report_git_analysis(git_dir: Path):
     """Verifies ProjectReport correctly analyzes Git authorship statistics."""
     # Test individual project (1 author)
     solo_report = ProjectReport(project_path=str(
-        git_dir / "SoloProject"), project_name="SoloProject")
+        git_dir / "SoloProject"), project_name="SoloProject", project_repo=Repo(str(git_dir / "SoloProject")))
 
     is_group = solo_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -202,7 +198,7 @@ def test_project_report_git_analysis(git_dir: Path):
 
     # Test group project (2 authors)
     team_report = ProjectReport(project_path=str(
-        git_dir / "TeamProject"), project_name="TeamProject")
+        git_dir / "TeamProject"), project_name="TeamProject", project_repo=Repo(str(git_dir / "TeamProject")))
 
     is_group = team_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
