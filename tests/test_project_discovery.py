@@ -83,13 +83,19 @@ def test_discover_multiple_projects(multi_project_zip: Path, tmp_path: Path):
             if p.name == name:
                 return p.file_paths
         return []
+
     # Verify nested paths are preserved correctly
     assert "src/utils/helper.py" in get_files("Assignment2")
     assert "src/models/user.py" in get_files("FinalProject")
+
     # Verify file counts per project
     assert len(get_files("Assignment1")) == 2
     assert len(get_files("Assignment2")) == 4
     assert len(get_files("FinalProject")) == 3
+
+    # Verify git repo is none
+    for p in result:
+        assert p.repo is None
 
 
 def test_discover_git_projects(git_dir: Path):
