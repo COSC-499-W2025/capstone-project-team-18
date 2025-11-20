@@ -12,7 +12,7 @@ def test_app_runs():
     Test that the main app function runs without errors.
     """
     # Use a sample zipped file path for testing
-    sample_zipped_file = "/workspaces/capstone-project-team-18/tests/resources/mac_projects.zip"
+    sample_zipped_file = "./tests/resources/mac_projects.zip"
     sample_email = "bob@example.com"
 
     try:
