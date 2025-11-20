@@ -7,6 +7,8 @@ should be considered?
 from pathlib import Path
 from dataclasses import dataclass
 import logging
+from typing import Optional
+from git import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,7 @@ class ProjectFiles:
     name: str  # Name of the project (name of the top level directory)
     root_path: str  # The absolute path to the top-level directory
     file_paths: list[str]  # File paths relative to the root_path
+    repo: Optional[Repo]  # The git repository object if applicable
 
 
 # Files that should just totally be ignored
@@ -72,11 +75,21 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
                 for file in dir_path.rglob('*')
                 if file.is_file() and file.name not in IGNORE_FILES
             ]
+
+            # Check to see if the project is a git repository
+            repo = None
+            try:
+                repo = Repo(dir_path)
+            except Exception as e:
+                logger.debug(f"No git repository found in {dir_path}: {e}")
+
             projects.append(ProjectFiles(
                 name=dir_path.name,
                 root_path=str(dir_path),
-                file_paths=file_paths
+                file_paths=file_paths,
+                repo=repo
             ))
+
         else:
             # If the directory is not a project, it likely has projects in subdirectories
             # Check those and move on.

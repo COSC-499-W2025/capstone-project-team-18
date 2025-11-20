@@ -38,7 +38,7 @@ def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[s
     for file in projectFiles:
 
         analyzer = get_appropriate_analyzer(
-            project_file.root_path + "/" + file, email)
+            project_file.root_path + "/" + file, project_file.repo, email)
 
         reports.append(analyzer.analyze())
 
@@ -65,8 +65,9 @@ class BaseFileAnalyzer:
         - DATE_MODIFIED
     """
 
-    def __init__(self, filepath: str, email: Optional[str] = None):
+    def __init__(self, filepath: str, repo: Optional[Repo] = None, email: Optional[str] = None):
         self.filepath = filepath
+        self.repo = repo
         self.email = email
         self.stats = StatisticIndex()
 
@@ -151,9 +152,6 @@ class TextFileAnalyzer(BaseFileAnalyzer):
     Statistics:
         - LINES_IN_FILE
     """
-
-    def __init__(self, filepath: str, email: Optional[str] = None):
-        super().__init__(filepath, email)
 
     def _process(self) -> None:
         super()._process()
@@ -848,7 +846,7 @@ class PHPAnalyzer(CodeFileAnalyzer):
         self.stats.extend(stats)
 
 
-def get_appropriate_analyzer(filepath: str, email: Optional[str] = None) -> BaseFileAnalyzer:
+def get_appropriate_analyzer(filepath: str, repo: Optional[Repo] = None, email: Optional[str] = None) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
     This allows FileReport to automatically use the best analyzer.
@@ -860,35 +858,35 @@ def get_appropriate_analyzer(filepath: str, email: Optional[str] = None) -> Base
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:
-        return NaturalLanguageAnalyzer(filepath, email)
+        return NaturalLanguageAnalyzer(filepath, repo, email)
 
     # Python files
     if extension == '.py':
-        return PythonAnalyzer(filepath, email)
+        return PythonAnalyzer(filepath, repo, email)
     # Java files
     if extension == '.java':
-        return JavaAnalyzer(filepath, email)
+        return JavaAnalyzer(filepath, repo, email)
 
     # JavaScript files
     if extension in {'.js', '.jsx'}:
-        return JavaScriptAnalyzer(filepath, email)
+        return JavaScriptAnalyzer(filepath, repo, email)
     # C files
     if extension == '.c':
-        return CAnalyzer(filepath, email)
+        return CAnalyzer(filepath, repo, email)
 
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
-        return TypeScriptAnalyzer(filepath, email)
+        return TypeScriptAnalyzer(filepath, repo, email)
     # CSS files
     if extension == '.css':
-        return CSSAnalyzer(filepath, email)
+        return CSSAnalyzer(filepath, repo, email)
 
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
-        return HTMLAnalyzer(filepath, email)
+        return HTMLAnalyzer(filepath, repo, email)
     # PHP files
     if extension == '.php':
-        return PHPAnalyzer(filepath, email)
+        return PHPAnalyzer(filepath, repo, email)
 
     # Text-based files
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}

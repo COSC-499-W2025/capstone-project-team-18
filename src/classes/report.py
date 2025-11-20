@@ -88,6 +88,7 @@ class ProjectReport(BaseReport):
                  file_reports: Optional[list[FileReport]] = None,
                  project_path: Optional[str] = None,
                  project_name: Optional[str] = None,
+                 project_repo: Optional[Repo] = None,
                  user_email: Optional[str] = None
                  ):
         """
@@ -97,10 +98,12 @@ class ProjectReport(BaseReport):
             file_reports: List of FileReport objects to aggregate statistics from
             project_path: Optional path to project for Git analysis
             project_name: Optional project name for Git analysis
+            project_repo: Optional Repo object for Git analysis
         """
 
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
+        self.project_repo = project_repo
         self.project_statistics = StatisticIndex()
 
         # Aggregate statistics from file reports
