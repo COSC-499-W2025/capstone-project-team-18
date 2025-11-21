@@ -110,6 +110,31 @@ class UserPreferences:
         """Update user email preference."""
         return self.update("user_email", email)
 
+    def get_date_range(self) -> tuple[str, str]:
+        """Get file date range (start_time, end_time)."""
+        prefs = self.load_preferences()
+        return (prefs.get("file_start_time", ""), prefs.get("file_end_time", ""))
+
+    def update_date_range(self, start_time: str, end_time: str) -> bool:
+        """Update file date range filtering."""
+        preferences = self.load_preferences()
+        preferences.update({
+            "file_start_time": start_time,
+            "file_end_time": end_time
+        })
+        return self.save_preferences(preferences)
+
+    def get_files_to_ignore(self) -> List[str]:
+        """Get list of file extensions to ignore."""
+        return self.get("files_to_ignore", [])
+
+    def update_files_to_ignore(self, extensions: List[str]) -> bool:
+        """Update file extensions to ignore."""
+        return self.update("files_to_ignore", extensions)
+
+    def reset_to_defaults(self) -> bool:
+        """Reset to defaults - alias for reset."""
+        return self.reset()
 
 
 def _is_valid_filepath_to_zip(filepath: str) -> int:
@@ -152,7 +177,9 @@ class ArtifactMiner(cmd.Cmd):
             "(2) Set filepath\n"
             "(3) Begin Artifact Miner\n"
             "(4) Configure Email for Git Stats\n"
-            "(5) User Login\n"
+            "(5) User Login (Name & Password)\n"
+            "(6) Configure preferences\n"
+            "(7) View current preferences\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -301,6 +328,17 @@ class ArtifactMiner(cmd.Cmd):
             return
 
         print(f"\nBeginning analysis of: {self.project_filepath}")
+
+        # Show advanced configuration being used
+        prefs = self.preferences.load_preferences()
+        start_time, end_time = self.preferences.get_date_range()
+        ignored_files = self.preferences.get_files_to_ignore()
+
+        if start_time or end_time:
+            print(f"Date filtering: {start_time or 'Any'} to {end_time or 'Any'}")
+        if ignored_files:
+            print(f"Ignoring file types: {', '.join(ignored_files)}")
+
         start_miner(self.project_filepath, self.user_email)
 
     def do_login(self, arg):
@@ -308,7 +346,7 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "login")
 
         # Show current credentials if they exist
-        current_name, current_password, current_email = self.preferences.get_user_credentials()
+        current_name, current_password, current_email = self.preferences.get_credentials()
         if current_name:
             print(f"Current user: {current_name}")
             print("Password: [hidden]")
@@ -349,6 +387,169 @@ class ArtifactMiner(cmd.Cmd):
 
         print("\n" + self.options)
 
+    def do_preferences(self, arg):
+        '''Advanced preferences configuration submenu'''
+        self.update_history(self.cmd_history, "preferences")
+
+        print("\n=== Preferences Configuration ===")
+        print("(1) Configure Date Range Filtering")
+        print("(2) Configure Files to Ignore")
+        print("(3) Reset to Defaults")
+        print("(4) Back to Main Menu")
+
+        while True:
+            choice = input("\nSelect option (1-4): ").strip()
+
+            if self._handle_cancel_input(choice):
+                print("\n" + self.options)
+                return
+
+            if choice == "1":
+                self._configure_date_range()
+                break
+            elif choice == "2":
+                self._configure_files_to_ignore()
+                break
+            elif choice == "3":
+                self._reset_preferences()
+                break
+            elif choice == "4":
+                print("\n" + self.options)
+                return
+            else:
+                print("Invalid choice. Please select 1-4.")
+
+    def do_view(self, arg):
+        '''Display current preferences and configuration'''
+        self.update_history(self.cmd_history, "view")
+
+        while True:
+            print("\n=== Current Configuration ===")
+            prefs = self.preferences.load_preferences()
+
+            print(f"User Consent: {'✓ Granted' if prefs.get('consent') else '✗ Not granted'}")
+            print(f"Project Filepath: {prefs.get('project_filepath') or 'Not set'}")
+            print(f"User Name: {prefs.get('user_name') or 'Not set'}")
+            print(f"User Email: {prefs.get('user_email') or 'Not set'}")
+
+            # Date range
+            start_time = prefs.get('file_start_time')
+            end_time = prefs.get('file_end_time')
+            if start_time and end_time:
+                print(f"Date Range: {start_time} to {end_time}")
+            else:
+                print("Date Range: All dates")
+
+            # Files to ignore
+            ignored_files = prefs.get('files_to_ignore', [])
+            if ignored_files:
+                print(f"Ignored Extensions: {', '.join(ignored_files)}")
+            else:
+                print("Ignored Extensions: None")
+
+            print(f"Last Updated: {prefs.get('last_updated', 'Never')}")
+            print(f"Preferences File: {self.preferences.get_preferences_file_path()}")
+
+            # Prompt user for next action
+            prompt = "\nPress '6' to configure preferences, or 'back'/'cancel' to return to main menu: "
+            user_input = input(prompt).strip()
+
+            # Check if user wants to cancel
+            if self._handle_cancel_input(user_input):
+                print("\n" + self.options)
+                break
+
+            # Check if user wants to go to preferences
+            if user_input == '6':
+                return self.do_preferences(arg)
+
+            # Invalid input
+            print("Invalid input. Press '6' for preferences or 'back'/'cancel' to return.")
+
+    def _configure_date_range(self):
+        '''Configure date filtering for files'''
+        print("\nConfigure date range for file filtering (YYYY-MM-DD format)")
+
+        while True:
+            start_date = input("Enter start date (or 'skip' for no limit): ").strip()
+            if start_date.lower() == 'skip':
+                start_date = ""
+                break
+            if self._parse_date_input(start_date):
+                break
+            print("Invalid date format. Use YYYY-MM-DD")
+
+        while True:
+            end_date = input("Enter end date (or 'skip' for no limit): ").strip()
+            if end_date.lower() == 'skip':
+                end_date = ""
+                break
+            if self._parse_date_input(end_date):
+                break
+            print("Invalid date format. Use YYYY-MM-DD")
+
+        success = self.preferences.update_date_range(start_date, end_date)
+        if success:
+            print("✓ Date range configuration saved")
+        else:
+            print("✗ Failed to save date range configuration")
+
+        print("\n" + self.options)
+
+    def _configure_files_to_ignore(self):
+        '''Configure file extensions to ignore'''
+        print("\nConfigure file extensions to ignore during analysis")
+        print("Enter extensions separated by commas (e.g., .log, .tmp, .cache)")
+
+        current = self.preferences.get_files_to_ignore()
+        if current:
+            print(f"Current ignored extensions: {', '.join(current)}")
+
+        extensions_input = input("Extensions to ignore (or 'clear' to remove all): ").strip()
+
+        if extensions_input.lower() == 'clear':
+            extensions = []
+        else:
+            extensions = [ext.strip() for ext in extensions_input.split(',') if ext.strip()]
+            # Ensure extensions start with dot
+            extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in extensions]
+
+        success = self.preferences.update_files_to_ignore(extensions)
+        if success:
+            if extensions:
+                print(f"✓ Now ignoring: {', '.join(extensions)}")
+            else:
+                print("✓ Cleared all ignored extensions")
+        else:
+            print("✗ Failed to save file ignore configuration")
+
+        print("\n" + self.options)
+
+    def _reset_preferences(self):
+        '''Reset all preferences to defaults'''
+        confirm = input("Reset ALL preferences to defaults? This cannot be undone. (Y/N): ").strip()
+
+        if confirm.lower() == 'y':
+            success = self.preferences.reset()
+            if success:
+                print("✓ All preferences reset to defaults")
+                # Reload instance variables
+                self._load_existing_preferences()
+            else:
+                print("✗ Failed to reset preferences")
+        else:
+            print("Reset cancelled")
+
+        print("\n" + self.options)
+
+    def _parse_date_input(self, date_str: str) -> bool:
+        '''Validate date input format (YYYY-MM-DD)'''
+        try:
+            datetime.strptime(date_str, '%Y-%m-%d')
+            return True
+        except ValueError:
+            return False
+
     def update_history(self, cmd_history: list, cmd: str):
         '''
         We will track the user's history (entered commands) so that they can go back if they wish.
@@ -379,6 +580,10 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_email(arg)
                 case "login":
                     return self.do_login(arg)
+                case "preferences":
+                    return self.do_preferences(arg)
+                case "view":
+                    return self.do_view(arg)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
@@ -449,6 +654,8 @@ class ArtifactMiner(cmd.Cmd):
             "3": self.do_begin,
             "4": self.do_email,
             "5": self.do_login,
+            "6": self.do_preferences,
+            "7": self.do_view,
         }
 
         # Make commands case-insensitive

@@ -3,7 +3,7 @@ Comprehensive tests for the CLI functionality in app.py.
 Tests user interaction flows, command handling, and navigation logic.
 """
 import pytest
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, call
 from src.classes.cli import ArtifactMiner, _is_valid_filepath_to_zip
 
 
@@ -288,12 +288,33 @@ def test_default_command_case_insensitive(cli):
 
 def test_default_handles_unknown_commands(cli):
     """Test handling of unknown commands."""
-    unknown_commands = ["unknown", "6", "invalid", "help_me"]
+    unknown_commands = ["unknown", "8", "invalid", "help_me"]  # Changed "6" to "8"
     with patch('builtins.print') as mock_print:
         for command in unknown_commands:
             cli.default(command)
-            mock_print.assert_any_call(
-                f"Unknown command: {command}. Type 'help' or '?' for options.")
+
+        # Verify error messages were printed for each unknown command
+        expected_calls = [
+            call("Unknown command: unknown. Type 'help' or '?' for options."),
+            call("Unknown command: 8. Type 'help' or '?' for options."),
+            call("Unknown command: invalid. Type 'help' or '?' for options."),
+            call("Unknown command: help_me. Type 'help' or '?' for options.")
+        ]
+
+        for expected_call in expected_calls:
+            mock_print.assert_any_call(expected_call.args[0])
+
+
+@pytest.mark.parametrize("command,method", [
+    ("6", "do_preferences"),
+    ("7", "do_view"),
+])
+def test_default_command_routing_numeric_advanced(cli, command, method):
+    """Test that advanced preference commands route correctly."""
+    with patch.object(cli, method) as mock_method, \
+         patch('builtins.input', side_effect=['4']):  # Choose "Back to Main Menu"
+        cli.default(command)
+        mock_method.assert_called_once_with('')
 
 # Exit Command Tests
 
