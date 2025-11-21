@@ -391,6 +391,7 @@ class ArtifactMiner(cmd.Cmd):
             print(self.options)
 
     def do_cancel(self, arg):
+        """helper method for cancel command"""
         self.do_back(arg)
 
     def _handle_cancel_input(self, user_input):
