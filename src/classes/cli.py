@@ -13,6 +13,39 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 
+
+def normalize_path(user_path: str) -> str:
+    r"""
+    Normalize a user-provided file path so it works cross-platform.
+    - Expands ~ to home directory
+    - Converts backslashes and slashes for consistency
+    - Normalizes redundant separators and up-level references
+    - On Windows, maps Mac-style /Users/<username>/ paths to C:\\Users\\<username>\\
+    - On Mac, maps Windows-style C:\\Users\\<username>\\ paths to /Users/<username>/
+    """
+    if not user_path:
+        return user_path
+    # On Mac, map C:\Users\<username>\... or C:/Users/<username>/... to /Users/<username>/...
+    if sys.platform == 'darwin':
+        match = re.match(r'^[cC]:[\\/]+Users[\\/]+([^\\/]+)[\\/]+(.+)', user_path)
+        if match:
+            username, rest = match.groups()
+            user_path = f"/Users/{username}/{rest}"
+    # Expand ~ to home directory
+    user_path = os.path.expanduser(user_path)
+    # On Windows, map /Users/<username>/... to C:\Users\<username>\...
+    if os.name == 'nt':
+        match = re.match(r'^/Users/([^/\\]+)/(.+)', user_path)
+        if match:
+            username, rest = match.groups()
+            user_path = f"C:\\Users\\{username}\\{rest}"
+    # Convert all slashes to OS separator
+    user_path = user_path.replace('\\', os.sep).replace('/', os.sep)
+    # Normalize path (removes redundant .., . etc.)
+    user_path = os.path.normpath(user_path)
+    return user_path
+
+
 class UserPreferences:
     """Manages User Preferences with JSON storage in database folder"""
 
@@ -262,8 +295,11 @@ class ArtifactMiner(cmd.Cmd):
                 print("\n" + self.options)
                 return  # Return to main menu
 
-            # Validate the filepath
-            error_code = _is_valid_filepath_to_zip(answer)
+            # Normalize the user input path
+            normalized_path = normalize_path(answer)
+
+            # Validate the normalized filepath
+            error_code = _is_valid_filepath_to_zip(normalized_path)
             if error_code == 0:
                 break  # Valid filepath found, exit the loop
             elif error_code == 1:
@@ -276,9 +312,9 @@ class ArtifactMiner(cmd.Cmd):
                     "\nError: The provided filepath does not exist. Please try again.\n")
 
         # Process the filepath
-        self.project_filepath = answer
+        self.project_filepath = normalized_path
         # Save filepath to preferences
-        success = self.preferences.update_project_filepath(answer)
+        success = self.preferences.update_project_filepath(normalized_path)
         print("\nFilepath successfully received and saved to preferences")
         if not success:
             print("Warning: Failed to save filepath to preferences file.")
