@@ -27,8 +27,7 @@ def test_is_git_repo_true_and_false(tmp_path: Path):
     analyzer = get_appropriate_analyzer(
         str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
 
-    assert analyzer._is_git_repo() is True
-    assert analyzer.file_is_in_git_repo is True
+    assert analyzer.is_git_tracked is True
 
     # Non-repo case
     nonrepo_dir = tmp_path / "NoGit"
@@ -37,7 +36,7 @@ def test_is_git_repo_true_and_false(tmp_path: Path):
     nr_file.write_text("print('no git')\n")
     analyzer_nr = get_appropriate_analyzer(
         str(nonrepo_dir), str(nr_file.relative_to(nonrepo_dir)))
-    assert analyzer_nr._is_git_repo() is False
+    assert analyzer_nr.is_git_tracked is False
 
 
 def test_get_file_commit_percentage_two_authors(tmp_path: Path):
@@ -72,7 +71,7 @@ def test_get_file_commit_percentage_two_authors(tmp_path: Path):
             str(project_dir), str(file_path.relative_to(project_dir)), repo)
 
         assert isinstance(analyzer, CodeFileAnalyzer)
-        assert analyzer.file_is_in_git_repo is True
+        assert analyzer.is_git_tracked is True
 
         # Alice percentage should be ~33.33
         analyzer.email = "alice@example.com"
@@ -101,6 +100,16 @@ def test_file_not_comitted_in_git_repo(tmp_path: Path):
     repo_dir.mkdir()
     repo = Repo.init(repo_dir)
 
+    # commit a different file first
+    committed_file = repo_dir / "committed.py"
+    committed_file.write_text("print('committed file')\n")
+    with repo.config_writer() as cfg:
+        cfg.set_value("user", "name", "Bob")
+        cfg.set_value("user", "email", "bob@example.com")
+
+        repo.index.add([str(committed_file.relative_to(repo_dir))])
+        repo.index.commit("Initial commit")
+
     # create a python file but do not commit it
     file_path = repo_dir / "uncommitted.py"
     file_path.write_text("print('uncommitted file')\n")
@@ -111,7 +120,50 @@ def test_file_not_comitted_in_git_repo(tmp_path: Path):
     analyzer = get_appropriate_analyzer(
         str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
 
+    assert analyzer.is_git_tracked is False
+
     fr = analyzer.analyze()
 
     assert fr.get_value(
         FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) is None
+
+
+def test_git_file_has_local_changes(tmp_path: Path):
+    """
+    Test that if there is a file in a git repo that has local changes,
+    the is_git_tracked attribute is still True
+    """
+
+    repo_dir = tmp_path / "RepoWithLocalChanges"
+    repo_dir.mkdir()
+    repo = Repo.init(repo_dir)
+
+    # commit a file first
+    file_path = repo_dir / "file_with_changes.py"
+    file_path.write_text("print('original content')\n")
+    with repo.config_writer() as cfg:
+        cfg.set_value("user", "name", "Dana")
+        cfg.set_value("user", "email", "dana@example.com")
+
+        repo.index.add([str(file_path.relative_to(repo_dir))])
+        repo.index.commit("Initial commit")
+
+    # another person adds a line
+    with repo.config_writer() as cfg:
+        cfg.set_value("user", "name", "Evan")
+        cfg.set_value("user", "email", "evan@example.com")
+        file_path.write_text(
+            "print('original content')\nprint('added by Evan')\n")
+        repo.index.add([str(file_path.relative_to(repo_dir))])
+        repo.index.commit("Evan adds a line")
+
+    # make local changes to the file
+    file_path.write_text("print('modified content')\n")
+
+    analyzer = get_appropriate_analyzer(
+        str(repo_dir), str(file_path.relative_to(repo_dir)), repo, email="dana@example.com")
+
+    assert analyzer.is_git_tracked is True
+    fr = analyzer.analyze()
+    assert fr.get_value(
+        FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) == 50.0
