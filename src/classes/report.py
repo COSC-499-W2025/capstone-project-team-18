@@ -88,7 +88,8 @@ class ProjectReport(BaseReport):
                  file_reports: Optional[list[FileReport]] = None,
                  project_path: Optional[str] = None,
                  project_name: Optional[str] = None,
-                 user_email: Optional[str] = None
+                 user_email: Optional[str] = None,
+                 statistics: Optional[StatisticIndex] = None,
                  ):
         """
         Initialize ProjectReport with file reports and optional Git analysis from zip file.
@@ -97,25 +98,32 @@ class ProjectReport(BaseReport):
             file_reports: List of FileReport objects to aggregate statistics from
             project_path: Optional path to project for Git analysis
             project_name: Optional project name for Git analysis
-        """
+            statistics: Optional StatisicIndex
 
+            NOTE: `statistics` should only be included when the `get_project_from_project_name()`
+            function is creating a ProjectReport object from an existing row in
+            the `project_report` table!
+        """
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
-        self.project_statistics = StatisticIndex()
 
-        # Aggregate statistics from file reports
-        self._determine_start_end_dates()
-        self._find_coding_languages_ratio()
-        self._calculate_ari_score()
-        self._weighted_skills()
+        if statistics is None:
+            self.project_statistics = StatisticIndex()
+            # Aggregate statistics from file reports
+            self._determine_start_end_dates()
+            self._find_coding_languages_ratio()
+            self._calculate_ari_score()
+            self._weighted_skills()
 
-        # Add Git analysis statistics if zip file is provided
-        if project_path and project_name:
-            git_stats = self._analyze_git_authorship(
-                project_path, project_name, user_email)
-            if git_stats:
-                for stat in git_stats:
-                    self.project_statistics.add(stat)
+            # Add Git analysis statistics if zip file is provided
+            if project_path and project_name:
+                git_stats = self._analyze_git_authorship(
+                    project_path, project_name, user_email)
+                if git_stats:
+                    for stat in git_stats:
+                        self.project_statistics.add(stat)
+        else:
+            self.project_statistics = statistics
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
