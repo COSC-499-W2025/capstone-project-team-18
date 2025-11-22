@@ -56,7 +56,7 @@ class FileReport(BaseReport):
         self.filepath = filepath
 
     @classmethod
-    def create_with_analysis(cls, filepath: str) -> "FileReport":
+    def create_with_analysis(cls, path_to_top_level: str, relative_path: str) -> "FileReport":
         """
         Create a FileReport with automatic file type detection and analysis.
         This includes:
@@ -67,7 +67,7 @@ class FileReport(BaseReport):
                 - Text-based statistics for appropriate text based files (i.e. css, html, xml, json, yml, yaml)
         """
         from .analyzer import get_appropriate_analyzer
-        analyzer = get_appropriate_analyzer(filepath)
+        analyzer = get_appropriate_analyzer(path_to_top_level, relative_path)
         return analyzer.analyze()
 
     def get_filename(self):

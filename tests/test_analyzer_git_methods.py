@@ -7,7 +7,6 @@ import pytest
 
 from classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
 from classes.statistic import FileStatCollection
-from src.utils.project_discovery import ProjectFiles
 
 
 def test_is_git_repo_true_and_false(tmp_path: Path):
@@ -25,15 +24,19 @@ def test_is_git_repo_true_and_false(tmp_path: Path):
     repo.index.add([str(file_path.relative_to(repo_dir))])
     repo.index.commit("Initial commit")
 
-    analyzer = get_appropriate_analyzer(str(file_path), repo)
+    analyzer = get_appropriate_analyzer(
+        str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
+
     assert analyzer._is_git_repo() is True
+    assert analyzer.file_is_in_git_repo is True
 
     # Non-repo case
     nonrepo_dir = tmp_path / "NoGit"
     nonrepo_dir.mkdir()
     nr_file = nonrepo_dir / "nr.py"
     nr_file.write_text("print('no git')\n")
-    analyzer_nr = get_appropriate_analyzer(str(nr_file))
+    analyzer_nr = get_appropriate_analyzer(
+        str(nonrepo_dir), str(nr_file.relative_to(nonrepo_dir)))
     assert analyzer_nr._is_git_repo() is False
 
 
@@ -65,9 +68,11 @@ def test_get_file_commit_percentage_two_authors(tmp_path: Path):
         repo.index.commit("Bob creates 5 lines")
 
         # Analyzer for the file
-        analyzer = get_appropriate_analyzer(str(file_path), repo)
+        analyzer = get_appropriate_analyzer(
+            str(project_dir), str(file_path.relative_to(project_dir)), repo)
 
         assert isinstance(analyzer, CodeFileAnalyzer)
+        assert analyzer.file_is_in_git_repo is True
 
         # Alice percentage should be ~33.33
         analyzer.email = "alice@example.com"
@@ -103,7 +108,8 @@ def test_file_not_comitted_in_git_repo(tmp_path: Path):
         cfg.set_value("user", "name", "Charlie")
         cfg.set_value("user", "email", "charlie@example.com")
 
-    analyzer = get_appropriate_analyzer(str(file_path))
+    analyzer = get_appropriate_analyzer(
+        str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
 
     fr = analyzer.analyze()
 
