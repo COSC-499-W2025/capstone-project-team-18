@@ -120,7 +120,7 @@ def test_identify_project_type(git_dir: Path):
     # Single author = individual (False)
     solo_report = ProjectReport(project_path=str(
         git_dir / "SoloProject"), project_name="SoloProject",
-        project_repo=Repo(str(git_dir / "SoloProject")))
+        project_repo=Repo(str(git_dir / "SoloProject")), user_email="charlie@example.com")
 
     assert solo_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value).value is False
@@ -128,7 +128,7 @@ def test_identify_project_type(git_dir: Path):
     # Multiple authors = group (True)
     team_report = ProjectReport(project_path=str(
         git_dir / "TeamProject"), project_name="TeamProject",
-        project_repo=Repo(str(git_dir / "TeamProject")))
+        project_repo=Repo(str(git_dir / "TeamProject")), user_email="charlie@example.com")
     assert team_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value).value is True
 
@@ -203,7 +203,7 @@ def test_project_report_git_analysis(git_dir: Path):
     """Verifies ProjectReport correctly analyzes Git authorship statistics."""
     # Test individual project (1 author)
     solo_report = ProjectReport(project_path=str(
-        git_dir / "SoloProject"), project_name="SoloProject", project_repo=Repo(str(git_dir / "SoloProject")))
+        git_dir / "SoloProject"), project_name="SoloProject", project_repo=Repo(str(git_dir / "SoloProject")), user_email="charlie@example.com")
 
     is_group = solo_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -221,7 +221,7 @@ def test_project_report_git_analysis(git_dir: Path):
 
     # Test group project (2 authors)
     team_report = ProjectReport(project_path=str(
-        git_dir / "TeamProject"), project_name="TeamProject", project_repo=Repo(str(git_dir / "TeamProject")))
+        git_dir / "TeamProject"), project_name="TeamProject", project_repo=Repo(str(git_dir / "TeamProject")), user_email="charlie@example.com")
 
     is_group = team_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
