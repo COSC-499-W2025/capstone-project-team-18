@@ -42,7 +42,13 @@ def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[s
             project_file.root_path, file, project_file.repo, email)
 
         try:
-            reports.append(analyzer.analyze())
+            fr = analyzer.analyze()
+            commit_percent = fr.get_value(
+                FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
+            if type(commit_percent) == float and commit_percent > 0.01:
+                reports.append(fr)
+            elif commit_percent is None:
+                reports.append(fr)
         except Exception as e:
             logger.error(
                 f"Error analyzing file {file} in {project_file.name}: {e}")
@@ -365,7 +371,6 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
             if line_count == 0:
                 return 0.0
-
             return round((commit_count / line_count) * 100, 2)
         except InvalidGitRepositoryError as e:
             logger.debug(f"InvalidGitRepositoryError: {e}")
