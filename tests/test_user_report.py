@@ -5,8 +5,12 @@ from src.classes.statistic import (
     FileStatCollection,
     CodingLanguage
 )
+from src.classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
+
+
 from datetime import date
 from datetime import datetime
+from pathlib import Path
 import unittest
 import sys
 import os
@@ -308,6 +312,71 @@ class TestUserReportDates(unittest.TestCase):
         self.assertEqual((user_end - user_start).days,
                          (datetime(2024, 10, 27) - datetime(2020, 9, 1)).days)
 
+
+'''
+def test_coding_ratio_in_user_report(tmp_path):
+    """
+    Tests that we have approiate coding ratio
+    of files
+    """
+
+    files = ["file.c",
+             "file2.c",
+             "file3.py",
+             "file4.rb",
+             "file5.py",
+             "file6.docx",
+             "file7.md"]
+
+    reports = []
+
+    # Make files and log their reports
+    for file in files:
+        path = tmp_path / file
+        Path(path).write_text("")
+
+        reports.append(get_appropriate_analyzer(path).analyze())
+
+    project_report = ProjectReport(reports)
+
+    files2 = ["file.py",
+              "file2.py",
+              "file3.java",
+              "file4.js",
+              "file5.js",
+              "file6.docx",
+              "file7.md"]
+
+    expected_ratio = {
+        CodingLanguage.C: (2/10),
+        CodingLanguage.PYTHON: (4/10),
+        CodingLanguage.RUBY: (1/10),
+        CodingLanguage.JAVA: (1/5),
+        CodingLanguage.JAVASCRIPT: (2/5),
+    }
+
+    reports = []
+
+    # Make files and log their reports
+    for file in files2:
+        path = tmp_path / file
+        Path(path).write_text("")
+
+        reports.append(get_appropriate_analyzer(path).analyze())
+
+    project_report2 = ProjectReport(reports)
+
+    project_reports = [project_report, project_report2]
+
+    user_report = UserReport(project_reports)
+
+    user_lang_ratio = user_report.get_value(
+        UserStatCollection.USER_CODING_LANGUAGE_RATIO.value)
+
+    for language in expected_ratio.keys():
+        ratio = user_lang_ratio.get(language, None)
+        assert ratio == expected_ratio.get(language)
+'''
 
 if __name__ == '__main__':
     # Run both pytest functions and unittest TestCase
