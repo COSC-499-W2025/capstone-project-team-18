@@ -1,7 +1,7 @@
 '''
 This file contains all functions that will be called when we
-want to access data from the database. In SQL, this would be
-queries like INSERT, UPDATE, etc.
+want to modify or add data to the database. In SQL, this
+would be queries like INSERT, UPDATE, etc.
 '''
 
 from src.classes.report import FileReport, ProjectReport, UserReport
