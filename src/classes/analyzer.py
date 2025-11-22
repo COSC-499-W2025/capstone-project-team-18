@@ -42,13 +42,15 @@ def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[s
             project_file.root_path, file, project_file.repo, email)
 
         try:
-            fr = analyzer.analyze()
-            commit_percent = fr.get_value(
-                FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
-            if type(commit_percent) == float and commit_percent > 0.01:
-                reports.append(fr)
-            elif commit_percent is None:
-                reports.append(fr)
+            if analyzer.is_git_tracked and isinstance(analyzer, CodeFileAnalyzer):
+                commit_percent = analyzer._get_file_commit_percentage()
+                if type(commit_percent) == float and commit_percent > 0.01:
+                    reports.append(analyzer.analyze())
+                else:
+                    continue
+            else:
+                reports.append(analyzer.analyze())
+
         except Exception as e:
             logger.error(
                 f"Error analyzing file {file} in {project_file.name}: {e}")
