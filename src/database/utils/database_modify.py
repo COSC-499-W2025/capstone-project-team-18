@@ -87,27 +87,33 @@ def delete_user_report_and_related_data(report_id=None, title=None, zipped_filep
         zipped_filepath (str): Filepath to the zipped file to delete.
     """
     engine = get_engine()
-    with Session(engine) as session:
-        query = session.query(UserReportTable)
-        user_report = None
-        if report_id is not None:
-            user_report = session.get(UserReportTable, report_id)
-        elif title is not None:
-            user_report = query.filter_by(title=title).first()
-        elif zipped_filepath is not None:
-            user_report = query.filter_by(zipped_filepath=zipped_filepath).first()
-        else:
-            raise ValueError("Must provide report_id, title, or zipped_filepath")
+    try:
+        with Session(engine) as session:
+            query = session.query(UserReportTable)
+            user_report = None
+            if report_id is not None:
+                user_report = session.get(UserReportTable, report_id)
+            elif title is not None:
+                user_report = query.filter_by(title=title).first()
+            elif zipped_filepath is not None:
+                user_report = query.filter_by(
+                    zipped_filepath=zipped_filepath).first()
+            else:
+                raise ValueError(
+                    "Must provide report_id, title, or zipped_filepath")
 
-        if not user_report:
-            raise ValueError("User report not found")
+            if not user_report:
+                raise ValueError("User report not found")
 
-        # Find and delete project reports only associated with this user report
-        for project_report in list(user_report.project_reports):
-            if len(project_report.user_reports) == 1:
-                session.delete(project_report)
-        user_report.project_reports.clear()
-        session.flush()
-        session.delete(user_report)
-        session.commit()
-        return True
+            # Find and delete project reports only associated with this user report
+            for project_report in list(user_report.project_reports):
+                if len(project_report.user_reports) == 1:
+                    session.delete(project_report)
+            user_report.project_reports.clear()
+            session.flush()
+            session.delete(user_report)
+            session.commit()
+            return True
+    except Exception as e:
+        print(f"Error deleting user report and related data: {e}")
+        return False
