@@ -114,6 +114,9 @@ def delete_user_report_and_related_data(report_id=None, title=None, zipped_filep
             session.delete(user_report)
             session.commit()
             return True
+    except ValueError:
+        # Let ValueError propagate for test and caller handling
+        raise
     except Exception as e:
         print(f"Error deleting user report and related data: {e}")
         return False
