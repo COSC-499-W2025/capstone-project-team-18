@@ -185,16 +185,6 @@ class ProjectReport(BaseReport):
             curr_end_date = report.get_value(
                 FileStatCollection.DATE_MODIFIED.value)
 
-            # Coerce date to datetime for safe comparisons
-            if isinstance(curr_start_date, date) and not isinstance(curr_start_date, datetime):
-                curr_start_date = datetime(
-                    curr_start_date.year, curr_start_date.month, curr_start_date.day
-                )
-            if isinstance(curr_end_date, date) and not isinstance(curr_end_date, datetime):
-                curr_end_date = datetime(
-                    curr_end_date.year, curr_end_date.month, curr_end_date.day
-                )
-
             if curr_start_date is not None and curr_start_date < start_date:
                 start_date = curr_start_date
 
