@@ -2,6 +2,7 @@ from pathlib import Path
 import shutil
 import tempfile
 from git import Repo
+import datetime
 
 import pytest
 
@@ -167,3 +168,49 @@ def test_git_file_has_local_changes(tmp_path: Path):
     fr = analyzer.analyze()
     assert fr.get_value(
         FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) == 50.0
+
+
+def test_earliest_commit_and_last_commit(tmp_path: Path):
+    """
+    This test creates commits in a git repo with different
+    authored and commit dates to ensure that the eariliest
+    date and last commit date are correctly identified.
+    """
+
+    repo_dir = tmp_path / "RepoWithDates"
+    repo_dir.mkdir()
+    repo = Repo.init(repo_dir)
+
+    file_path = repo_dir / "dated_file.py"
+    file_path.write_text("print('first commit')\n")
+    with repo.config_writer() as cfg:
+        cfg.set_value("user", "name", "Frank")
+        cfg.set_value("user", "email", "frank@example.com")
+    repo.index.add([str(file_path.relative_to(repo_dir))])
+    repo.index.commit("First commit",
+                      author_date="2023-01-01 10:00:00")
+
+    # Second commit with later authored date
+    file_path.write_text("print('second commit')\n")
+    repo.index.add([str(file_path.relative_to(repo_dir))])
+    repo.index.commit("Second commit",
+                      author_date="2023-01-02 10:00:00")
+
+    # Third commit with latests authored date
+    file_path.write_text("print('third commit')\n")
+    repo.index.add([str(file_path.relative_to(repo_dir))])
+    repo.index.commit("Third commit",
+                      author_date="2023-01-03 10:00:00")
+
+    analyzer = get_appropriate_analyzer(
+        str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
+
+    fr = analyzer.analyze()
+    earliest_date = fr.get_value(FileStatCollection.DATE_CREATED.value)
+    last_date = fr.get_value(FileStatCollection.DATE_MODIFIED.value)
+
+    assert isinstance(earliest_date, datetime.datetime)
+    assert isinstance(last_date, datetime.datetime)
+
+    assert earliest_date == datetime.datetime(2023, 1, 1, 10, 0, 0)
+    assert last_date == datetime.datetime(2023, 1, 3, 10, 0, 0)
