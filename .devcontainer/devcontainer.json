@@ -20,7 +20,8 @@
             "extensions": [
                 "ms-python.python",
                 "ms-azuretools.vscode-docker",
-                "visualstudioexptteam.vscodeintellicode"
+                "visualstudioexptteam.vscodeintellicode",
+                "qwtel.sqlite-viewer"
             ],
             "settings": {
                 "files.trimTrailingWhitespace": true,
