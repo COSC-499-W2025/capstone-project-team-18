@@ -56,7 +56,7 @@ class FileReport(BaseReport):
         self.filepath = filepath
 
     @classmethod
-    def create_with_analysis(cls, filepath: str) -> "FileReport":
+    def create_with_analysis(cls, path_to_top_level: str, relative_path: str) -> "FileReport":
         """
         Create a FileReport with automatic file type detection and analysis.
         This includes:
@@ -67,7 +67,7 @@ class FileReport(BaseReport):
                 - Text-based statistics for appropriate text based files (i.e. css, html, xml, json, yml, yaml)
         """
         from .analyzer import get_appropriate_analyzer
-        analyzer = get_appropriate_analyzer(filepath)
+        analyzer = get_appropriate_analyzer(path_to_top_level, relative_path)
         return analyzer.analyze()
 
     def get_filename(self):
@@ -88,6 +88,7 @@ class ProjectReport(BaseReport):
                  file_reports: Optional[list[FileReport]] = None,
                  project_path: Optional[str] = None,
                  project_name: Optional[str] = None,
+                 project_repo: Optional[Repo] = None,
                  user_email: Optional[str] = None
                  ):
         """
@@ -97,10 +98,12 @@ class ProjectReport(BaseReport):
             file_reports: List of FileReport objects to aggregate statistics from
             project_path: Optional path to project for Git analysis
             project_name: Optional project name for Git analysis
+            project_repo: Optional Repo object for Git analysis
         """
 
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
+        self.project_repo = project_repo
         self.project_statistics = StatisticIndex()
 
         # Aggregate statistics from file reports
@@ -108,14 +111,8 @@ class ProjectReport(BaseReport):
         self._find_coding_languages_ratio()
         self._calculate_ari_score()
         self._weighted_skills()
-
-        # Add Git analysis statistics if zip file is provided
-        if project_path and project_name:
-            git_stats = self._analyze_git_authorship(
-                project_path, project_name, user_email)
-            if git_stats:
-                for stat in git_stats:
-                    self.project_statistics.add(stat)
+        if user_email:
+            self._analyze_git_authorship(user_email)
 
         # Iterate over fileReports to get total lines responsible over whole project
         total_contribution_lines = 0.0
@@ -309,72 +306,80 @@ class ProjectReport(BaseReport):
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
         return inst
 
-    def _analyze_git_authorship(self, project_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
-        """Analyzes Git commit history to determine authorship statistics."""
+    def _analyze_git_authorship(self, user_email: Optional[str] = None) -> None:
+        """
+        Analyzes Git commit history to determine authorship statistics.
 
-        try:
-            repo = Repo(Path(project_path))
+        Creates the following project level statistics:
+        - IS_GROUP_PROJECT: Boolean indicating if multiple authors contributed
+        - TOTAL_AUTHORS: Total number of unique authors
+        - AUTHORS_PER_FILE: Dictionary mapping file paths to number of unique authors
+        - USER_COMMIT_PERCENTAGE: Percentage of commits made by the user (if applicable)
 
-            # Check if repository has any commits
-            try:
-                commit_count_by_author = {}
-                for commit in repo.iter_commits():
-                    author_email = commit.author.email
-                    commit_count_by_author[author_email] = commit_count_by_author.get(
-                        author_email, 0) + 1
-            except ValueError:
-                # Empty repository with no commits
-                return None
+        Args:
+            user_email: Optional email of the user to calculate their commit percentage
+        """
 
-            all_authors = set([author for author in commit_count_by_author.keys(
-            ) if not author.endswith('@users.noreply.github.com')])
-
-            total_authors = len(all_authors)
-            total_commits = sum(commit_count_by_author.values())
-
-            # Calculate user's commit percentage if project has multiple authors
-            user_commit_percentage = None
-            if total_authors > 1 and user_email:
-                user_commits = commit_count_by_author.get(
-                    user_email, 0)
-                if total_commits > 0:
-                    user_commit_percentage = (
-                        user_commits / total_commits) * 100
-
-            authors_per_file = {}
-            for item in repo.tree().traverse():
-                if item.type == 'blob':
-                    try:
-                        file_authors = {
-                            c.author.email for c in repo.iter_commits(paths=item.path)}
-                        authors_per_file[item.path] = len(file_authors)
-                    except Exception:
-                        continue
-
-            stats = [
-                Statistic(
-                    ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
-                Statistic(
-                    ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
-                Statistic(
-                    ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
-            ]
-
-            # Add user commit percentage if applicable
-            if user_commit_percentage is not None:
-                stats.append(
-                    Statistic(
-                        ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
-                        round(user_commit_percentage, 2)
-                    )
-                )
-
-            return stats
-        except NoSuchPathError:
-            raise FileNotFoundError(
-                f"Project path '{project_path}' does not exist.")
-        except InvalidGitRepositoryError:
+        if self.project_repo is None:
             return None
+
+        repo = self.project_repo
+
+        # Check if repository has any commits
+        try:
+            commit_count_by_author = {}
+            for commit in repo.iter_commits():
+                author_email = commit.author.email
+                commit_count_by_author[author_email] = commit_count_by_author.get(
+                    author_email, 0) + 1
+        except ValueError:
+            # Empty repository with no commits
+            return None
+
+        all_authors = set([author for author in commit_count_by_author.keys(
+        ) if not author.endswith('@users.noreply.github.com')])
+
+        total_authors = len(all_authors)
+        total_commits = sum(commit_count_by_author.values())
+
+        # Calculate user's commit percentage if project has multiple authors
+        user_commit_percentage = None
+        if total_authors > 1 and user_email:
+            user_commits = commit_count_by_author.get(
+                user_email, 0)
+            if total_commits > 0:
+                user_commit_percentage = (
+                    user_commits / total_commits) * 100
+
+        authors_per_file = {}
+        for item in repo.tree().traverse():
+            if item.type == 'blob':
+                try:
+                    file_authors = {
+                        c.author.email for c in repo.iter_commits(paths=item.path)}
+                    authors_per_file[item.path] = len(file_authors)
+                except Exception:
+                    continue
+
+        stats = [
+            Statistic(
+                ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
+            Statistic(
+                ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
+            Statistic(
+                ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
+        ]
+
+        # Add user commit percentage if applicable
+        if user_commit_percentage is not None:
+            stats.append(
+                Statistic(
+                    ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
+                    round(user_commit_percentage, 2)
+                )
+            )
+
+        self.project_statistics.extend(stats)
 
 
 class UserReport(BaseReport):

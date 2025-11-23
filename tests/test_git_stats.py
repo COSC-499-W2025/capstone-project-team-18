@@ -7,6 +7,8 @@ import pytest
 
 from classes.report import ProjectReport
 from classes.statistic import ProjectStatCollection
+from src.classes.analyzer import extract_file_reports
+from src.utils.project_discovery import ProjectFiles
 
 
 @pytest.fixture
@@ -139,7 +141,7 @@ def corrupted_file(tmp_path: Path) -> Path:
 def test_git_authorship_single_author(git_dir: Path):
     """Test Git authorship analysis with single author"""
     solo_report = ProjectReport(project_path=str(
-        git_dir / "SoloProject"), project_name="SoloProject")
+        git_dir / "SoloProject"), project_name="SoloProject", project_repo=Repo(str(git_dir / "SoloProject")), user_email="charlie@example.com")
 
     is_group = solo_report.get_value(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -158,7 +160,7 @@ def test_git_authorship_single_author(git_dir: Path):
 def test_git_authorship_multiple_authors(git_dir: Path):
     """Test Git authorship analysis with multiple authors"""
     team_report = ProjectReport(project_path=str(
-        git_dir / "TeamProject"), project_name="TeamProject")
+        git_dir / "TeamProject"), project_name="TeamProject", project_repo=Repo(str(git_dir / "TeamProject")), user_email="charlie@example.com")
 
     is_group = team_report.get_value(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -207,7 +209,8 @@ def test_git_authorship_user_commit_percentage():
         report_bob = ProjectReport(
             project_path=str(temp_dir + "/UnequalProject"),
             project_name="UnequalProject",
-            user_email="bob@example.com"
+            user_email="bob@example.com",
+            project_repo=repo
         )
         bob_percentage = report_bob.get_value(
             ProjectStatCollection.USER_COMMIT_PERCENTAGE.value
@@ -219,7 +222,8 @@ def test_git_authorship_user_commit_percentage():
         report_charlie = ProjectReport(
             project_path=str(temp_dir + "/UnequalProject"),
             project_name="UnequalProject",
-            user_email="charlie@example.com"
+            user_email="charlie@example.com",
+            project_repo=repo
         )
         charlie_percentage = report_charlie.get_value(
             ProjectStatCollection.USER_COMMIT_PERCENTAGE.value
@@ -236,7 +240,8 @@ def test_git_authorship_no_user_email_provided(git_dir):
     team_report = ProjectReport(
         project_path=str(git_dir / "TeamProject"),
         project_name="TeamProject",
-        user_email=None
+        user_email=None,
+        project_repo=Repo(str(git_dir / "TeamProject"))
     )
 
     # Should have Git stats but no user commit percentage
@@ -246,7 +251,7 @@ def test_git_authorship_no_user_email_provided(git_dir):
         ProjectStatCollection.USER_COMMIT_PERCENTAGE.value
     )
 
-    assert is_group is True
+    assert is_group is None
     assert user_percentage is None
 
 
@@ -255,7 +260,8 @@ def test_git_authorship_single_author_no_percentage(git_dir):
     solo_report = ProjectReport(
         project_path=str(git_dir / "SoloProject"),
         project_name="SoloProject",
-        user_email="alice@example.com"
+        user_email="alice@example.com",
+        project_repo=Repo(str(git_dir / "SoloProject"))
     )
 
     # Even with email provided, single-author projects shouldn't have percentage
@@ -274,7 +280,8 @@ def test_git_authorship_user_not_in_project(git_dir):
     team_report = ProjectReport(
         project_path=str(git_dir / "TeamProject"),
         project_name="TeamProject",
-        user_email="nonexistent@example.com"
+        user_email="nonexistent@example.com",
+        project_repo=Repo(str(git_dir / "TeamProject"))
     )
 
     # Should calculate 0% for non-contributing user
@@ -283,18 +290,6 @@ def test_git_authorship_user_not_in_project(git_dir):
     )
     assert user_percentage is not None
     assert user_percentage == 0.0
-
-
-def test_git_authorship_invalid_zip_path():
-    """
-    Should throw error if non-existent path is provided
-    """
-
-    with pytest.raises(FileNotFoundError):
-        report = ProjectReport(
-            project_path="/nonexistent/path/to/nonexistent_project/AnyProject",
-            project_name="AnyProject"
-        )
 
 
 def test_git_authorship_nonexistent_project_name(git_dir):
@@ -361,7 +356,9 @@ def test_git_authorship_multiple_files_single_author(git_dir):
     """Test authors_per_file with multiple files but single author"""
     solo_report = ProjectReport(
         project_path=str(git_dir / "SoloProject"),
-        project_name="SoloProject"
+        project_name="SoloProject",
+        project_repo=Repo(str(git_dir / "SoloProject")),
+        user_email="charlie@example.com"
     )
 
     authors_per_file = solo_report.get_value(
@@ -407,7 +404,9 @@ def test_git_authorship_file_with_multiple_contributors():
         repo.index.commit("Charlie's modification")
 
         report = ProjectReport(project_path=str(temp_dir + "/SharedFile"),
-                               project_name="SharedFile")
+                               project_name="SharedFile",
+                               project_repo=repo,
+                               user_email="charlie@example.com")
 
         authors_per_file = report.get_value(
             ProjectStatCollection.AUTHORS_PER_FILE.value
@@ -477,7 +476,8 @@ def test_git_authorship_percentage_rounding():
         report = ProjectReport(
             project_path=str(project_dir),
             project_name="RoundingProject",
-            user_email="alice@example.com"
+            user_email="alice@example.com",
+            project_repo=repo
         )
 
         percentage = report.get_value(
@@ -496,7 +496,9 @@ def test_git_authorship_false_assumptions(git_dir):
     """Test with assert False to verify wrong assumptions fail"""
     team_report = ProjectReport(
         project_path=str(git_dir / "TeamProject"),
-        project_name="TeamProject"
+        project_name="TeamProject",
+        project_repo=Repo(str(git_dir / "TeamProject")),
+        user_email="charlie@example.com"
     )
 
     total_authors = team_report.get_value(
@@ -509,3 +511,65 @@ def test_git_authorship_false_assumptions(git_dir):
     assert not is_group is False   # Is a group project
     assert not total_authors > 5   # Not more than 5 authors
     assert not total_authors < 1   # Not less than 1 author
+
+
+def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
+    """Test that FileReport is None for files a user has not committed to in a group project.    """
+    from classes.report import FileReport
+
+    temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
+    project_dir = Path(temp_dir) / "SelectiveProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # fileA.py: John only (0% by Charlie)
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "John")
+        config.set_value("user", "email", "john@example.com")
+    (project_dir / "fileA.py").write_text("# Created by John only\nprint('John')\n")
+    repo.index.add(["fileA.py"])
+    repo.index.commit("John creates fileA")
+
+    # fileB.py: Charlie only (100% by Charlie)
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Charlie")
+        config.set_value("user", "email", "charlie@example.com")
+    (project_dir / "fileB.py").write_text("# Created by Charlie\nprint('Charlie')\n")
+    repo.index.add(["fileB.py"])
+    repo.index.commit("Charlie creates fileB")
+
+    # fileC.py: John creates, Charlie modifies (50/50 contribution)
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "John")
+        config.set_value("user", "email", "john@example.com")
+    (project_dir / "fileC.py").write_text("# Initial by John\nline2\n")
+    repo.index.add(["fileC.py"])
+    repo.index.commit("John creates fileC")
+
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Charlie")
+        config.set_value("user", "email", "charlie@example.com")
+    (project_dir / "fileC.py").write_text("# Initial by John\nline2_modified_by_charlie\n")
+    repo.index.add(["fileC.py"])
+    repo.index.commit("Charlie modifies fileC")
+
+    project_files = ProjectFiles(
+        name="SelectiveProject",
+        root_path=str(project_dir),
+        file_paths=["fileA.py", "fileB.py", "fileC.py"],
+        repo=repo
+    )
+
+    fr = extract_file_reports(project_files, "charlie@example.com")
+
+    # create a project report for Charlie, should only contain files B & C
+    pr = ProjectReport(file_reports=fr,
+                       project_path=str(project_dir),
+                       project_repo=Repo(str(project_dir)),
+                       project_name="SelectiveProject",
+                       user_email="charlie@example.com")
+
+    # should only be two files in ProjectReport
+    assert len(fr) == 2
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
