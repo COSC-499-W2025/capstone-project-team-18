@@ -4,9 +4,12 @@ a zipped file, with directories are projects? Which files
 should be considered?
 """
 
+import os
 from pathlib import Path
 from dataclasses import dataclass
 import logging
+from typing import Optional
+from git import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +19,18 @@ class ProjectFiles:
     name: str  # Name of the project (name of the top level directory)
     root_path: str  # The absolute path to the top-level directory
     file_paths: list[str]  # File paths relative to the root_path
+    repo: Optional[Repo]  # The git repository object if applicable
 
 
 # Files that should just totally be ignored
 IGNORE_FILES = [
     ".DS_Store",
     "thumbs.db"
+]
+
+IGNORE_DIRS = [
+    ".git",
+    ".pytest_cache"
 ]
 
 
@@ -67,16 +76,32 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
 
         if dir_is_project(dir_path):
             # If the directory is a project, add it to the list and move on
-            file_paths = [
-                str(file.relative_to(dir_path))
-                for file in dir_path.rglob('*')
-                if file.is_file() and file.name not in IGNORE_FILES
-            ]
+            # We ignore the ignore files and the files in the IGNORE_DIRS directories
+            file_paths = []
+            for root, dirs, files in os.walk(dir_path):
+                # Modify dirs in-place to skip ignored directories
+                dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+
+                for file in files:
+                    if file not in IGNORE_FILES:
+                        full_path = Path(root) / file
+                        relative_path = full_path.relative_to(dir_path)
+                        file_paths.append(str(relative_path))
+
+            # Check to see if the project is a git repository
+            repo = None
+            try:
+                repo = Repo(dir_path)
+            except Exception as e:
+                logger.debug(f"No git repository found in {dir_path}: {e}")
+
             projects.append(ProjectFiles(
                 name=dir_path.name,
                 root_path=str(dir_path),
-                file_paths=file_paths
+                file_paths=file_paths,
+                repo=repo
             ))
+
         else:
             # If the directory is not a project, it likely has projects in subdirectories
             # Check those and move on.
