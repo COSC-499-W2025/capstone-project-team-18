@@ -117,6 +117,17 @@ class ProjectReport(BaseReport):
                 for stat in git_stats:
                     self.project_statistics.add(stat)
 
+        # Iterate over fileReports to get total lines responsible over whole project
+        total_contribution_lines = 0.0
+        for file in self.file_reports:
+            file_commit_pct = file.get_value(
+                FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
+            if file_commit_pct:
+                total_contribution_lines += file_commit_pct / 100 * \
+                    file.get_value(FileStatCollection.LINES_IN_FILE.value)
+        self.project_statistics.add(Statistic(
+            ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, total_contribution_lines))
+
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
 
