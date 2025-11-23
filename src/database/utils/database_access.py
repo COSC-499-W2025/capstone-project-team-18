@@ -3,32 +3,36 @@ This file contains all functions that will be called when we
 want to access data from the database. In SQL, this would be
 queries like SELECT, etc.
 '''
-from enum import Enum
-
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import NoResultFound, MultipleResultsFound
-
-
-from src.database.db import ProjectReportTable, get_engine, __repr__
-from src.classes.report import ProjectReport, FileReport
 from src.classes.statistic import StatisticIndex, Statistic, ProjectStatCollection, FileStatCollection, FileDomain, CodingLanguage
+from src.classes.report import ProjectReport, FileReport
+from src.database.db import ProjectReportTable, get_engine, __repr__
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+from pprint import pprint
 
-engine = get_engine()
+
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def get_project_from_project_name(proj_name: str) -> ProjectReport:
+def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
     '''
     Retrieves the row that corresponds to the given project name
-    and converts it into a `ProjectReport object.
+    and converts it into a `ProjectReport` object.
 
     Args:
         proj_name (str): The name of the project (given by the user)
 
     Returns:
         ProjectReport
-
     '''
+
+    # for testing purposes, we need to be able to pass the engine for
+    # the temporary database to the function when we call it.
+    if engine is None:
+        engine = get_engine()
     with Session(engine) as session:
         try:
             result = session.execute(
@@ -54,7 +58,7 @@ def get_project_from_project_name(proj_name: str) -> ProjectReport:
 
             # make the ProjectReport obj
             project_report = ProjectReport(
-                file_reports=get_file_reports(result.id),
+                file_reports=get_file_reports(result.id, engine),
                 project_name=name,
                 statistics=statistics,
             )
@@ -63,17 +67,17 @@ def get_project_from_project_name(proj_name: str) -> ProjectReport:
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            # TODO replace w/ logger
-            print(f'Error: No project found with name "{proj_name}"')
+            logging.error(f'Error: No project found with name "{proj_name}"')
             raise
         except MultipleResultsFound:
-            # TODO replace w/ logger
-            print(f'Error: Multiple projects found with name "{proj_name}"')
+            logging.error(
+                f'Error: Multiple projects found with name "{proj_name}"')
             raise
 
 
-def get_file_reports(id: int) -> list[FileReport]:
+def get_file_reports(id: int, engine) -> list[FileReport]:
     '''
+    Helper function for `get_project_from_project_name()`.
     For a given project report's ID in the database, get all of,
     the rows in `file_report`, convert them to `FileReport`
     objects, and return a list of the objects.
@@ -84,13 +88,15 @@ def get_file_reports(id: int) -> list[FileReport]:
         project = session.get(ProjectReportTable, id)
 
         if project is None:
-            raise ValueError(f'Error: No project with id {id}')
+            logging.error(f'Error: No project with id {id}')
+            raise ValueError()
 
         file_report_rows = project.file_reports  # List[FileReportTable]
 
-        if file_report_rows is None:
-            raise ValueError(
+        if len(file_report_rows) == 0 or file_report_rows is None:
+            logging.error(
                 f'Error: No file report(s) found for project with id {id}')
+            raise ValueError()
 
         file_reports = []
         for row in file_report_rows:
