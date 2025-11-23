@@ -139,7 +139,7 @@ def corrupted_file(tmp_path: Path) -> Path:
 def test_git_authorship_single_author(git_dir: Path):
     """Test Git authorship analysis with single author"""
     solo_report = ProjectReport(project_path=str(
-        git_dir / "SoloProject"), project_name="SoloProject")
+        git_dir / "SoloProject"), project_name="SoloProject", project_repo=Repo(str(git_dir / "SoloProject")))
 
     is_group = solo_report.get_value(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -158,7 +158,7 @@ def test_git_authorship_single_author(git_dir: Path):
 def test_git_authorship_multiple_authors(git_dir: Path):
     """Test Git authorship analysis with multiple authors"""
     team_report = ProjectReport(project_path=str(
-        git_dir / "TeamProject"), project_name="TeamProject")
+        git_dir / "TeamProject"), project_name="TeamProject", project_repo=Repo(str(git_dir / "TeamProject")))
 
     is_group = team_report.get_value(
         ProjectStatCollection.IS_GROUP_PROJECT.value)
@@ -207,7 +207,8 @@ def test_git_authorship_user_commit_percentage():
         report_bob = ProjectReport(
             project_path=str(temp_dir + "/UnequalProject"),
             project_name="UnequalProject",
-            user_email="bob@example.com"
+            user_email="bob@example.com",
+            project_repo=repo
         )
         bob_percentage = report_bob.get_value(
             ProjectStatCollection.USER_COMMIT_PERCENTAGE.value
@@ -219,7 +220,8 @@ def test_git_authorship_user_commit_percentage():
         report_charlie = ProjectReport(
             project_path=str(temp_dir + "/UnequalProject"),
             project_name="UnequalProject",
-            user_email="charlie@example.com"
+            user_email="charlie@example.com",
+            project_repo=repo
         )
         charlie_percentage = report_charlie.get_value(
             ProjectStatCollection.USER_COMMIT_PERCENTAGE.value
@@ -236,7 +238,8 @@ def test_git_authorship_no_user_email_provided(git_dir):
     team_report = ProjectReport(
         project_path=str(git_dir / "TeamProject"),
         project_name="TeamProject",
-        user_email=None
+        user_email=None,
+        project_repo=Repo(str(git_dir / "TeamProject"))
     )
 
     # Should have Git stats but no user commit percentage
@@ -255,7 +258,8 @@ def test_git_authorship_single_author_no_percentage(git_dir):
     solo_report = ProjectReport(
         project_path=str(git_dir / "SoloProject"),
         project_name="SoloProject",
-        user_email="alice@example.com"
+        user_email="alice@example.com",
+        project_repo=Repo(str(git_dir / "SoloProject"))
     )
 
     # Even with email provided, single-author projects shouldn't have percentage
@@ -274,7 +278,8 @@ def test_git_authorship_user_not_in_project(git_dir):
     team_report = ProjectReport(
         project_path=str(git_dir / "TeamProject"),
         project_name="TeamProject",
-        user_email="nonexistent@example.com"
+        user_email="nonexistent@example.com",
+        project_repo=Repo(str(git_dir / "TeamProject"))
     )
 
     # Should calculate 0% for non-contributing user
@@ -283,18 +288,6 @@ def test_git_authorship_user_not_in_project(git_dir):
     )
     assert user_percentage is not None
     assert user_percentage == 0.0
-
-
-def test_git_authorship_invalid_zip_path():
-    """
-    Should throw error if non-existent path is provided
-    """
-
-    with pytest.raises(FileNotFoundError):
-        report = ProjectReport(
-            project_path="/nonexistent/path/to/nonexistent_project/AnyProject",
-            project_name="AnyProject"
-        )
 
 
 def test_git_authorship_nonexistent_project_name(git_dir):
@@ -361,7 +354,8 @@ def test_git_authorship_multiple_files_single_author(git_dir):
     """Test authors_per_file with multiple files but single author"""
     solo_report = ProjectReport(
         project_path=str(git_dir / "SoloProject"),
-        project_name="SoloProject"
+        project_name="SoloProject",
+        project_repo=Repo(str(git_dir / "SoloProject"))
     )
 
     authors_per_file = solo_report.get_value(
@@ -407,7 +401,8 @@ def test_git_authorship_file_with_multiple_contributors():
         repo.index.commit("Charlie's modification")
 
         report = ProjectReport(project_path=str(temp_dir + "/SharedFile"),
-                               project_name="SharedFile")
+                               project_name="SharedFile",
+                               project_repo=repo)
 
         authors_per_file = report.get_value(
             ProjectStatCollection.AUTHORS_PER_FILE.value
@@ -477,7 +472,8 @@ def test_git_authorship_percentage_rounding():
         report = ProjectReport(
             project_path=str(project_dir),
             project_name="RoundingProject",
-            user_email="alice@example.com"
+            user_email="alice@example.com",
+            project_repo=repo
         )
 
         percentage = report.get_value(
@@ -496,7 +492,8 @@ def test_git_authorship_false_assumptions(git_dir):
     """Test with assert False to verify wrong assumptions fail"""
     team_report = ProjectReport(
         project_path=str(git_dir / "TeamProject"),
-        project_name="TeamProject"
+        project_name="TeamProject",
+        project_repo=Repo(str(git_dir / "TeamProject"))
     )
 
     total_authors = team_report.get_value(

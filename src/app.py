@@ -60,6 +60,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
             project_report = ProjectReport(
                 project_name=project.name,
                 project_path=project.root_path,
+                project_repo=project.repo,
                 file_reports=file_reports,
                 user_email=email
             )

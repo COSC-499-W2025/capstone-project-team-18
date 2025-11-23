@@ -141,7 +141,8 @@ def test_extract_file_reports_returns_project(tmp_path):
     project_file = ProjectFiles(
         name="TestProject",
         root_path=str(tmp_path),
-        file_paths=files
+        file_paths=files,
+        repo=None
     )
 
     listReport = extract_file_reports(project_file)
@@ -183,7 +184,8 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path):
     project_file = ProjectFiles(
         name="ProjectA",
         root_path=str(tmp_path),
-        file_paths=["a_1.txt", "a_2.txt", "subfolder/a_3.txt"]
+        file_paths=["a_1.txt", "a_2.txt", "subfolder/a_3.txt"],
+        repo=None
     )
 
     listReport = extract_file_reports(project_file)
