@@ -41,16 +41,11 @@ def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[s
         analyzer = get_appropriate_analyzer(
             project_file.root_path, file, project_file.repo, email)
 
-        try:
-            if analyzer.is_git_tracked and isinstance(analyzer, CodeFileAnalyzer):
-                commit_percent = analyzer._get_file_commit_percentage()
-                if type(commit_percent) == float and commit_percent > 0.01:
-                    reports.append(analyzer.analyze())
-                else:
-                    continue
-            else:
-                reports.append(analyzer.analyze())
+        if analyzer.should_inculde() is False:
+            continue
 
+        try:
+            reports.append(analyzer.analyze())
         except Exception as e:
             logger.error(
                 f"Error analyzing file {file} in {project_file.name}: {e}")
@@ -97,6 +92,7 @@ class BaseFileAnalyzer:
         self.repo = repo
         self.email = email
         self.stats = StatisticIndex()
+        self.blame_info = None
         self.is_git_tracked = self.file_in_git_repo()
 
     def file_in_git_repo(self) -> bool:
@@ -109,13 +105,45 @@ class BaseFileAnalyzer:
             return False
 
         try:
-            self.repo.blame('HEAD', self.relative_path)
+            self.blame_info = self.repo.blame('HEAD', self.relative_path)
 
             return True
         except (ValueError, GitCommandError, Exception) as e:
             logger.debug(
                 f"File not tracked by git or git error: {e}")
             return False
+
+    def should_inculde(self) -> bool:
+        """
+        This is a lightweight check to see if the file should be
+        included in analysis. By deafult, all files are included.
+
+        A file is excluded if it meets certain criteria:
+            - If the user has configured to exclude files of this type
+            - If user has given their email, and the file is tracked by git,
+                but none of the lines in the file were authored by the user.
+
+        Returns:
+            bool: True if the file should be included, False otherwise.
+        """
+
+        # TODO : Implement user preferences for excluding certain file types
+
+        if not self.is_git_tracked or not self.email or not self.repo:
+            return True
+
+        if self.blame_info is None:
+            return True
+
+        # Use the git command "shortlog" to see if a user has contributed to a file.
+        git_cmd = self.repo.git
+        short_log = git_cmd.shortlog(
+            "-s", "-n", "--email", "HEAD", "--", self.relative_path)
+
+        if self.email in short_log:
+            return True
+
+        return False
 
     def _process(self) -> None:
         """
@@ -373,6 +401,7 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
             if line_count == 0:
                 return 0.0
+
             return round((commit_count / line_count) * 100, 2)
         except InvalidGitRepositoryError as e:
             logger.debug(f"InvalidGitRepositoryError: {e}")
