@@ -570,7 +570,6 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
                        user_email="charlie@example.com")
 
     # should only be two files in ProjectReport
-    print(fr)
     assert len(fr) == 2
 
     shutil.rmtree(temp_dir, ignore_errors=True)
