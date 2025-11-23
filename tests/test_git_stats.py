@@ -573,3 +573,63 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
     assert len(fr) == 2
 
     shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_total_contribution_percentage(tmp_path: Path):
+    """Test that the correct percentage is returned over a project for lines written"""
+    from classes.report import FileReport
+
+    temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
+    project_dir = Path(temp_dir) / "SelectiveProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # fileA.py: John only (0% by Charlie)
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "John")
+        config.set_value("user", "email", "john@example.com")
+    (project_dir / "fileA.py").write_text("# Created by John only\nprint('John')\n")
+    repo.index.add(["fileA.py"])
+    repo.index.commit("John creates fileA")
+
+    # fileB.py: Charlie only (100% by Charlie)
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Charlie")
+        config.set_value("user", "email", "charlie@example.com")
+    (project_dir / "fileB.py").write_text("# Created by Charlie\nprint('Charlie')\n")
+    repo.index.add(["fileB.py"])
+    repo.index.commit("Charlie creates fileB")
+
+    # fileC.py: John creates, Charlie modifies (50/50 contribution)
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "John")
+        config.set_value("user", "email", "john@example.com")
+    (project_dir / "fileC.py").write_text("# Initial by John\nline2\n")
+    repo.index.add(["fileC.py"])
+    repo.index.commit("John creates fileC")
+
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Charlie")
+        config.set_value("user", "email", "charlie@example.com")
+    (project_dir / "fileC.py").write_text("# Initial by John\nline2_modified_by_charlie\n")
+    repo.index.add(["fileC.py"])
+    repo.index.commit("Charlie modifies fileC")
+
+    project_files = ProjectFiles(
+        name="SelectiveProject",
+        root_path=str(project_dir),
+        file_paths=["fileA.py", "fileB.py", "fileC.py"],
+        repo=repo
+    )
+
+    fr = extract_file_reports(project_files, "charlie@example.com")
+
+    # create a project report for Charlie, should only contain files B & C
+    pr = ProjectReport(file_reports=fr,
+                       project_path=str(project_dir),
+                       project_repo=Repo(str(project_dir)),
+                       project_name="SelectiveProject",
+                       user_email="charlie@example.com")
+
+    assert pr.get_value(
+        ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value) == 50.0
