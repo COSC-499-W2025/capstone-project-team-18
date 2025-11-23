@@ -20,8 +20,7 @@ def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_tex
     analyzer = BaseFileAnalyzer(temp_text_file[0], temp_text_file[1])
     report = analyzer.analyze()  # FileReport obj
     # Check that filepath is stored in report obj
-    assert getattr(report, "filepath") == str(
-        temp_text_file[0]) + '/' + temp_text_file[1]
+    assert getattr(report, "filepath") == temp_text_file[1]
 
     # Core stats exist
     size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
