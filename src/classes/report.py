@@ -56,7 +56,7 @@ class FileReport(BaseReport):
         self.filepath = filepath
 
     @classmethod
-    def create_with_analysis(cls, filepath: str) -> "FileReport":
+    def create_with_analysis(cls, path_to_top_level: str, relative_path: str) -> "FileReport":
         """
         Create a FileReport with automatic file type detection and analysis.
         This includes:
@@ -67,7 +67,7 @@ class FileReport(BaseReport):
                 - Text-based statistics for appropriate text based files (i.e. css, html, xml, json, yml, yaml)
         """
         from .analyzer import get_appropriate_analyzer
-        analyzer = get_appropriate_analyzer(filepath)
+        analyzer = get_appropriate_analyzer(path_to_top_level, relative_path)
         return analyzer.analyze()
 
     def get_filename(self):
@@ -84,13 +84,49 @@ class ProjectReport(BaseReport):
     of "total lines written."
     """
 
+    def get_project_weight(self) -> float:
+        """
+        Ranks the project using a linear combination of lines of code, date range, and individual contribution.
+        Equal weightage is given to each factor. All factors are normalized to [0, 1] scale.
+        The returned value is the sum of the three normalized components, so the final score is in [0, 3].
+        """
+        # Lines normalization
+        total_lines = 0.0
+        if self.file_reports:
+            total_lines = sum(
+                report.get_value(FileStatCollection.LINES_IN_FILE.value) or 0.0
+                for report in self.file_reports
+            )
+        norm_lines = min(total_lines / 500.0, 1.0) if total_lines > 0 else 0.0
+
+        # Date range normalization (assume 1 year = 1.0 weight)
+        start_date = self.get_value(
+            ProjectStatCollection.PROJECT_START_DATE.value)
+        end_date = self.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+        norm_date = 0.0
+        if start_date and end_date:
+            if isinstance(start_date, (datetime, date)) and isinstance(end_date, (datetime, date)):
+                days = (end_date - start_date).days
+                norm_date = min(days / 365, 1.0) if days > 0 else 0.0
+
+        # Individual contribution normalization
+        contrib = self.get_value(
+            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
+        norm_contrib = 0.0
+        if isinstance(contrib, (int, float)):
+            norm_contrib = max(0.0, min(contrib / 100.0, 1.0))
+
+        # Final weight (sum of normalized components)
+        weight = norm_lines + norm_date + norm_contrib
+        return weight
+
     def __init__(self,
                  file_reports: Optional[list[FileReport]] = None,
                  project_path: Optional[str] = None,
                  project_name: Optional[str] = None,
                  user_email: Optional[str] = None,
                  statistics: Optional[StatisticIndex] = None,
-                 project_repo: Optional[Repo] = None,
+                 project_repo: Optional[Repo] = None
                  ):
         """
         Initialize ProjectReport with file reports and optional Git analysis from zip file.
@@ -101,6 +137,7 @@ class ProjectReport(BaseReport):
             project_name: Optional project name for Git analysis
             statistics: Optional StatisicIndex
             project_repo: Optional Repo object for Git analysis
+            user_email: Optional user email for Git authorship analysis
 
         NOTE: `statistics` should only be included when the `get_project_from_project_name()`
         function is creating a ProjectReport object from an existing row in
@@ -112,6 +149,20 @@ class ProjectReport(BaseReport):
         if statistics is None:
             self.project_statistics = StatisticIndex()
             self.project_repo = project_repo
+            # Initialize project_repo from project_path if not provided
+            if project_repo is not None:
+                self.project_repo = project_repo
+            elif project_path is not None:
+                from os.path import exists
+                if not exists(project_path):
+                    raise FileNotFoundError(
+                        f"Project path does not exist: {project_path}")
+                try:
+                    self.project_repo = Repo(project_path)
+                except (InvalidGitRepositoryError, NoSuchPathError):
+                    self.project_repo = None
+            else:
+                self.project_repo = None
             # Aggregate statistics from file reports
             self._determine_start_end_dates()
             self._find_coding_languages_ratio()
@@ -189,20 +240,12 @@ class ProjectReport(BaseReport):
             curr_end_date = report.get_value(
                 FileStatCollection.DATE_MODIFIED.value)
 
-            # Coerce date to datetime for safe comparisons
-            if isinstance(curr_start_date, date) and not isinstance(curr_start_date, datetime):
-                curr_start_date = datetime(
-                    curr_start_date.year, curr_start_date.month, curr_start_date.day
-                )
-            if isinstance(curr_end_date, date) and not isinstance(curr_end_date, datetime):
-                curr_end_date = datetime(
-                    curr_end_date.year, curr_end_date.month, curr_end_date.day
-                )
+            # curr_start_date and curr_end_date are always datetime; if not, let comparison throw an error
 
-            if curr_start_date is not None and curr_start_date < start_date:
+            if curr_start_date and curr_start_date < start_date:
                 start_date = curr_start_date
 
-            if curr_end_date is not None and curr_end_date > end_date:
+            if curr_end_date and curr_end_date > end_date:
                 end_date = curr_end_date
 
         if end_date != earliest_date:
@@ -527,15 +570,15 @@ class UserReport(BaseReport):
 
     @staticmethod
     def _coerce_datetime(val: Any) -> datetime | None:
+        """Coerce a value to datetime. Raises TypeError if value cannot be coerced."""
+        if val is None:
+            return None
         if isinstance(val, datetime):
             return val
         if isinstance(val, date):
             return datetime(val.year, val.month, val.day)
         if isinstance(val, (int, float)):
-            try:
-                return datetime.fromtimestamp(val)
-            except Exception:
-                return None
+            return datetime.fromtimestamp(val)
         if isinstance(val, str):
             for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S",
                         "%Y-%m-%dT%H:%M:%S.%fZ"):
@@ -543,11 +586,8 @@ class UserReport(BaseReport):
                     return datetime.strptime(val, fmt)
                 except ValueError:
                     pass
-            try:
-                return datetime.fromisoformat(val)
-            except ValueError:
-                return None
-        return None
+            return datetime.fromisoformat(val)
+        raise TypeError(f"Cannot coerce {type(val).__name__} to datetime")
 
     @staticmethod
     def _title_from_name(raw: str) -> str:
@@ -637,3 +677,70 @@ class UserReport(BaseReport):
                 lines.append(f"{title}: {value!r}")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _fmt_mdy_short(d: datetime | date | None) -> str:
+        """Format as 'Mon D, YYYY' (e.g. 'Jan 12, 2023')."""
+        if d is None:
+            return "an unknown date"
+        if isinstance(d, date) and not isinstance(d, datetime):
+            d = datetime(d.year, d.month, d.day)
+        return d.strftime("%b %d, %Y")
+
+    def get_chronological_projects(
+        self,
+        as_string: bool = True,
+        include_end_date: bool = False,
+        newest_first: bool = False,
+        numbered: bool = False,
+    ) -> list | str:
+        """
+        Return the user's projects ordered by start date.
+        This implementation includes inclusion of start & end dates
+        and numbering for both string and list outputs.
+        """
+        include_end_date = True
+        numbered = True
+
+        if not getattr(self, "project_reports", None):
+            return "" if as_string else []
+
+        entries: list[dict] = []
+        for pr in self.project_reports:
+            title = getattr(pr, "project_name", None) or "Untitled Project"
+            start_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            )
+            end_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+            )
+
+            if start_dt:
+                formatted = f"{title} - Started {self._fmt_mdy_short(start_dt)}"
+            else:
+                formatted = f"{title} - Start date unknown"
+            if end_dt:
+                formatted += f" (Ended {self._fmt_mdy_short(end_dt)})"
+            else:
+                formatted += " (End date unknown)"
+
+            entries.append(
+                {"title": title, "start_date": start_dt, "formatted": formatted})
+
+        dated = [e for e in entries if e["start_date"] is not None]
+        undated = [e for e in entries if e["start_date"] is None]
+
+        # Sort dated projects by start_date (oldest -> newest)
+        dated.sort(key=lambda e: e["start_date"])
+        if newest_first:
+            dated.reverse()
+
+        ordered = dated + undated
+
+        # Build numbered lines (numbering always applied)
+        lines = [f"{i+1}. {e['formatted']}" for i, e in enumerate(ordered)]
+
+        if as_string:
+            return "\n".join(lines)
+
+        return lines
