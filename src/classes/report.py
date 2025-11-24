@@ -166,7 +166,8 @@ class ProjectReport(BaseReport):
             self._find_coding_languages_ratio()
             self._calculate_ari_score()
             self._weighted_skills()
-            self._analyze_git_authorship(user_email)
+            if user_email:
+                self._analyze_git_authorship(user_email)
         else:
             self.project_statistics = statistics
 
