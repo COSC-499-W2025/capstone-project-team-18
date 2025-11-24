@@ -391,13 +391,13 @@ class ArtifactMiner(cmd.Cmd):
         '''Advanced preferences configuration submenu'''
         self.update_history(self.cmd_history, "preferences")
 
-        print("\n=== Preferences Configuration ===")
-        print("(1) Configure Date Range Filtering")
-        print("(2) Configure Files to Ignore")
-        print("(3) Reset to Defaults")
-        print("(4) Back to Main Menu")
-
         while True:
+            print("\n=== Preferences Configuration ===")
+            print("(1) Configure Date Range Filtering")
+            print("(2) Configure Files to Ignore")
+            print("(3) Reset to Defaults")
+            print("(4) Back to Main Menu")
+
             choice = input("\nSelect option (1-4): ").strip()
 
             if self._handle_cancel_input(choice):
@@ -406,18 +406,17 @@ class ArtifactMiner(cmd.Cmd):
 
             if choice == "1":
                 self._configure_date_range()
-                break
             elif choice == "2":
                 self._configure_files_to_ignore()
-                break
             elif choice == "3":
                 self._reset_preferences()
-                break
             elif choice == "4":
                 print("\n" + self.options)
                 return
             else:
                 print("Invalid choice. Please select 1-4.")
+
+
 
     def do_view(self, arg):
         '''Display current preferences and configuration'''
@@ -494,8 +493,6 @@ class ArtifactMiner(cmd.Cmd):
         else:
             print("✗ Failed to save date range configuration")
 
-        print("\n" + self.options)
-
     def _configure_files_to_ignore(self):
         '''Configure file extensions to ignore'''
         print("\nConfigure file extensions to ignore during analysis")
@@ -523,7 +520,6 @@ class ArtifactMiner(cmd.Cmd):
         else:
             print("✗ Failed to save file ignore configuration")
 
-        print("\n" + self.options)
 
     def _reset_preferences(self):
         '''Reset all preferences to defaults'''
@@ -539,8 +535,6 @@ class ArtifactMiner(cmd.Cmd):
                 print("✗ Failed to reset preferences")
         else:
             print("Reset cancelled")
-
-        print("\n" + self.options)
 
     def _parse_date_input(self, date_str: str) -> bool:
         '''Validate date input format (YYYY-MM-DD)'''
