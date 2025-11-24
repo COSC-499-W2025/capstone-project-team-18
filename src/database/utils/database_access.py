@@ -109,20 +109,24 @@ def get_file_reports(id: int, engine) -> list[FileReport]:
                 # get stat if col exists and has value
                 if hasattr(row, column_name):
                     value = getattr(row, column_name)
-
-                    if value is not None:
-                        # Some stats store non-primitive data types, but the db stores them
-                        # as primitives, so we need to convert them back.
-                        if column_name == "type_of_file":
-                            value = FileDomain(value)
-                        if column_name == "coding_language":
-                            # CodingLanguage stores tuples: e.g., ("Python", [".py", ...])
-                            # Find the enum member with matching value
-                            for lang in CodingLanguage:
-                                if lang.value[0] == value[0]:  # type: ignore
-                                    value = lang
-                                    break
-                        statistics.add(Statistic(stat_template.value, value))
+                    try:
+                        if value is not None:
+                            # Some stats store non-primitive data types, but the db stores them
+                            # as primitives, so we need to convert them back.
+                            if column_name == "type_of_file":
+                                value = FileDomain(value)
+                            if column_name == "coding_language":
+                                # CodingLanguage stores tuples: e.g., ("Python", [".py", ...])
+                                # Find the enum member with matching value
+                                for lang in CodingLanguage:
+                                    if lang.value[0] == value[0]:  # type: ignore
+                                        value = lang
+                                        break
+                            statistics.add(
+                                Statistic(stat_template.value, value))
+                    except Exception as e:
+                        raise ValueError(
+                            f"Error: {e} when getting value in file_report for column {column_name}")
 
             file_report = FileReport(statistics, row.filepath)
             file_reports.append(file_report)
