@@ -1,3 +1,13 @@
+# Week 12 11/17 - 11/23
+
+# Peer Evaluation!
+[Peer Eval THN](./log_images/personal_log_imgs/tawana/tawana_week12_log.png)
+
+# Recap on your week goals
+This week, I completed Issue `#165` by implementing UserReport.get_chronological_skills(), which generates a time-ordered list of skills based on the earliest project in which each skill appears. The method supports newest-first sorting, handles undated skills, and returns either a formatted string or list. A full test suite (test_user_report_chronological_skills.py) validates ordering, formatting, and edge-case behavior.
+
+Additionally, I reviewed multiple PRs this week to support team progress. I reviewed Priyansh’s PR `#231` on implementing project ranking and Jimi’s PR `#230` on improving git contribution accuracy, providing feedback on correctness, clarity, and test coverage.
+
 # Week 10 11/03 - 11/09
 
 # Peer Evaluation!
