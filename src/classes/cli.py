@@ -244,6 +244,10 @@ class ArtifactMiner(cmd.Cmd):
                 print("\n" + self.options)
                 break
 
+            # Handle exit/quit first
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
             answer = answer.upper()
             if answer == 'Y':  # user consents
                 self.user_consent = True
@@ -278,6 +282,10 @@ class ArtifactMiner(cmd.Cmd):
         while True:
             prompt = "Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return): "
             answer = input(prompt).strip()
+
+            # Handle exit/quit first
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
 
             # Check if user wants to cancel
             if self._handle_cancel_input(answer):
@@ -359,6 +367,9 @@ class ArtifactMiner(cmd.Cmd):
             if self._handle_cancel_input(name):
                 print("\n" + self.options)
                 return
+            # Handle exit/quit first
+            if name.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
             if name:
                 break
             print("Name cannot be empty. Please try again.")
@@ -369,6 +380,9 @@ class ArtifactMiner(cmd.Cmd):
             if self._handle_cancel_input(password):
                 print("\n" + self.options)
                 return
+            # Handle exit/quit first
+            if password.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
             if password:
                 break
             print("Password cannot be empty. Please try again.")
@@ -398,7 +412,11 @@ class ArtifactMiner(cmd.Cmd):
             print("(3) Reset to Defaults")
             print("(4) Back to Main Menu")
 
-            choice = input("\nSelect option (1-4): ").strip()
+            choice = input("\nSelect option (1-4, or 'exit'/'quit' to close app): ").strip()
+
+            # User enters exit/quit
+            if choice.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
 
             if self._handle_cancel_input(choice):
                 print("\n" + self.options)
@@ -458,6 +476,10 @@ class ArtifactMiner(cmd.Cmd):
                 print("\n" + self.options)
                 break
 
+            # Handle exit/quit
+            if user_input.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
             # Check if user wants to go to preferences
             if user_input == '6':
                 return self.do_preferences(arg)
@@ -471,6 +493,10 @@ class ArtifactMiner(cmd.Cmd):
 
         while True:
             start_date = input("Enter start date (or 'skip' for no limit): ").strip()
+
+            # Handle exit/quit
+            if start_date.lower() in ['exit', 'quit']:
+                return self.do_exit("")
 
             # User enters back / cancel
             if self._handle_cancel_input(start_date):
@@ -486,6 +512,10 @@ class ArtifactMiner(cmd.Cmd):
 
         while True:
             end_date = input("Enter end date (or 'skip' for no limit): ").strip()
+
+            # Handle exit/quit
+            if end_date.lower() in ['exit', 'quit']:
+                return self.do_exit("")
 
             # User enters back / cancel
             if self._handle_cancel_input(end_date):
@@ -520,6 +550,11 @@ class ArtifactMiner(cmd.Cmd):
         if self._handle_cancel_input(extensions_input):
             return
 
+        # Handle exit/quit
+        if extensions_input.lower() in ['exit', 'quit']:
+            self.do_exit("")
+            return
+
         if extensions_input.lower() == 'clear':
             extensions = []
         else:
@@ -544,6 +579,10 @@ class ArtifactMiner(cmd.Cmd):
         # User enters back /cancel
         if self._handle_cancel_input(confirm):
             return
+
+        # Handle exit/quit
+        if confirm.lower() in ['exit', 'quit']:
+            return self.do_exit("")
 
         if confirm.lower() == 'y':
             # User enters back /cancel
@@ -636,6 +675,10 @@ class ArtifactMiner(cmd.Cmd):
             print("\n" + self.options)
             return  # Return to main menu
 
+        # Handle exit/quit first
+        if answer.lower() in ['exit', 'quit']:
+            return self.do_exit(arg)
+
         while (not self.is_valid_email(answer)):
             prompt = "Please enter a valid email: (or 'back' / 'cancel' to return): "
             answer = input(prompt).strip()
@@ -685,5 +728,5 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_exit(self, arg):
         '''Exits the program.'''
-        print('Exiting the program...')
-        return True
+        print("\nThank you for using Artifact Miner! Exiting the program...")
+        sys.exit(0)
