@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from app import start_miner
+from src.app import start_miner
 
 class UserPreferences:
     """Manages User Preferences with JSON storage in database folder"""
@@ -549,7 +549,7 @@ class ArtifactMiner(cmd.Cmd):
             # User enters back /cancel
             if self._handle_cancel_input(confirm):
                 return
-            
+
             success = self.preferences.reset()
             if success:
                 print("✓ All preferences reset to defaults")

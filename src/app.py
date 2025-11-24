@@ -5,10 +5,10 @@ interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
 
-from utils.zipped_utils import unzip_file
-from utils.project_discovery import discover_projects
-from classes.analyzer import extract_file_reports
-from classes.report import ProjectReport, UserReport
+from src.utils.zipped_utils import unzip_file
+from src.utils.project_discovery import discover_projects
+from src.classes.analyzer import extract_file_reports
+from src.classes.report import ProjectReport, UserReport
 import tempfile
 
 
