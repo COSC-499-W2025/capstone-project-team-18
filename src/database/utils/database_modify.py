@@ -8,6 +8,9 @@ from src.classes.report import FileReport, ProjectReport, UserReport
 from src.database.db import FileReportTable, ProjectReportTable, UserReportTable, __repr__
 from enum import Enum
 
+from sqlalchemy.orm import Session
+from src.database.db import get_engine
+
 
 def create_row(report: FileReport | ProjectReport | UserReport):
     '''
@@ -54,10 +57,8 @@ def create_row(report: FileReport | ProjectReport | UserReport):
         # CodingLanguage enum to a primitive type. So, we check for
         # these enum and either convert them to a string (for
         # something like FileDomain), or we get the first value of
-        # the CodingLanguage enum object (a string of the coding
-        # language)
+        # the CodingLanguage enum object (a string of the coding language)
         # ----------------------------------------------------------
-
         if isinstance(value, Enum):
             value = value.value  # e.g., FileDomain enums have a simple string .value
         if isinstance(value, dict):
@@ -75,3 +76,47 @@ def create_row(report: FileReport | ProjectReport | UserReport):
         if hasattr(row, col_name):
             setattr(row, col_name, value)
     return row
+
+
+def delete_user_report_and_related_data(report_id=None, title=None, zipped_filepath=None):
+    """
+    Delete a user report and all related project and file reports by id, title, or zipped_filepath.
+    Args:
+        report_id (int): ID of the user report to delete.
+        title (str): Title of the user report to delete.
+        zipped_filepath (str): Filepath to the zipped file to delete.
+    """
+    engine = get_engine()
+    try:
+        with Session(engine) as session:
+            query = session.query(UserReportTable)
+            user_report = None
+            if report_id is not None:
+                user_report = session.get(UserReportTable, report_id)
+            elif title is not None:
+                user_report = query.filter_by(title=title).first()
+            elif zipped_filepath is not None:
+                user_report = query.filter_by(
+                    zipped_filepath=zipped_filepath).first()
+            else:
+                raise ValueError(
+                    "Must provide report_id, title, or zipped_filepath")
+
+            if not user_report:
+                raise ValueError("User report not found")
+
+            # Find and delete project reports only associated with this user report
+            for project_report in list(user_report.project_reports):
+                if len(project_report.user_reports) == 1:
+                    session.delete(project_report)
+            user_report.project_reports.clear()
+            session.flush()
+            session.delete(user_report)
+            session.commit()
+            return True
+    except ValueError:
+        # Let ValueError propagate for test and caller handling
+        raise
+    except Exception as e:
+        print(f"Error deleting user report and related data: {e}")
+        return False

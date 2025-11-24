@@ -42,51 +42,6 @@ def unequal_contribution_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def shared_file_dir(tmp_path: Path) -> Path:
-    """Creates a directory with single file modified by 3 different authors."""
-    project_dir = tmp_path / "SharedFile"
-    project_dir.mkdir()
-    repo = Repo.init(project_dir)
-
-    # Alice creates file
-    with repo.config_writer() as config:
-        config.set_value("user", "name", "Alice")
-        config.set_value("user", "email", "alice@example.com")
-    (project_dir / "shared.py").write_text("# Initial version")
-    repo.index.add(["shared.py"])
-    repo.index.commit("Alice's initial commit")
-
-    # Bob modifies same file
-    with repo.config_writer() as config:
-        config.set_value("user", "name", "Bob")
-        config.set_value("user", "email", "bob@example.com")
-    (project_dir / "shared.py").write_text("# Modified by Bob")
-    repo.index.add(["shared.py"])
-    repo.index.commit("Bob's modification")
-
-    # Charlie also modifies it
-    with repo.config_writer() as config:
-        config.set_value("user", "name", "Charlie")
-        config.set_value("user", "email", "charlie@example.com")
-    (project_dir / "shared.py").write_text("# Modified by Charlie")
-    repo.index.add(["shared.py"])
-    repo.index.commit("Charlie's modification")
-
-    return tmp_path
-
-
-@pytest.fixture
-def no_git_dir(tmp_path: Path) -> Path:
-    """Creates directory with project that has no Git repository."""
-    project_dir = tmp_path / "NoGitProject"
-    project_dir.mkdir()
-    (project_dir / "main.py").write_text("print('No git')")
-    (project_dir / "utils.py").write_text("# Utils")
-
-    return tmp_path
-
-
-@pytest.fixture
 def git_dir(tmp_path: Path) -> Path:
     """Creates directory with individual project (1 author) and group project (2 authors)."""
     # Individual project with single author
