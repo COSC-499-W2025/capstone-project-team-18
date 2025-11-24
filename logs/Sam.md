@@ -1,3 +1,30 @@
+# Week 12 11/15 - 11/23
+
+1[Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week12_log.png)
+
+This week, I completed the milestone requirement of "Extract key skills from a given project". I identifyed the skills at the project level (PR #206). Next, I completed the milestone of "Output all the key information for a project." I did this by developing the bullet points that would be listed under every project in the resume (skills, coding languages, was it a group project) and handled the printing to the terminal (PR #198).
+
+Because the demo was this week, I found and fixed many different bugs (PRs #201, #190, #191). Then, I focused more the git project processing. I centeralized the way we discover git repos (PR #217), and added git functionality for analyzing project start and end dates. Now, if the file is git tracked, the miner will look at the first commit to get the date that the file is first created, rather then that file's metadata #227.
+
+NOTE: I might have thousands of lines added for this week. This is because I was modifiying the very basic classes, which meant I had to go and modfiy a lot of tests. Also, a lot of the PRs I made were dependent on other PRs, when this happens, the most recent PR also inculdes the number of lines change in the PR it is dependent on. However, I only used Gen AI in good faith, not to write all my code.
+
+I also reviewed these PRs:
+ - #231
+ - #230 One of the comments I left, I coded my changes up and that spawned a PR #239 to merge into that branch.
+ - #220
+ - #209
+ - #207
+ - #199
+ - #181
+ - #179
+ - #178
+
+Looking forward to next week I really want to finish up the milestones. Notably I will be bringing everything together, and looking at:
+- Expanding portiflo information
+- Supporting development (fixing bugs, wrapping everything together, database support)
+
+
+
 # Week 10 11/03 - 11/09
 
 ![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week10_log.png)
