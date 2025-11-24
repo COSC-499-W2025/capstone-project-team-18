@@ -243,9 +243,7 @@ class ProjectReport(BaseReport):
         Filters out virtual environment files before calculating ratios.
         Uses file sizes in bytes (matching GitHub's methodology).
         """
-        import logging
         import os
-        logger = logging.getLogger(__name__)
 
         langauges_to_bytes = {}
 
@@ -259,10 +257,6 @@ class ProjectReport(BaseReport):
         skip_filenames = ['manage.py', 'wsgi.py', 'asgi.py', '__init__.py', 'settings.py',
                          'urls.py', 'tests.py']
         skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
-
-        skipped_count = 0
-        included_count = 0
-        included_files_by_lang = {}
 
         # Track seen filenames to avoid duplicates (just by filename, not size)
         seen_filenames = {}
@@ -302,12 +296,10 @@ class ProjectReport(BaseReport):
                 should_skip = True
 
             if should_skip:
-                skipped_count += 1
                 continue
 
             # Skip if we've already seen this filename (keep first occurrence from /code/)
             if filename in seen_filenames:
-                skipped_count += 1
                 continue
 
             coding_language = report.get_value(
@@ -327,31 +319,12 @@ class ProjectReport(BaseReport):
             seen_filenames[filename] = report.filepath
 
             if file_size > 0:
-                seen_filenames[filename] = report.filepath
                 langauges_to_bytes[coding_language] = file_size + \
                     langauges_to_bytes.get(coding_language, 0)
-                included_count += 1
-
-                # Track which files are included
-                lang_name = coding_language.value[0] if hasattr(coding_language, 'value') else str(coding_language)
-                if lang_name not in included_files_by_lang:
-                    included_files_by_lang[lang_name] = []
-                included_files_by_lang[lang_name].append((report.filepath, file_size))
             else:
                 # Count empty files towards the language ratio (test files are often empty)
                 langauges_to_bytes[coding_language] = 1 + \
                     langauges_to_bytes.get(coding_language, 0)
-                included_count += 1
-
-        logger.info(f"Project '{self.project_name}': Included {included_count} files, skipped {skipped_count} files")
-
-        # Log sample files for each language
-        for lang, files in included_files_by_lang.items():
-            total_bytes = sum(size for _, size in files)
-            logger.info(f"  {lang}: {len(files)} files, {total_bytes} total bytes")
-            # Show first 3 files as samples
-            for filepath, size in files[:3]:
-                logger.info(f"    - {filepath} ({size} bytes)")
 
         if len(langauges_to_bytes) == 0:
             # Don't log this stat if it isn't a coding project
@@ -540,9 +513,7 @@ class UserReport(BaseReport):
         filtering out virtual environment files.
         Uses file sizes in bytes (matching GitHub's methodology).
         '''
-        import logging
         import os
-        logger = logging.getLogger(__name__)
 
         lang_to_bytes = {}
 
@@ -556,9 +527,6 @@ class UserReport(BaseReport):
         skip_filenames = ['manage.py', 'wsgi.py', 'asgi.py', '__init__.py', 'settings.py',
                             'urls.py', 'tests.py']
         skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
-
-        total_skipped = 0
-        total_included = 0
 
         # Track seen files across all projects to avoid duplicates (just by filename)
         seen_filenames = {}
@@ -575,14 +543,14 @@ class UserReport(BaseReport):
             sorted_reports = sorted(
                 proj_report.file_reports,
                 key=lambda r: (
-                    'database' in str(r.filepath).lower(),  # Convert to string
+                    'database' in str(r.filepath).lower(),
                     str(r.filepath)
                 )
             )
 
             for file_report in sorted_reports:
                 # Filter out virtual environment files
-                filepath_lower = file_report.filepath.lower()
+                filepath_lower = str(file_report.filepath).lower()
 
                 # Normalize path separators and split into components
                 path_parts = filepath_lower.replace('\\', '/').split('/')
@@ -604,12 +572,10 @@ class UserReport(BaseReport):
                     should_skip = True
 
                 if should_skip:
-                    total_skipped += 1
                     continue
 
                 # Skip if we've already seen this filename
                 if filename in seen_filenames:
-                    total_skipped += 1
                     continue
 
                 coding_language = file_report.get_value(
@@ -630,11 +596,9 @@ class UserReport(BaseReport):
 
                 if file_size > 0:
                     project_lang_to_bytes[coding_language] = project_lang_to_bytes.get(coding_language, 0) + file_size
-                    total_included += 1
                 else:
                     # Count empty files towards the language ratio (test files are often empty)
                     project_lang_to_bytes[coding_language] = project_lang_to_bytes.get(coding_language, 0) + 1
-                    total_included += 1
 
             # Aggregate filtered byte counts to user level
             for lang, byte_count in project_lang_to_bytes.items():
@@ -642,8 +606,6 @@ class UserReport(BaseReport):
                     lang_to_bytes[lang] += byte_count
                 else:
                     lang_to_bytes[lang] = byte_count
-
-        logger.info(f"User report: Included {total_included} files, skipped {total_skipped} files for language ratio")
 
         if len(lang_to_bytes) < 1:
             return  # don't log this stat b/c there are no coding languages
