@@ -235,8 +235,7 @@ def test_coding_ratio_in_normal_project(tmp_path):
         path = tmp_path / file
         Path(path).write_text("")
 
-        # Fix: pass the full path as a single argument
-        reports.append(get_appropriate_analyzer(str(path)).analyze())
+        reports.append(get_appropriate_analyzer(str(tmp_path), file).analyze())
 
     project_report = ProjectReport(reports)
 

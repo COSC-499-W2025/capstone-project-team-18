@@ -2,22 +2,23 @@
 This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
+import os
+import time
 from .report import FileReport
-from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage
+from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage, FileStatisticTemplate
 import datetime
 from pathlib import Path
 import logging
 import re
-from typing import Optional
+from typing import Optional, Any
 import ast
 from src.utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
-from git import Repo, InvalidGitRepositoryError
+from git import GitCommandError, Repo, InvalidGitRepositoryError
 import tinycss2
 from bs4 import BeautifulSoup
 
 
-logging.basicConfig(level=logging.INFO)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,13 @@ def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[s
     for file in projectFiles:
 
         analyzer = get_appropriate_analyzer(
-            project_file.root_path + "/" + file, email)
+            project_file.root_path, file, project_file.repo, email)
 
-        reports.append(analyzer.analyze())
+        try:
+            reports.append(analyzer.analyze())
+        except Exception as e:
+            logger.error(
+                f"Error analyzing file {file} in {project_file.name}: {e}")
 
     return reports
 
@@ -59,31 +64,103 @@ class BaseFileAnalyzer:
     Attributes:
         filepath (str): The path to the file being analyzed.
         stats (StatisticIndex): The index holding collected statistics.
+        realtive_path (str): The path to the file relative to the
+            top-level project directory.
+        repo (Optional[Repo]): The Git repository object if the file
+            is part of a Git repository.
+        email (Optional[str]): The email of the user analyzing the file.
 
     Statistics:
         - DATE_CREATED
         - DATE_MODIFIED
+        - FILE_SIZE_BYTES
     """
 
-    def __init__(self, filepath: str, email: Optional[str] = None):
-        self.filepath = filepath
+    def __init__(self,
+                 path_to_top_level_project: str,
+                 relative_path: str,
+                 repo: Optional[Repo] = None,
+                 email: Optional[str] = None
+                 ):
+
+        self.path_to_top_level_project = path_to_top_level_project
+        self.relative_path = relative_path
+        self.filepath = f"{path_to_top_level_project}/{relative_path}"
+        self.repo = repo
         self.email = email
         self.stats = StatisticIndex()
+        self.is_git_tracked = self.file_in_git_repo()
+
+    def file_in_git_repo(self) -> bool:
+        """
+        Check to see the project is in a git repository and
+        if so, that this specific file is tracked by git.
+        """
+
+        if self.repo is None:
+            return False
+
+        try:
+            self.repo.blame('HEAD', self.relative_path)
+
+            return True
+        except (ValueError, GitCommandError, Exception) as e:
+            logger.debug(
+                f"File not tracked by git or git error: {e}")
+            return False
 
     def _process(self) -> None:
         """
-        A private function that collects basic statistics available for any file.
-        This includes a file's:
+        This is the main processing function for the analyzers family
+        of classes. It will always be run first before any subclass
+        analysis is done.
+
+        Here we collect basic file statistics that are
+        common to all file types. That being:
         - Creation date
-        - Last modified/accessed date
+        - Last modified date
         - Size (in bytes)
 
-        All of the metadata is wrapped into a list and put into `self.stats`.
-        """
-        try:
-            metadata = Path(self.filepath).stat()
+        If the file is part of a Git repository, we get the creation
+        and last modified dates from the Git commit history. If not,
+        we fall back to the filesystem metadata.
 
-            # Map file statistic templates to their corresponding timestamp values
+        Likewise with any of the analyzers that extend this class,
+        you can call this _process method and know that these basic
+        statistics will be collected in the self.stats StatisticIndex.
+
+        """
+
+        metadata = None
+        metadata = Path(self.filepath).stat()
+
+        stats = [
+            Statistic(FileStatCollection.FILE_SIZE_BYTES.value,
+                      metadata.st_size),
+        ]
+
+        if self.is_git_tracked:
+            # Get the creation date from the first commit
+            # and get the last modified date from the latest commit
+
+            try:
+                commits = list(self.repo.iter_commits(  # pyright: ignore[reportOptionalMemberAccess]
+                    paths=self.relative_path))
+            except Exception as e:
+                logger.debug(f"InvalidGitRepositoryError: {e}")
+                commits = []
+
+            if commits:
+                first_commit = commits[-1]
+                latest_commit = commits[0]
+
+                stats.append(Statistic(FileStatCollection.DATE_CREATED.value, datetime.datetime.fromtimestamp(
+                    first_commit.authored_date)))
+                stats.append(Statistic(FileStatCollection.DATE_MODIFIED.value, datetime.datetime.fromtimestamp(
+                    latest_commit.authored_date)))
+        else:
+            # Fallback to filesystem metadata
+
             """
             Special note here:
 
@@ -93,22 +170,12 @@ class BaseFileAnalyzer:
             we treat that as DATE_CREATED
             """
 
-            timestamps = {
-                FileStatCollection.DATE_CREATED.value: metadata.st_atime,
-                FileStatCollection.DATE_MODIFIED.value: metadata.st_mtime,
-            }
+            stats.append(Statistic(FileStatCollection.DATE_CREATED.value, datetime.datetime.fromtimestamp(
+                metadata.st_atime)))
+            stats.append(Statistic(FileStatCollection.DATE_MODIFIED.value, datetime.datetime.fromtimestamp(
+                metadata.st_mtime)))
 
-            # Add timestamp stats
-            for template, value in timestamps.items():
-                self.stats.add(
-                    Statistic(template, datetime.datetime.fromtimestamp(value)))
-
-            self.stats.add(
-                Statistic(FileStatCollection.FILE_SIZE_BYTES.value, metadata.st_size))
-
-        except (FileNotFoundError, PermissionError, OSError, AttributeError) as e:
-            logging.error(
-                f"Couldn't access metadata for a file in: {self.filepath}. \nError thrown: {str(e)}")
+        self.stats.extend(stats)
 
     def analyze(self) -> FileReport:
         """
@@ -116,23 +183,7 @@ class BaseFileAnalyzer:
         """
         self._process()
 
-        return FileReport(statistics=self.stats, filepath=self.filepath)
-
-    def extract_file_reports(self, project_title: str, project_structure: dict) -> Optional[list[FileReport]]:
-        """
-        Method to extract individual fileReports within each project
-        """
-        # Given a single project for a user and the project's structure return a list with each fileReport
-        projectFiles = project_structure.get(project_title)
-        # list of reports for each file in an individual project to be returned
-        reports = []
-        if projectFiles is not None:
-            for file in projectFiles:
-                analyzer = BaseFileAnalyzer(file)
-                reports.append(analyzer.analyze())
-        else:
-            return None
-        return reports
+        return FileReport(statistics=self.stats, filepath=self.relative_path)
 
 
 class TextFileAnalyzer(BaseFileAnalyzer):
@@ -151,9 +202,6 @@ class TextFileAnalyzer(BaseFileAnalyzer):
     Statistics:
         - LINES_IN_FILE
     """
-
-    def __init__(self, filepath: str, email: Optional[str] = None):
-        super().__init__(filepath, email)
 
     def _process(self) -> None:
         super()._process()
@@ -251,14 +299,12 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             Statistic(FileStatCollection.TYPE_OF_FILE.value,
                       FileDomain.CODE),
         ]
-        if self._is_git_repo(self.filepath):
 
-            file_commit_percentage = self._get_file_commit_percentage(
-                self.filepath)
+        file_commit_percentage = self._get_file_commit_percentage()
 
-            if file_commit_percentage is not None:
-                stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
-                                       file_commit_percentage))
+        if file_commit_percentage is not None:
+            stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                                   file_commit_percentage))
 
         self.stats.extend(stats)
 
@@ -280,15 +326,19 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             if suffix in language.value[1]:
                 return self.stats.add(Statistic(FileStatCollection.CODING_LANGUAGE.value, language))
 
-    def _get_file_commit_percentage(self, filepath: str):
-        try:
-            # Allow passing either a file path or a repo/worktree path. Search parent
-            # directories so passing a file path (e.g. '/path/to/repo/file.py') still
-            # locates the repository.
-            repo = Repo(Path(filepath).parent, search_parent_directories=True)
+    def _get_file_commit_percentage(self) -> Optional[float]:
+        """
+        Calculate the percentage of lines in the file
+        that were authored by the user with the given email.
+        """
 
+        # If the file is not tracked by git or email is None, return None
+        if self.is_git_tracked is False or self.email is None or self.repo is None:
+            return None
+
+        try:
             # gets blame for each line
-            blame_info = repo.blame('HEAD', filepath)
+            blame_info = self.repo.blame('HEAD', self.relative_path)
 
             commit_count = 0
             line_count = 0
@@ -307,13 +357,6 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         except Exception as e:
             logger.debug(f"Exception while computing commit percentage: {e}")
             return None
-
-    def _is_git_repo(self, path: str):
-        try:
-            _ = Repo(Path(path).parent, search_parent_directories=True).git_dir
-            return True
-        except InvalidGitRepositoryError:
-            return False
 
 
 class PythonAnalyzer(CodeFileAnalyzer):
@@ -848,56 +891,61 @@ class PHPAnalyzer(CodeFileAnalyzer):
         self.stats.extend(stats)
 
 
-def get_appropriate_analyzer(filepath: str, email: Optional[str] = None) -> BaseFileAnalyzer:
+def get_appropriate_analyzer(
+    path_to_top_level_project: str,
+    relative_path: str,
+    repo: Optional[Repo] = None,
+    email: Optional[str] = None
+) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
     This allows FileReport to automatically use the best analyzer.
     """
 
-    file_path = Path(filepath)
+    file_path = Path(path_to_top_level_project + "/" + relative_path)
     extension = file_path.suffix.lower()
 
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:
-        return NaturalLanguageAnalyzer(filepath, email)
+        return NaturalLanguageAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # Python files
     if extension == '.py':
-        return PythonAnalyzer(filepath, email)
+        return PythonAnalyzer(path_to_top_level_project, relative_path, repo, email)
     # Java files
     if extension == '.java':
-        return JavaAnalyzer(filepath, email)
+        return JavaAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # JavaScript files
     if extension in {'.js', '.jsx'}:
-        return JavaScriptAnalyzer(filepath, email)
+        return JavaScriptAnalyzer(path_to_top_level_project, relative_path, repo, email)
     # C files
     if extension == '.c':
-        return CAnalyzer(filepath, email)
+        return CAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
-        return TypeScriptAnalyzer(filepath, email)
+        return TypeScriptAnalyzer(path_to_top_level_project, relative_path, repo, email)
     # CSS files
     if extension == '.css':
-        return CSSAnalyzer(filepath, email)
+        return CSSAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
-        return HTMLAnalyzer(filepath, email)
+        return HTMLAnalyzer(path_to_top_level_project, relative_path, repo, email)
     # PHP files
     if extension == '.php':
-        return PHPAnalyzer(filepath, email)
+        return PHPAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # Text-based files
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
-        return TextFileAnalyzer(filepath)
+        return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     for language in CodingLanguage:
         if extension in language.value[1]:
-            return CodeFileAnalyzer(filepath)
+            return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # Default to base analyzer
-    return BaseFileAnalyzer(filepath)
+    return BaseFileAnalyzer(path_to_top_level_project, relative_path, repo, email)

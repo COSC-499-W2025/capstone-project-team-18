@@ -13,20 +13,20 @@ from src.utils.zipped_utils import unzip_file
 TEST_DIR = Path(__file__).parent / "resources"
 
 
-def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "utf-8") -> Path:
+def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "utf-8") -> list[str]:
     """
     Helper function to create a new file with
     the provided name, in the provided path,
     with the provided content in the provided encoding.
     """
 
-    path = path / filename
-    path.write_text(content, encoding=encoding)
-    return path
+    path_full = path / filename
+    path_full.write_text(content, encoding=encoding)
+    return [str(path), filename]
 
 
 @pytest.fixture
-def temp_text_file(tmp_path: Path) -> Path:
+def temp_text_file(tmp_path: Path) -> list[str]:
     '''Create a temporary file that will be deleted after the test'''
     return _create_temp_file("sample.txt", "Myles Jack wasn't down\n", tmp_path)
 
@@ -81,15 +81,15 @@ def temp_directory_with_subfolder(tmp_path: Path) -> dict:
     }
 
 
-def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_text_file: Path):
+def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_text_file: list[str]):
     '''
     Test that the metadata of the file we created in `temp_text_file()` will be read and stored
     in a `FileReport` object by the `analyze()` function.
     '''
-    analyzer = BaseFileAnalyzer(str(temp_text_file))
+    analyzer = BaseFileAnalyzer(temp_text_file[0], temp_text_file[1])
     report = analyzer.analyze()  # FileReport obj
     # Check that filepath is stored in report obj
-    assert getattr(report, "filepath") == str(temp_text_file)
+    assert getattr(report, "filepath") == temp_text_file[1]
 
     # Core stats exist
     size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
@@ -102,19 +102,19 @@ def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_tex
     assert isinstance(modified, datetime.datetime)
 
     # Size should match the actual file size
-    assert size == temp_text_file.stat().st_size
+    assert size == Path(
+        temp_text_file[0] + '/' + temp_text_file[1]).stat().st_size
 
 
 def test_base_file_analyzer_nonexistent_file_logs_and_returns_empty():
     '''
-    Test that the `analyze()` function returns nothing if an error is thrown
+    Test that the `analyze()` throws error for a non-existent file
     '''
     fake_file = "does_not_exist.xyz"
-    analyzer = BaseFileAnalyzer(fake_file)
-    report = analyzer.analyze()
+    analyzer = BaseFileAnalyzer("", fake_file)
 
-    # report's StatisticIndex should be empty
-    assert len(report.statistics) == 0
+    with pytest.raises(Exception):
+        analyzer.analyze()
 
 
 def test_extract_file_reports_recieves_empty_project(tmp_path):
@@ -141,7 +141,8 @@ def test_extract_file_reports_returns_project(tmp_path):
     project_file = ProjectFiles(
         name="TestProject",
         root_path=str(tmp_path),
-        file_paths=files
+        file_paths=files,
+        repo=None
     )
 
     listReport = extract_file_reports(project_file)
@@ -161,7 +162,7 @@ def test_created_modifiyed_and_accessed_dates(tmp_path):
 
     file_path = tmp_path / "Projects" / "ProjectA" / "a_1.txt"
 
-    report = BaseFileAnalyzer(file_path).analyze()
+    report = BaseFileAnalyzer(str(file_path.parent), file_path.name).analyze()
 
     date_modified = report.get_value(FileStatCollection.DATE_MODIFIED.value)
     date_created = report.get_value(FileStatCollection.DATE_CREATED.value)
@@ -183,7 +184,8 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path):
     project_file = ProjectFiles(
         name="ProjectA",
         root_path=str(tmp_path),
-        file_paths=["a_1.txt", "a_2.txt", "subfolder/a_3.txt"]
+        file_paths=["a_1.txt", "a_2.txt", "subfolder/a_3.txt"],
+        repo=None
     )
 
     listReport = extract_file_reports(project_file)
@@ -215,7 +217,7 @@ def test_text_file_reading_many_encodings(tmp_path: Path):
             encoding=encoding,
         )
 
-        analyzer = TextFileAnalyzer(str(file_path))
+        analyzer = TextFileAnalyzer(file_path[0], file_path[1])
         analyzer.analyze()
 
         assert analyzer.text_content == content, (
@@ -235,7 +237,7 @@ def test_count_lines(tmp_path: Path):
     )
 
     file_path = _create_temp_file("test_count_lines.txt", content, tmp_path)
-    report = TextFileAnalyzer(str(file_path)).analyze()
+    report = TextFileAnalyzer(file_path[0], file_path[1]).analyze()
 
     line_count = report.get_value(FileStatCollection.LINES_IN_FILE.value)
     assert line_count == 5
@@ -246,7 +248,7 @@ def test_count_no_lines(tmp_path: Path):
     Test that TextFileAnalyzer correctly handles empty files.
     """
     file_path = _create_temp_file("test_count_no_lines.txt", "", tmp_path)
-    report = TextFileAnalyzer(str(file_path)).analyze()
+    report = TextFileAnalyzer(file_path[0], file_path[1]).analyze()
 
     line_count = report.get_value(FileStatCollection.LINES_IN_FILE.value)
     assert line_count == 1
@@ -259,7 +261,7 @@ def test_many_lines(tmp_path: Path):
 
     file_path = _create_temp_file(
         "test_count_no_lines.txt", "\n" * 999, tmp_path)
-    report = TextFileAnalyzer(str(file_path)).analyze()
+    report = TextFileAnalyzer(file_path[0], file_path[1]).analyze()
 
     line_count = report.get_value(FileStatCollection.LINES_IN_FILE.value)
     assert line_count == 1000
@@ -292,7 +294,7 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path: Path):
     file_path = _create_temp_file(
         "test_NaturalLanguageAnalyzer_core_stats.md", content, tmp_path)
 
-    report = NaturalLanguageAnalyzer(str(file_path)).analyze()
+    report = NaturalLanguageAnalyzer(file_path[0], file_path[1]).analyze()
 
     REAL_WORD_COUNT = 83
     REAL_ALPHA_NUMERIC_CHARACTER_COUNT = 356
@@ -340,7 +342,7 @@ def test_determines_correct_coding_language(tmp_path):
 
         path = _create_temp_file("temp" + extension, "", tmp_path)
 
-        report = CodeFileAnalyzer(str(path)).analyze()
+        report = CodeFileAnalyzer(path[0], path[1]).analyze()
 
         assert report.get_value(
             FileStatCollection.CODING_LANGUAGE.value) == value
@@ -357,7 +359,7 @@ def test_unkown_coding_language(tmp_path):
 
     path = _create_temp_file("temp" + ".xyx", "", tmp_path)
 
-    report = CodeFileAnalyzer(str(path)).analyze()
+    report = CodeFileAnalyzer(path[0], path[1]).analyze()
 
     assert report.get_value(FileStatCollection.CODING_LANGUAGE.value) == None
 
@@ -371,9 +373,8 @@ def test_PythonAnalyzer_core_stats():
     that the PythonAnalyzer is correctly measuring
     statistics about Python files.
     """
-    path = "./tests/resources/example_python.py"
 
-    report = PythonAnalyzer(path).analyze()
+    report = PythonAnalyzer("./tests/resources", "example_python.py").analyze()
 
     REAL_TYPE_OF_FILE = FileDomain.CODE
     REAL_NUMBER_OF_FUNCTIONS = 7
@@ -413,7 +414,7 @@ def test_PythonAnalyzer_no_functions_or_classes(tmp_path: Path):
     file_path = _create_temp_file(
         "test_PythonAnalyzer_no_functions_or_classes.py", content, tmp_path)
 
-    report = PythonAnalyzer(str(file_path)).analyze()
+    report = PythonAnalyzer(file_path[0], file_path[1]).analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)
@@ -434,8 +435,7 @@ def test_JavaAnalyzer(tmp_path):
     """
     from src.classes.analyzer import JavaAnalyzer
 
-    file_path = TEST_DIR / "example_java.java"
-    report = JavaAnalyzer(str(file_path)).analyze()
+    report = JavaAnalyzer(str(TEST_DIR), "example_java.java").analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)
@@ -455,8 +455,8 @@ def test_JavaScriptAnalyzer(tmp_path):
     """
     from src.classes.analyzer import JavaScriptAnalyzer
 
-    file_path = TEST_DIR / "example_javascript.js"
-    report = JavaScriptAnalyzer(str(file_path)).analyze()
+    report = JavaScriptAnalyzer(
+        str(TEST_DIR), "example_javascript.js").analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)

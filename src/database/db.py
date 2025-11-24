@@ -140,6 +140,8 @@ class UserReportTable(Base):
     zipped_filepath = mapped_column(String, nullable=True)
     
     id = mapped_column(Integer, primary_key=True)
+    title = mapped_column(String)
+    zipped_filepath = mapped_column(String)
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",
