@@ -569,6 +569,8 @@ class UserReport(BaseReport):
     @staticmethod
     def _coerce_datetime(val: Any) -> datetime | None:
         """Coerce a value to datetime. Raises TypeError if value cannot be coerced."""
+        if val is None:
+            return None
         if isinstance(val, datetime):
             return val
         if isinstance(val, date):
