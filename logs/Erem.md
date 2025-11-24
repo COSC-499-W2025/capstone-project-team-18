@@ -106,7 +106,7 @@ This week I implemented the foundational JSON preferences system for our CLI app
 
 The implementation involved a significant amount of code including comprehensive error handling, backwards compatibility support, and proper file system management within the database folder structure. This work represents the first PR stage of the  CLI User Prefrences and can be found in PR [#181](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/181), laying the groundwork for advanced user credential management and configuration options in subsequent releases. I also reviewed Alex's PR [154](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/154).
 
-## Week 11, Nov. 10-6
+## Week 11, Nov. 10-16
 
 ### Peer Eval
 
@@ -116,3 +116,14 @@ The implementation involved a significant amount of code including comprehensive
 This week I completed the second stage of the CLI User Preferences system implementation. I finalized PR [#181](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/181) by addressing all requested changes including fixing test failures, removing duplicate method definitions, and ensuring proper preference loading consistency.
 
 Building on that foundation, I successfully implemented and merged PR [#186](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/186) which added the complete user login and credentials system. This included developing the `do_login()` method with input validation and retry loops, adding credential storage methods to UserPreferences, and integrating the new "(5) User Login" option into the CLI command routing system. The implementation features secure password display, persistent credential storage, and proper integration with existing preference management.
+
+# Week 12, Nov 17-23
+
+![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week12_log.png)
+
+### Recap
+This week I wrapped up the third and final stage of the CLI User Preferences system with PR [#223](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/223).  Users can now configure advanced analysis settings through the new (6) Configure preferences submenu and view all current configurations via (7) View current preferences, with the viewer providing direct navigation to preference configuration. **This delievers on Milestone 1 requirement 6: _Store user configurations for future use_**
+
+I also tackled a critical bug fix in PR [#242](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/242) where the coding language ratio calculation was breaking in tests and returning `None` values. The issue was that the code was trying to use `os.path.getsize()` on file paths that didn't exist on disk during testing. I refactored both the `ProjectReport` and `UserReport` `_find_coding_languages_ratio()` methods to use file-level statistics (`FILE_SIZE_BYTES` and `LINES_IN_FILE`) instead, which works for both real files and test fixtures. I also updated the database schema to add missing `title` and `zipped_filepath` columns to the `user_report` table and regenerated the database to fix related test failures.
+
+For code reviews, I checked out Alex's database retrieval PR [#236](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/236) which added methods for fetching stored reports from the database, and Tawana's chronological skills list PR [#246](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/246) that organizes skills by time period for resume generation.
