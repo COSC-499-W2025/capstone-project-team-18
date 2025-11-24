@@ -10,10 +10,10 @@ This week, we focused on wrapping up final tasks and features, squashing bugs, a
 - 10. Extract key contribution metrics in a project, displaying information about the duration of the project and activity type contribution frequency (e.g., code vs test vs design vs document), and other important information
 - 11. Output all the key information for a project
 - 13. Retrieve previously generated portfolio information
-- 14. Retrieve previously generated résumé item ✓
-- 15. Rank importance of each project based on user's contributions ✓
-- 16 Summarize the top ranked projects ✓
-- 17. Delete previously generated insights and ensure files that are shared across multiple reports do not get affected ✓
+- 14. Retrieve previously generated résumé item
+- 15. Rank importance of each project based on user's contributions
+- 16. Summarize the top ranked projects
+- 17. Delete previously generated insights and ensure files that are shared across multiple reports do not get affected
 - 18. Produce a chronological list of projects
 - 19. Produce a chronological list of skills exercised
 
@@ -74,6 +74,5 @@ Additionally, we merged a working version of the app to the [`main`](https://git
 - [Issue #225: In Git Repos, Ignore a File a User Has Never Touched](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/225)
 
 ### Test Report
-Image should display the results of a script that runs all tests and displays summary of total tests that pass/fail
-![image](path)
 
+![pytest result](../log_images/team_log_imgs/tests_week12.png)
