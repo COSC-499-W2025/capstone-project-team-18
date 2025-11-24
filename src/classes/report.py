@@ -243,8 +243,9 @@ class ProjectReport(BaseReport):
         Filters out virtual environment files before calculating ratios.
         Uses file sizes in bytes (matching GitHub's methodology).
         """
-        import os
 
+        import os
+        
         langauges_to_bytes = {}
 
         # Skip keywords that indicate infrastructure/virtual environments
@@ -266,14 +267,14 @@ class ProjectReport(BaseReport):
         sorted_reports = sorted(
             self.file_reports,
             key=lambda r: (
-                'database' in str(r.filepath).lower(),  # Database paths go last
-                str(r.filepath)  # Then sort alphabetically
+                'database' in str(r.filepath).lower(),  # Convert to string first
+                str(r.filepath)  # Convert to string for sorting
             )
         )
 
         # Map coding language to file sizes in bytes
         for report in sorted_reports:
-            # Filter out virtual environment files by checking filepath
+            # Filter out virtual environment files
             filepath_lower = str(report.filepath).lower()
 
             # Normalize path separators and split into components
@@ -319,15 +320,14 @@ class ProjectReport(BaseReport):
             seen_filenames[filename] = report.filepath
 
             if file_size > 0:
-                langauges_to_bytes[coding_language] = file_size + \
-                    langauges_to_bytes.get(coding_language, 0)
+                langauges_to_bytes[coding_language] = langauges_to_bytes.get(
+                    coding_language, 0) + file_size
             else:
-                # Count empty files towards the language ratio (test files are often empty)
-                langauges_to_bytes[coding_language] = 1 + \
-                    langauges_to_bytes.get(coding_language, 0)
+                # Count empty files as 1 byte (test files are often empty)
+                langauges_to_bytes[coding_language] = langauges_to_bytes.get(
+                    coding_language, 0) + 1
 
         if len(langauges_to_bytes) == 0:
-            # Don't log this stat if it isn't a coding project
             return
 
         # Calculate the bytes as percentages of the total
@@ -513,7 +513,9 @@ class UserReport(BaseReport):
         filtering out virtual environment files.
         Uses file sizes in bytes (matching GitHub's methodology).
         '''
+        import logging
         import os
+        logger = logging.getLogger(__name__)
 
         lang_to_bytes = {}
 
@@ -533,7 +535,7 @@ class UserReport(BaseReport):
 
         for proj_report in self.project_reports:
             # Skip if project was created via from_statistics (no file_reports)
-            if not hasattr(proj_report, 'file_reports'):
+            if not hasattr(proj_report, 'file_reports') or proj_report.file_reports is None:
                 continue
 
             # Recalculate project ratios while filtering out venv files
