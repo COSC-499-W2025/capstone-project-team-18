@@ -18,6 +18,8 @@
 
 **[Week 10, Nov. 3-9](#week-8-nov-39)**
 
+**[Week 12, Nov. 17-23](#week-8-nov-1723)**
+
 
 
 
@@ -101,3 +103,13 @@ This week's goals were to expand on the end-to-end workflow for the artifact min
 ### Recap
 
 This week's goals as a team were to create more specifications within the project and work towards the demo for Milestone 1. I worked on expanding the depth of the individual contribution milestone. After adding a project wide contribution metric, this week I worked on using `git blame` to analyze this statistic for individual files. This will be expanded upon in the future, by aggregating across a project and getting an overview of 'ownership' in a project. Beyond this week and even Milestone 1, is analyzing sections committed by the user to find key skills and insights. As part of the group, I extensively reviewed Priyansh's PRs on our handling of zip files as we had spent time discussing it in class. I also reviewed Sam's language identifier and the documentation on the DB by Alex, which both gave a clear indication of the project direction.
+
+## Week 12, Nov. 17-23
+
+### Peer Eval
+
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week12_log.png)
+
+### Recap
+
+This week's goals as a team were to imporve upon the project demo we had created. We needed to add more specifications, including how we calculated the ratio of coding languages, add user preferences and more. This week , one of my roles was to refactor some of the git based features. This meant adding logic to ignore files and adjust behaviour based on whether a user provided an email or if a user didn't commit to a file. This would increase the true accuracy of a report. From that point, I worked on adding more git features such as a comprehensive statistic calculating the true percentage of code a user was responsible for in the final deliverable. All of these functions were tested, reviewed and checked thoroughly by. myself and group members. Apart from my own work, I assisted in code review for multiple PRs including Alex and Priyansh. They were working on database and CLI functionality and were able to merge after we discussed possible areas of improvement. AQs for next week, I hope to review all the contribution style features to ensure they not only work, but refactor where possible to reduce bloat. I also hope to refactor the test directory, add some features to better extrapolate the skills used in each project and increase the global documentation for our project.
