@@ -736,11 +736,14 @@ class UserReport(BaseReport):
                     continue
 
                 current_first = skill_first_seen.get(name)
-
-                if current_first is None:
-                    skill_first_seen[name] = start_dt
-                elif start_dt is not None and start_dt < current_first:
-                    skill_first_seen[name] = start_dt
+                
+                if start_dt is None:
+                    if current_first is None:
+                        skill_first_seen[name] = None
+                    continue
+                    
+                if current_first is None or start_dt < current_first:
+                        skill_first_seen[name] = start_dt
 
         if not skill_first_seen:
             return "" if as_string else []
