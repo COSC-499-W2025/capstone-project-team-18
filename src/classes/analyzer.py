@@ -10,7 +10,6 @@ import logging
 import re
 from typing import Optional
 import ast
-import os
 from src.utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
 from git import Repo, InvalidGitRepositoryError
