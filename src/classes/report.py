@@ -743,3 +743,84 @@ class UserReport(BaseReport):
             return "\n".join(lines)
 
         return lines
+
+    def get_chronological_skills(
+        self,
+        as_string: bool = True,
+        newest_first: bool = False,
+    ) -> list | str:
+        """
+        Produce a chronological list of skills exercised by the user across all projects.
+
+        Skills are inferred from PROJECT_SKILLS_DEMONSTRATED on each ProjectReport
+        (i.e., the WeightedSkills list), and ordered by the earliest project start
+        date in which they appear.
+
+        If as_string is True, returns a newline-separated string of formatted lines:
+            "Python — First exercised Jan 12, 2023"
+
+        If as_string is False, returns a list of formatted strings in the same order.
+        """
+        if not getattr(self, "project_reports", None):
+            return "" if as_string else []
+
+        # Map skill_name -> earliest datetime it appears in any project
+        skill_first_seen: dict[str, datetime | None] = {}
+
+        for pr in self.project_reports:
+            start_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            )
+            skills = pr.get_value(
+                ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value
+            )
+
+            if not skills:
+                continue
+
+            for ws in skills:
+                name = getattr(ws, "skill_name", None) or str(ws)
+                if not name:
+                    continue
+
+                current_first = skill_first_seen.get(name)
+                
+                if start_dt is None:
+                    if current_first is None:
+                        skill_first_seen[name] = None
+                    continue
+                    
+                if current_first is None or start_dt < current_first:
+                        skill_first_seen[name] = start_dt
+
+        if not skill_first_seen:
+            return "" if as_string else []
+        
+        dated: list[tuple[str, datetime]] = []
+        undated: list[str] = []
+
+        for name, dt in skill_first_seen.items():
+            if dt is not None:
+                dated.append((name, dt))
+            else:
+                undated.append(name)
+
+        # Sort dated skills by first_seen (oldest -> newest)
+        dated.sort(key=lambda item: item[1])
+        if newest_first:
+            dated.reverse()
+
+        lines: list[str] = []
+
+        for name, dt in dated:
+            formatted_date = self._fmt_mdy_short(dt)
+            lines.append(f"{name} — First exercised {formatted_date}")
+
+        # Skills with unknown first date go at the end
+        for name in sorted(undated):
+            lines.append(f"{name} — First exercised on an unknown date")
+
+        if as_string:
+            return "\n".join(lines)
+
+        return lines
