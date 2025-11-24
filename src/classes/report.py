@@ -240,12 +240,75 @@ class ProjectReport(BaseReport):
         """
         Creates the project level statistic of
         CODING_LANGUAGE_RATIO.
+        Filters out virtual environment files before calculating ratios.
+        Uses file sizes in bytes (matching GitHub's methodology).
         """
+        import logging
+        import os
+        logger = logging.getLogger(__name__)
 
-        langauges_to_loc = {}
+        langauges_to_bytes = {}
 
-        # Map coding language to lines of code
-        for report in self.file_reports:
+        # Skip keywords that indicate infrastructure/virtual environments
+        skip_keywords = ['venv', 'env', 'virtualenv', 'site-packages', 'node_modules',
+                        'target', 'build', 'dist', '.git', '__pycache__', 'migrations',
+                        'newenv', 'myenv', 'lib/python', 'lib64/python', 'lib64', 'bin',
+                        'include', 'share']
+
+        # Skip specific file patterns (config, database, binaries)
+        skip_filenames = ['manage.py', 'wsgi.py', 'asgi.py', '__init__.py', 'settings.py',
+                         'urls.py', 'tests.py']
+        skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
+
+        skipped_count = 0
+        included_count = 0
+        included_files_by_lang = {}
+
+        # Track seen filenames to avoid duplicates (just by filename, not size)
+        seen_filenames = {}
+
+        # Sort file_reports to prioritize non-database paths
+        # This ensures we process files from /code/ before /Database/
+        sorted_reports = sorted(
+            self.file_reports,
+            key=lambda r: (
+                'database' in str(r.filepath).lower(),  # Database paths go last
+                str(r.filepath)  # Then sort alphabetically
+            )
+        )
+
+        # Map coding language to file sizes in bytes
+        for report in sorted_reports:
+            # Filter out virtual environment files by checking filepath
+            filepath_lower = str(report.filepath).lower()
+
+            # Normalize path separators and split into components
+            path_parts = filepath_lower.replace('\\', '/').split('/')
+            filename = path_parts[-1] if path_parts else ''
+
+            # Check if any skip keyword is an exact match in path components
+            should_skip = False
+            for keyword in skip_keywords:
+                if keyword in path_parts:
+                    should_skip = True
+                    break
+
+            # Skip Django/Flask config files
+            if filename in skip_filenames:
+                should_skip = True
+
+            # Skip database dumps and binary files
+            if any(filename.endswith(ext) for ext in skip_extensions):
+                should_skip = True
+
+            if should_skip:
+                skipped_count += 1
+                continue
+
+            # Skip if we've already seen this filename (keep first occurrence from /code/)
+            if filename in seen_filenames:
+                skipped_count += 1
+                continue
 
             coding_language = report.get_value(
                 FileStatCollection.CODING_LANGUAGE.value)
@@ -253,22 +316,60 @@ class ProjectReport(BaseReport):
             if coding_language is None:
                 continue
 
-            loc = report.get_value(FileStatCollection.LINES_IN_FILE.value)
+            # Get file size
+            try:
+                file_size = os.path.getsize(report.filepath)
+            except (OSError, FileNotFoundError):
+                continue
 
-            langauges_to_loc[coding_language] = loc + \
-                langauges_to_loc.get(coding_language, 0)
+            # Mark filename as seen BEFORE checking file_size
+            # This prevents empty test files from all being skipped
+            seen_filenames[filename] = report.filepath
 
-        if len(langauges_to_loc) == 0:
+            if file_size > 0:
+                seen_filenames[filename] = report.filepath
+                langauges_to_bytes[coding_language] = file_size + \
+                    langauges_to_bytes.get(coding_language, 0)
+                included_count += 1
+
+                # Track which files are included
+                lang_name = coding_language.value[0] if hasattr(coding_language, 'value') else str(coding_language)
+                if lang_name not in included_files_by_lang:
+                    included_files_by_lang[lang_name] = []
+                included_files_by_lang[lang_name].append((report.filepath, file_size))
+            else:
+                # Count empty files towards the language ratio (test files are often empty)
+                langauges_to_bytes[coding_language] = 1 + \
+                    langauges_to_bytes.get(coding_language, 0)
+                included_count += 1
+
+        logger.info(f"Project '{self.project_name}': Included {included_count} files, skipped {skipped_count} files")
+
+        # Log sample files for each language
+        for lang, files in included_files_by_lang.items():
+            total_bytes = sum(size for _, size in files)
+            logger.info(f"  {lang}: {len(files)} files, {total_bytes} total bytes")
+            # Show first 3 files as samples
+            for filepath, size in files[:3]:
+                logger.info(f"    - {filepath} ({size} bytes)")
+
+        if len(langauges_to_bytes) == 0:
             # Don't log this stat if it isn't a coding project
             return
 
-        # Calcuate the loc as percentages of the total
-        total = sum(langauges_to_loc.values())
-        language_ratio = {k: (v / total) for k,
-                          v in langauges_to_loc.items()}
+        # Calculate the bytes as percentages of the total
+        lang_ratio = {}
+        for lang, byte_count in langauges_to_bytes.items():
+            lang_ratio[lang] = byte_count
+
+        # Normalize to ensure ratios sum to 1.0 (100%)
+        total_ratio = sum(lang_ratio.values())
+        if total_ratio > 0:
+            for lang in lang_ratio:
+                lang_ratio[lang] /= total_ratio
 
         self.project_statistics.add(
-            Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, language_ratio))
+            Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, lang_ratio))
 
     def _calculate_ari_score(self):
         '''
@@ -434,34 +535,129 @@ class UserReport(BaseReport):
         present in the `ProjectReports` used to
         create the `UserReport` for the
         `USER_CODING_LANGUAGE_RATIO` statistic.
+
+        This method aggregates file sizes across all projects,
+        filtering out virtual environment files.
+        Uses file sizes in bytes (matching GitHub's methodology).
         '''
-        lang_ratio = {}
+        import logging
+        import os
+        logger = logging.getLogger(__name__)
+
+        lang_to_bytes = {}
+
+        # Skip keywords for filtering venv files
+        skip_keywords = ['venv', 'env', 'virtualenv', 'site-packages', 'node_modules',
+                        'target', 'build', 'dist', '.git', '__pycache__', 'migrations',
+                        'newenv', 'myenv', 'lib/python', 'lib64/python', 'lib64', 'bin',
+                        'include', 'share']
+
+        # Skip specific file patterns (config, database, binaries)
+        skip_filenames = ['manage.py', 'wsgi.py', 'asgi.py', '__init__.py', 'settings.py',
+                            'urls.py', 'tests.py']
+        skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
+
+        total_skipped = 0
+        total_included = 0
+
+        # Track seen files across all projects to avoid duplicates (just by filename)
+        seen_filenames = {}
 
         for proj_report in self.project_reports:
-            proj_lang_ratio = proj_report.get_value(
-                ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
-
-            if proj_lang_ratio is None:
+            # Skip if project was created via from_statistics (no file_reports)
+            if not hasattr(proj_report, 'file_reports'):
                 continue
 
-            for curr_lang, ratio in proj_lang_ratio.items():
-                if curr_lang is None:
+            # Recalculate project ratios while filtering out venv files
+            project_lang_to_bytes = {}
+
+            # Sort file_reports to prioritize non-database paths
+            sorted_reports = sorted(
+                proj_report.file_reports,
+                key=lambda r: (
+                    'database' in str(r.filepath).lower(),  # Convert to string
+                    str(r.filepath)
+                )
+            )
+
+            for file_report in sorted_reports:
+                # Filter out virtual environment files
+                filepath_lower = file_report.filepath.lower()
+
+                # Normalize path separators and split into components
+                path_parts = filepath_lower.replace('\\', '/').split('/')
+                filename = path_parts[-1] if path_parts else ''
+
+                # Check if any skip keyword is an exact match in path components
+                should_skip = False
+                for keyword in skip_keywords:
+                    if keyword in path_parts:
+                        should_skip = True
+                        break
+
+                # Skip Django/Flask config files
+                if filename in skip_filenames:
+                    should_skip = True
+
+                # Skip database dumps and binary files
+                if any(filename.endswith(ext) for ext in skip_extensions):
+                    should_skip = True
+
+                if should_skip:
+                    total_skipped += 1
                     continue
 
-                if curr_lang in lang_ratio:
-                    # language & ratio have already been added from another report
-                    lang_ratio[curr_lang] += ratio
-                else:
-                    # add new language & ratio
-                    lang_ratio[curr_lang] = ratio
+                # Skip if we've already seen this filename
+                if filename in seen_filenames:
+                    total_skipped += 1
+                    continue
 
-        if len(lang_ratio) < 1:
+                coding_language = file_report.get_value(
+                    FileStatCollection.CODING_LANGUAGE.value)
+
+                if coding_language is None:
+                    continue
+
+                # Use file size in bytes instead of line count
+                try:
+                    file_size = os.path.getsize(file_report.filepath)
+                except (OSError, FileNotFoundError):
+                    continue
+
+                # Mark filename as seen BEFORE checking file_size
+                # This prevents empty test files from all being skipped
+                seen_filenames[filename] = file_report.filepath
+
+                if file_size > 0:
+                    project_lang_to_bytes[coding_language] = project_lang_to_bytes.get(coding_language, 0) + file_size
+                    total_included += 1
+                else:
+                    # Count empty files towards the language ratio (test files are often empty)
+                    project_lang_to_bytes[coding_language] = project_lang_to_bytes.get(coding_language, 0) + 1
+                    total_included += 1
+
+            # Aggregate filtered byte counts to user level
+            for lang, byte_count in project_lang_to_bytes.items():
+                if lang in lang_to_bytes:
+                    lang_to_bytes[lang] += byte_count
+                else:
+                    lang_to_bytes[lang] = byte_count
+
+        logger.info(f"User report: Included {total_included} files, skipped {total_skipped} files for language ratio")
+
+        if len(lang_to_bytes) < 1:
             return  # don't log this stat b/c there are no coding languages
 
-        # now, we need to compute the even division the ratio of each language between all projects
-        for lang, ratio in lang_ratio.items():
-            ratio /= len(lang_ratio)
-            lang_ratio[lang] = ratio
+        # Calculate ratios from total bytes
+        lang_ratio = {}
+        for lang, byte_count in lang_to_bytes.items():
+            lang_ratio[lang] = byte_count
+
+        # Normalize to ensure ratios sum to 1.0 (100%)
+        total_ratio = sum(lang_ratio.values())
+        if total_ratio > 0:
+            for lang in lang_ratio:
+                lang_ratio[lang] /= total_ratio
 
         self.user_stats.add(
             Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio))
