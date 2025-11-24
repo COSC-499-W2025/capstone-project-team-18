@@ -1,7 +1,5 @@
 # Alex Taschuk Personal Log
 
-[Link to Peer Evaluation](https://prod.teamableanalytics.ok.ubc.ca/courses/174477/peer_evaluations/student/)
-
 ## Table of Contents
 
 **[Week 3, Sept. 15–21](#week-3-sept-1521)**
@@ -20,7 +18,11 @@
 
 **[Week 10, Nov. 03 – Nov. 09](#week-10-nov-03--nov-09)**
 
-**[Week 12, Nov. 17 – Nov. 23]()
+**[Week 11, Nov. 10 – 16](#week-11-nov-10--nov-16)**
+
+**[Week 12, Nov. 17 – Nov. 23](#week-12-nov-17--nov-23)**
+
+****
 
 ## Week 3, Sept. 15–21
 
