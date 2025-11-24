@@ -122,8 +122,22 @@ I completed Issue #125 by implementing robust OS detection logic in the codebase
 
 I also completed Issue #59 by adding comprehensive support for extracting .zip, .tar.gz, .gz, and .7z files. The extraction logic now uses system tools when available and Python libraries as a fallback, ensuring reliable multi-format extraction on all platforms. I updated and expanded tests to verify extraction for each format.
 
-Additionally, I reviewed and approved three PRs: PR #167 (database documentation) by Alex. Tawana's personal log PR #180 and Jimi's personal log PR #182. I also created the comprehensive team log for Week 10.
+Additionally, I reviewed and approved three PRs: PR #167 (database documentation) by Alex, Tawana's personal log PR #180, and Jimi's personal log PR #182. I also created the comprehensive team log for Week 10.
 
+## Week 12, Nov. 17-23
 
+### Peer Eval
+![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week12_log.png)
+
+### Recap
+This week's focus was on enhancing system reliability, database functionality, and project ranking capabilities to support more robust analysis and data management.
+
+I completed Issue #173 by implementing cross-platform file path normalization, ensuring consistent path handling across Windows, macOS, and Linux. I added comprehensive unit tests covering various path formats and edge cases.
+
+I also completed Issue #215 by creating a database function to delete user reports and all related data with cascading deletes. The implementation supports flexible deletion by user ID, report title, or zipped file path, with extensive tests for data integrity.
+
+Additionally, I completed Issue #157 to implement project ranking functionality. This feature ranks projects using a weighted scoring system based on lines of code, project duration, and individual contribution percentage.
+
+I reviewed numerous PRs this week including PR #179 (Chronological List of Projects) by Tawana, PR #217 (Find Repo at Project Discovery) by Sam, PR #220 (helper method) by Jimi, PR #209 (fix json serialization check) by Alex, PR #201 (Fixed Pathing in Analyze Git Function) by Sam, PR #190 (Metadata Corruption, Picking wrong analyzer, and Incorrect Handling of Email Bugs) by Sam, PR #185 (tie DB into backend logic) by Alex. My feedback focused on code correctness, test coverage, and edge case handling.
 
 
