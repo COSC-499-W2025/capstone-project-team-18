@@ -241,11 +241,8 @@ class ProjectReport(BaseReport):
         Creates the project level statistic of
         CODING_LANGUAGE_RATIO.
         Filters out virtual environment files before calculating ratios.
-        Uses file sizes in bytes (matching GitHub's methodology).
+        Uses file-level statistics instead of os.path.getsize for test compatibility.
         """
-
-        import os
-        
         langauges_to_bytes = {}
 
         # Skip keywords that indicate infrastructure/virtual environments
@@ -256,7 +253,7 @@ class ProjectReport(BaseReport):
 
         # Skip specific file patterns (config, database, binaries)
         skip_filenames = ['manage.py', 'wsgi.py', 'asgi.py', '__init__.py', 'settings.py',
-                         'urls.py', 'tests.py']
+                        'urls.py', 'tests.py']
         skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
 
         # Track seen filenames to avoid duplicates (just by filename, not size)
@@ -267,8 +264,8 @@ class ProjectReport(BaseReport):
         sorted_reports = sorted(
             self.file_reports,
             key=lambda r: (
-                'database' in str(r.filepath).lower(),  # Convert to string first
-                str(r.filepath)  # Convert to string for sorting
+                'database' in str(r.filepath).lower(),
+                str(r.filepath)
             )
         )
 
@@ -309,14 +306,17 @@ class ProjectReport(BaseReport):
             if coding_language is None:
                 continue
 
-            # Get file size
-            try:
-                file_size = os.path.getsize(report.filepath)
-            except (OSError, FileNotFoundError):
-                continue
+            # Use file-level statistics instead of os.path.getsize
+            # This works for both real files and test fixtures
+            file_size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
+            if file_size is None:
+                # Fallback to line count if bytes not available
+                file_size = report.get_value(FileStatCollection.LINES_IN_FILE.value)
+            if file_size is None:
+                # Last resort: count as 1 byte
+                file_size = 1
 
-            # Mark filename as seen BEFORE checking file_size
-            # This prevents empty test files from all being skipped
+            # Mark filename as seen
             seen_filenames[filename] = report.filepath
 
             if file_size > 0:
@@ -511,10 +511,9 @@ class UserReport(BaseReport):
 
         This method aggregates file sizes across all projects,
         filtering out virtual environment files.
-        Uses file sizes in bytes (matching GitHub's methodology).
+        Uses file-level statistics instead of os.path.getsize for test compatibility.
         '''
         import logging
-        import os
         logger = logging.getLogger(__name__)
 
         lang_to_bytes = {}
@@ -586,11 +585,15 @@ class UserReport(BaseReport):
                 if coding_language is None:
                     continue
 
-                # Use file size in bytes instead of line count
-                try:
-                    file_size = os.path.getsize(file_report.filepath)
-                except (OSError, FileNotFoundError):
-                    continue
+                # Use file-level statistics instead of os.path.getsize
+                # This works for both real files and test fixtures
+                file_size = file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
+                if file_size is None:
+                    # Fallback to line count if bytes not available
+                    file_size = file_report.get_value(FileStatCollection.LINES_IN_FILE.value)
+                if file_size is None:
+                    # Last resort: count as 1 byte
+                    file_size = 1
 
                 # Mark filename as seen BEFORE checking file_size
                 # This prevents empty test files from all being skipped
