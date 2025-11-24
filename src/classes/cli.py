@@ -471,18 +471,30 @@ class ArtifactMiner(cmd.Cmd):
 
         while True:
             start_date = input("Enter start date (or 'skip' for no limit): ").strip()
+
+            # User enters back / cancel
+            if self._handle_cancel_input(start_date):
+                return
+
             if start_date.lower() == 'skip':
                 start_date = ""
                 break
+
             if self._parse_date_input(start_date):
                 break
             print("Invalid date format. Use YYYY-MM-DD")
 
         while True:
             end_date = input("Enter end date (or 'skip' for no limit): ").strip()
+
+            # User enters back / cancel
+            if self._handle_cancel_input(end_date):
+                return
+
             if end_date.lower() == 'skip':
                 end_date = ""
                 break
+
             if self._parse_date_input(end_date):
                 break
             print("Invalid date format. Use YYYY-MM-DD")
@@ -503,6 +515,10 @@ class ArtifactMiner(cmd.Cmd):
             print(f"Current ignored extensions: {', '.join(current)}")
 
         extensions_input = input("Extensions to ignore (or 'clear' to remove all): ").strip()
+
+        # User enters back / cancel
+        if self._handle_cancel_input(extensions_input):
+            return
 
         if extensions_input.lower() == 'clear':
             extensions = []
@@ -525,7 +541,15 @@ class ArtifactMiner(cmd.Cmd):
         '''Reset all preferences to defaults'''
         confirm = input("Reset ALL preferences to defaults? This cannot be undone. (Y/N): ").strip()
 
+        # User enters back /cancel
+        if self._handle_cancel_input(confirm):
+            return
+
         if confirm.lower() == 'y':
+            # User enters back /cancel
+            if self._handle_cancel_input(confirm):
+                return
+            
             success = self.preferences.reset()
             if success:
                 print("✓ All preferences reset to defaults")
