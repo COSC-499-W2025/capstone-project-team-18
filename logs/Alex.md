@@ -1,7 +1,5 @@
 # Alex Taschuk Personal Log
 
-[Link to Peer Evaluation](https://prod.teamableanalytics.ok.ubc.ca/courses/174477/peer_evaluations/student/)
-
 ## Table of Contents
 
 **[Week 3, Sept. 15–21](#week-3-sept-1521)**
@@ -19,6 +17,12 @@
 **[Week 9, Oct. 27 – Nov. 02](#week-9-oct-27--nov-02)**
 
 **[Week 10, Nov. 03 – Nov. 09](#week-10-nov-03--nov-09)**
+
+**[Week 11, Nov. 10 – 16](#week-11-nov-10--nov-16)**
+
+**[Week 12, Nov. 17 – Nov. 23](#week-12-nov-17--nov-23)**
+
+****
 
 ## Week 3, Sept. 15–21
 
@@ -130,3 +134,43 @@ I also moved the `/database` directory into the `/src` directory and made sure t
 - The PR for this is [#154](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/154)
 
 Lastly, I reviewed Sam's PR [#155](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/155), and Priyansh's PR [#170](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/170).
+
+## Week 11, Nov. 10 – Nov. 16
+
+Reading week; nothing to log.
+
+## Week 12, Nov. 17 – Nov. 23
+
+### Peer Eval
+
+![Peer Eval](/logs/log_images/personal_log_imgs/alex/week12.png)
+
+
+### Recap
+
+This week, I spent a lot of time preparing and working on the final changes and requirements for Milestone 1.
+
+Firstly, I created PR, [#185](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/185), which closed issue [#148](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/148). The PR ties in our app's backend logic with the database. This includes logic to read, for example, a `FileReport` object and writes it as a row to the `file_report` table.
+
+My second PR, [#207](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/207), added additional statistics:
+- `AVG_ARI_WRITING_SCORE`: The average score of all files with an ARI_WRITING_SCORE statistic that are in the project
+- `USER_ARI_WRITING_SCORE`: The average score of all projects with an AVG_ARI_WRITING_SCORE statistic that make up the UserReport.
+    - In addition to a calculation function, I also added logic to print this in the `to_user_readable_string()` function.
+- `USER_CODING_LANGUAGE_RATIO`: The ratio of each coding language that is present in one or more `ProjectReports`
+    - Note: This is currently wrong and I need help figuring out how to correctly calculate the ratios
+    - In addition to a calculation function, I also added logic to print this in the `to_user_readable_string()` function.
+
+My third PR, [#232](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/232), is to add test logic for the `USER_CODING_LANGUAGE_RATIO` statistic in my second PR. It is currently only a draft PR because the logic to calculate the statistic is inaccurate; I'm waiting for the issue to fix the bug to be closed before I publish the PR.
+
+My fourth PR, [#236](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/236), was to close a sub-issue for a larger issue for the feature for the user to retrieve resume bullet points from previously generated project reports. The logic for this includes two functions:
+- `get_project_from_project_name()`: Takes a project's name, finds the corresponding row in the database, and converts the row to a `ProjectReport` object. This will be used when the user wants to retrieve/print a resume bullet point for a project they have already analyzed.
+- `get_file_reports()`: A helper function for the former. When we create a new `ProjectReport` object, we need to give it a list of the `FileReports` that make up the project report. This function uses the FK relation between the `project_report` and `file_report` to read all of the rows in `file_report` and generate a list of `FileReport` objects.
+
+Additionally, I spent time making issues for the final changes that needed to be made/implemented before Milestone 1 is due for other team members to assign themselves to.
+
+Lastly, I reviewed the following PRs:
+- [#191: Fixed Issue 187, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/191)
+- [#199: Improve cross-platform file path normalization, Priyansh](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/199)
+- [#206: Created Project-Level Weighted skills Statistic, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/206)
+- [#226: Added feature for deleting user reports and related data by either id, title, or zipped files, Priyansh](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/226)
+- [#227 Git Projects Use Git Stats instead of File Metdata, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/227)
