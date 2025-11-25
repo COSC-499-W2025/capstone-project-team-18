@@ -136,9 +136,8 @@ class UserReportTable(Base):
     '''
     __tablename__ = 'user_report'
 
-    title = mapped_column(String, nullable=True)
-    zipped_filepath = mapped_column(String, nullable=True)
     
+
     id = mapped_column(Integer, primary_key=True)
     title = mapped_column(String)
     zipped_filepath = mapped_column(String)
