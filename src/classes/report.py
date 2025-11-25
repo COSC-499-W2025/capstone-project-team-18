@@ -388,7 +388,8 @@ class ProjectReport(BaseReport):
         total_ratio = sum(lang_ratio.values())
         if total_ratio > 0:
             for lang in lang_ratio:
-                lang_ratio[lang] /= total_ratio
+                # Round to 4 decimal places (0.01% precision)
+                lang_ratio[lang] = round(lang_ratio[lang] / total_ratio, 4)
 
         self.project_statistics.add(
             Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, lang_ratio))
@@ -684,7 +685,8 @@ class UserReport(BaseReport):
         total_ratio = sum(lang_ratio.values())
         if total_ratio > 0:
             for lang in lang_ratio:
-                lang_ratio[lang] /= total_ratio
+                # Round to 4 decimal places (0.01% precision)
+                lang_ratio[lang] = round(lang_ratio[lang] / total_ratio, 4)
 
         self.user_stats.add(
             Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio))
@@ -823,7 +825,7 @@ class UserReport(BaseReport):
                     parts: list[str] = []
                     for lang, ratio in langs_sorted:
                         lang_name = lang.value[0]
-                        percent = f"{int(ratio * 100)}%"
+                        percent = f"{ratio * 100:.2f}%"
                         parts.append(f"{lang_name} ({percent})")
                 except Exception:
                     ratio_line = "coding languages not found"
