@@ -735,12 +735,12 @@ class ArtifactMiner(cmd.Cmd):
           # Remove the current command from history since user is cancelling
 
             if len(self.cmd_history) > 0:
-                cancelled_cmd = self.cmd_history.pop()  # Now correctly removes from end
+                cancelled_cmd = self.cmd_history.pop()
                 print(f"\nCancelled '{cancelled_cmd}' operation.")
-                print("Returning to",menu_location, "menu.")
-        else:
-          print("\nReturning to",menu_location,"menu.")
-          return True
+                print(f"Returning to {menu_location} menu.")
+            else:
+                print(f"\nReturning to {menu_location} menu.")
+            return True
 
         return False
 
