@@ -119,10 +119,23 @@ class UserPreferences:
         """Update file date range filtering."""
         preferences = self.load_preferences()
         preferences.update({
-            "file_start_time": start_time,
-            "file_end_time": end_time
+            "file_start_time": start_time if start_time else None,
+            "file_end_time": end_time if end_time else None
         })
         return self.save_preferences(preferences)
+
+    def get_date_range_display(self) -> str:
+        """Get formatted date range string for display."""
+        start_time, end_time = self.get_date_range()
+
+        if start_time and end_time:
+            return f"{start_time} to {end_time}"
+        elif start_time and (end_time is None or end_time == 'null' or end_time == 'Null'):
+            return f"All files after {start_time}"
+        elif (start_time is None or start_time == 'null' or start_time == 'Null') and end_time:
+            return f"All files before {end_time}"
+        else:
+            return "All dates"
 
     def get_files_to_ignore(self) -> List[str]:
         """Get list of file extensions to ignore."""
@@ -448,21 +461,9 @@ class ArtifactMiner(cmd.Cmd):
             print(f"Project Filepath: {prefs.get('project_filepath') or 'Not set'}")
             print(f"User Name: {prefs.get('user_name') or 'Not set'}")
             print(f"User Email: {prefs.get('user_email') or 'Not set'}")
+            print(f"Date Range: {self.preferences.get_date_range_display()}")
 
 
-            # Date range - handle partial ranges
-            start_time = prefs.get('file_start_time')
-            end_time = prefs.get('file_end_time')
-
-            # Handling when times are null/none
-            if start_time and end_time:
-                print(f"Date Range: {start_time} to {end_time}")
-            elif start_time and (end_time is None or end_time == 'null' or end_time == 'Null'):
-                print(f"Date Range: All files after {start_time}")
-            elif (start_time is None or start_time == 'null' or start_time == 'Null') and end_time:
-                print(f"Date Range: All files before {end_time}")
-            else:
-                print("Date Range: All dates")
 
             # Files to ignore
             ignored_files = prefs.get('files_to_ignore', [])
@@ -498,49 +499,79 @@ class ArtifactMiner(cmd.Cmd):
         '''Configure date filtering for files'''
         print("\nConfigure date range for file filtering (YYYY-MM-DD format)")
 
-        while True:
-            start_date = input("Enter start date (or 'skip' for no limit): ").strip()
+        while True: # Outer loop to retry on invalid date ranges
+            start_date = None
+            end_date = None
 
-            # Handle exit/quit
-            if start_date.lower() in ['exit', 'quit']:
-                return self.do_exit("")
+            while True:
+                start_input = input("Enter start date (or 'skip' for no limit): ").strip()
 
-            # User enters back / cancel
-            if self._handle_cancel_input(start_date):
-                return
+                # Handle exit/quit
+                if start_input.lower() in ['exit', 'quit']:
+                    return self.do_exit("")
 
-            if start_date.lower() == 'skip':
-                start_date = ""
-                break
+                # User enters back / cancel
+                if self._handle_cancel_input(start_input):
+                    return
 
-            if self._parse_date_input(start_date):
-                break
-            print("Invalid date format. Use YYYY-MM-DD")
+                if start_input.lower() == 'skip':
+                    start_date = None
+                    break
 
-        while True:
-            end_date = input("Enter end date (or 'skip' for no limit): ").strip()
+                if self._parse_date_input(start_input):
+                    start_date = start_input
+                    break
+                print("Invalid date format. Use YYYY-MM-DD")
 
-            # Handle exit/quit
-            if end_date.lower() in ['exit', 'quit']:
-                return self.do_exit("")
+            while True:
+                end_input = input("Enter end date (or 'skip' for no limit): ").strip()
 
-            # User enters back / cancel
-            if self._handle_cancel_input(end_date):
-                return
+                # Handle exit/quit
+                if end_input.lower() in ['exit', 'quit']:
+                    return self.do_exit("")
 
-            if end_date.lower() == 'skip':
-                end_date = ""
-                break
+                # User enters back / cancel
+                if self._handle_cancel_input(end_input):
+                    return
 
-            if self._parse_date_input(end_date):
-                break
-            print("Invalid date format. Use YYYY-MM-DD")
+                if end_input.lower() == 'skip':
+                    end_date = None
+                    break
 
-        success = self.preferences.update_date_range(start_date, end_date)
-        if success:
-            print("✓ Date range configuration saved")
-        else:
-            print("✗ Failed to save date range configuration")
+                if self._parse_date_input(end_input):
+                    end_date = end_input
+                    break
+                print("Invalid date format. Use YYYY-MM-DD")
+
+            # Validate date range logic: start must be before end
+            if start_date and end_date:
+                start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+
+                if start_dt >= end_dt:
+                    print("\n✗ Error: Start date must be earlier than end date.")
+                    print(f"   Start: {start_date}")
+                    print(f"   End: {end_date}")
+                    print("   Please try again.\n")
+                    continue  # Loop back to ask for dates again
+
+            # If gotten here, dates are valid, save and exit
+            success = self.preferences.update_date_range(start_date, end_date)
+            if success:
+                print("✓ Date range configuration saved")
+                if start_date and end_date:
+                    print(f"   Filtering files between {start_date} and {end_date}")
+                elif start_date:
+                    print(f"   Filtering files after {start_date}")
+                elif end_date:
+                    print(f"   Filtering files before {end_date}")
+                else:
+                    print("   No date filtering applied")
+            else:
+                print("✗ Failed to save date range configuration")
+
+            break # Exit the outer loop after successful save
+
 
     def _configure_files_to_ignore(self):
         '''Configure file extensions to ignore'''
