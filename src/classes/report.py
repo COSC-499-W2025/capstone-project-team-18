@@ -285,7 +285,7 @@ class ProjectReport(BaseReport):
         """
         Creates the project level statistic of
         CODING_LANGUAGE_RATIO.
-        Filters out virtual environment files before calculating ratios.
+        Filters out virtual environment files and duplicate database exports before calculating ratios.
         Uses file-level statistics instead of os.path.getsize for test compatibility.
         """
         langauges_to_bytes = {}
@@ -301,8 +301,9 @@ class ProjectReport(BaseReport):
                         'urls.py', 'tests.py']
         skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
 
-        # Track seen filenames to avoid duplicates (just by filename, not size)
-        seen_filenames = {}
+        # Track files by their FULL PATH and SIZE to detect true duplicates
+        # Key: (filename, file_size), Value: first filepath we saw
+        seen_file_signatures = {}
 
         # Sort file_reports to prioritize non-database paths
         # This ensures we process files from /code/ before /Database/
@@ -341,10 +342,6 @@ class ProjectReport(BaseReport):
             if should_skip:
                 continue
 
-            # Skip if we've already seen this filename (keep first occurrence from /code/)
-            if filename in seen_filenames:
-                continue
-
             coding_language = report.get_value(
                 FileStatCollection.CODING_LANGUAGE.value)
 
@@ -352,7 +349,6 @@ class ProjectReport(BaseReport):
                 continue
 
             # Use file-level statistics instead of os.path.getsize
-            # This works for both real files and test fixtures
             file_size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
             if file_size is None:
                 # Fallback to line count if bytes not available
@@ -361,8 +357,16 @@ class ProjectReport(BaseReport):
                 # Last resort: count as 1 byte
                 file_size = 1
 
-            # Mark filename as seen
-            seen_filenames[filename] = report.filepath
+            # Create a signature to detect true duplicates
+            # Only skip if BOTH filename AND size match (likely a database export duplicate)
+            file_signature = (filename, file_size)
+
+            if file_signature in seen_file_signatures:
+                # This is likely a duplicate database export - skip it
+                continue
+
+            # Mark this file signature as seen
+            seen_file_signatures[file_signature] = report.filepath
 
             if file_size > 0:
                 langauges_to_bytes[coding_language] = langauges_to_bytes.get(
@@ -563,7 +567,7 @@ class UserReport(BaseReport):
         `USER_CODING_LANGUAGE_RATIO` statistic.
 
         This method aggregates file sizes across all projects,
-        filtering out virtual environment files.
+        filtering out virtual environment files and duplicate database exports.
         Uses file-level statistics instead of os.path.getsize for test compatibility.
         '''
         import logging
@@ -582,8 +586,9 @@ class UserReport(BaseReport):
                             'urls.py', 'tests.py']
         skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
 
-        # Track seen files across all projects to avoid duplicates (just by filename)
-        seen_filenames = {}
+        # Track files by FULL PATH and SIZE to detect true duplicates across all projects
+        # Key: (filename, file_size), Value: first filepath we saw
+        seen_file_signatures = {}
 
         for proj_report in self.project_reports:
             # Skip if project was created via from_statistics (no file_reports)
@@ -628,10 +633,6 @@ class UserReport(BaseReport):
                 if should_skip:
                     continue
 
-                # Skip if we've already seen this filename
-                if filename in seen_filenames:
-                    continue
-
                 coding_language = file_report.get_value(
                     FileStatCollection.CODING_LANGUAGE.value)
 
@@ -639,7 +640,6 @@ class UserReport(BaseReport):
                     continue
 
                 # Use file-level statistics instead of os.path.getsize
-                # This works for both real files and test fixtures
                 file_size = file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
                 if file_size is None:
                     # Fallback to line count if bytes not available
@@ -648,9 +648,16 @@ class UserReport(BaseReport):
                     # Last resort: count as 1 byte
                     file_size = 1
 
-                # Mark filename as seen BEFORE checking file_size
-                # This prevents empty test files from all being skipped
-                seen_filenames[filename] = file_report.filepath
+                # Create a signature to detect true duplicates
+                # Only skip if BOTH filename AND size match
+                file_signature = (filename, file_size)
+
+                if file_signature in seen_file_signatures:
+                    # This is likely a duplicate database export - skip it
+                    continue
+
+                # Mark this file signature as seen
+                seen_file_signatures[file_signature] = file_report.filepath
 
                 if file_size > 0:
                     project_lang_to_bytes[coding_language] = project_lang_to_bytes.get(coding_language, 0) + file_size
