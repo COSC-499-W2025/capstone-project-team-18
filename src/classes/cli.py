@@ -449,11 +449,18 @@ class ArtifactMiner(cmd.Cmd):
             print(f"User Name: {prefs.get('user_name') or 'Not set'}")
             print(f"User Email: {prefs.get('user_email') or 'Not set'}")
 
-            # Date range
+
+            # Date range - handle partial ranges
             start_time = prefs.get('file_start_time')
             end_time = prefs.get('file_end_time')
+
+            # Handling when times are null/none
             if start_time and end_time:
                 print(f"Date Range: {start_time} to {end_time}")
+            elif start_time and (end_time is None or end_time == 'null' or end_time == 'Null'):
+                print(f"Date Range: All files after {start_time}")
+            elif (start_time is None or start_time == 'null' or start_time == 'Null') and end_time:
+                print(f"Date Range: All files before {end_time}")
             else:
                 print("Date Range: All dates")
 
