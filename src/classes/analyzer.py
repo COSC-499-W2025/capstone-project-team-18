@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Optional
 import ast
-from utils.project_discovery import ProjectFiles
+from src.utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
 
 # CSS & HTML parsers

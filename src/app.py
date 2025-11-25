@@ -47,5 +47,5 @@ def start_miner(zipped_file: str, email: str = None) -> None:
 
 
 if __name__ == '__main__':
-    from classes.cli import ArtifactMiner
+    from src.classes.cli import ArtifactMiner
     ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference

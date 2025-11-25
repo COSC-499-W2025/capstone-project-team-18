@@ -8,8 +8,8 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 
-from classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
-from .utils.init_columns import make_columns
+from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
+from src.utils.init_columns import make_columns
 
 DB_PATH = "sqlite:///database/data.db"
 
