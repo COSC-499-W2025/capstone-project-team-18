@@ -19,6 +19,12 @@ class WeightedSkills:
     skill_name: str
     weight: float
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "skill_name": self.skill_name,
+            "weight": self.weight
+        }
+
 
 class FileDomain(Enum):
     DESIGN = "design"
@@ -28,22 +34,22 @@ class FileDomain(Enum):
 
 
 class CodingLanguage(Enum):
-    PYTHON = ("python", {".py", ".pyw", ".pyx", ".pxd", ".pxi"})
-    JAVASCRIPT = ("javascript", {".js", ".jsx", ".mjs"})
-    JAVA = ("java", {".java", ".jar", ".class"})
-    CPP = ("c++", {".cpp", ".cc", ".cxx", ".hpp", ".hh", ".h"})
-    C = ("c", {".c", ".h"})
-    CSHARP = ("c#", {".cs", ".csx"})
-    PHP = ("php", {".php", ".phtml", ".php3", ".php4", ".php5", ".phps"})
-    RUBY = ("ruby", {".rb", ".rbw", ".rake", ".gemspec"})
-    SWIFT = ("swift", {".swift"})
-    GO = ("go", {".go"})
-    RUST = ("rust", {".rs", ".rlib"})
-    TYPESCRIPT = ("typescript", {".ts", ".tsx"})
-    HTML = ("html", {".html", ".htm", ".xhtml"})
-    CSS = ("css", {".css", ".scss", ".sass", ".less"})
-    SQL = ("sql", {".sql", ".ddl", ".dml"})
-    SHELL = ("shell", {".sh", ".bash", ".zsh", ".fish"})
+    PYTHON = ("Python", [".py", ".pyw", ".pyx", ".pxd", ".pxi"])
+    JAVASCRIPT = ("Javascript", [".js", ".jsx", ".mjs"])
+    JAVA = ("Java", [".java", ".jar", ".class"])
+    CPP = ("C++", [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".h"])
+    C = ("C", [".c", ".h"])
+    CSHARP = ("C#", [".cs", ".csx"])
+    PHP = ("PHP", [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"])
+    RUBY = ("Ruby", [".rb", ".rbw", ".rake", ".gemspec"])
+    SWIFT = ("Swift", [".swift"])
+    GO = ("Go", [".go"])
+    RUST = ("Rust", [".rs", ".rlib"])
+    TYPESCRIPT = ("Typescript", [".ts", ".tsx"])
+    HTML = ("HTML", [".html", ".htm", ".xhtml"])
+    CSS = ("CSS", [".css", ".scss", ".sass", ".less"])
+    SQL = ("SQL", [".sql", ".ddl", ".dml"])
+    SHELL = ("Shell", [".sh", ".bash", ".zsh", ".fish"])
 
 # The following are StatisticTemplate classes. A StatisticTemplate is simply a
 # description of a data point. It has a name, description, expected value, and it is either
@@ -99,12 +105,6 @@ class FileStatCollection(Enum):
     DATE_MODIFIED = FileStatisticTemplate(
         name="DATE_MODIFIED",
         description="last date the file was modified",
-        expected_type=date,
-    )
-
-    DATE_ACCESSED = FileStatisticTemplate(
-        name="DATE_ACCESSED",
-        description="last date the file was accessed",
         expected_type=date,
     )
 
@@ -180,6 +180,13 @@ class FileStatCollection(Enum):
         expected_type=list,
     )
 
+    # percenatge is not greatest indicator as any minor change is associated with ownership
+    PERCENTAGE_LINES_COMMITTED = FileStatisticTemplate(
+        name="PERCENTAGE_LINES_COMMITTED",
+        description="percentage of lines attributed to individal in file",
+        expected_type=float,
+    )
+
     CODING_LANGUAGE = FileStatisticTemplate(
         name="CODING_LANGUAGE",
         description="the coding language of the file",
@@ -230,10 +237,22 @@ class ProjectStatCollection(Enum):
         expected_type=float,
     )
 
+    TOTAL_CONTRIBUTION_PERCENTAGE = ProjectStatisticTemplate(
+        name="TOTAL_CONTRIBUTION_PERCENTAGE",
+        description="percentage of lines authored by user in a Git-tracked project",
+        expected_type=float,
+    )
+
     CODING_LANGUAGE_RATIO = ProjectStatisticTemplate(
         name="CODING_LANGUAGE_RATIO",
         description="ratio, by lines of code, of coding languages in a project",
         expected_type=dict[CodingLanguage, float]
+    )
+
+    AVG_ARI_WRITING_SCORE = ProjectStatisticTemplate(
+        name="AVG_ARI_WRITING_SCORE",
+        description="The average ARI score of all FileReports",
+        expected_type=float
     )
 
 
@@ -254,6 +273,16 @@ class UserStatCollection(Enum):
         name="USER_SKILLS",
         description="the skills this user has",
         expected_type=list[WeightedSkills],
+    )
+    USER_CODING_LANGUAGE_RATIO = UserStatisticTemplate(
+        name="USER_CODING_LANGUAGE_RATIO",
+        description="ratio, by lines of code, of coding languages in the user's projects",
+        expected_type=dict[CodingLanguage, float]
+    )
+    USER_ARI_WRITING_SCORE = ProjectStatisticTemplate(
+        name="USER_ARI_WRITING_SCORE",
+        description="The average ARI score of all ProjectReports",
+        expected_type=float
     )
 
 

@@ -10,16 +10,16 @@ import random
 import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+
 
 from src.database.db import (
     Base,
-    UserPreferencesTable,
     FileReportTable,
     ProjectReportTable,
     UserReportTable,
-    get_engine,
-    init_db
 )
+from src.database.utils.database_modify import create_row
 from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.classes.report import FileReport, ProjectReport, UserReport
 
@@ -51,7 +51,6 @@ def create_file_report(filename: str):
     statistics = StatisticIndex([
         Statistic(FileStatCollection.LINES_IN_FILE.value, lines_in_file),
         Statistic(FileStatCollection.DATE_CREATED.value, random_create),
-        Statistic(FileStatCollection.DATE_ACCESSED.value, random_access),
         Statistic(FileStatCollection.DATE_MODIFIED.value, random_modified),
         Statistic(FileStatCollection.FILE_SIZE_BYTES.value, random_filesize),
     ])
@@ -104,8 +103,6 @@ def get_row(report: FileReport | ProjectReport | UserReport):
                 FileStatCollection.DATE_CREATED.value),
             date_modified=report.get_value(
                 FileStatCollection.DATE_MODIFIED.value),
-            date_accessed=report.get_value(
-                FileStatCollection.DATE_ACCESSED.value),
             file_size_bytes=report.get_value(
                 FileStatCollection.FILE_SIZE_BYTES.value),
         )
@@ -132,17 +129,6 @@ def get_row(report: FileReport | ProjectReport | UserReport):
     return new_row
 
 
-def create_user_preferences():
-    # store user preferences
-    preferences = UserPreferencesTable(
-        consent=True,
-        files_to_ignore=['README.md', 'tmp.log', '.gitignore'],
-        file_start_time=datetime.datetime.now(),
-        file_end_time=datetime.datetime.now() + timedelta(hours=3)
-    )
-    return preferences
-
-
 @pytest.fixture
 def temp_db(tmp_path: Path):
     '''
@@ -150,8 +136,8 @@ def temp_db(tmp_path: Path):
     Yields the engine for use in tests.
     '''
     db_path = tmp_path / "temp_db.db"
-    engine = get_engine(f"sqlite:///{db_path}")
-    init_db(engine)  # add columns to temp DB
+    engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(engine)  # add columns to temp DB
 
     # Create fake file reports
     fr1 = create_file_report("file1.py")
@@ -180,11 +166,7 @@ def temp_db(tmp_path: Path):
 
     with Session(engine) as session:
 
-        preferences = create_user_preferences()
-        session.add(preferences)  # add preferences to the DB
-
         # add file report & project report rows to the DB
-        session.add_all([stmt1, stmt2, stmt3, stmt4])
         session.add_all([stmt6, stmt7])
 
         session.commit()  # write the rows to the DB
@@ -200,7 +182,7 @@ def test_tables_exist(temp_db):
     inspector = inspect(temp_db)
     tables = set(inspector.get_table_names())
     assert {"file_report", "project_report",
-            "user_report", "user_preferences", "association_table"} <= tables
+            "user_report", "association_table"} <= tables
 
 
 def test_sample_data_inserted(temp_db):
@@ -208,7 +190,7 @@ def test_sample_data_inserted(temp_db):
     with Session(temp_db) as session:
         file_count = session.query(FileReportTable).count()
         project_count = session.query(ProjectReportTable).count()
-        user_count = session.query(UserReportTable).count()
+        # user_count = session.query(UserReportTable).count()
 
         assert file_count == 4  # 4 file reports
         assert project_count == 2  # 2 project reports
@@ -250,14 +232,38 @@ def test_project_to_user_many_to_many(temp_db):
 """
 
 
-def test_user_preferences_data_inserted(temp_db):
+def test_create_row():
     '''
-    Verify that user preferences data was inserted during fixture setup.
+    Test that the `create_row()` function in `/src/database/utils/database_modify.py`
+    properly returns a new row for a given report object.
     '''
-    with Session(temp_db) as session:
-        prefs = session.query(UserPreferencesTable).first()
-        assert prefs is not None
-        assert prefs.consent is True
-        assert prefs.files_to_ignore is not None
-        assert isinstance(prefs.files_to_ignore, list)
-        assert len(prefs.files_to_ignore) == 3
+    # Check that a row is properly created from a FileReport
+    file_report = create_file_report("test.txt")
+    row = create_row(file_report)
+
+    assert type(row) == FileReportTable
+    assert row.filepath == "test.txt"
+    assert row.date_created == file_report.get_value(  # type: ignore
+        FileStatCollection.DATE_CREATED.value)
+
+    # Check that a row is properly created from a ProjectReport
+    file_report_2 = create_file_report("test_2.py")
+    project_report = create_project_report(file_report, file_report_2, False,)
+    proj_row = create_row(project_report)
+
+    assert type(proj_row) == ProjectReportTable
+    assert proj_row.project_start_date == project_report.get_value(  # type: ignore
+        ProjectStatCollection.PROJECT_START_DATE.value)
+    assert proj_row.project_name == "Unknown Project"
+
+    # Check that a row is properly created from a UserReport
+    file_report_3 = create_file_report('test_3.py')
+    file_report_4 = create_file_report('test_4.txt')
+    project_report_2 = create_project_report(
+        file_report_3, file_report_4, True)
+    user_report = create_user_report(project_report, project_report_2)
+    user_row = create_row(user_report)
+
+    assert type(user_row) == UserReportTable
+    assert user_row.user_start_date == user_report.get_value(  # type: ignore
+        UserStatCollection.USER_START_DATE.value)

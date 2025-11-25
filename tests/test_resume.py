@@ -41,11 +41,10 @@ def test_generate_resume():
     resume.add_item(item)
     generated = resume.generate_resume()
     expected_output = (
-        "Title: Software Engineer\n"
-        "Bullet Points:\n"
-        " - Developed features\n"
-        " - Fixed bugs\n"
-        "Duration: 2020-01-01 - 2021-01-01\n\n"
+        "Software Engineer : 2020-01-01 - 2021-01-01\n"
+        "   - Developed features\n"
+        "   - Fixed bugs\n"
+        "\n"
     )
     assert generated == expected_output
 

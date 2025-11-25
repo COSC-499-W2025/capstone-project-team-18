@@ -2,34 +2,30 @@
 This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
+import os
+import time
 from .report import FileReport
-from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage
+from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage, FileStatisticTemplate
 import datetime
 from pathlib import Path
 import logging
 import re
-from typing import Optional
+from typing import Optional, Any
 import ast
 from src.utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
+from git import GitCommandError, Repo, InvalidGitRepositoryError
+import tinycss2
+from bs4 import BeautifulSoup
 
-# CSS & HTML parsers
-try:
-    import tinycss2
-except ImportError:
-    tinycss2 = None
-try:
-    from bs4 import BeautifulSoup
-except ImportError:
-    BeautifulSoup = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def extract_file_reports(project_file: Optional[ProjectFiles]) -> Optional[list[FileReport]]:
+def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[str] = None) -> Optional[list[FileReport]]:
     """
-    Method to extract inidvidual fileReports within each project
+    Method to extract individual fileReports within each project
     """
 
     if project_file is None:
@@ -41,8 +37,18 @@ def extract_file_reports(project_file: Optional[ProjectFiles]) -> Optional[list[
     # list of reports for each file in an individual project to be returned
     reports = []
     for file in projectFiles:
-        analyzer = BaseFileAnalyzer(project_file.root_path + "/" + file)
-        reports.append(analyzer.analyze())
+
+        analyzer = get_appropriate_analyzer(
+            project_file.root_path, file, project_file.repo, email)
+
+        if analyzer.should_inculde() is False:
+            continue
+
+        try:
+            reports.append(analyzer.analyze())
+        except Exception as e:
+            logger.error(
+                f"Error analyzing file {file} in {project_file.name}: {e}")
 
     return reports
 
@@ -61,48 +67,151 @@ class BaseFileAnalyzer:
     Attributes:
         filepath (str): The path to the file being analyzed.
         stats (StatisticIndex): The index holding collected statistics.
+        realtive_path (str): The path to the file relative to the
+            top-level project directory.
+        repo (Optional[Repo]): The Git repository object if the file
+            is part of a Git repository.
+        email (Optional[str]): The email of the user analyzing the file.
 
     Statistics:
         - DATE_CREATED
-        - DATE_ACCESSED
         - DATE_MODIFIED
+        - FILE_SIZE_BYTES
     """
 
-    def __init__(self, filepath: str):
-        self.filepath = filepath
+    def __init__(self,
+                 path_to_top_level_project: str,
+                 relative_path: str,
+                 repo: Optional[Repo] = None,
+                 email: Optional[str] = None
+                 ):
+
+        self.path_to_top_level_project = path_to_top_level_project
+        self.relative_path = relative_path
+        self.filepath = f"{path_to_top_level_project}/{relative_path}"
+        self.repo = repo
+        self.email = email
         self.stats = StatisticIndex()
+        self.blame_info = None
+        self.is_git_tracked = self.file_in_git_repo()
+
+    def file_in_git_repo(self) -> bool:
+        """
+        Check to see the project is in a git repository and
+        if so, that this specific file is tracked by git.
+        """
+
+        if self.repo is None:
+            return False
+
+        try:
+            self.blame_info = self.repo.blame('HEAD', self.relative_path)
+
+            return True
+        except (ValueError, GitCommandError, Exception) as e:
+            logger.debug(
+                f"File not tracked by git or git error: {e}")
+            return False
+
+    def should_inculde(self) -> bool:
+        """
+        This is a lightweight check to see if the file should be
+        included in analysis. By deafult, all files are included.
+
+        A file is excluded if it meets certain criteria:
+            - If the user has configured to exclude files of this type
+            - If user has given their email, and the file is tracked by git,
+                but none of the lines in the file were authored by the user.
+
+        Returns:
+            bool: True if the file should be included, False otherwise.
+        """
+
+        # TODO : Implement user preferences for excluding certain file types
+
+        if not self.is_git_tracked or not self.email or not self.repo:
+            return True
+
+        if self.blame_info is None:
+            return True
+
+        # Use the git command "shortlog" to see if a user has contributed to a file.
+        git_cmd = self.repo.git
+        short_log = git_cmd.shortlog(
+            "-s", "-n", "--email", "HEAD", "--", self.relative_path)
+
+        if self.email in short_log:
+            return True
+
+        return False
 
     def _process(self) -> None:
         """
-        A private function that collects basic statistics available for any file.
-        This includes a file's:
+        This is the main processing function for the analyzers family
+        of classes. It will always be run first before any subclass
+        analysis is done.
+
+        Here we collect basic file statistics that are
+        common to all file types. That being:
         - Creation date
-        - Last modified/accessed date
+        - Last modified date
         - Size (in bytes)
 
-        All of the metadata is wrapped into a list and put into `self.stats`.
+        If the file is part of a Git repository, we get the creation
+        and last modified dates from the Git commit history. If not,
+        we fall back to the filesystem metadata.
+
+        Likewise with any of the analyzers that extend this class,
+        you can call this _process method and know that these basic
+        statistics will be collected in the self.stats StatisticIndex.
+
         """
-        try:
-            metadata = Path(self.filepath).stat()
 
-            # Map file statistic templates to their corresponding timestamp values
-            timestamps = {
-                FileStatCollection.DATE_CREATED.value: getattr(metadata, "st_birthtime", metadata.st_ctime),
-                FileStatCollection.DATE_ACCESSED.value: metadata.st_atime,
-                FileStatCollection.DATE_MODIFIED.value: metadata.st_mtime,
-            }
+        metadata = None
+        metadata = Path(self.filepath).stat()
 
-            # Add timestamp stats
-            for template, value in timestamps.items():
-                self.stats.add(
-                    Statistic(template, datetime.datetime.fromtimestamp(value)))
+        stats = [
+            Statistic(FileStatCollection.FILE_SIZE_BYTES.value,
+                      metadata.st_size),
+        ]
 
-            self.stats.add(
-                Statistic(FileStatCollection.FILE_SIZE_BYTES.value, metadata.st_size))
+        if self.is_git_tracked:
+            # Get the creation date from the first commit
+            # and get the last modified date from the latest commit
 
-        except (FileNotFoundError, PermissionError, OSError, AttributeError) as e:
-            logging.error(
-                f"Couldn't access metadata for a file in: {self.filepath}. \nError thrown: {str(e)}")
+            try:
+                commits = list(self.repo.iter_commits(  # pyright: ignore[reportOptionalMemberAccess]
+                    paths=self.relative_path))
+            except Exception as e:
+                logger.debug(f"InvalidGitRepositoryError: {e}")
+                commits = []
+
+            if commits:
+                first_commit = commits[-1]
+                latest_commit = commits[0]
+
+                stats.append(Statistic(FileStatCollection.DATE_CREATED.value, datetime.datetime.fromtimestamp(
+                    first_commit.authored_date)))
+                stats.append(Statistic(FileStatCollection.DATE_MODIFIED.value, datetime.datetime.fromtimestamp(
+                    latest_commit.authored_date)))
+        else:
+            # Fallback to filesystem metadata
+
+            """
+            Special note here:
+
+            Linux corrupts the st_birthtime to be the time that
+            the file was unzipped.
+            Linux's date access actually contains the true birthtime so
+            we treat that as DATE_CREATED
+            """
+
+            stats.append(Statistic(FileStatCollection.DATE_CREATED.value, datetime.datetime.fromtimestamp(
+                metadata.st_atime)))
+            stats.append(Statistic(FileStatCollection.DATE_MODIFIED.value, datetime.datetime.fromtimestamp(
+                metadata.st_mtime)))
+
+        self.stats.extend(stats)
 
     def analyze(self) -> FileReport:
         """
@@ -110,23 +219,7 @@ class BaseFileAnalyzer:
         """
         self._process()
 
-        return FileReport(statistics=self.stats, filepath=self.filepath)
-
-    def extract_file_reports(self, project_title: str, project_structure: dict) -> list:
-        """
-        Method to extract individual fileReports within each project
-        """
-        # Given a single project for a user and the project's structure return a list with each fileReport
-        projectFiles = project_structure.get(project_title)
-        # list of reports for each file in an individual project to be returned
-        reports = []
-        if projectFiles is not None:
-            for file in projectFiles:
-                analyzer = BaseFileAnalyzer(file)
-                reports.append(analyzer.analyze())
-        else:
-            return None
-        return reports
+        return FileReport(statistics=self.stats, filepath=self.relative_path)
 
 
 class TextFileAnalyzer(BaseFileAnalyzer):
@@ -135,19 +228,19 @@ class TextFileAnalyzer(BaseFileAnalyzer):
 
     This class will parse a file that contains text and log the
     raw line count, but more specific type of stats are given
-    to the sublcasses which are: CodeFileAnalyzer and
+    to the subclasses which are: CodeFileAnalyzer and
     NaturalLanguageAnalyzer.
 
     Attributes:
-        text_context : str The string repersentation of
+        text_context : str The string representation of
         the text in the file
 
     Statistics:
         - LINES_IN_FILE
     """
 
-    def __init__(self, filepath: str):
-        super().__init__(filepath)
+    def _process(self) -> None:
+        super()._process()
 
         # Open the file and use the charset_normalizer package to automatically
         # detect the file's encoding
@@ -157,9 +250,6 @@ class TextFileAnalyzer(BaseFileAnalyzer):
             logging.debug(
                 f"{self.__class__} tried to open {self.filepath} but got error {e}")
             raise
-
-    def _process(self) -> None:
-        super()._process()
 
         lines_broken = self.text_content.split("\n")
 
@@ -235,13 +325,24 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
     Statistics:
         - TYPE_OF_FILE
+        - PERCENTAGE_LINES_COMMITTED
     """
 
     def _process(self) -> None:
         super()._process()
 
-        self.stats.add(Statistic(FileStatCollection.TYPE_OF_FILE.value,
-                                 FileDomain.CODE))
+        stats = [
+            Statistic(FileStatCollection.TYPE_OF_FILE.value,
+                      FileDomain.CODE),
+        ]
+
+        file_commit_percentage = self._get_file_commit_percentage()
+
+        if file_commit_percentage is not None:
+            stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                                   file_commit_percentage))
+
+        self.stats.extend(stats)
 
         self._find_coding_language()
 
@@ -260,6 +361,38 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             # Each language.value is a tuple (name, extensions)
             if suffix in language.value[1]:
                 return self.stats.add(Statistic(FileStatCollection.CODING_LANGUAGE.value, language))
+
+    def _get_file_commit_percentage(self) -> Optional[float]:
+        """
+        Calculate the percentage of lines in the file
+        that were authored by the user with the given email.
+        """
+
+        # If the file is not tracked by git or email is None, return None
+        if self.is_git_tracked is False or self.email is None or self.repo is None:
+            return None
+
+        try:
+            # gets blame for each line
+            blame_info = self.repo.blame('HEAD', self.relative_path)
+
+            commit_count = 0
+            line_count = 0
+            for commit, lines in blame_info:
+                line_count += len(lines)
+                if commit.author.email == self.email:
+                    commit_count += len(lines)
+
+            if line_count == 0:
+                return 0.0
+
+            return round((commit_count / line_count) * 100, 2)
+        except InvalidGitRepositoryError as e:
+            logger.debug(f"InvalidGitRepositoryError: {e}")
+            return None
+        except Exception as e:
+            logger.debug(f"Exception while computing commit percentage: {e}")
+            return None
 
 
 class PythonAnalyzer(CodeFileAnalyzer):
@@ -512,6 +645,8 @@ class CSSAnalyzer(CodeFileAnalyzer):
         if not self.text_content.strip():
             logger.debug(
                 f"{self.__class__.__name__}: Empty file {self.filepath}")
+            logger.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
@@ -562,9 +697,13 @@ class CSSAnalyzer(CodeFileAnalyzer):
                             if nr.type == "qualified-rule":
                                 class_tokens.update(
                                     extract_classes_from_prelude(nr.prelude))
+                                class_tokens.update(
+                                    extract_classes_from_prelude(nr.prelude))
 
                 elif r.type == "qualified-rule":
                     rule_count += 1
+                    class_tokens.update(
+                        extract_classes_from_prelude(r.prelude))
                     class_tokens.update(
                         extract_classes_from_prelude(r.prelude))
 
@@ -576,8 +715,14 @@ class CSSAnalyzer(CodeFileAnalyzer):
                 "CSSAnalyzer: tinycss2 not installed; using regex fallback.")
             cleaned = re.sub(r'/\*.*?\*/', '',
                              self.text_content, flags=re.DOTALL)
+            logger.debug(
+                "CSSAnalyzer: tinycss2 not installed; using regex fallback.")
+            cleaned = re.sub(r'/\*.*?\*/', '',
+                             self.text_content, flags=re.DOTALL)
 
             # Count style rules and at-rule blocks (best-effort)
+            rule_blocks = re.findall(
+                r'[^{@][^{]+\{[^{}]*\}|@[^{}]+\{[^{}]*\}', cleaned)
             rule_blocks = re.findall(
                 r'[^{@][^{]+\{[^{}]*\}|@[^{}]+\{[^{}]*\}', cleaned)
             rule_count = len(rule_blocks)
@@ -594,6 +739,10 @@ class CSSAnalyzer(CodeFileAnalyzer):
 
         self.stats.extend([
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, rule_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
+                      len(class_tokens)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
                       len(class_tokens)),
             Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
@@ -616,6 +765,8 @@ class HTMLAnalyzer(CodeFileAnalyzer):
 
         # Empty file: emit zero/empty stats so keys always exist
         if not self.text_content.strip():
+            logger.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             logger.debug(
                 f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
@@ -645,13 +796,19 @@ class HTMLAnalyzer(CodeFileAnalyzer):
             script_srcs = [s["src"] for s in soup.find_all("script", src=True)]
             link_hrefs = [l["href"] for l in soup.find_all("link", href=True)]
             img_srcs = [i["src"] for i in soup.find_all("img", src=True)]
+            link_hrefs = [l["href"] for l in soup.find_all("link", href=True)]
+            img_srcs = [i["src"] for i in soup.find_all("img", src=True)]
             imported_packages = list({*script_srcs, *link_hrefs, *img_srcs})
 
         else:
             # ---- Regex fallback (if bs4 isn't installed) ----
             logger.debug(
                 "HTMLAnalyzer: BeautifulSoup not installed; using regex fallback.")
+            logger.debug(
+                "HTMLAnalyzer: BeautifulSoup not installed; using regex fallback.")
             # <script> blocks (inline + external)
+            script_count = len(re.findall(
+                r'<\s*script\b', self.text_content, re.IGNORECASE))
             script_count = len(re.findall(
                 r'<\s*script\b', self.text_content, re.IGNORECASE))
 
@@ -674,9 +831,21 @@ class HTMLAnalyzer(CodeFileAnalyzer):
                 r'<\s*link[^>]*\bhref\s*=\s*["\']([^"\']+)["\']',  self.text_content, re.IGNORECASE)
             imgs = re.findall(
                 r'<\s*img[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']',    self.text_content, re.IGNORECASE)
+            srcs = re.findall(
+                r'<\s*script[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', self.text_content, re.IGNORECASE)
+            links = re.findall(
+                r'<\s*link[^>]*\bhref\s*=\s*["\']([^"\']+)["\']',  self.text_content, re.IGNORECASE)
+            imgs = re.findall(
+                r'<\s*img[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']',    self.text_content, re.IGNORECASE)
             imported_packages = list(set(srcs + links + imgs))
 
         self.stats.extend([
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
+                      script_count),
+            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
+                      len(class_tokens)),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
                       script_count),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
@@ -703,6 +872,8 @@ class PHPAnalyzer(CodeFileAnalyzer):
         if not self.text_content.strip():
             logging.debug(
                 f"{self.__class__.__name__}: Empty file {self.filepath}")
+            logging.debug(
+                f"{self.__class__.__name__}: Empty file {self.filepath}")
             self.stats.extend([
                 Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
                 Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
@@ -714,13 +885,22 @@ class PHPAnalyzer(CodeFileAnalyzer):
         func_def_names = set(re.findall(
             r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))
         short_arrow_defs = re.findall(r'\bfn\s*\(', self.text_content)
+        func_def_names = set(re.findall(
+            r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))
+        short_arrow_defs = re.findall(r'\bfn\s*\(', self.text_content)
         function_count = len(func_def_names) + len(short_arrow_defs)
 
         class_count = len(re.findall(
             r'\bclass\s+[A-Za-z_]\w*', self.text_content))
         interface_count = len(re.findall(
             r'\binterface\s+[A-Za-z_]\w*', self.text_content))
+        class_count = len(re.findall(
+            r'\bclass\s+[A-Za-z_]\w*', self.text_content))
+        interface_count = len(re.findall(
+            r'\binterface\s+[A-Za-z_]\w*', self.text_content))
 
+        namespace_imports = re.findall(
+            r'\buse\s+([A-Za-z_][\w\\]+)\s*;', self.text_content)
         namespace_imports = re.findall(
             r'\buse\s+([A-Za-z_][\w\\]+)\s*;', self.text_content)
         includes = re.findall(
@@ -732,7 +912,13 @@ class PHPAnalyzer(CodeFileAnalyzer):
         stats = [
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
                       function_count),
+            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
+                      function_count),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, class_count),
+            Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
+                      interface_count),
+            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
+                      imported_packages),
             Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
                       interface_count),
             Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
@@ -741,60 +927,61 @@ class PHPAnalyzer(CodeFileAnalyzer):
         self.stats.extend(stats)
 
 
-def get_appropriate_analyzer(filepath: str) -> BaseFileAnalyzer:
+def get_appropriate_analyzer(
+    path_to_top_level_project: str,
+    relative_path: str,
+    repo: Optional[Repo] = None,
+    email: Optional[str] = None
+) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
     This allows FileReport to automatically use the best analyzer.
     """
 
-    file_path = Path(filepath)
+    file_path = Path(path_to_top_level_project + "/" + relative_path)
     extension = file_path.suffix.lower()
 
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:
-        return NaturalLanguageAnalyzer(filepath)
+        return NaturalLanguageAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # Python files
     if extension == '.py':
-        return PythonAnalyzer(filepath)
-
+        return PythonAnalyzer(path_to_top_level_project, relative_path, repo, email)
     # Java files
     if extension == '.java':
-        return JavaAnalyzer(filepath)
+        return JavaAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # JavaScript files
     if extension in {'.js', '.jsx'}:
-        return JavaScriptAnalyzer(filepath)
-
+        return JavaScriptAnalyzer(path_to_top_level_project, relative_path, repo, email)
     # C files
     if extension == '.c':
-        return CAnalyzer(filepath)
+        return CAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
-        return TypeScriptAnalyzer(filepath)
-
+        return TypeScriptAnalyzer(path_to_top_level_project, relative_path, repo, email)
     # CSS files
     if extension == '.css':
-        return CSSAnalyzer(filepath)
+        return CSSAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
-        return HTMLAnalyzer(filepath)
-
+        return HTMLAnalyzer(path_to_top_level_project, relative_path, repo, email)
     # PHP files
     if extension == '.php':
-        return PHPAnalyzer(filepath)
+        return PHPAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # Text-based files
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
-        return TextFileAnalyzer(filepath)
+        return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     for language in CodingLanguage:
         if extension in language.value[1]:
-            return CodeFileAnalyzer(filepath)
+            return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email)
 
     # Default to base analyzer
-    return BaseFileAnalyzer(filepath)
+    return BaseFileAnalyzer(path_to_top_level_project, relative_path, repo, email)

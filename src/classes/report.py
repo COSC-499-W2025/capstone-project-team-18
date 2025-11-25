@@ -7,10 +7,11 @@ import tempfile
 import shutil
 import zipfile
 from git import Repo, InvalidGitRepositoryError
-from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
-from .resume import Resume, ResumeItem
+from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
+from git import NoSuchPathError, Repo, InvalidGitRepositoryError
+from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, MINYEAR
 
 
 class BaseReport:
@@ -55,7 +56,7 @@ class FileReport(BaseReport):
         self.filepath = filepath
 
     @classmethod
-    def create_with_analysis(cls, filepath: str) -> "FileReport":
+    def create_with_analysis(cls, path_to_top_level: str, relative_path: str) -> "FileReport":
         """
         Create a FileReport with automatic file type detection and analysis.
         This includes:
@@ -66,7 +67,7 @@ class FileReport(BaseReport):
                 - Text-based statistics for appropriate text based files (i.e. css, html, xml, json, yml, yaml)
         """
         from .analyzer import get_appropriate_analyzer
-        analyzer = get_appropriate_analyzer(filepath)
+        analyzer = get_appropriate_analyzer(path_to_top_level, relative_path)
         return analyzer.analyze()
 
     def get_filename(self):
@@ -83,72 +84,178 @@ class ProjectReport(BaseReport):
     of "total lines written."
     """
 
+    def get_project_weight(self) -> float:
+        """
+        Ranks the project using a linear combination of lines of code, date range, and individual contribution.
+        Equal weightage is given to each factor. All factors are normalized to [0, 1] scale.
+        The returned value is the sum of the three normalized components, so the final score is in [0, 3].
+        """
+        # Lines normalization
+        total_lines = 0.0
+        if self.file_reports:
+            total_lines = sum(
+                report.get_value(FileStatCollection.LINES_IN_FILE.value) or 0.0
+                for report in self.file_reports
+            )
+        norm_lines = min(total_lines / 500.0, 1.0) if total_lines > 0 else 0.0
+
+        # Date range normalization (assume 1 year = 1.0 weight)
+        start_date = self.get_value(
+            ProjectStatCollection.PROJECT_START_DATE.value)
+        end_date = self.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+        norm_date = 0.0
+        if start_date and end_date:
+            if isinstance(start_date, (datetime, date)) and isinstance(end_date, (datetime, date)):
+                days = (end_date - start_date).days
+                norm_date = min(days / 365, 1.0) if days > 0 else 0.0
+
+        # Individual contribution normalization
+        contrib = self.get_value(
+            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
+        norm_contrib = 0.0
+        if isinstance(contrib, (int, float)):
+            norm_contrib = max(0.0, min(contrib / 100.0, 1.0))
+
+        # Final weight (sum of normalized components)
+        weight = norm_lines + norm_date + norm_contrib
+        return weight
+
     def __init__(self,
                  file_reports: Optional[list[FileReport]] = None,
-                 zip_path: Optional[str] = None,
+                 project_path: Optional[str] = None,
                  project_name: Optional[str] = None,
-                 user_email: Optional[str] = None
+                 user_email: Optional[str] = None,
+                 statistics: Optional[StatisticIndex] = None,
+                 project_repo: Optional[Repo] = None
                  ):
         """
         Initialize ProjectReport with file reports and optional Git analysis from zip file.
 
         Args:
             file_reports: List of FileReport objects to aggregate statistics from
-            zip_path: Optional path to zip file for Git analysis
+            project_path: Optional path to project for Git analysis
             project_name: Optional project name for Git analysis
+            user_email: Optional user email for Git authorship analysis
+            statistics: Optional StatisticIndex
+
+        NOTE: `statistics` should only be included when the `get_project_from_project_name()`
+        function is creating a ProjectReport object from an existing row in
+        the `project_report` table!
         """
-
-        self.project_name = project_name or "Unknown Project"
         self.file_reports = file_reports or []
-        self.statistics = StatisticIndex()
+        self.project_name = project_name or "Unknown Project"
 
-        project_stats = []
-
-        self._find_coding_languages_ratio()
-
-        # Process file reports if provided
-        if file_reports:
-            # Extract all creation dates from file reports, filtering out None values
-            date_created_list = [
-                report.get_value(FileStatCollection.DATE_CREATED.value)
-                for report in file_reports
-                if report.get_value(FileStatCollection.DATE_CREATED.value) is not None
-            ]
-
-            # Extract all modification dates from file reports, filtering out None values
-            date_modified_list = [
-                report.get_value(FileStatCollection.DATE_MODIFIED.value)
-                for report in file_reports
-                if report.get_value(FileStatCollection.DATE_MODIFIED.value) is not None
-            ]
-
-            # Calculate and add project start date (earliest file creation)
-            if date_created_list:
-                start_date = min(date_created_list)
-                project_start_stat = Statistic(
-                    ProjectStatCollection.PROJECT_START_DATE.value, start_date)
-                project_stats.append(project_start_stat)
-
-            # Calculate and add project end date (latest file modification)
-            if date_modified_list:
-                end_date = max(date_modified_list)
-                project_end_stat = Statistic(
-                    ProjectStatCollection.PROJECT_END_DATE.value, end_date)
-                project_stats.append(project_end_stat)
-
-        # Create StatisticIndex with project-level statistics
-        self.statistics.extend(project_stats)
-
-        # Add Git analysis statistics if zip file is provided
-        if zip_path and project_name:
-            git_stats = self._analyze_git_authorship(
-                zip_path, project_name, user_email)
-            if git_stats:
-                for stat in git_stats:
-                    self.statistics.add(stat)
+        if statistics is None:
+            self.project_statistics = StatisticIndex()
+            # Initialize project_repo from project_path if not provided
+            if project_repo is not None:
+                self.project_repo = project_repo
+            elif project_path is not None:
+                from os.path import exists
+                if not exists(project_path):
+                    raise FileNotFoundError(
+                        f"Project path does not exist: {project_path}")
+                try:
+                    self.project_repo = Repo(project_path)
+                except (InvalidGitRepositoryError, NoSuchPathError):
+                    self.project_repo = None
+            else:
+                self.project_repo = None
+            # Aggregate statistics from file reports
+            self._determine_start_end_dates()
+            self._find_coding_languages_ratio()
+            self._calculate_ari_score()
+            self._weighted_skills()
+            if user_email:
+                self._analyze_git_authorship(user_email)
+        else:
+            self.project_statistics = statistics
 
         # Initialize the base class with the project statistics
-        super().__init__(self.statistics)
+        super().__init__(self.project_statistics)
+
+    def _weighted_skills(self) -> None:
+        """
+        Creates the project level statistic of
+        WEIGHTED_SKILLS.
+
+        We do this by analyzing the
+        imported packages in coding files.
+
+        We weight the skills based on how many
+        files import the package.
+        """
+
+        skill_to_count = {}
+
+        # Map coding language to lines of code
+        for report in self.file_reports:
+
+            imported_packages: Optional[list[str]] = report.get_value(
+                FileStatCollection.IMPORTED_PACKAGES.value)
+
+            if imported_packages is None:
+                continue
+
+            for package in imported_packages:
+                skill_to_count[package] = skill_to_count.get(package, 0) + 1
+
+        if len(skill_to_count) == 0:
+            # Don't log this stat if it isn't a coding project
+            return
+
+        total = sum(skill_to_count.values())
+        weighted_skills = [
+            WeightedSkills(skill_name=k, weight=v / total)
+            for k, v in skill_to_count.items()
+        ]
+
+        self.project_statistics.add(
+            Statistic(ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value, weighted_skills))
+
+    def _determine_start_end_dates(self) -> None:
+        """
+        Calculates a project start and end date based on
+        the file reports available. Logs statistics to
+        self.project_statistics.
+
+        Note here. Currently when we unzip with Linux's
+        "unzip" utility, it sets the date created to the
+        current date, not the date in the zip file. The
+        dates we need to analyze are the date modified
+        and the date accessed.
+        """
+
+        # Set the value to 1 day in the future
+        latest_date = datetime.now() + timedelta(days=1)
+        earliest_date = datetime(MINYEAR, 1, 1, 0, 0, 0, 0)
+
+        start_date = latest_date
+        end_date = earliest_date
+
+        for report in self.file_reports:
+            curr_start_date = report.get_value(
+                FileStatCollection.DATE_CREATED.value)
+            curr_end_date = report.get_value(
+                FileStatCollection.DATE_MODIFIED.value)
+
+            # curr_start_date and curr_end_date are always datetime; if not, let comparison throw an error
+
+            if curr_start_date and curr_start_date < start_date:
+                start_date = curr_start_date
+
+            if curr_end_date and curr_end_date > end_date:
+                end_date = curr_end_date
+
+        if end_date != earliest_date:
+            project_end_stat = Statistic(
+                ProjectStatCollection.PROJECT_END_DATE.value, end_date)
+            self.project_statistics.add(project_end_stat)
+
+        if start_date != latest_date:
+            project_start_stat = Statistic(
+                ProjectStatCollection.PROJECT_START_DATE.value, start_date)
+            self.project_statistics.add(project_start_stat)
 
     def generate_resume_item(self) -> ResumeItem:
         """
@@ -161,22 +268,15 @@ class ProjectReport(BaseReport):
             end_date: End date of the project
         """
 
-        # Here we create bullet points based on available statistics
-
-        # TODO: Expand bullet points based on real statistics
-        bullet_points = [
-            f"I helped create this project named {self.project_name}.",
-        ]
-
-        title = self.project_name
-
         start_date = self.get_value(
             ProjectStatCollection.PROJECT_START_DATE.value)
         end_date = self.get_value(
             ProjectStatCollection.PROJECT_END_DATE.value)
 
+        bullet_points = bullet_point_builder(self)
+
         return ResumeItem(
-            title=title,
+            title=self.project_name,
             bullet_points=bullet_points,
             start_date=start_date,
             end_date=end_date
@@ -213,8 +313,28 @@ class ProjectReport(BaseReport):
         language_ratio = {k: (v / total) for k,
                           v in langauges_to_loc.items()}
 
-        self.statistics.add(
+        self.project_statistics.add(
             Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, language_ratio))
+
+    def _calculate_ari_score(self):
+        '''
+        Uses all of the FileReports that make up the ProjectReport
+        to calculate the average ARI writing score for the project
+        using all files that have the `ARI_WRITING_SCORE` stat.
+        '''
+        avg_score = 0
+        scores_count = 0  # the number of FileReports that have an ARI stat
+        for report in self.file_reports:
+            curr_score = report.get_value(
+                FileStatCollection.ARI_WRITING_SCORE.value)
+            if curr_score is None:
+                continue
+            scores_count += 1
+            avg_score += curr_score
+        if scores_count > 0:
+            avg_score /= scores_count
+        self.project_statistics.add(
+            Statistic(ProjectStatCollection.AVG_ARI_WRITING_SCORE.value, float(avg_score)))
 
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
@@ -224,79 +344,80 @@ class ProjectReport(BaseReport):
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
         return inst
 
-    def _analyze_git_authorship(self, zip_path: str, project_name: str, user_email: str = None) -> Optional[list[Statistic]]:
-        """Analyzes Git commit history to determine authorship statistics."""
-        if not Path(zip_path).exists():
+    def _analyze_git_authorship(self, user_email: Optional[str] = None) -> None:
+        """
+        Analyzes Git commit history to determine authorship statistics.
+
+        Creates the following project level statistics:
+        - IS_GROUP_PROJECT: Boolean indicating if multiple authors contributed
+        - TOTAL_AUTHORS: Total number of unique authors
+        - AUTHORS_PER_FILE: Dictionary mapping file paths to number of unique authors
+        - USER_COMMIT_PERCENTAGE: Percentage of commits made by the user (if applicable)
+
+        Args:
+            user_email: Optional email of the user to calculate their commit percentage
+        """
+
+        if self.project_repo is None:
             return None
 
-        temp = tempfile.mkdtemp()
+        repo = self.project_repo
+
+        # Check if repository has any commits
         try:
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                files = [f for f in zf.namelist(
-                ) if f.startswith(f"{project_name}/")]
-                if not files:
-                    return None
-                for path in files:
-                    zf.extract(path, temp)
-
-            try:
-                repo = Repo(Path(temp) / project_name)
-
-                # Sum all commits to check perecentage by
-                commit_count_by_author = {}
-                for commit in repo.iter_commits():
-                    author_email = commit.author.email
-                    commit_count_by_author[author_email] = commit_count_by_author.get(
-                        author_email, 0) + 1
-
-                all_authors = set(commit_count_by_author.keys())
-                total_authors = len(all_authors)
-                total_commits = sum(commit_count_by_author.values())
-
-                # Calculate user's commit percentage if project has multiple authors
-                user_commit_percentage = None
-                if total_authors > 1 and user_email:
-                    user_commits = commit_count_by_author.get(
-                        user_email, 0)
-                    if total_commits > 0:
-                        user_commit_percentage = (
-                            user_commits / total_commits) * 100
-
-                authors_per_file = {}
-                for item in repo.tree().traverse():
-                    if item.type == 'blob':
-                        try:
-                            file_authors = {
-                                c.author.email for c in repo.iter_commits(paths=item.path)}
-                            authors_per_file[item.path] = len(file_authors)
-                        except Exception:
-                            continue
-
-                stats = [
-                    Statistic(
-                        ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
-                    Statistic(
-                        ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
-                    Statistic(
-                        ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
-                ]
-
-                # Add user commit percentage if applicable
-                if user_commit_percentage is not None:
-                    stats.append(
-                        Statistic(
-                            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
-                            round(user_commit_percentage, 2)
-                        )
-                    )
-
-                return stats
-            except InvalidGitRepositoryError:
-                return None
-        except (zipfile.BadZipFile, FileNotFoundError):
+            commit_count_by_author = {}
+            for commit in repo.iter_commits():
+                author_email = commit.author.email
+                commit_count_by_author[author_email] = commit_count_by_author.get(
+                    author_email, 0) + 1
+        except ValueError:
+            # Empty repository with no commits
             return None
-        finally:
-            shutil.rmtree(temp, ignore_errors=True)
+
+        all_authors = set([author for author in commit_count_by_author.keys(
+        ) if not author.endswith('@users.noreply.github.com')])
+
+        total_authors = len(all_authors)
+        total_commits = sum(commit_count_by_author.values())
+
+        # Calculate user's commit percentage if project has multiple authors
+        user_commit_percentage = None
+        if total_authors > 1 and user_email:
+            user_commits = commit_count_by_author.get(
+                user_email, 0)
+            if total_commits > 0:
+                user_commit_percentage = (
+                    user_commits / total_commits) * 100
+
+        authors_per_file = {}
+        for item in repo.tree().traverse():
+            if item.type == 'blob':
+                try:
+                    file_authors = {
+                        c.author.email for c in repo.iter_commits(paths=item.path)}
+                    authors_per_file[item.path] = len(file_authors)
+                except Exception:
+                    continue
+
+        stats = [
+            Statistic(
+                ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
+            Statistic(
+                ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
+            Statistic(
+                ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
+        ]
+
+        # Add user commit percentage if applicable
+        if user_commit_percentage is not None:
+            stats.append(
+                Statistic(
+                    ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
+                    round(user_commit_percentage, 2)
+                )
+            )
+
+        self.project_statistics.extend(stats)
 
 
 class UserReport(BaseReport):
@@ -319,46 +440,104 @@ class UserReport(BaseReport):
 
         self.resume_items = [project_reports.generate_resume_item()
                              for project_reports in project_reports]
-
-        # Extract all project start dates, filtering out None values
-        # This creates a list of datetime objects representing when each project started
-        project_start_dates = [
-            report.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-            for report in project_reports
-            if report.get_value(ProjectStatCollection.PROJECT_START_DATE.value) is not None
-        ]
-
-        # Extract all project end dates, filtering out None values
-        # This creates a list of datetime objects representing when each project ended
-        project_end_dates = [
-            report.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-            for report in project_reports
-            if report.get_value(ProjectStatCollection.PROJECT_END_DATE.value) is not None
-        ]
+        self.project_reports = project_reports or []
 
         # Build list of user-level statistics
-        user_stats = []
+        self.user_stats = StatisticIndex()
 
-        # Calculate and add user start date (earliest project start)
-        # Calculate and add project start date (earliest file creation)
-        if project_start_dates:
-            start_date = min(project_start_dates)
-            user_start_stat = Statistic(
-                UserStatCollection.USER_START_DATE.value, start_date)
-            user_stats.append(user_start_stat)
+        # Function calls to generate statistics
+        self._determine_start_end_dates()
+        self._find_coding_languages_ratio()
+        self._calculate_user_ari()
 
-        # Calculate and add project end date (latest file modification)
-        if project_end_dates:
-            end_date = max(project_end_dates)
-            user_end_stat = Statistic(
-                UserStatCollection.USER_END_DATE.value, end_date)
-            user_stats.append(user_end_stat)
-
-        # Create StatisticIndex with user-level statistics
-        user_statistics = StatisticIndex(user_stats)
+    def _determine_start_end_dates(self):
+        # Loop through and find the earliest start date and latest end date of all projects
+        latest_date = datetime.now() + timedelta(days=1)  # 1 day in the future
+        earliest_date = datetime(MINYEAR, 1, 1, 0, 0, 0, 0)
+        # For checking that the time range is valid
+        start_date = latest_date
+        end_date = earliest_date
+        for pr in self.project_reports:
+            curr_start_date = self._coerce_datetime(
+                pr.get_value(
+                    ProjectStatCollection.PROJECT_START_DATE.value)
+            )
+            curr_end_date = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+            )
+            if curr_start_date is not None and curr_start_date < start_date:
+                start_date = curr_start_date
+            if curr_end_date is not None and curr_end_date > end_date:
+                end_date = curr_end_date
+            # Make sure that the values were actually updated
+            if start_date != latest_date:
+                user_start_stat = Statistic(
+                    UserStatCollection.USER_START_DATE.value, start_date)
+                self.user_stats.add(user_start_stat)
+            if end_date != earliest_date:
+                user_end_stat = Statistic(
+                    UserStatCollection.USER_END_DATE.value, end_date)
+                self.user_stats.add(user_end_stat)
 
         # Initialize the base class with the user statistics
-        super().__init__(user_statistics)
+        super().__init__(self.user_stats)
+
+    def _find_coding_languages_ratio(self):
+        '''
+        Calculates the ratio of all coding languages
+        present in the `ProjectReports` used to
+        create the `UserReport` for the
+        `USER_CODING_LANGUAGE_RATIO` statistic.
+        '''
+        lang_ratio = {}
+
+        for proj_report in self.project_reports:
+            proj_lang_ratio = proj_report.get_value(
+                ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
+
+            if proj_lang_ratio is None:
+                continue
+
+            for curr_lang, ratio in proj_lang_ratio.items():
+                if curr_lang is None:
+                    continue
+
+                if curr_lang in lang_ratio:
+                    # language & ratio have already been added from another report
+                    lang_ratio[curr_lang] += ratio
+                else:
+                    # add new language & ratio
+                    lang_ratio[curr_lang] = ratio
+
+        if len(lang_ratio) < 1:
+            return  # don't log this stat b/c there are no coding languages
+
+        # now, we need to compute the even division the ratio of each language between all projects
+        for lang, ratio in lang_ratio.items():
+            ratio /= len(lang_ratio)
+            lang_ratio[lang] = ratio
+
+        self.user_stats.add(
+            Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio))
+
+    def _calculate_user_ari(self):
+        '''
+        Uses all of the ProjectReports that make up the UserReport
+        to calculate the average ARI writing score for the user
+        '''
+        avg_score = 0
+        scores_count = 0  # the number of FileReports that have an ARI stat
+        for report in self.project_reports:
+            curr_score = report.get_value(
+                ProjectStatCollection.AVG_ARI_WRITING_SCORE.value)
+            if curr_score is None:
+                continue
+            scores_count += 1
+            avg_score += curr_score
+        if scores_count > 0:
+            avg_score /= scores_count
+        self.user_stats.add(
+            Statistic(UserStatCollection.USER_ARI_WRITING_SCORE.value, float(avg_score)))
 
     def generate_resume(self) -> Resume:
         """
@@ -390,15 +569,15 @@ class UserReport(BaseReport):
 
     @staticmethod
     def _coerce_datetime(val: Any) -> datetime | None:
+        """Coerce a value to datetime. Raises TypeError if value cannot be coerced."""
+        if val is None:
+            return None
         if isinstance(val, datetime):
             return val
         if isinstance(val, date):
             return datetime(val.year, val.month, val.day)
         if isinstance(val, (int, float)):
-            try:
-                return datetime.fromtimestamp(val)
-            except Exception:
-                return None
+            return datetime.fromtimestamp(val)
         if isinstance(val, str):
             for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S",
                         "%Y-%m-%dT%H:%M:%S.%fZ"):
@@ -406,11 +585,8 @@ class UserReport(BaseReport):
                     return datetime.strptime(val, fmt)
                 except ValueError:
                     pass
-            try:
-                return datetime.fromisoformat(val)
-            except ValueError:
-                return None
-        return None
+            return datetime.fromisoformat(val)
+        raise TypeError(f"Cannot coerce {type(val).__name__} to datetime")
 
     @staticmethod
     def _title_from_name(raw: str) -> str:
@@ -462,6 +638,30 @@ class UserReport(BaseReport):
 
             title = self._title_from_name(name)
 
+            if name == UserStatCollection.USER_ARI_WRITING_SCORE.value.name:
+                score = 0
+                score += self.get_value(
+                    UserStatCollection.USER_ARI_WRITING_SCORE.value)
+                skills_line = f"Your Automated readability index (ARI) score: {score}"
+
+            # Try to print the user's coding languages and its percent relative to all coding languages from the user
+            if name == UserStatCollection.USER_CODING_LANGUAGE_RATIO.value.name:
+                ratio_line = "coding languages not found"
+                try:
+                    lang_ratios = value
+                    langs_sorted = sorted(
+                        lang_ratios.items(), key=lambda x: x[1], reverse=True)
+                    parts: list[str] = []
+                    for lang, ratio in langs_sorted:
+                        lang_name = lang.value[0]
+                        percent = f"{int(ratio * 100)}%"
+                        parts.append(f"{lang_name} ({percent})")
+                except Exception:
+                    ratio_line = "coding languages not found"
+                ratio_line = f"Your coding languages: {', '.join(parts)}."
+                lines.append(ratio_line)
+                continue
+
             should_try_date = (
                 template.expected_type in (date, datetime)
                 or isinstance(value, (date, datetime))
@@ -476,3 +676,151 @@ class UserReport(BaseReport):
                 lines.append(f"{title}: {value!r}")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _fmt_mdy_short(d: datetime | date | None) -> str:
+        """Format as 'Mon D, YYYY' (e.g. 'Jan 12, 2023')."""
+        if d is None:
+            return "an unknown date"
+        if isinstance(d, date) and not isinstance(d, datetime):
+            d = datetime(d.year, d.month, d.day)
+        return d.strftime("%b %d, %Y")
+
+    def get_chronological_projects(
+        self,
+        as_string: bool = True,
+        include_end_date: bool = False,
+        newest_first: bool = False,
+        numbered: bool = False,
+    ) -> list | str:
+        """
+        Return the user's projects ordered by start date.
+        This implementation includes inclusion of start & end dates
+        and numbering for both string and list outputs.
+        """
+        include_end_date = True
+        numbered = True
+
+        if not getattr(self, "project_reports", None):
+            return "" if as_string else []
+
+        entries: list[dict] = []
+        for pr in self.project_reports:
+            title = getattr(pr, "project_name", None) or "Untitled Project"
+            start_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            )
+            end_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+            )
+
+            if start_dt:
+                formatted = f"{title} - Started {self._fmt_mdy_short(start_dt)}"
+            else:
+                formatted = f"{title} - Start date unknown"
+            if end_dt:
+                formatted += f" (Ended {self._fmt_mdy_short(end_dt)})"
+            else:
+                formatted += " (End date unknown)"
+
+            entries.append(
+                {"title": title, "start_date": start_dt, "formatted": formatted})
+
+        dated = [e for e in entries if e["start_date"] is not None]
+        undated = [e for e in entries if e["start_date"] is None]
+
+        # Sort dated projects by start_date (oldest -> newest)
+        dated.sort(key=lambda e: e["start_date"])
+        if newest_first:
+            dated.reverse()
+
+        ordered = dated + undated
+
+        # Build numbered lines (numbering always applied)
+        lines = [f"{i+1}. {e['formatted']}" for i, e in enumerate(ordered)]
+
+        if as_string:
+            return "\n".join(lines)
+
+        return lines
+
+    def get_chronological_skills(
+        self,
+        as_string: bool = True,
+        newest_first: bool = False,
+    ) -> list | str:
+        """
+        Produce a chronological list of skills exercised by the user across all projects.
+
+        Skills are inferred from PROJECT_SKILLS_DEMONSTRATED on each ProjectReport
+        (i.e., the WeightedSkills list), and ordered by the earliest project start
+        date in which they appear.
+
+        If as_string is True, returns a newline-separated string of formatted lines:
+            "Python — First exercised Jan 12, 2023"
+
+        If as_string is False, returns a list of formatted strings in the same order.
+        """
+        if not getattr(self, "project_reports", None):
+            return "" if as_string else []
+
+        # Map skill_name -> earliest datetime it appears in any project
+        skill_first_seen: dict[str, datetime | None] = {}
+
+        for pr in self.project_reports:
+            start_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            )
+            skills = pr.get_value(
+                ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value
+            )
+
+            if not skills:
+                continue
+
+            for ws in skills:
+                name = getattr(ws, "skill_name", None) or str(ws)
+                if not name:
+                    continue
+
+                current_first = skill_first_seen.get(name)
+                
+                if start_dt is None:
+                    if current_first is None:
+                        skill_first_seen[name] = None
+                    continue
+                    
+                if current_first is None or start_dt < current_first:
+                        skill_first_seen[name] = start_dt
+
+        if not skill_first_seen:
+            return "" if as_string else []
+        
+        dated: list[tuple[str, datetime]] = []
+        undated: list[str] = []
+
+        for name, dt in skill_first_seen.items():
+            if dt is not None:
+                dated.append((name, dt))
+            else:
+                undated.append(name)
+
+        # Sort dated skills by first_seen (oldest -> newest)
+        dated.sort(key=lambda item: item[1])
+        if newest_first:
+            dated.reverse()
+
+        lines: list[str] = []
+
+        for name, dt in dated:
+            formatted_date = self._fmt_mdy_short(dt)
+            lines.append(f"{name} — First exercised {formatted_date}")
+
+        # Skills with unknown first date go at the end
+        for name in sorted(undated):
+            lines.append(f"{name} — First exercised on an unknown date")
+
+        if as_string:
+            return "\n".join(lines)
+
+        return lines
