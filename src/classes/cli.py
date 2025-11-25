@@ -185,6 +185,7 @@ class ArtifactMiner(cmd.Cmd):
 
         # Config for CLI
         self.options = (
+            "=== Artifact Miner Main Menu ===\n"
             "Choose one of the following options:\n"
             "(1) Permissions\n"
             "(2) Set filepath\n"
@@ -214,7 +215,7 @@ class ArtifactMiner(cmd.Cmd):
 
         title = 'Project Artifact Miner'
         print(f'\n{title}')
-        print(self.ruler * len(self.options.splitlines()[0]))
+        print(self.ruler * len(self.options.splitlines()[0]), "\n")
         print(self.options)
 
         # Show preferences file location
@@ -253,7 +254,7 @@ class ArtifactMiner(cmd.Cmd):
 
             # Check for cancel first
             # user entered 'back'/'cancel'
-            if self._handle_cancel_input(answer):
+            if self._handle_cancel_input(answer, "main"):
                 print("\n" + self.options)
                 break
 
@@ -301,7 +302,7 @@ class ArtifactMiner(cmd.Cmd):
                 return self.do_exit(arg)
 
             # Check if user wants to cancel
-            if self._handle_cancel_input(answer):
+            if self._handle_cancel_input(answer, "main"):
                 self.project_filepath = ''
                 self.cmd_history.clear()
                 print("\n" + self.options)
@@ -377,7 +378,7 @@ class ArtifactMiner(cmd.Cmd):
         # Get username with retry loop
         while True:
             name = input("Enter your name: (or 'back'/'cancel' to return): ").strip()
-            if self._handle_cancel_input(name):
+            if self._handle_cancel_input(name, "main"):
                 print("\n" + self.options)
                 return
             # Handle exit/quit first
@@ -390,7 +391,7 @@ class ArtifactMiner(cmd.Cmd):
         # Get password with retry loop
         while True:
             password = input("Enter your password: (or 'back'/'cancel' to return): ").strip()
-            if self._handle_cancel_input(password):
+            if self._handle_cancel_input(password, "main"):
                 print("\n" + self.options)
                 return
             # Handle exit/quit first
@@ -425,13 +426,13 @@ class ArtifactMiner(cmd.Cmd):
             print("(3) Reset to Defaults")
             print("(4) Back to Main Menu")
 
-            choice = input("\nSelect option (1-4, or 'exit'/'quit' to close app): ").strip()
+            choice = input("\nSelect option (1-4), or 'exit'/'quit' to close app): ").strip()
 
             # User enters exit/quit
             if choice.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
 
-            if self._handle_cancel_input(choice):
+            if self._handle_cancel_input(choice, "main"):
                 print("\n" + self.options)
                 return
 
@@ -480,7 +481,7 @@ class ArtifactMiner(cmd.Cmd):
             user_input = input(prompt).strip()
 
             # Check if user wants to cancel
-            if self._handle_cancel_input(user_input):
+            if self._handle_cancel_input(user_input, "main"):
                 print("\n" + self.options)
                 break
 
@@ -511,7 +512,7 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_exit("")
 
                 # User enters back / cancel
-                if self._handle_cancel_input(start_input):
+                if self._handle_cancel_input(start_input, "preferences"):
                     return
 
                 if start_input.lower() == 'skip':
@@ -531,7 +532,7 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_exit("")
 
                 # User enters back / cancel
-                if self._handle_cancel_input(end_input):
+                if self._handle_cancel_input(end_input, "preferences"):
                     return
 
                 if end_input.lower() == 'skip':
@@ -585,7 +586,7 @@ class ArtifactMiner(cmd.Cmd):
         extensions_input = input("Extensions to ignore (or 'clear' to remove all): ").strip()
 
         # User enters back / cancel
-        if self._handle_cancel_input(extensions_input):
+        if self._handle_cancel_input(extensions_input, "preferences"):
             return
 
         # Handle exit/quit
@@ -615,7 +616,7 @@ class ArtifactMiner(cmd.Cmd):
         confirm = input("Reset ALL preferences to defaults? This cannot be undone. (Y/N): ").strip()
 
         # User enters back /cancel
-        if self._handle_cancel_input(confirm):
+        if self._handle_cancel_input(confirm, "preferences"):
             return
 
         # Handle exit/quit
@@ -624,7 +625,7 @@ class ArtifactMiner(cmd.Cmd):
 
         if confirm.lower() == 'y':
             # User enters back /cancel
-            if self._handle_cancel_input(confirm):
+            if self._handle_cancel_input(confirm, "preferences"):
                 return
 
             success = self.preferences.reset()
@@ -683,7 +684,7 @@ class ArtifactMiner(cmd.Cmd):
             print("\nNo previous command to return to.")
             print(self.options)
 
-    def _handle_cancel_input(self, user_input):
+    def _handle_cancel_input(self, user_input, menu_location):
         '''
         Helper method to check if user wants to cancel and handle it.
         Returns True if cancel was triggered, False otherwise.
@@ -693,8 +694,9 @@ class ArtifactMiner(cmd.Cmd):
             if len(self.cmd_history) > 0:
                 cancelled_cmd = self.cmd_history.pop()  # Now correctly removes from end
                 print(f"\nCancelled '{cancelled_cmd}' operation.")
+                print("Returning to",menu_location, "menu.")
             else:
-                print("\nReturning to main menu.")
+                print("\nReturning to",menu_location,"menu.")
             return True
 
         return False
@@ -709,7 +711,7 @@ class ArtifactMiner(cmd.Cmd):
         answer = input(prompt).strip()
 
         # Check if user wants to cancel
-        if self._handle_cancel_input(answer):
+        if self._handle_cancel_input(answer, "main"):
             print("\n" + self.options)
             return  # Return to main menu
 
@@ -722,7 +724,7 @@ class ArtifactMiner(cmd.Cmd):
             answer = input(prompt).strip()
 
             # Check if user wants to cancel
-            if self._handle_cancel_input(answer):
+            if self._handle_cancel_input(answer, "main"):
                 print("\n" + self.options)
                 return  # Return to main menu
 
