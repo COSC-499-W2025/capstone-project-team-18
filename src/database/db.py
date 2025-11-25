@@ -136,7 +136,6 @@ class UserReportTable(Base):
     '''
     __tablename__ = 'user_report'
 
-    
 
     id = mapped_column(Integer, primary_key=True)
     title = mapped_column(String)
