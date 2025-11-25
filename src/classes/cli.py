@@ -590,7 +590,9 @@ class ArtifactMiner(cmd.Cmd):
                 start_dt = datetime.strptime(start_date, '%Y-%m-%d')
                 end_dt = datetime.strptime(end_date, '%Y-%m-%d')
 
-                if start_dt >= end_dt:
+                # start_dt > end_dt and not start_dt >= end_dt  so that if user
+                # only wants to analyze files for a single given date, they can.
+                if start_dt > end_dt:
                     print("\n✗ Error: Start date must be earlier than end date.")
                     print(f"   Start: {start_date}")
                     print(f"   End: {end_date}")
