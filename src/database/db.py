@@ -135,8 +135,10 @@ class UserReportTable(Base):
     __tablename__ = 'user_report'
 
     id = mapped_column(Integer, primary_key=True)
+
+    # name given by user, or name of zipped folder (default)
     title = mapped_column(String)
-    zipped_filepath = mapped_column(String)
+
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",

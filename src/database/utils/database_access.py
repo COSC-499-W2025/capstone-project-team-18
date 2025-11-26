@@ -3,14 +3,12 @@ This file contains all functions that will be called when we
 want to access data from the database. In SQL, this would be
 queries like SELECT, etc.
 '''
-from src.classes.statistic import StatisticIndex, Statistic, ProjectStatCollection, FileStatCollection, FileDomain, CodingLanguage
-from src.classes.report import ProjectReport, FileReport
-from src.database.db import ProjectReportTable, get_engine, __repr__
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection, FileDomain, CodingLanguage
+from src.classes.report import FileReport, ProjectReport, UserReport
+from src.database.db import ProjectReportTable, UserReportTable, get_engine
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from pprint import pprint
-
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +21,8 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
     and converts it into a `ProjectReport` object.
 
     Args:
-        proj_name (str): The name of the project (given by the user)
+        proj_name (str): The name of the project report
+        to retrieve (given by the user)
 
     Returns:
         ProjectReport
@@ -58,7 +57,7 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
 
             # make the ProjectReport obj
             project_report = ProjectReport(
-                file_reports=get_file_reports(result.id, engine),
+                file_reports=get_file_reports(result, engine),
                 project_name=name,
                 statistics=statistics,
             )
@@ -75,7 +74,7 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
             raise
 
 
-def get_file_reports(id: int, engine) -> list[FileReport]:
+def get_file_reports(report: ProjectReportTable, engine) -> list[FileReport]:
     '''
     Helper function for `get_project_from_project_name()`.
     For a given project report's ID in the database, get all of,
@@ -85,18 +84,11 @@ def get_file_reports(id: int, engine) -> list[FileReport]:
     get the file reports that were used to make the project report.
     '''
     with Session(engine) as session:
-        project = session.get(ProjectReportTable, id)
-
-        if project is None:
-            logging.error(f'Error: No project with id {id}')
-            raise ValueError()
-
-        file_report_rows = project.file_reports  # List[FileReportTable]
+        file_report_rows = report.file_reports  # List[FileReportTable]
 
         if len(file_report_rows) == 0 or file_report_rows is None:
-            logging.error(
+            raise ValueError(
                 f'Error: No file report(s) found for project with id {id}')
-            raise ValueError()
 
         file_reports = []
         for row in file_report_rows:
@@ -131,3 +123,80 @@ def get_file_reports(id: int, engine) -> list[FileReport]:
             file_report = FileReport(statistics, row.filepath)
             file_reports.append(file_report)
         return file_reports
+
+
+def get_user_report(name: str, engine=None) -> UserReport:
+    '''
+    Retrieves the row that corresponds to the given user
+    report's name and converts it into a `UserReport` object.
+
+    Args:
+        name (str): The name of the user report to retrieve (given by the user)
+
+    Returns:
+        UserReport
+    '''
+
+    # for testing purposes, we need to be able to pass the engine for
+    # the temporary database to the function when we call it.
+    if engine is None:
+        engine = get_engine()
+    with Session(engine) as session:
+        try:
+            # First, get the row that matches the given name
+            result = session.execute(
+                select(UserReportTable)
+                .where(UserReportTable.title == name)
+            ).scalars().one()  # UserReport object
+
+            statistics = StatisticIndex()
+
+            # Build the UserReport-level statistics
+            for stat_template in UserStatCollection:
+                column_name = stat_template.value.name.lower()
+
+                # get stat if col exists and has value
+                if hasattr(result, column_name):
+                    value = getattr(result, column_name)
+                    if value is not None:
+                        statistics.add(Statistic(stat_template.value, value))
+
+            if result.title:
+                name = result.title
+            else:
+                raise ValueError(
+                    f"Error: Missing user report's name. Value stored in DB: {result.title}")
+
+            # Build the list of ProjectReports that correspond the the UserReport
+            project_reports = []
+
+            # List[ProjectReportTable]
+            project_report_rows = result.project_reports
+
+            if len(project_report_rows) == 0 or project_report_rows is None:
+                raise ValueError(
+                    f'Error: No project report(s) found for user report with name {name}')
+
+            for row in project_report_rows:
+                proj_report = get_project_from_project_name(
+                    proj_name=row.project_name,
+                    engine=engine
+                )
+                project_reports.append(proj_report)
+
+            # make the UserReport obj
+            user_report = UserReport(
+                project_reports,
+                report_name=name
+            )
+
+            return user_report
+
+        # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
+        except NoResultFound:
+            logging.error(f'Error: No user report found with name "{name}"')
+            raise
+        except MultipleResultsFound:
+            logging.error(
+                f'Error: Multiple user reports found with name "{name}"')
+            raise
