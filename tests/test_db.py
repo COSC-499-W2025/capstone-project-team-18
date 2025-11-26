@@ -84,9 +84,9 @@ def create_user_report(pr1: ProjectReport, pr2: ProjectReport | None):
     creating user reports in `statistic.py`.
     '''
     if pr2 is not None:
-        return UserReport(project_reports=[pr1, pr2])
+        return UserReport(project_reports=[pr1, pr2], report_name="UserReport1")
     else:
-        return UserReport(project_reports=[pr1])
+        return UserReport(project_reports=[pr1], report_name="UserReport2")
 
 
 def get_row(report: FileReport | ProjectReport | UserReport):
