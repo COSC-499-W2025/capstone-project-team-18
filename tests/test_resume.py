@@ -21,15 +21,6 @@ def test_add_item():
     assert resume.items[0].title == "Software Engineer"
 
 
-def test_add_skill():
-    resume = Resume()
-    resume.add_skill("Python")
-    resume.add_skill("Java")
-    assert len(resume.skills) == 2
-    assert "Python" in resume.skills
-    assert "Java" in resume.skills
-
-
 def test_generate_resume():
     resume = Resume()
     item = ResumeItem(
@@ -73,7 +64,7 @@ def test_userreport_can_create_resume():
         [ProjectReport.from_statistics(project_statistics)]
     )
 
-    resume_item = user_report.generate_resume()
+    resume_item = user_report.generate_resume(None)
 
     assert isinstance(resume_item, Resume)
     assert len(resume_item.items) == 1

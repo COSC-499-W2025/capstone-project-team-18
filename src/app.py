@@ -84,7 +84,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     print("-------- Analysis Reports --------\n")
 
     print("-------- Resume --------\n")
-    print(user_report.generate_resume())
+    print(user_report.generate_resume(email))
     print("------------------------\n")
 
     print("-------- Portfolio --------\n")

@@ -19,6 +19,9 @@ class WeightedSkills:
     skill_name: str
     weight: float
 
+    def __lt__(self, other: "WeightedSkills"):
+        return self.weight < other.weight
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "skill_name": self.skill_name,
@@ -274,11 +277,13 @@ class UserStatCollection(Enum):
         description="the skills this user has",
         expected_type=list[WeightedSkills],
     )
+
     USER_CODING_LANGUAGE_RATIO = UserStatisticTemplate(
         name="USER_CODING_LANGUAGE_RATIO",
         description="ratio, by lines of code, of coding languages in the user's projects",
         expected_type=dict[CodingLanguage, float]
     )
+
     USER_ARI_WRITING_SCORE = ProjectStatisticTemplate(
         name="USER_ARI_WRITING_SCORE",
         description="The average ARI score of all ProjectReports",
