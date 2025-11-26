@@ -259,7 +259,7 @@ The SQLAlchemy equivalent of this is:
 ```Python
 with Session(engine) as session:
     result = session.execute(
-        select(FileReportTable).filter(FileReportTable.project_report_id == 1)
+        select(FileReportTable).where(FileReportTable.project_report_id == 1)
     )
     file_reports = result.scalars().all()
 ```

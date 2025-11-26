@@ -135,8 +135,9 @@ class ProjectReport(BaseReport):
             file_reports: List of FileReport objects to aggregate statistics from
             project_path: Optional path to project for Git analysis
             project_name: Optional project name for Git analysis
+            statistics: Optional StatisicIndex
+            project_repo: Optional Repo object for Git analysis
             user_email: Optional user email for Git authorship analysis
-            statistics: Optional StatisticIndex
 
         NOTE: `statistics` should only be included when the `get_project_from_project_name()`
         function is creating a ProjectReport object from an existing row in
@@ -147,6 +148,7 @@ class ProjectReport(BaseReport):
 
         if statistics is None:
             self.project_statistics = StatisticIndex()
+            self.project_repo = project_repo
             # Initialize project_repo from project_path if not provided
             if project_repo is not None:
                 self.project_repo = project_repo
