@@ -21,16 +21,51 @@ class ProjectFiles:
     file_paths: list[str]  # File paths relative to the root_path
     repo: Optional[Repo]  # The git repository object if applicable
 
+# File extensions to ignore
+IGNORE_EXTENSIONS = [
+    ".jar",
+    ".sql",
+    ".db",
+    ".sqlite",
+    ".sqlite3",
+]
 
 # Files that should just totally be ignored
 IGNORE_FILES = [
     ".DS_Store",
-    "thumbs.db"
+    "thumbs.db",
+    "manage.py",
+    "wsgi.py",
+    "asgi.py",
+    "__init__.py",
+    "settings.py",
+    "urls.py",
+    "tests.py"
 ]
 
 IGNORE_DIRS = [
     ".git",
-    ".pytest_cache"
+    ".pytest_cache",
+    # Virtual environment directories
+    "venv",
+    "env",
+    "virtualenv",
+    "site-packages",
+    "node_modules",
+    "newenv",
+    "myenv",
+    # Build/distribution directories
+    "target",
+    "build",
+    "dist",
+    "__pycache__",
+    "migrations",
+    # Python library directories
+    "lib",
+    "lib64",
+    "bin",
+    "include",
+    "share"
 ]
 
 
@@ -84,9 +119,12 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
 
                 for file in files:
                     if file not in IGNORE_FILES:
-                        full_path = Path(root) / file
-                        relative_path = full_path.relative_to(dir_path)
-                        file_paths.append(str(relative_path))
+
+                        # Check if file has an ignored extension
+                        if not any(file.endswith(ext) for ext in IGNORE_EXTENSIONS):
+                            full_path = Path(root) / file
+                            relative_path = full_path.relative_to(dir_path)
+                            file_paths.append(str(relative_path))
 
             # Check to see if the project is a git repository
             repo = None

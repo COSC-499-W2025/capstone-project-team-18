@@ -285,28 +285,16 @@ class ProjectReport(BaseReport):
         """
         Creates the project level statistic of
         CODING_LANGUAGE_RATIO.
-        Filters out virtual environment files and duplicate database exports before calculating ratios.
-        Uses file-level statistics instead of os.path.getsize for test compatibility.
+        Uses file-level statistics for byte counts.
+
+        Note: File filtering (venv, config files, etc.) is handled by project_discovery.py
         """
         langauges_to_bytes = {}
 
-        # Skip keywords that indicate infrastructure/virtual environments
-        skip_keywords = ['venv', 'env', 'virtualenv', 'site-packages', 'node_modules',
-                        'target', 'build', 'dist', '.git', '__pycache__', 'migrations',
-                        'newenv', 'myenv', 'lib/python', 'lib64/python', 'lib64', 'bin',
-                        'include', 'share']
-
-        # Skip specific file patterns (config, database, binaries)
-        skip_filenames = ['manage.py', 'wsgi.py', 'asgi.py', '__init__.py', 'settings.py',
-                        'urls.py', 'tests.py']
-        skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
-
-        # Track files by their FULL PATH and SIZE to detect true duplicates
-        # Key: (filename, file_size), Value: first filepath we saw
+        # Track files by (filename, file_size) to detect true duplicates
         seen_file_signatures = {}
 
         # Sort file_reports to prioritize non-database paths
-        # This ensures we process files from /code/ before /Database/
         sorted_reports = sorted(
             self.file_reports,
             key=lambda r: (
@@ -317,31 +305,6 @@ class ProjectReport(BaseReport):
 
         # Map coding language to file sizes in bytes
         for report in sorted_reports:
-            # Filter out virtual environment files
-            filepath_lower = str(report.filepath).lower()
-
-            # Normalize path separators and split into components
-            path_parts = filepath_lower.replace('\\', '/').split('/')
-            filename = path_parts[-1] if path_parts else ''
-
-            # Check if any skip keyword is an exact match in path components
-            should_skip = False
-            for keyword in skip_keywords:
-                if keyword in path_parts:
-                    should_skip = True
-                    break
-
-            # Skip Django/Flask config files
-            if filename in skip_filenames:
-                should_skip = True
-
-            # Skip database dumps and binary files
-            if any(filename.endswith(ext) for ext in skip_extensions):
-                should_skip = True
-
-            if should_skip:
-                continue
-
             coding_language = report.get_value(
                 FileStatCollection.CODING_LANGUAGE.value)
 
@@ -359,6 +322,9 @@ class ProjectReport(BaseReport):
 
             # Create a signature to detect true duplicates
             # Only skip if BOTH filename AND size match (likely a database export duplicate)
+            filepath_lower = str(report.filepath).lower()
+            path_parts = filepath_lower.replace('\\', '/').split('/')
+            filename = path_parts[-1] if path_parts else ''
             file_signature = (filename, file_size)
 
             if file_signature in seen_file_signatures:
@@ -567,37 +533,17 @@ class UserReport(BaseReport):
         create the `UserReport` for the
         `USER_CODING_LANGUAGE_RATIO` statistic.
 
-        This method aggregates file sizes across all projects,
-        filtering out virtual environment files and duplicate database exports.
-        Uses file-level statistics instead of os.path.getsize for test compatibility.
+        Note: File filtering (venv, config files, etc.) is handled by project_discovery.py
         '''
-        import logging
-        logger = logging.getLogger(__name__)
-
         lang_to_bytes = {}
 
-        # Skip keywords for filtering venv files
-        skip_keywords = ['venv', 'env', 'virtualenv', 'site-packages', 'node_modules',
-                        'target', 'build', 'dist', '.git', '__pycache__', 'migrations',
-                        'newenv', 'myenv', 'lib/python', 'lib64/python', 'lib64', 'bin',
-                        'include', 'share']
-
-        # Skip specific file patterns (config, database, binaries)
-        skip_filenames = ['manage.py', 'wsgi.py', 'asgi.py', '__init__.py', 'settings.py',
-                            'urls.py', 'tests.py']
-        skip_extensions = ['.jar', '.sql', '.db', '.sqlite', '.sqlite3']
-
-        # Track files by FULL PATH and SIZE to detect true duplicates across all projects
-        # Key: (filename, file_size), Value: first filepath we saw
+        # Track files by (filename, file_size) to detect true duplicates across all projects
         seen_file_signatures = {}
 
         for proj_report in self.project_reports:
             # Skip if project was created via from_statistics (no file_reports)
             if not hasattr(proj_report, 'file_reports') or proj_report.file_reports is None:
                 continue
-
-            # Recalculate project ratios while filtering out venv files
-            project_lang_to_bytes = {}
 
             # Sort file_reports to prioritize non-database paths
             sorted_reports = sorted(
@@ -609,31 +555,6 @@ class UserReport(BaseReport):
             )
 
             for file_report in sorted_reports:
-                # Filter out virtual environment files
-                filepath_lower = str(file_report.filepath).lower()
-
-                # Normalize path separators and split into components
-                path_parts = filepath_lower.replace('\\', '/').split('/')
-                filename = path_parts[-1] if path_parts else ''
-
-                # Check if any skip keyword is an exact match in path components
-                should_skip = False
-                for keyword in skip_keywords:
-                    if keyword in path_parts:
-                        should_skip = True
-                        break
-
-                # Skip Django/Flask config files
-                if filename in skip_filenames:
-                    should_skip = True
-
-                # Skip database dumps and binary files
-                if any(filename.endswith(ext) for ext in skip_extensions):
-                    should_skip = True
-
-                if should_skip:
-                    continue
-
                 coding_language = file_report.get_value(
                     FileStatCollection.CODING_LANGUAGE.value)
 
@@ -650,7 +571,9 @@ class UserReport(BaseReport):
                     file_size = 1
 
                 # Create a signature to detect true duplicates
-                # Only skip if BOTH filename AND size match
+                filepath_lower = str(file_report.filepath).lower()
+                path_parts = filepath_lower.replace('\\', '/').split('/')
+                filename = path_parts[-1] if path_parts else ''
                 file_signature = (filename, file_size)
 
                 if file_signature in seen_file_signatures:
@@ -661,17 +584,10 @@ class UserReport(BaseReport):
                 seen_file_signatures[file_signature] = file_report.filepath
 
                 if file_size > 0:
-                    project_lang_to_bytes[coding_language] = project_lang_to_bytes.get(coding_language, 0) + file_size
+                    lang_to_bytes[coding_language] = lang_to_bytes.get(coding_language, 0) + file_size
                 else:
-                    # Count empty files towards the language ratio (test files are often empty)
-                    project_lang_to_bytes[coding_language] = project_lang_to_bytes.get(coding_language, 0) + 1
-
-            # Aggregate filtered byte counts to user level
-            for lang, byte_count in project_lang_to_bytes.items():
-                if lang in lang_to_bytes:
-                    lang_to_bytes[lang] += byte_count
-                else:
-                    lang_to_bytes[lang] = byte_count
+                    # Count empty files towards the language ratio
+                    lang_to_bytes[coding_language] = lang_to_bytes.get(coding_language, 0) + 1
 
         if len(lang_to_bytes) < 1:
             return  # don't log this stat b/c there are no coding languages
