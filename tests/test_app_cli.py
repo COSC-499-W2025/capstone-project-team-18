@@ -166,6 +166,7 @@ def test_options_text_contains_required_information(cli):
     assert "(1) Permissions" in options
     assert "(2) Set filepath" in options
     assert "(3) Begin Artifact Miner" in options
+    assert "(8) Retrieve Resume Items" in options
 
     # Check for cancel instruction
     assert "back" in options
@@ -299,7 +300,7 @@ def test_default_command_case_insensitive(cli):
 
 def test_default_handles_unknown_commands(cli):
     """Test handling of unknown commands."""
-    unknown_commands = ["unknown", "8", "invalid", "help_me"]  # Changed "6" to "8"
+    unknown_commands = ["unknown", "9", "invalid", "help_me"]  # Changed "6" to "9"
     with patch('builtins.print') as mock_print:
         for command in unknown_commands:
             cli.default(command)
@@ -307,7 +308,7 @@ def test_default_handles_unknown_commands(cli):
         # Verify error messages were printed for each unknown command
         expected_calls = [
             call("Unknown command: unknown. Type 'help' or '?' for options."),
-            call("Unknown command: 8. Type 'help' or '?' for options."),
+            call("Unknown command: 9. Type 'help' or '?' for options."),
             call("Unknown command: invalid. Type 'help' or '?' for options."),
             call("Unknown command: help_me. Type 'help' or '?' for options.")
         ]
@@ -319,6 +320,7 @@ def test_default_handles_unknown_commands(cli):
 @pytest.mark.parametrize("command,method", [
     ("6", "do_preferences"),
     ("7", "do_view"),
+    ("8", "do_resume_items"),
 ])
 def test_default_command_routing_numeric_advanced(cli, command, method):
     """Test that advanced preference commands route correctly."""
@@ -385,6 +387,7 @@ def test_cancel_functionality_across_commands(cli, command):
         self.assertIn("(1) Permissions", options)
         self.assertIn("(2) Set filepath", options)
         self.assertIn("(3) Begin Artifact Miner", options)
+        self.assertIn("(8) Retrieve Resume Items", options)
 
         # Check for cancel instruction
         self.assertIn("back", options)

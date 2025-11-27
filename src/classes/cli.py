@@ -12,6 +12,11 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from src.app import start_miner
+from src.database.utils.database_access import (
+    get_user_report_by_title,
+    get_project_from_project_name,
+    get_user_report_by_zipped_filepath,
+)
 
 
 def normalize_path(user_path: str) -> str:
@@ -227,6 +232,7 @@ class ArtifactMiner(cmd.Cmd):
             "(5) User Login (Name & Password)\n"
             "(6) Configure preferences\n"
             "(7) View current preferences\n"
+            "(8) Retrieve Resume Items\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -401,7 +407,7 @@ class ArtifactMiner(cmd.Cmd):
         if ignored_files:
             print(f"Ignoring file types: {', '.join(ignored_files)}")
 
-        start_miner(self.project_filepath, self.user_email)
+        start_miner(self.project_filepath, self.user_email, prompt_for_title=True)
 
     def do_login(self, arg):
         '''Configure user login credentials'''
@@ -536,6 +542,84 @@ class ArtifactMiner(cmd.Cmd):
 
             # Invalid input
             print("Invalid input. Press '6' for preferences or 'back'/'cancel' to return.")
+
+    def do_resume_items(self, arg):
+        '''Retrieve resume items from a project or user report'''
+        self.update_history(self.cmd_history, "resume_items")
+
+        print("\n=== Retrieve Resume Items ===")
+        print("(1) Enter a ProjectReport name to regenerate its resume item")
+        print("(2) Enter a UserReport title to regenerate all its resume items")
+        print("(3) Use current stored filepath to find the matching UserReport (default)")
+
+        choice = input(
+            "\nSelect option (1-3), or press Enter for default: "
+        ).strip()
+
+        if choice.lower() in ['exit', 'quit']:
+            return self.do_exit(arg)
+
+        if self._handle_cancel_input(choice, "main"):
+            print("\n" + self.options)
+            return
+
+        if choice in ("1", "project"):
+            name = input(
+                "Enter the project name: (or 'back'/'cancel' to return): ").strip()
+            if self._handle_cancel_input(name, "main"):
+                print("\n" + self.options)
+                return
+            if name.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+            try:
+                pr = get_project_from_project_name(name)
+            except Exception:
+                print("No project report found with that name.")
+                print("\n" + self.options)
+                return
+            item = pr.generate_resume_item()
+            print("\n-------- Resume Item --------\n")
+            print(f"{item.title} : {item.start_date} - {item.end_date}")
+            for bullet in item.bullet_points:
+                print(f"   - {bullet}")
+            print("\n" + self.options)
+            return
+
+        if choice in ("2", "user", "userreport"):
+            title = input(
+                "Enter the UserReport title: (or 'back'/'cancel' to return): ").strip()
+            if self._handle_cancel_input(title, "main"):
+                print("\n" + self.options)
+                return
+            if title.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+            try:
+                ur = get_user_report_by_title(title)
+            except Exception:
+                print("No user report found with that title.")
+                print("\n" + self.options)
+                return
+            print("\n-------- Resume --------\n")
+            print(ur.generate_resume())
+            print("\n" + self.options)
+            return
+
+        # Default: use stored filepath
+        path = self.preferences.get_project_filepath()
+        if not path:
+            print("No stored filepath found in preferences.")
+            print("\n" + self.options)
+            return
+        path = normalize_path(path)
+        try:
+            ur = get_user_report_by_zipped_filepath(path)
+        except Exception:
+            print("No user report found for the stored filepath.")
+            print("\n" + self.options)
+            return
+        print("\n-------- Resume --------\n")
+        print(ur.generate_resume())
+        print("\n" + self.options)
 
     def _configure_date_range(self):
         '''Configure date filtering for files'''
@@ -723,6 +807,8 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_preferences(arg)
                 case "view":
                     return self.do_view(arg)
+                case "resume_items":
+                    return self.do_resume_items(arg)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
@@ -802,6 +888,7 @@ class ArtifactMiner(cmd.Cmd):
             "5": self.do_login,
             "6": self.do_preferences,
             "7": self.do_view,
+            "8": self.do_resume_items,
         }
 
         # Make commands case-insensitive

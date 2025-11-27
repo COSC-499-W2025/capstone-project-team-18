@@ -428,7 +428,7 @@ class UserReport(BaseReport):
     from many different ReportReports
     """
 
-    def __init__(self, project_reports: list[ProjectReport]):
+    def __init__(self, project_reports: list[ProjectReport], title: str | None = None, zipped_filepath: str | None = None):
         """
         Initialize UserReport with project reports to calculate user-level statistics.
 
@@ -438,11 +438,15 @@ class UserReport(BaseReport):
 
         Args:
             project_reports: List of ProjectReport objects containing project-level statistics
+            title: Optional title to identify the user report in storage
+            zipped_filepath: Optional path to the zipped project archive used to generate the report
         """
 
         self.resume_items = [project_reports.generate_resume_item()
                              for project_reports in project_reports]
         self.project_reports = project_reports or []
+        self.title = title or ""
+        self.zipped_filepath = zipped_filepath or ""
 
         # Build list of user-level statistics
         self.user_stats = StatisticIndex()
@@ -786,18 +790,18 @@ class UserReport(BaseReport):
                     continue
 
                 current_first = skill_first_seen.get(name)
-                
+
                 if start_dt is None:
                     if current_first is None:
                         skill_first_seen[name] = None
                     continue
-                    
+
                 if current_first is None or start_dt < current_first:
-                        skill_first_seen[name] = start_dt
+                    skill_first_seen[name] = start_dt
 
         if not skill_first_seen:
             return "" if as_string else []
-        
+
         dated: list[tuple[str, datetime]] = []
         undated: list[str] = []
 
