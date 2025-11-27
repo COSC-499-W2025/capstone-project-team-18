@@ -80,13 +80,12 @@ def create_row(report: FileReport | ProjectReport | UserReport):
     return row
 
 
-def delete_user_report_and_related_data(report_id=None, title=None, zipped_filepath=None):
+def delete_user_report_and_related_data(report_id=None, title=None):
     """
-    Delete a user report and all related project and file reports by id, title, or zipped_filepath.
+    Delete a user report and all related project and file reports by id or title
     Args:
         report_id (int): ID of the user report to delete.
         title (str): Title of the user report to delete.
-        zipped_filepath (str): Filepath to the zipped file to delete.
     """
     engine = get_engine()
     try:
@@ -97,9 +96,6 @@ def delete_user_report_and_related_data(report_id=None, title=None, zipped_filep
                 user_report = session.get(UserReportTable, report_id)
             elif title is not None:
                 user_report = query.filter_by(title=title).first()
-            elif zipped_filepath is not None:
-                user_report = query.filter_by(
-                    zipped_filepath=zipped_filepath).first()
             else:
                 raise ValueError(
                     "Must provide report_id, title, or zipped_filepath")
