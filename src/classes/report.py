@@ -440,9 +440,15 @@ class UserReport(BaseReport):
             project_reports: List of ProjectReport objects containing project-level statistics
         """
 
-        self.resume_items = [project_reports.generate_resume_item()
-                             for project_reports in project_reports]
-        self.project_reports = project_reports or []
+        # rank the project reports according to their weights
+        ranked_project_reports = sorted(
+            project_reports, key=lambda p: p.get_project_weight(), reverse=True)
+        self.resume_items = [report.generate_resume_item()
+                             for report in ranked_project_reports]
+
+        # self.resume_items = [report.generate_resume_item()
+        #                     for report in project_reports]
+        # self.project_reports = project_reports or []
 
         # Build list of user-level statistics
         self.user_stats = StatisticIndex()
@@ -786,18 +792,18 @@ class UserReport(BaseReport):
                     continue
 
                 current_first = skill_first_seen.get(name)
-                
+
                 if start_dt is None:
                     if current_first is None:
                         skill_first_seen[name] = None
                     continue
-                    
+
                 if current_first is None or start_dt < current_first:
-                        skill_first_seen[name] = start_dt
+                    skill_first_seen[name] = start_dt
 
         if not skill_first_seen:
             return "" if as_string else []
-        
+
         dated: list[tuple[str, datetime]] = []
         undated: list[str] = []
 
