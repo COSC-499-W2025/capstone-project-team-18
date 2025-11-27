@@ -12,6 +12,8 @@ from git import NoSuchPathError, Repo, InvalidGitRepositoryError
 from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 
 class BaseReport:
@@ -555,6 +557,138 @@ class UserReport(BaseReport):
 
         return resume
 
+    @staticmethod
+    def delete_portfolio(identifier: str) -> tuple[bool, str]:
+        """
+        Delete a user report and its associated project reports from the database.
+
+        Args:
+            identifier: Either a portfolio title (folder name) or zipped_filepath
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                # Try to find by zipped_filepath first
+                stmt = select(UserReportTable).where(
+                    UserReportTable.zipped_filepath == identifier
+                )
+                user_report = session.scalar(stmt)
+
+                # If not found, try by title (portfolio name)
+                if not user_report:
+                    # Extract folder name from path if it's a path
+                    if '/' in identifier or '\\' in identifier:
+                        folder_name = Path(identifier).stem
+                    else:
+                        folder_name = identifier
+
+                    stmt = select(UserReportTable).where(
+                        UserReportTable.title == folder_name
+                    )
+                    user_report = session.scalar(stmt)
+
+                if not user_report:
+                    return False, "Portfolio not found in database"
+
+                # Store info for return message
+                title = user_report.title or 'Untitled'
+                project_count = len(user_report.project_reports)
+
+                # Delete the user report (cascade will handle project reports)
+                session.delete(user_report)
+                session.commit()
+
+                return True, f"Successfully deleted '{title}' and {project_count} associated project(s)"
+
+        except Exception as e:
+            return False, f"Database error: {str(e)}"
+
+    @staticmethod
+    def get_portfolio_info(identifier: str) -> tuple[bool, dict]:
+        """
+        Get information about a portfolio without deleting it.
+
+        Args:
+            identifier: Either a portfolio title or zipped_filepath
+
+        Returns:
+            tuple: (found: bool, info: dict with title, filepath, project_count)
+        """
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                # Try to find by zipped_filepath first
+                stmt = select(UserReportTable).where(
+                    UserReportTable.zipped_filepath == identifier
+                )
+                user_report = session.scalar(stmt)
+
+                # If not found, try by title
+                if not user_report:
+                    if '/' in identifier or '\\' in identifier:
+                        folder_name = Path(identifier).stem
+                    else:
+                        folder_name = identifier
+
+                    stmt = select(UserReportTable).where(
+                        UserReportTable.title == folder_name
+                    )
+                    user_report = session.scalar(stmt)
+
+                if not user_report:
+                    return False, {}
+
+                info = {
+                    'title': user_report.title or 'Untitled',
+                    'filepath': user_report.zipped_filepath or 'N/A',
+                    'project_count': len(user_report.project_reports)
+                }
+
+                return True, info
+
+        except Exception:
+            return False, {}
+
+    @staticmethod
+    def list_all_portfolios() -> list[dict]:
+        """
+        Get a list of all portfolios in the database.
+
+        Returns:
+            list: List of dicts with portfolio info (title, filepath, project_count)
+        """
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                stmt = select(UserReportTable)
+                portfolios = session.scalars(stmt).all()
+
+                portfolio_list = []
+                for portfolio in portfolios:
+                    portfolio_list.append({
+                        'title': portfolio.title or 'Untitled',
+                        'filepath': portfolio.zipped_filepath or 'N/A',
+                        'project_count': len(portfolio.project_reports)
+                    })
+
+                return portfolio_list
+
+        except Exception:
+            return []
+
+
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
         inst = cls.__new__(cls)
@@ -786,18 +920,18 @@ class UserReport(BaseReport):
                     continue
 
                 current_first = skill_first_seen.get(name)
-                
+
                 if start_dt is None:
                     if current_first is None:
                         skill_first_seen[name] = None
                     continue
-                    
+
                 if current_first is None or start_dt < current_first:
                         skill_first_seen[name] = start_dt
 
         if not skill_first_seen:
             return "" if as_string else []
-        
+
         dated: list[tuple[str, datetime]] = []
         undated: list[str] = []
 

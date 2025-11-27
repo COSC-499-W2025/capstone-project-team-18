@@ -1,10 +1,10 @@
 {
-    "consent": false,
+    "consent": true,
     "files_to_ignore": [],
     "file_start_time": "2020-01-01",
     "file_end_time": "2021-01-01",
-    "last_updated": "2025-11-25T01:25:21.745138",
-    "project_filepath": "",
+    "last_updated": "2025-11-27T00:12:41.872977",
+    "project_filepath": "/workspaces/capstone-project-team-18/Ticket-Tech.zip",
     "user_name": "4",
     "user_password": "erem",
     "user_email": ""
