@@ -105,8 +105,9 @@ class BaseFileAnalyzer:
             return False
 
         try:
+            # Use repo-relative path for blame - GitPython expects a path
+            # relative to the repository working tree, not an absolute path
             self.blame_info = self.repo.blame('HEAD', self.relative_path)
-
             return True
         except (ValueError, GitCommandError, Exception) as e:
             logger.debug(
@@ -339,8 +340,10 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         file_commit_percentage = self._get_file_commit_percentage()
 
         if file_commit_percentage is not None:
+            print(f"Value appended: {file_commit_percentage}")
             stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
                                    file_commit_percentage))
+            print(stats)
 
         self.stats.extend(stats)
 
@@ -376,16 +379,18 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             # gets blame for each line
             blame_info = self.repo.blame('HEAD', self.relative_path)
 
-            commit_count = 0
-            line_count = 0
+            commit_count = 0.0
+            line_count = 0.0
             for commit, lines in blame_info:
                 line_count += len(lines)
                 if commit.author.email == self.email:
                     commit_count += len(lines)
 
             if line_count == 0:
+                print("Falied here")
                 return 0.0
-
+            print(
+                f"{self.relative_path}: shouldve woprked: {commit_count} / {line_count}")
             return round((commit_count / line_count) * 100, 2)
         except InvalidGitRepositoryError as e:
             logger.debug(f"InvalidGitRepositoryError: {e}")

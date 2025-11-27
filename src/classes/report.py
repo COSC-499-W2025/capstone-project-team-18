@@ -166,24 +166,37 @@ class ProjectReport(BaseReport):
             self._find_coding_languages_ratio()
             self._calculate_ari_score()
             self._weighted_skills()
+            self._total_contribution_percentage()
             if user_email:
                 self._analyze_git_authorship(user_email)
         else:
             self.project_statistics = statistics
 
-        # Iterate over fileReports to get total lines responsible over whole project
-        total_contribution_lines = 0.0
-        for file in self.file_reports:
-            file_commit_pct = file.get_value(
-                FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
-            if file_commit_pct:
-                total_contribution_lines += file_commit_pct / 100 * \
-                    file.get_value(FileStatCollection.LINES_IN_FILE.value)
-        self.project_statistics.add(Statistic(
-            ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, total_contribution_lines))
-
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
+
+    def _total_contribution_percentage(self) -> None:
+        # Iterate over fileReports to get total lines responsible over whole project
+        total_contribution_lines = 0.0
+        total_lines = 0.0
+        for file in self.file_reports:
+            print(file)
+            file_commit_pct = file.get_value(
+                FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
+            print(file_commit_pct)
+            if file_commit_pct is not None:
+                print(
+                    f"{file_commit_pct} / {file.get_value(FileStatCollection.LINES_IN_FILE.value)}")
+                total_contribution_lines += file_commit_pct / 100 * \
+                    file.get_value(FileStatCollection.LINES_IN_FILE.value)
+                total_lines += file.get_value(
+                    FileStatCollection.LINES_IN_FILE.value)
+        if total_lines > 0:
+            self.project_statistics.add(Statistic(
+                ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, (total_contribution_lines / total_lines) * 100))
+        else:
+            self.project_statistics.add(Statistic(
+                ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, 0.0))
 
     def _weighted_skills(self) -> None:
         """
@@ -795,18 +808,18 @@ class UserReport(BaseReport):
                     continue
 
                 current_first = skill_first_seen.get(name)
-                
+
                 if start_dt is None:
                     if current_first is None:
                         skill_first_seen[name] = None
                     continue
-                    
+
                 if current_first is None or start_dt < current_first:
-                        skill_first_seen[name] = start_dt
+                    skill_first_seen[name] = start_dt
 
         if not skill_first_seen:
             return "" if as_string else []
-        
+
         dated: list[tuple[str, datetime]] = []
         undated: list[str] = []
 
