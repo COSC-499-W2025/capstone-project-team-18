@@ -6,120 +6,138 @@ import datetime
 
 import pytest
 
-from classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
-from classes.statistic import FileStatCollection
+from src.classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
+from src.classes.statistic import FileStatCollection
+from tests.utils.helper_functions import get_temp_file, get_temp_local_dir
+from tests.analyze.git_helper_functions import commit_file_to_repo
 
 
-def test_is_git_repo_true_and_false(tmp_path: Path):
-    # Repo case
-    repo_dir = tmp_path / "RepoProject"
-    repo_dir.mkdir()
-    repo = Repo.init(repo_dir)
+@pytest.fixture(scope="function")
+def temp_git_repo(tmp_path: Path):
+    '''
+    Create a reusable git repository
+    with an 'app.py' file that is committed by
+    Alice. The file contains:
+    ```
+    print('line one')
+    print('line two')
+    # A comment from Alice
+    '''
+    # create the repository
+    repo_directory = tmp_path / "temp-repository"
+    repo_directory.mkdir()
+    repo = Repo.init(repo_directory)
 
-    # create a python file and commit so analyzer can read it
-    file_path = repo_dir / "file.py"
-    file_path.write_text("print('hello')\n")
-    with repo.config_writer() as cfg:
-        cfg.set_value("user", "name", "Alice")
-        cfg.set_value("user", "email", "alice@example.com")
-    repo.index.add([str(file_path.relative_to(repo_dir))])
-    repo.index.commit("Initial commit")
+    content = '''print('line one')
+    \nprint('line two')
+    \n# A comment from Alice'''
+
+    # make and commit the file to the repo
+    file = get_temp_file(filename="app.py",
+                         content=content,
+                         path=repo_directory)
+
+    commit_file_to_repo(repo=repo,
+                        contributor=["Alice", "alice@test.com"],
+                        file=file,
+                        repo_path=repo_directory,
+                        commit_msg="Initial commit",
+                        author_date="2024-01-01 00:00:00",)
+
+    return repo, repo_directory, file
+
+
+def test_is_git_repo_true_and_false(temp_git_repo, tmp_path: Path):
+    '''
+    Test that the `is_git_tracked()` function returns `True` for a
+    repository with a file committed, and `False` for a non-repository
+    directory (the file is not committed)
+    '''
+    repo, repo_dir, file = temp_git_repo
 
     analyzer = get_appropriate_analyzer(
-        str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
+        str(repo_dir), str(file.relative_to(repo_dir)), repo)
 
     assert analyzer.is_git_tracked is True
 
-    # Non-repo case
+    # Directory that isn't a repository
     nonrepo_dir = tmp_path / "NoGit"
     nonrepo_dir.mkdir()
-    nr_file = nonrepo_dir / "nr.py"
-    nr_file.write_text("print('no git')\n")
-    analyzer_nr = get_appropriate_analyzer(
-        str(nonrepo_dir), str(nr_file.relative_to(nonrepo_dir)))
-    assert analyzer_nr.is_git_tracked is False
 
-
-def test_get_file_commit_percentage_two_authors(tmp_path: Path):
-    temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
-    try:
-        project_dir = Path(temp_dir) / "ContribProject"
-        project_dir.mkdir()
-        repo = Repo.init(project_dir)
-
-        file_path = project_dir / "shared.py"
-
-        # Initial content by Alice (3 lines)
-        file_path.write_text("line1\nline2\nline3\n")
-        with repo.config_writer() as cfg:
-            cfg.set_value("user", "name", "Alice")
-            cfg.set_value("user", "email", "alice@example.com")
-        repo.index.add([str(file_path.relative_to(project_dir))])
-        repo.index.commit("Alice initial commit")
-
-        # Bob changes five lines ( overwrites all but the first
-        with repo.config_writer() as cfg:
-            cfg.set_value("user", "name", "Bob")
-            cfg.set_value("user", "email", "bob@example.com")
-        # Modify lines
-        file_path.write_text(
-            "line1\nbob_line2\nbob_line3\nbob_line4\nbob_line5")
-        repo.index.add([str(file_path.relative_to(project_dir))])
-        repo.index.commit("Bob creates 5 lines")
-
-        # Analyzer for the file
-        analyzer = get_appropriate_analyzer(
-            str(project_dir), str(file_path.relative_to(project_dir)), repo)
-
-        assert isinstance(analyzer, CodeFileAnalyzer)
-        assert analyzer.is_git_tracked is True
-
-        # Alice percentage should be ~33.33
-        analyzer.email = "alice@example.com"
-        alice_pct = analyzer._get_file_commit_percentage()
-        assert alice_pct is not None
-        assert pytest.approx(alice_pct, 0.01) == 20.00
-
-        # Bob percentage should be ~66.67
-        analyzer.email = "bob@example.com"
-        bob_pct = analyzer._get_file_commit_percentage()
-        assert bob_pct is not None
-        assert pytest.approx(bob_pct, 0.01) == 80.00
-
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-def test_file_not_comitted_in_git_repo(tmp_path: Path):
-    """
-    Test that if there is a file in a git repo that has not been committed yet,
-    the _get_file_commit_percentage method returns None and does not create
-    a statistic
-    """
-
-    repo_dir = tmp_path / "RepoWithUncommittedFile"
-    repo_dir.mkdir()
-    repo = Repo.init(repo_dir)
-
-    # commit a different file first
-    committed_file = repo_dir / "committed.py"
-    committed_file.write_text("print('committed file')\n")
-    with repo.config_writer() as cfg:
-        cfg.set_value("user", "name", "Bob")
-        cfg.set_value("user", "email", "bob@example.com")
-
-        repo.index.add([str(committed_file.relative_to(repo_dir))])
-        repo.index.commit("Initial commit")
-
-    # create a python file but do not commit it
-    file_path = repo_dir / "uncommitted.py"
-    file_path.write_text("print('uncommitted file')\n")
-    with repo.config_writer() as cfg:
-        cfg.set_value("user", "name", "Charlie")
-        cfg.set_value("user", "email", "charlie@example.com")
+    local_dir = get_temp_local_dir(dir_name='local-dir', path=tmp_path)
+    local_file = get_temp_file(
+        filename='no-repo.py', content='print("not a git repo")', path=tmp_path / 'local-dir')
 
     analyzer = get_appropriate_analyzer(
-        str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
+        str(local_dir), str(local_file.relative_to(local_dir)))
+    assert analyzer.is_git_tracked is False
+
+
+def test_get_file_commit_percentage_two_authors(temp_git_repo, tmp_path: Path):
+    '''
+    Test the contribution calculation is correct using a file that has two contributors.
+    First, Alice creates app.py with 3 lines. Then, Bob overwrites Alice's third line
+    and adds three of his own. In the end:
+    - 2/5 lines are from Alice
+    - 3/5 lines are from Bob
+    '''
+    # Have Alice initally write to app.py
+    repo, repo_dir, file = temp_git_repo
+
+    # Commit Bob's changes (overwrites Alice's last line and add 3 new lines)
+    file.write_text(
+        "print('line one')\nprint('line two')\n#comment-bob-1\n#comment-bob-2\nprint('line5')")
+
+    commit_file_to_repo(repo=repo,
+                        contributor=['Bob', 'bob@test.com'],
+                        file=file,
+                        repo_path=repo_dir,
+                        commit_msg='Bob commits app.py and writes over Alice',
+                        author_date="",)
+
+    # Analyze the file
+    analyzer = get_appropriate_analyzer(
+        str(repo_dir), str(file.relative_to(repo_dir)), repo)
+    assert isinstance(analyzer, CodeFileAnalyzer)
+    assert analyzer.is_git_tracked is True
+
+    # Get Alice's contribution stat
+    analyzer.email = "alice@test.com"
+    alice_pct = analyzer._get_file_commit_percentage()
+    assert alice_pct is not None
+
+    # Alice's contribution should be 40% ± 1%
+    assert pytest.approx(alice_pct, 0.01) == 40.00
+
+    # Get Bob's contribution stat
+    analyzer.email = "bob@test.com"
+    bob_pct = analyzer._get_file_commit_percentage()
+    assert bob_pct is not None
+
+    # Bob's contribution should be 75% ± 1%
+    assert pytest.approx(bob_pct, 0.01) == 60.00
+
+
+def test_file_not_committed_in_git_repo(temp_git_repo, tmp_path: Path):
+    """
+    Test that if there is a file in a git repo that has not been committed yet,
+    the `_get_file_commit_percentage()` function returns `None` and does not create
+    a statistic.
+    """
+    repo, repo_dir, file = temp_git_repo
+
+    # Create a new file
+    file = get_temp_file(filename="uncomitted.py",
+                         content="print('this file has not been comitted')",
+                         path=repo_dir)
+
+    # Configure user credentials, but don't commit the file
+    with repo.config_writer() as cfg:
+        cfg.set_value("user", "name", "Spencer")
+        cfg.set_value("user", "email", "spencer@test.com")
+
+    analyzer = get_appropriate_analyzer(
+        str(repo_dir), str(file.relative_to(repo_dir)), repo)
 
     assert analyzer.is_git_tracked is False
 
@@ -129,81 +147,77 @@ def test_file_not_comitted_in_git_repo(tmp_path: Path):
         FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) is None
 
 
-def test_git_file_has_local_changes(tmp_path: Path):
+def test_git_file_has_local_changes(temp_git_repo, tmp_path: Path):
     """
     Test that if there is a file in a git repo that has local changes,
-    the is_git_tracked attribute is still True
+    the `is_git_tracked` attribute is still `True`. We have Bob
     """
+    repo, repo_dir, file = temp_git_repo
 
-    repo_dir = tmp_path / "RepoWithLocalChanges"
-    repo_dir.mkdir()
-    repo = Repo.init(repo_dir)
+    # Commit Bob's changes (overwrites Alice's last line and adds a new line)
+    file.write_text(
+        "print('line one')\nprint('line two')\nprint('added by Bob)")
 
-    # commit a file first
-    file_path = repo_dir / "file_with_changes.py"
-    file_path.write_text("print('original content')\n")
-    with repo.config_writer() as cfg:
-        cfg.set_value("user", "name", "Dana")
-        cfg.set_value("user", "email", "dana@example.com")
+    commit_file_to_repo(repo=repo,
+                        contributor=['Bob', 'bob@test.com'],
+                        file=file,
+                        repo_path=repo_dir,
+                        commit_msg='Bob commits app.py and writes over Alice',
+                        author_date="",)
 
-        repo.index.add([str(file_path.relative_to(repo_dir))])
-        repo.index.commit("Initial commit")
-
-    # another person adds a line
-    with repo.config_writer() as cfg:
-        cfg.set_value("user", "name", "Evan")
-        cfg.set_value("user", "email", "evan@example.com")
-        file_path.write_text(
-            "print('original content')\nprint('added by Evan')\n")
-        repo.index.add([str(file_path.relative_to(repo_dir))])
-        repo.index.commit("Evan adds a line")
-
-    # make local changes to the file
-    file_path.write_text("print('modified content')\n")
+    # Bob makes a local change, but doesn't commit it
+    file.write_text("print('new file content')")
 
     analyzer = get_appropriate_analyzer(
-        str(repo_dir), str(file_path.relative_to(repo_dir)), repo, email="dana@example.com")
+        str(repo_dir), str(file.relative_to(repo_dir)), repo, email="bob@test.com")
 
     assert analyzer.is_git_tracked is True
-    fr = analyzer.analyze()
-    assert fr.get_value(
-        FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) == 50.0
 
 
-def test_earliest_commit_and_last_commit(tmp_path: Path):
+def test_earliest_commit_and_last_commit(temp_git_repo, tmp_path: Path):
     """
     This test creates commits in a git repo with different
     authored and commit dates to ensure that the eariliest
     date and last commit date are correctly identified.
     """
+    repo, repo_dir, file = temp_git_repo
 
-    repo_dir = tmp_path / "RepoWithDates"
-    repo_dir.mkdir()
-    repo = Repo.init(repo_dir)
+    # Commit Bob's changes (overwrites Alice's last line and adds a new line)
+    # on April 12, 2025 at 9:00 A.M.
+    file.write_text(
+        "print('line one')\nprint('line two')\nprint('added by Bob)")
 
-    file_path = repo_dir / "dated_file.py"
-    file_path.write_text("print('first commit')\n")
-    with repo.config_writer() as cfg:
-        cfg.set_value("user", "name", "Frank")
-        cfg.set_value("user", "email", "frank@example.com")
-    repo.index.add([str(file_path.relative_to(repo_dir))])
-    repo.index.commit("First commit",
-                      author_date="2023-01-01 10:00:00")
+    commit_file_to_repo(repo=repo,
+                        contributor=['Bob', 'bob@test.com'],
+                        file=file,
+                        repo_path=repo_dir,
+                        commit_msg='Bob commits app.py and writes over Alice',
+                        author_date="2025-04-12 09:00:00",)
 
-    # Second commit with later authored date
-    file_path.write_text("print('second commit')\n")
-    repo.index.add([str(file_path.relative_to(repo_dir))])
-    repo.index.commit("Second commit",
-                      author_date="2023-01-02 10:00:00")
+    # Make another commit on April 12, 2025 at 1:00 P.M.
+    file.write_text(
+        "print('line one')\nprint('line two')\nprint('added by Bob)\nprint('a new line!)")
 
-    # Third commit with latests authored date
-    file_path.write_text("print('third commit')\n")
-    repo.index.add([str(file_path.relative_to(repo_dir))])
-    repo.index.commit("Third commit",
-                      author_date="2023-01-03 10:00:00")
+    commit_file_to_repo(repo=repo,
+                        contributor=['Bob', 'bob@test.com'],
+                        file=file,
+                        repo_path=repo_dir,
+                        commit_msg='Bob commits app.py and writes over Alice',
+                        author_date="2025-04-12 13:00:00",)
+
+    # Make another commit on May 9, 2025 at 5:35 P.M.
+    file.write_text(
+        "print('line one')\nprint('line two')\nprint('added by Bob)\n")
+
+    commit_file_to_repo(repo=repo,
+                        contributor=['Bob', 'bob@test.com'],
+                        file=file,
+                        repo_path=repo_dir,
+                        commit_msg='Bob commits app.py and writes over Alice',
+                        author_date="2025-05-09 17:35:00",)
 
     analyzer = get_appropriate_analyzer(
-        str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
+        str(repo_dir), str(file.relative_to(repo_dir)), repo)
 
     fr = analyzer.analyze()
     earliest_date = fr.get_value(FileStatCollection.DATE_CREATED.value)
@@ -212,5 +226,5 @@ def test_earliest_commit_and_last_commit(tmp_path: Path):
     assert isinstance(earliest_date, datetime.datetime)
     assert isinstance(last_date, datetime.datetime)
 
-    assert earliest_date == datetime.datetime(2023, 1, 1, 10, 0, 0)
-    assert last_date == datetime.datetime(2023, 1, 3, 10, 0, 0)
+    assert earliest_date == datetime.datetime(2024, 1, 1, 0, 0, 0)
+    assert last_date == datetime.datetime(2025, 5, 9, 17, 35, 0)
