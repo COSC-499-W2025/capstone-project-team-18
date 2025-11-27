@@ -1,9 +1,7 @@
 from pathlib import Path
-import shutil
-import tempfile
-from git import Repo
 import datetime
 
+from git import Repo
 import pytest
 
 from src.classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
@@ -37,12 +35,8 @@ def temp_git_repo(tmp_path: Path):
                          content=content,
                          path=repo_directory)
 
-    commit_file_to_repo(repo=repo,
-                        contributor=["Alice", "alice@test.com"],
-                        file=file,
-                        repo_path=repo_directory,
-                        commit_msg="Initial commit",
-                        author_date="2024-01-01 00:00:00",)
+    commit_file_to_repo(repo=repo, contributor=["Alice", "alice@test.com"], file=file,
+                        repo_path=repo_directory, commit_msg="Initial commit", author_date="2024-01-01 00:00:00",)
 
     return repo, repo_directory, file
 
@@ -88,12 +82,8 @@ def test_get_file_commit_percentage_two_authors(temp_git_repo, tmp_path: Path):
     file.write_text(
         "print('line one')\nprint('line two')\n#comment-bob-1\n#comment-bob-2\nprint('line5')")
 
-    commit_file_to_repo(repo=repo,
-                        contributor=['Bob', 'bob@test.com'],
-                        file=file,
-                        repo_path=repo_dir,
-                        commit_msg='Bob commits app.py and writes over Alice',
-                        author_date="",)
+    commit_file_to_repo(repo=repo, contributor=['Bob', 'bob@test.com'], file=file,
+                        repo_path=repo_dir, commit_msg='Bob commits app.py and writes over Alice', author_date="",)
 
     # Analyze the file
     analyzer = get_appropriate_analyzer(
@@ -128,8 +118,7 @@ def test_file_not_committed_in_git_repo(temp_git_repo, tmp_path: Path):
 
     # Create a new file
     file = get_temp_file(filename="uncomitted.py",
-                         content="print('this file has not been comitted')",
-                         path=repo_dir)
+                         content="print('this file has not been comitted')", path=repo_dir)
 
     # Configure user credentials, but don't commit the file
     with repo.config_writer() as cfg:
@@ -158,12 +147,8 @@ def test_git_file_has_local_changes(temp_git_repo, tmp_path: Path):
     file.write_text(
         "print('line one')\nprint('line two')\nprint('added by Bob)")
 
-    commit_file_to_repo(repo=repo,
-                        contributor=['Bob', 'bob@test.com'],
-                        file=file,
-                        repo_path=repo_dir,
-                        commit_msg='Bob commits app.py and writes over Alice',
-                        author_date="",)
+    commit_file_to_repo(repo=repo, contributor=['Bob', 'bob@test.com'], file=file,
+                        repo_path=repo_dir, commit_msg='Bob commits app.py and writes over Alice', author_date="",)
 
     # Bob makes a local change, but doesn't commit it
     file.write_text("print('new file content')")
@@ -187,34 +172,22 @@ def test_earliest_commit_and_last_commit(temp_git_repo, tmp_path: Path):
     file.write_text(
         "print('line one')\nprint('line two')\nprint('added by Bob)")
 
-    commit_file_to_repo(repo=repo,
-                        contributor=['Bob', 'bob@test.com'],
-                        file=file,
-                        repo_path=repo_dir,
-                        commit_msg='Bob commits app.py and writes over Alice',
-                        author_date="2025-04-12 09:00:00",)
+    commit_file_to_repo(repo=repo, contributor=['Bob', 'bob@test.com'], file=file, repo_path=repo_dir,
+                        commit_msg='Bob commits app.py and writes over Alice', author_date="2025-04-12 09:00:00",)
 
     # Make another commit on April 12, 2025 at 1:00 P.M.
     file.write_text(
         "print('line one')\nprint('line two')\nprint('added by Bob)\nprint('a new line!)")
 
-    commit_file_to_repo(repo=repo,
-                        contributor=['Bob', 'bob@test.com'],
-                        file=file,
-                        repo_path=repo_dir,
-                        commit_msg='Bob commits app.py and writes over Alice',
-                        author_date="2025-04-12 13:00:00",)
+    commit_file_to_repo(repo=repo, contributor=['Bob', 'bob@test.com'], file=file, repo_path=repo_dir,
+                        commit_msg='Bob commits app.py and writes over Alice', author_date="2025-04-12 13:00:00",)
 
     # Make another commit on May 9, 2025 at 5:35 P.M.
     file.write_text(
         "print('line one')\nprint('line two')\nprint('added by Bob)\n")
 
-    commit_file_to_repo(repo=repo,
-                        contributor=['Bob', 'bob@test.com'],
-                        file=file,
-                        repo_path=repo_dir,
-                        commit_msg='Bob commits app.py and writes over Alice',
-                        author_date="2025-05-09 17:35:00",)
+    commit_file_to_repo(repo=repo, contributor=['Bob', 'bob@test.com'], file=file, repo_path=repo_dir,
+                        commit_msg='Bob commits app.py and writes over Alice', author_date="2025-05-09 17:35:00",)
 
     analyzer = get_appropriate_analyzer(
         str(repo_dir), str(file.relative_to(repo_dir)), repo)
