@@ -5,6 +5,7 @@ Tests for analyzer classes in src/classes/analyzer.py
 from pathlib import Path
 from datetime import datetime
 import pytest
+import shutil
 from src.classes.analyzer import *
 from src.classes.statistic import FileStatCollection, CodingLanguage
 from src.utils.project_discovery import ProjectFiles
@@ -294,10 +295,48 @@ def test_unkown_coding_language(tmp_path):
 
     assert report.get_value(FileStatCollection.CODING_LANGUAGE.value) == None
 
+
+def test_file_domain_is_test_by_filename(tmp_path):
+    """
+    Test if a coding file starts with test_ or
+    has _test in the name it is a test file
+    """
+
+    filenames = ["test_example.py", "example_test.py", "hello_test_example"]
+
+    for filename in filenames:
+        file = _create_temp_file(
+            filename, "print('Hello, world!')", path=tmp_path)
+
+        report = CodeFileAnalyzer(file[0], file[1]).analyze()
+
+        assert report.get_value(
+            FileStatCollection.TYPE_OF_FILE.value) == FileDomain.TEST
+
+
+def test_file_domain_is_test_by_path(tmp_path):
+    """
+    Tests if a coding file is test by the directory
+    name
+    """
+
+    directory_names = ["tests", "test", "Test"]
+
+    for name in directory_names:
+        target_dir = tmp_path / name
+        target_dir.mkdir()
+
+        file = _create_temp_file("hello_world.py", "", path=target_dir)
+
+        report = CodeFileAnalyzer(file[0], file[1]).analyze()
+
+        assert report.get_value(
+            FileStatCollection.TYPE_OF_FILE.value) == FileDomain.TEST
+
 # ---------- Test PythonAnalyzer ----------
 
 
-def test_PythonAnalyzer_core_stats():
+def test_PythonAnalyzer_core_stats(tmp_path):
     """
     This test uses the example_python.py file
     in the tests/resources/ directory. To ensure
@@ -305,7 +344,18 @@ def test_PythonAnalyzer_core_stats():
     statistics about Python files.
     """
 
-    report = PythonAnalyzer("./tests/resources", "example_python.py").analyze()
+    # Copy file into new directory so "tests" keyword
+    # doesn't corrupt file domain
+
+    target_dir = tmp_path / "example_python"
+    target_dir.mkdir()
+
+    target_file = str(target_dir) + "/example_python.py"
+
+    shutil.copyfile(src="./tests/resources/example_python.py",
+                    dst=target_file)
+
+    report = PythonAnalyzer(str(target_dir), "example_python.py").analyze()
 
     REAL_TYPE_OF_FILE = FileDomain.CODE
     REAL_NUMBER_OF_FUNCTIONS = 7
