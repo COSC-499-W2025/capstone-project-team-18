@@ -3,15 +3,12 @@ Reports hold statistics.
 """
 from typing import Any, Optional
 from pathlib import Path
-import tempfile
-import shutil
-import zipfile
-from git import Repo, InvalidGitRepositoryError
-from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
-from git import NoSuchPathError, Repo, InvalidGitRepositoryError
-from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
+
+from git import Repo, InvalidGitRepositoryError, NoSuchPathError, InvalidGitRepositoryError
+from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
+from .resume import Resume, ResumeItem, bullet_point_builder
 
 
 class BaseReport:
@@ -786,18 +783,18 @@ class UserReport(BaseReport):
                     continue
 
                 current_first = skill_first_seen.get(name)
-                
+
                 if start_dt is None:
                     if current_first is None:
                         skill_first_seen[name] = None
                     continue
-                    
+
                 if current_first is None or start_dt < current_first:
-                        skill_first_seen[name] = start_dt
+                    skill_first_seen[name] = start_dt
 
         if not skill_first_seen:
             return "" if as_string else []
-        
+
         dated: list[tuple[str, datetime]] = []
         undated: list[str] = []
 
