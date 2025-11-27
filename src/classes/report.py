@@ -430,7 +430,7 @@ class UserReport(BaseReport):
     from many different ReportReports
     """
 
-    def __init__(self, project_reports: list[ProjectReport]):
+    def __init__(self, project_reports: list[ProjectReport], report_name: str):
         """
         Initialize UserReport with project reports to calculate user-level statistics.
 
@@ -439,15 +439,15 @@ class UserReport(BaseReport):
         - User end date: latest project end date across all projects
 
         Args:
-            project_reports: List of ProjectReport objects containing project-level statistics
+            project_reports (list[ProjectReport]): List of ProjectReport objects containing project-level statistics
+            report_name (str): By default, the name of the zipped directory. Can be overwritten by user input
         """
 
         self.resume_items = [project_reports.generate_resume_item()
                              for project_reports in project_reports]
         self.project_reports = project_reports or []
-
-        # Build list of user-level statistics
-        self.user_stats = StatisticIndex()
+        self.report_name = report_name
+        self.user_stats = StatisticIndex()  # list of user-level statistics
 
         # Function calls to generate statistics
         self._determine_start_end_dates()
@@ -927,7 +927,7 @@ class UserReport(BaseReport):
                     continue
 
                 if current_first is None or start_dt < current_first:
-                        skill_first_seen[name] = start_dt
+                    skill_first_seen[name] = start_dt
 
         if not skill_first_seen:
             return "" if as_string else []
