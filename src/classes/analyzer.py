@@ -2,15 +2,13 @@
 This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
-import os
-import time
 from .report import FileReport
 from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage, FileStatisticTemplate
 import datetime
 from pathlib import Path
 import logging
 import re
-from typing import Optional, Any
+from typing import Optional
 import ast
 from src.utils.project_discovery import ProjectFiles
 from charset_normalizer import from_path
@@ -25,7 +23,14 @@ logger = logging.getLogger(__name__)
 
 def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[str] = None) -> Optional[list[FileReport]]:
     """
-    Method to extract individual fileReports within each project
+    For all of the files in a project, analyze each file to generate a FileReport.
+
+    Args:
+        project_file (ProjectFile): Optional
+        email (str): Optional
+
+    Returns:
+        List[FileReports]: Optional
     """
 
     if project_file is None:
