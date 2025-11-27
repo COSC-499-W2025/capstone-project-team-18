@@ -2,80 +2,69 @@
 This file will run everytime pytest
 starts running tests. It is used to
 make global changes to the testing environment.
-"""
 
-import sys
-from pathlib import Path
+Fixtures that we want/need to access for (nearly) every
+test will live in here. Then, we can import the fixture into
+the test file when we need them.
+"""
 import pytest
+import sys
+import random
+import datetime
+from pathlib import Path
+from datetime import timedelta
+from typing import Optional
+
 from git import Repo
+
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
+from src.classes.report import FileReport, ProjectReport, UserReport
 from src.utils.project_discovery import ProjectFiles
-
-"""
-When pytest runs, we consider capstone-project-team-18
-to be the root of the project for imports.
-
-However, when we run the application normally,
-the src/ directory is considered to be the root
-for imports.
-
-This makes us run in to error in a situation
-like this:
-
-- pytest imports ArtifactMiner with:
-    from src.classes.cli import ArtifactMiner
-
-- but ArtifactMiner tries to import start_miner with:
-    from app import start_miner
-
-Error can't find app!
-
-So here, we adjust sys.path to ensure that
-imports work correctly in both scenarios.
-"""
-# Repository root (this file is at the repo root)
-REPO_ROOT = Path(__file__).resolve().parent
-SRC_DIR = REPO_ROOT / "src"
-
-# Ensure the repository root is on sys.path so imports like `import src...`
-# resolve consistently when pytest runs from the project root.
-sys.path.insert(0, str(REPO_ROOT))
-
-# Also ensure the src/ directory itself is on sys.path. This helps in cases
-# where code or tests expect modules to be importable directly from src.
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-# --- Helper Functions --
+from tests.utils.helper_functions import get_temp_file
 
 
-def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "utf-8") -> list[str]:
-    """
-    Helper function to create a new file with
-    the provided name, in the provided path,
-    with the provided content in the provided encoding.
-    """
-
-    path_full = path / filename
-    path_full.write_text(content, encoding=encoding)
-    return [str(path), filename]
+# contributor (set[str]): Optional, if the file is in a directory with multiple contributors, include this file contributor's name & email.
+# - Example: `contributor = ('Spencer', 'spencer@test.com')`
 
 
 # --- Fixtures --
-# These are global objects that we can use in our test
 
 RESOURCE_DIR = Path(__file__).parent / "tests/resources"
 
+# Logicially the same as `get_temp_file`, w/out manual setup overhead
+
 
 @pytest.fixture
-def temp_text_file(tmp_path: Path) -> list[str]:
+def temp_txt_file(tmp_path: Path) -> Path:
     """
-    Creates a temporary text file.
+    Creates a temporary text file. Use this fixture when testing
+    a feature that is dependent on metadata that makes up the file
 
     Returns:
-        list[str] : [tmp_path, "sample.txt"]
+        Path: A `Path` object for the fixture text file
     """
+    text = '''Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas nec
+                velit a ante pulvinar euismod in blandit enim. Phasellus vel nibh a elit
+                consequat pretium. Nullam eleifend sapien ut rhoncus porta. Nam tincidunt
+                nisl nunc, sit amet vulputate felis finibus in. Morbi vitae velit purus.
+                Nulla varius tellus purus, convallis tristique erat molestie vitae.
+                Pellentesque dictum purus sit amet sollicitudin luctus. Proin placerat urna
+                id dignissim bibendum. Donec vestibulum massa vitae urna scelerisque, in
+                pretium erat convallis. Sed lobortis orci id nibh malesuada, nec molestie
+                ipsum euismod. Nam interdum egestas nisi vel luctus. Donec eget elit
+                venenatis, gravida orci varius, ultrices quam. Praesent vel felis erat.'''
 
-    return _create_temp_file("sample.txt", "Myles Jack wasn't down\n", tmp_path)
+    return get_temp_file(filename="text.txt", content=text, path=tmp_path)
+
+
+'''
+@pytest.fixture
+def temp_py_file(tmp_path: Path) -> Path:
+    # TODO
+
+
+def temp__file(tmp_path: Path) -> Path:
+'''
 
 
 @pytest.fixture
