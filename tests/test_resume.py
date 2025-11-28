@@ -70,7 +70,8 @@ def test_userreport_can_create_resume():
     ])
 
     user_report = UserReport(
-        [ProjectReport.from_statistics(project_statistics)]
+        [ProjectReport.from_statistics(project_statistics)],
+        "UserReport1"
     )
 
     resume_item = user_report.generate_resume()

@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
-from src.database.db import Base, ProjectReportTable, FileReportTable
-from src.database.utils.database_access import get_project_from_project_name
+from src.database.db import Base, ProjectReportTable, FileReportTable, UserReportTable
+from src.database.utils.database_access import get_project_from_project_name, get_user_report
 from src.classes.statistic import (
     FileStatCollection,
     ProjectStatCollection,
@@ -77,7 +77,7 @@ def create_project_report(fr1: FileReport, fr2: FileReport, collaborative: bool)
     return pr
 
 
-def create_user_report(pr1: ProjectReport, pr2: ProjectReport | None):
+def create_user_report(pr1: ProjectReport, pr2: ProjectReport | None, name: str):
     '''
     Given one or two `ProjectReport` objects, return a `UserReport` object.
 
@@ -85,9 +85,9 @@ def create_user_report(pr1: ProjectReport, pr2: ProjectReport | None):
     creating user reports in `statistic.py`.
     '''
     if pr2 is not None:
-        return UserReport(project_reports=[pr1, pr2])
+        return UserReport(project_reports=[pr1, pr2], report_name=name)
     else:
-        return UserReport(project_reports=[pr1])
+        return UserReport(project_reports=[pr1], report_name=name)
 
 
 def get_row(report: FileReport | ProjectReport | UserReport):
@@ -125,8 +125,13 @@ def get_row(report: FileReport | ProjectReport | UserReport):
         '''
 
     else:
-        # TODO: Implement once we have logic for user report generation
-        return
+        new_row = UserReportTable(
+            title=report.report_name,  # type: ignore
+            user_start_date=report.get_value(
+                UserStatCollection.USER_START_DATE.value),
+            user_end_date=report.get_value(
+                UserStatCollection.USER_END_DATE.value),
+        )
 
     return new_row
 
@@ -153,6 +158,8 @@ def temp_db(tmp_path: Path):
     pr2 = create_project_report(fr4, fr1, True)
     pr2.project_name = 'Project2'
 
+    ur1 = create_user_report(pr1, pr2, 'test_user_report')
+
     # Get rows for the file reports
     stmt1 = get_row(fr1)
     stmt2 = get_row(fr2)
@@ -168,10 +175,15 @@ def temp_db(tmp_path: Path):
     stmt7.file_reports.append(stmt4)  # type: ignore
     stmt7.file_reports.append(stmt1)  # type: ignore
 
+    # Get a user report row
+    stmt8 = get_row(ur1)
+    stmt8.project_reports.append(stmt6)  # type: ignore
+    stmt8.project_reports.append(stmt7)  # type: ignore
+
     with Session(engine) as session:
 
         # add file report & project report rows to the DB
-        session.add_all([stmt6, stmt7])
+        session.add_all([stmt8])
 
         session.commit()  # write the rows to the DB
     try:
@@ -237,3 +249,20 @@ def test_get_project_with_multiple_results(temp_db):
         session.commit()
     with pytest.raises(MultipleResultsFound):
         get_project_from_project_name('fileReport', temp_db)
+
+
+def test_get_user_from_name_success(temp_db):
+    '''
+    Validate that given an existing user report
+    name, a `UserReport` object is correctly returned.
+    '''
+    name = 'test_user_report'
+    ur = get_user_report(name, temp_db)
+
+    assert ur.report_name == name
+    assert len(ur.project_reports) == 2
+
+    for pr in ur.project_reports:
+        assert pr.get_value(
+            ProjectStatCollection.IS_GROUP_PROJECT.value) is not None
+        assert pr.project_name == "Project1" or pr.project_name == "Project2"

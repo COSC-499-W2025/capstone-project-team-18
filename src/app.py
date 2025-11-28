@@ -4,14 +4,18 @@ It provides logic for the CLI that the user will
 interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
+from typing import Optional
+import tempfile
+from pathlib import Path
+
 from sqlalchemy.orm import Session
 
-from typing import Optional
 from src.utils.zipped_utils import unzip_file
 from src.utils.project_discovery import discover_projects
+
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
-import tempfile
+
 from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
 
@@ -72,7 +76,8 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
             project_report_rows.append(project_row)
 
         # make a UserReport with the ProjectReports
-        user_report = UserReport(project_reports)
+        dir_name = Path(zipped_file).stem  # name of zipped dir
+        user_report = UserReport(project_reports, dir_name)
         # create a user_report row and configure FK relations
         user_row = create_row(report=user_report)
         user_row.project_reports.extend(project_report_rows)  # type: ignore
