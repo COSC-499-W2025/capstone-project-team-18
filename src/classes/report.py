@@ -161,7 +161,7 @@ class ProjectReport(BaseReport):
         self._find_coding_languages_ratio()
         self._calculate_ari_score()
         self._weighted_skills()
-        self._analyze_git_authorship(user_email)
+        self._analyze_git_authorship()
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
@@ -336,7 +336,7 @@ class ProjectReport(BaseReport):
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
         return inst
 
-    def _analyze_git_authorship(self, user_email: Optional[str] = None) -> None:
+    def _analyze_git_authorship(self) -> None:
         """
         Analyzes Git commit history to determine authorship statistics.
 
@@ -350,8 +350,8 @@ class ProjectReport(BaseReport):
             user_email: Optional email of the user to calculate their commit percentage
         """
 
-        if self.project_repo is None or self.email is None:
-            return None
+        if self.project_repo is None:
+            return
 
         repo = self.project_repo
 
@@ -374,9 +374,9 @@ class ProjectReport(BaseReport):
 
         # Calculate user's commit percentage if project has multiple authors
         user_commit_percentage = None
-        if total_authors > 1 and user_email:
+        if total_authors > 1 and self.email:
             user_commits = commit_count_by_author.get(
-                user_email, 0)
+                self.email, 0)
             if total_commits > 0:
                 user_commit_percentage = (
                     user_commits / total_commits) * 100
