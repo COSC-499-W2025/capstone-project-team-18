@@ -161,7 +161,9 @@ class ProjectReport(BaseReport):
         self._find_coding_languages_ratio()
         self._calculate_ari_score()
         self._weighted_skills()
-        self._analyze_git_authorship()
+
+        if self.email:
+            self._analyze_git_authorship()
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
@@ -347,7 +349,7 @@ class ProjectReport(BaseReport):
         - USER_COMMIT_PERCENTAGE: Percentage of commits made by the user (if applicable)
 
         Args:
-            user_email: Optional email of the user to calculate their commit percentage
+            user_email: Email of the user to calculate their commit percentage
         """
 
         if self.project_repo is None:
