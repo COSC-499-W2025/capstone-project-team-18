@@ -340,10 +340,8 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         file_commit_percentage = self._get_file_commit_percentage()
 
         if file_commit_percentage is not None:
-            print(f"Value appended: {file_commit_percentage}")
             stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
                                    file_commit_percentage))
-            print(stats)
 
         self.stats.extend(stats)
 
@@ -387,10 +385,7 @@ class CodeFileAnalyzer(TextFileAnalyzer):
                     commit_count += len(lines)
 
             if line_count == 0:
-                print("Falied here")
                 return 0.0
-            print(
-                f"{self.relative_path}: shouldve woprked: {commit_count} / {line_count}")
             return round((commit_count / line_count) * 100, 2)
         except InvalidGitRepositoryError as e:
             logger.debug(f"InvalidGitRepositoryError: {e}")
