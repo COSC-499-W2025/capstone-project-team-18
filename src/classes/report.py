@@ -145,7 +145,7 @@ class ProjectReport(BaseReport):
         """
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
-        self.project_path = project_path or "path"
+        self.project_path = project_path or "Unknown Path"
 
         if statistics is None:
             self.project_statistics = StatisticIndex()
