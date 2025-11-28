@@ -146,6 +146,7 @@ class ProjectReport(BaseReport):
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
         self.project_repo = project_repo
+        self.email = user_email
 
         self.project_statistics = StatisticIndex()
 
@@ -349,7 +350,7 @@ class ProjectReport(BaseReport):
             user_email: Optional email of the user to calculate their commit percentage
         """
 
-        if self.project_repo is None:
+        if self.project_repo is None or self.email is None:
             return None
 
         repo = self.project_repo
