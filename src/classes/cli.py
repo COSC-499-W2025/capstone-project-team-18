@@ -395,11 +395,14 @@ class ArtifactMiner(cmd.Cmd):
         prefs = self.preferences.load_preferences()
         start_time, end_time = self.preferences.get_date_range()
         ignored_files = self.preferences.get_files_to_ignore()
+        languages = prefs.get('languages_to_include', [])
 
         if start_time or end_time:
             print(f"Date filtering: {start_time or 'Any'} to {end_time or 'Any'}")
         if ignored_files:
             print(f"Ignoring file types: {', '.join(ignored_files)}")
+        if languages:
+            print(f"Language filter: {', '.join(languages)}")
 
         start_miner(self.project_filepath, self.user_email)
 
@@ -464,10 +467,11 @@ class ArtifactMiner(cmd.Cmd):
             print("\n=== Preferences Configuration ===")
             print("(1) Configure Date Range Filtering")
             print("(2) Configure Files to Ignore")
-            print("(3) Reset to Defaults")
-            print("(4) Back to Main Menu")
+            print("(3) Configure Language Filter")
+            print("(4) Reset to Defaults")
+            print("(5) Back to Main Menu")
 
-            choice = input("\nSelect option (1-4), or 'exit'/'quit' to close app): ").strip()
+            choice = input("\nSelect option (1-5), or 'exit'/'quit' to close app): ").strip()
 
             # User enters exit/quit
             if choice.lower() in ['exit', 'quit']:
@@ -482,8 +486,10 @@ class ArtifactMiner(cmd.Cmd):
             elif choice == "2":
                 self._configure_files_to_ignore()
             elif choice == "3":
-                self._reset_preferences()
+                self._configure_language_filter()
             elif choice == "4":
+                self._reset_preferences()
+            elif choice == "5":
                 print("\n" + self.options)
                 return
             else:
@@ -513,6 +519,13 @@ class ArtifactMiner(cmd.Cmd):
                 print(f"Ignored Extensions: {', '.join(ignored_files)}")
             else:
                 print("Ignored Extensions: None")
+
+            # Language filter
+            languages = prefs.get('languages_to_include', [])
+            if languages:
+                print(f"Language Filter: {', '.join(languages)}")
+            else:
+                print("Language Filter: All languages")
 
             print(f"Last Updated: {prefs.get('last_updated', 'Never')}")
             print(f"Preferences File: {self.preferences.get_preferences_file_path()}")
@@ -653,6 +666,46 @@ class ArtifactMiner(cmd.Cmd):
         else:
             print("✗ Failed to save file ignore configuration")
 
+    def _configure_language_filter(self):
+        '''Configure programming language filtering'''
+        print("\n=== Language Filtering ===")
+        print("Filter analysis by programming languages")
+        print("Common languages: Python, Java, JavaScript, C++, C#, Ruby, Go, PHP, TypeScript")
+
+        current = self.preferences.get("languages_to_include", [])
+        if current:
+            print(f"Currently filtering for: {', '.join(current)}")
+        else:
+            print("Currently analyzing all languages")
+
+        print("\nOptions:")
+        print("  - Enter language names separated by commas")
+        print("  - Type 'all' to include all languages")
+        print("  - Type 'clear' to remove language filter")
+
+        languages_input = input("\nLanguages to analyze (or 'back'/'cancel'): ").strip()
+
+        # Handle cancel
+        if self._handle_cancel_input(languages_input, "preferences"):
+            return
+
+        # Handle exit/quit
+        if languages_input.lower() in ['exit', 'quit']:
+            return self.do_exit("")
+
+        if languages_input.lower() in ['all', 'clear']:
+            languages = []
+            message = "✓ Language filter cleared - analyzing all languages"
+        else:
+            # Parse and normalize language names
+            languages = [lang.strip().title() for lang in languages_input.split(',') if lang.strip()]
+            message = f"✓ Now filtering for: {', '.join(languages)}"
+
+        success = self.preferences.update("languages_to_include", languages)
+        if success:
+            print(message)
+        else:
+            print("✗ Failed to save language filter configuration")
 
     def _reset_preferences(self):
         '''Reset all preferences to defaults'''

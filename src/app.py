@@ -20,6 +20,9 @@ from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
 
 
+
+
+
 def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     """
     This function defines the main application
@@ -35,6 +38,13 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
     unzip_file(zipped_file, unzipped_dir)
 
+    # Import inside function to avoid circular import
+    from src.classes.cli import UserPreferences
+
+    # Load preferences to get language filter
+    prefs = UserPreferences()
+    language_filter = prefs.get("languages_to_include", [])
+
     project_list = discover_projects(unzipped_dir)
 
     engine = get_engine()
@@ -49,7 +59,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
 
         for project in project_list:
             file_reports = extract_file_reports(
-                project, email)  # get the project's FileReports
+                project, email, language_filter)  # get the project's FileReports
 
             if file_reports is None:
                 continue  # skip if directory is empty
