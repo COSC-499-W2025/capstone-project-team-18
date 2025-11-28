@@ -5,7 +5,7 @@ import pytest
 from git import Repo
 
 
-from src.utils.project_discovery import discover_projects, ProjectFiles  # type: ignore  # noqa: E402
+from src.utils.project_discovery.project_discovery import discover_projects, ProjectFiles  # type: ignore  # noqa: E402
 from src.classes.report import ProjectReport  # type: ignore  # noqa: E402
 from src.classes.statistic import ProjectStatCollection  # type: ignore  # noqa: E402
 
@@ -159,7 +159,7 @@ def test_no_git_projects(tmp_path: Path):
 def test_invalid_inputs(tmp_path: Path):
     """Verifies proper error handling for invalid directories."""
     # Nonexistent directory should raise FileNotFoundError
-    from src.utils.project_discovery import discover_projects
+    from src.utils.project_discovery.project_discovery import discover_projects
     with pytest.raises(FileNotFoundError):
         discover_projects(str(tmp_path / "does_not_exist"))
 

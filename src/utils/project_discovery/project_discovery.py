@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import logging
 from typing import Optional
 from git import Repo
+from .ignore_constants import *
 
 logger = logging.getLogger(__name__)
 
@@ -20,53 +21,6 @@ class ProjectFiles:
     root_path: str  # The absolute path to the top-level directory
     file_paths: list[str]  # File paths relative to the root_path
     repo: Optional[Repo]  # The git repository object if applicable
-
-# File extensions to ignore
-IGNORE_EXTENSIONS = [
-    ".jar",
-    ".sql",
-    ".db",
-    ".sqlite",
-    ".sqlite3",
-]
-
-# Files that should just totally be ignored
-IGNORE_FILES = [
-    ".DS_Store",
-    "thumbs.db",
-    "manage.py",
-    "wsgi.py",
-    "asgi.py",
-    "__init__.py",
-    "settings.py",
-    "urls.py",
-    "tests.py"
-]
-
-IGNORE_DIRS = [
-    ".git",
-    ".pytest_cache",
-    # Virtual environment directories
-    "venv",
-    "env",
-    "virtualenv",
-    "site-packages",
-    "node_modules",
-    "newenv",
-    "myenv",
-    # Build/distribution directories
-    "target",
-    "build",
-    "dist",
-    "__pycache__",
-    "migrations",
-    # Python library directories
-    "lib",
-    "lib64",
-    "bin",
-    "include",
-    "share"
-]
 
 
 def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
@@ -110,21 +64,8 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
         """
 
         if dir_is_project(dir_path):
-            # If the directory is a project, add it to the list and move on
-            # We ignore the ignore files and the files in the IGNORE_DIRS directories
-            file_paths = []
-            for root, dirs, files in os.walk(dir_path):
-                # Modify dirs in-place to skip ignored directories
-                dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
 
-                for file in files:
-                    if file not in IGNORE_FILES:
-
-                        # Check if file has an ignored extension
-                        if not any(file.endswith(ext) for ext in IGNORE_EXTENSIONS):
-                            full_path = Path(root) / file
-                            relative_path = full_path.relative_to(dir_path)
-                            file_paths.append(str(relative_path))
+            file_paths = filter_files(dir_path)
 
             # Check to see if the project is a git repository
             repo = None
@@ -164,30 +105,46 @@ def dir_is_project(dir_path: Path) -> bool:
         - bool True if the directory is a project, False otherwise.
     """
 
-    INSTANT_SUCCESS_FILES_AND_DIR = [
-        # Files that instantly qualify a directory as a project
-        "README.md",
-        "README.txt",
-        "package.json",
-        ".gitignore",
-        "requirements.txt",
-
-        # Directories that instantly qualify a directory as a project
-        ".git",
-        "src",
-        "app",
-    ]
-
     # Check for instant project directories
     for instant_dir in INSTANT_SUCCESS_FILES_AND_DIR:
         if (dir_path / instant_dir).exists():
             return True
 
-    # Check if there are any files (excluding ignored files)
+    # Check if there are any files (excluding junk files)
     files = [f for f in dir_path.iterdir() if f.is_file()
-             and f.name not in IGNORE_FILES]
+             and f.name not in JUNK_FILES]
 
     if len(files) == 0:
         return False
 
     return True
+
+
+def filter_files(project_path: Path) -> list[str]:
+    """
+    Given that we know a folder is a project,
+    this function will filter all the files in
+    the directory and return ONLY files that should
+    be analyzed. It ignores files that we don't care
+    about like '.gitignore' or anything in the
+    .git directory.
+
+    """
+
+    # We ignore the ignore files and the files in the IGNORE_DIRS directories
+    file_paths = []
+
+    for root, dirs, files in os.walk(project_path):
+        # Modify dirs in-place to skip ignored directories
+        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+
+        for file in files:
+            if file not in IGNORE_FILES:
+
+                # Check if file has an ignored extension
+                if not any(file.endswith(ext) for ext in IGNORE_EXTENSIONS):
+                    full_path = Path(root) / file
+                    relative_path = full_path.relative_to(project_path)
+                    file_paths.append(str(relative_path))
+
+    return file_paths
