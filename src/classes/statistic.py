@@ -255,6 +255,12 @@ class ProjectStatCollection(Enum):
         expected_type=float
     )
 
+    ACTIVITY_TYPE_CONTRIBUTIONS = ProjectStatisticTemplate(
+        name="ACTIVITY_TYPE_CONTRIBUTIONS",
+        description="The user's contributions to each file domain",
+        expected_type=dict[FileDomain, float]
+    )
+
 
 class UserStatCollection(Enum):
     USER_START_DATE = UserStatisticTemplate(

@@ -12,6 +12,7 @@ from git import NoSuchPathError, Repo, InvalidGitRepositoryError
 from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
+from src.utils.data_processing import normalize
 
 
 class BaseReport:
@@ -145,6 +146,7 @@ class ProjectReport(BaseReport):
         """
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
+        self.email = user_email
 
         if statistics is None:
             self.project_statistics = StatisticIndex()
@@ -175,6 +177,48 @@ class ProjectReport(BaseReport):
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
+
+    def _activity_type_contributions(self) -> None:
+        """
+        This function will analyze the user's
+        contributions to each file domain in a
+        project out of all of their contributions.
+
+        If the user's email is configured, it will
+        use PERCENTAGE_LINES_COMMITTED file stat.
+
+        Otherwise, it is assumed that they worked on
+        all files and we will just use the distrubition
+        of the project files.
+        """
+
+        activity_type_to_lines = {}
+        email_configured = True if self.email else False
+
+        for fr in self.file_reports:
+            file_domain = fr.get_value(FileStatCollection.TYPE_OF_FILE.value)
+
+            lines_in_file = fr.get_value(
+                FileStatCollection.LINES_IN_FILE.value)
+
+            if not file_domain or not lines_in_file:
+                continue
+
+            percent = 1
+
+            if email_configured:
+                percent = fr.get_value(
+                    FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) / 100
+
+            prev_lines = activity_type_to_lines.get(file_domain, 0)
+
+            activity_type_to_lines[file_domain] = prev_lines + \
+                lines_in_file * percent
+
+        normalize(activity_type_to_lines)
+
+        self.project_statistics.add(Statistic(
+            ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines))
 
     def _weighted_skills(self) -> None:
         """
@@ -786,18 +830,18 @@ class UserReport(BaseReport):
                     continue
 
                 current_first = skill_first_seen.get(name)
-                
+
                 if start_dt is None:
                     if current_first is None:
                         skill_first_seen[name] = None
                     continue
-                    
+
                 if current_first is None or start_dt < current_first:
-                        skill_first_seen[name] = start_dt
+                    skill_first_seen[name] = start_dt
 
         if not skill_first_seen:
             return "" if as_string else []
-        
+
         dated: list[tuple[str, datetime]] = []
         undated: list[str] = []
 
