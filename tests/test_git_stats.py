@@ -206,7 +206,7 @@ def test_git_authorship_no_user_email_provided(git_dir):
         ProjectStatCollection.USER_COMMIT_PERCENTAGE.value
     )
 
-    assert is_group is None
+    assert is_group is True
     assert user_percentage is None
 
 
