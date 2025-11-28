@@ -150,7 +150,8 @@ class ProjectReport(BaseReport):
 
         self.project_statistics = StatisticIndex()
 
-        # In this case we are testing and we are explictly giving statistics
+        # In this case, we are loading from the database and we are explictly
+        # given statistics. We load those stats in, and move on
         if statistics is not None:
             self.project_statistics = statistics
             super().__init__(self.project_statistics)
