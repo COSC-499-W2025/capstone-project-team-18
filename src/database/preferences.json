@@ -1,5 +1,5 @@
 {
-    "consent": true,
+    "consent": false,
     "files_to_ignore": [],
     "file_start_time": null,
     "file_end_time": null,

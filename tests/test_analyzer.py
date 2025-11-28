@@ -9,76 +9,7 @@ from src.classes.analyzer import *
 from src.classes.statistic import FileStatCollection, CodingLanguage
 from src.utils.project_discovery.project_discovery import ProjectFiles
 from src.utils.zipped_utils import unzip_file
-
-TEST_DIR = Path(__file__).parent / "resources"
-
-
-def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "utf-8") -> list[str]:
-    """
-    Helper function to create a new file with
-    the provided name, in the provided path,
-    with the provided content in the provided encoding.
-    """
-
-    path_full = path / filename
-    path_full.write_text(content, encoding=encoding)
-    return [str(path), filename]
-
-
-@pytest.fixture
-def temp_text_file(tmp_path: Path) -> list[str]:
-    '''Create a temporary file that will be deleted after the test'''
-    return _create_temp_file("sample.txt", "Myles Jack wasn't down\n", tmp_path)
-
-
-@pytest.fixture
-def temp_directory_no_subfolder(tmp_path: Path) -> dict:
-    '''Temp directory to be deleted after test'''
-    directory = {}
-    files = []
-    title = "testProject"
-    for _ in range(5):
-        p = tmp_path / "sample.txt"
-        content = "Myles Jack wasn't down\n"
-        p.write_text(content, encoding="utf-8")
-        files.append(p)
-    directory.update({title: files})
-    return directory
-
-
-@pytest.fixture
-def temp_directory_with_subfolder(tmp_path: Path) -> dict:
-    """
-    Create a temp directory structure like:
-
-    {
-    "ProjectA": ["a_1.txt", "a_2.txt","subfolder/a_3.txt"
-    }
-    """
-
-    project_name = "ProjectA"
-
-    # files directly in project root
-    file1 = tmp_path / "a_1.txt"
-    file1.write_text("File One", encoding="utf-8")
-
-    file2 = tmp_path / "a_2.txt"
-    file2.write_text("File Two", encoding="utf-8")
-
-    # create subfolder + file
-    subfolder = tmp_path / "subfolder"
-    subfolder.mkdir()
-
-    file3 = subfolder / "a_3.txt"
-    file3.write_text("File Three", encoding="utf-8")
-
-    return {
-        project_name: [
-            str(file1),
-            str(file2),
-            str(file3),
-        ]
-    }
+from conftest import _create_temp_file, RESOURCE_DIR
 
 
 def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_text_file: list[str]):
@@ -435,7 +366,7 @@ def test_JavaAnalyzer(tmp_path):
     """
     from src.classes.analyzer import JavaAnalyzer
 
-    report = JavaAnalyzer(str(TEST_DIR), "example_java.java").analyze()
+    report = JavaAnalyzer(str(RESOURCE_DIR), "example_java.java").analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)
@@ -456,7 +387,7 @@ def test_JavaScriptAnalyzer(tmp_path):
     from src.classes.analyzer import JavaScriptAnalyzer
 
     report = JavaScriptAnalyzer(
-        str(TEST_DIR), "example_javascript.js").analyze()
+        str(RESOURCE_DIR), "example_javascript.js").analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)

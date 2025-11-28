@@ -135,8 +135,9 @@ class ProjectReport(BaseReport):
             file_reports: List of FileReport objects to aggregate statistics from
             project_path: Optional path to project for Git analysis
             project_name: Optional project name for Git analysis
+            statistics: Optional StatisicIndex
+            project_repo: Optional Repo object for Git analysis
             user_email: Optional user email for Git authorship analysis
-            statistics: Optional StatisticIndex
 
         NOTE: `statistics` should only be included when the `get_project_from_project_name()`
         function is creating a ProjectReport object from an existing row in
@@ -147,6 +148,7 @@ class ProjectReport(BaseReport):
 
         if statistics is None:
             self.project_statistics = StatisticIndex()
+            self.project_repo = project_repo
             # Initialize project_repo from project_path if not provided
             if project_repo is not None:
                 self.project_repo = project_repo
@@ -166,7 +168,8 @@ class ProjectReport(BaseReport):
             self._find_coding_languages_ratio()
             self._calculate_ari_score()
             self._weighted_skills()
-            self._analyze_git_authorship(user_email)
+            if user_email:
+                self._analyze_git_authorship(user_email)
         else:
             self.project_statistics = statistics
 
@@ -470,7 +473,7 @@ class UserReport(BaseReport):
     from many different ReportReports
     """
 
-    def __init__(self, project_reports: list[ProjectReport]):
+    def __init__(self, project_reports: list[ProjectReport], report_name: str):
         """
         Initialize UserReport with project reports to calculate user-level statistics.
 
@@ -479,15 +482,15 @@ class UserReport(BaseReport):
         - User end date: latest project end date across all projects
 
         Args:
-            project_reports: List of ProjectReport objects containing project-level statistics
+            project_reports (list[ProjectReport]): List of ProjectReport objects containing project-level statistics
+            report_name (str): By default, the name of the zipped directory. Can be overwritten by user input
         """
 
         self.resume_items = [project_reports.generate_resume_item()
                              for project_reports in project_reports]
         self.project_reports = project_reports or []
-
-        # Build list of user-level statistics
-        self.user_stats = StatisticIndex()
+        self.report_name = report_name
+        self.user_stats = StatisticIndex()  # list of user-level statistics
 
         # Function calls to generate statistics
         self._determine_start_end_dates()
@@ -808,6 +811,87 @@ class UserReport(BaseReport):
 
         # Build numbered lines (numbering always applied)
         lines = [f"{i+1}. {e['formatted']}" for i, e in enumerate(ordered)]
+
+        if as_string:
+            return "\n".join(lines)
+
+        return lines
+
+    def get_chronological_skills(
+        self,
+        as_string: bool = True,
+        newest_first: bool = False,
+    ) -> list | str:
+        """
+        Produce a chronological list of skills exercised by the user across all projects.
+
+        Skills are inferred from PROJECT_SKILLS_DEMONSTRATED on each ProjectReport
+        (i.e., the WeightedSkills list), and ordered by the earliest project start
+        date in which they appear.
+
+        If as_string is True, returns a newline-separated string of formatted lines:
+            "Python — First exercised Jan 12, 2023"
+
+        If as_string is False, returns a list of formatted strings in the same order.
+        """
+        if not getattr(self, "project_reports", None):
+            return "" if as_string else []
+
+        # Map skill_name -> earliest datetime it appears in any project
+        skill_first_seen: dict[str, datetime | None] = {}
+
+        for pr in self.project_reports:
+            start_dt = self._coerce_datetime(
+                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            )
+            skills = pr.get_value(
+                ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value
+            )
+
+            if not skills:
+                continue
+
+            for ws in skills:
+                name = getattr(ws, "skill_name", None) or str(ws)
+                if not name:
+                    continue
+
+                current_first = skill_first_seen.get(name)
+
+                if start_dt is None:
+                    if current_first is None:
+                        skill_first_seen[name] = None
+                    continue
+
+                if current_first is None or start_dt < current_first:
+                    skill_first_seen[name] = start_dt
+
+        if not skill_first_seen:
+            return "" if as_string else []
+
+        dated: list[tuple[str, datetime]] = []
+        undated: list[str] = []
+
+        for name, dt in skill_first_seen.items():
+            if dt is not None:
+                dated.append((name, dt))
+            else:
+                undated.append(name)
+
+        # Sort dated skills by first_seen (oldest -> newest)
+        dated.sort(key=lambda item: item[1])
+        if newest_first:
+            dated.reverse()
+
+        lines: list[str] = []
+
+        for name, dt in dated:
+            formatted_date = self._fmt_mdy_short(dt)
+            lines.append(f"{name} — First exercised {formatted_date}")
+
+        # Skills with unknown first date go at the end
+        for name in sorted(undated):
+            lines.append(f"{name} — First exercised on an unknown date")
 
         if as_string:
             return "\n".join(lines)
