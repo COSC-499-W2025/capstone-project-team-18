@@ -150,7 +150,7 @@ class ProjectReport(BaseReport):
 
         self.project_statistics = StatisticIndex()
 
-        # In this case, we are loading from the database and we are explictly
+        # In this case, we are loading from the database and we are explicitly
         # given statistics. We load those stats in, and move on
         if statistics is not None:
             self.project_statistics = statistics
@@ -342,6 +342,9 @@ class ProjectReport(BaseReport):
     def _analyze_git_authorship(self) -> None:
         """
         Analyzes Git commit history to determine authorship statistics.
+        This function uses self.email to calculate the user's commit percentage.
+        If self.email is not set, this function should not run as we don't have
+        the consent of the user.
 
         Creates the following project level statistics:
         - IS_GROUP_PROJECT: Boolean indicating if multiple authors contributed
@@ -349,8 +352,6 @@ class ProjectReport(BaseReport):
         - AUTHORS_PER_FILE: Dictionary mapping file paths to number of unique authors
         - USER_COMMIT_PERCENTAGE: Percentage of commits made by the user (if applicable)
 
-        Args:
-            user_email: Email of the user to calculate their commit percentage
         """
 
         if self.project_repo is None:
