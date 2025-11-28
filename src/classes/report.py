@@ -145,33 +145,22 @@ class ProjectReport(BaseReport):
         """
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
+        self.project_repo = project_repo
 
-        if statistics is None:
-            self.project_statistics = StatisticIndex()
-            self.project_repo = project_repo
-            # Initialize project_repo from project_path if not provided
-            if project_repo is not None:
-                self.project_repo = project_repo
-            elif project_path is not None:
-                from os.path import exists
-                if not exists(project_path):
-                    raise FileNotFoundError(
-                        f"Project path does not exist: {project_path}")
-                try:
-                    self.project_repo = Repo(project_path)
-                except (InvalidGitRepositoryError, NoSuchPathError):
-                    self.project_repo = None
-            else:
-                self.project_repo = None
-            # Aggregate statistics from file reports
-            self._determine_start_end_dates()
-            self._find_coding_languages_ratio()
-            self._calculate_ari_score()
-            self._weighted_skills()
-            if user_email:
-                self._analyze_git_authorship(user_email)
-        else:
+        self.project_statistics = StatisticIndex()
+
+        # In this case we are testing and we are explictly giving statistics
+        if statistics is not None:
             self.project_statistics = statistics
+            super().__init__(self.project_statistics)
+            return
+
+        # Aggregate statistics from file reports
+        self._determine_start_end_dates()
+        self._find_coding_languages_ratio()
+        self._calculate_ari_score()
+        self._weighted_skills()
+        self._analyze_git_authorship(user_email)
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
