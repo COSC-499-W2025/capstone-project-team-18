@@ -563,7 +563,7 @@ class UserReport(BaseReport):
         Delete a user report and its associated project reports from the database.
 
         Args:
-            identifier: Either a portfolio title (folder name) or zipped_filepath
+            identifier: Either a portfolio title or filepath (extracts folder name from path)
 
         Returns:
             tuple: (success: bool, message: str)
@@ -574,35 +574,38 @@ class UserReport(BaseReport):
 
         try:
             with Session(engine) as session:
-                # Try to find by zipped_filepath first
+                # Extract folder name from path if it's a path
+                if '/' in identifier or '\\' in identifier:
+                    folder_name = Path(identifier).stem
+                else:
+                    folder_name = identifier
+
+                # Find by title
                 stmt = select(UserReportTable).where(
-                    UserReportTable.zipped_filepath == identifier
+                    UserReportTable.title == folder_name
                 )
                 user_report = session.scalar(stmt)
 
-                # If not found, try by title (portfolio name)
                 if not user_report:
-                    # Extract folder name from path if it's a path
-                    if '/' in identifier or '\\' in identifier:
-                        folder_name = Path(identifier).stem
-                    else:
-                        folder_name = identifier
-
-                    stmt = select(UserReportTable).where(
-                        UserReportTable.title == folder_name
-                    )
-                    user_report = session.scalar(stmt)
-
-                if not user_report:
-                    return False, "Portfolio not found in database"
+                    return False, f"Portfolio '{folder_name}' not found in database"
 
                 # Store info for return message
-                title = user_report.title or 'Untitled'
+                title = user_report.title
                 project_count = len(user_report.project_reports)
 
-                # Delete the user report (cascade will handle project reports)
+                # Delete the user report - this should cascade to association table
                 session.delete(user_report)
-                session.commit()
+                session.flush()  # Force the delete to happen now
+                session.commit()  # Commit the transaction
+
+                # Verify deletion
+                verify_stmt = select(UserReportTable).where(
+                    UserReportTable.title == folder_name
+                )
+                verify_result = session.scalar(verify_stmt)
+
+                if verify_result is not None:
+                    return False, f"Failed to delete portfolio '{title}' from database"
 
                 return True, f"Successfully deleted '{title}' and {project_count} associated project(s)"
 
@@ -615,10 +618,10 @@ class UserReport(BaseReport):
         Get information about a portfolio without deleting it.
 
         Args:
-            identifier: Either a portfolio title or zipped_filepath
+            identifier: Either a portfolio title or filepath (extracts folder name from path)
 
         Returns:
-            tuple: (found: bool, info: dict with title, filepath, project_count)
+            tuple: (found: bool, info: dict with title and project_count)
         """
         from src.database.db import get_engine, UserReportTable
 
@@ -626,30 +629,23 @@ class UserReport(BaseReport):
 
         try:
             with Session(engine) as session:
-                # Try to find by zipped_filepath first
+                # Extract folder name from path if it's a path
+                if '/' in identifier or '\\' in identifier:
+                    folder_name = Path(identifier).stem
+                else:
+                    folder_name = identifier
+
+                # Find by title
                 stmt = select(UserReportTable).where(
-                    UserReportTable.zipped_filepath == identifier
+                    UserReportTable.title == folder_name
                 )
                 user_report = session.scalar(stmt)
-
-                # If not found, try by title
-                if not user_report:
-                    if '/' in identifier or '\\' in identifier:
-                        folder_name = Path(identifier).stem
-                    else:
-                        folder_name = identifier
-
-                    stmt = select(UserReportTable).where(
-                        UserReportTable.title == folder_name
-                    )
-                    user_report = session.scalar(stmt)
 
                 if not user_report:
                     return False, {}
 
                 info = {
-                    'title': user_report.title or 'Untitled',
-                    'filepath': user_report.zipped_filepath or 'N/A',
+                    'title': user_report.title,
                     'project_count': len(user_report.project_reports)
                 }
 
@@ -664,7 +660,7 @@ class UserReport(BaseReport):
         Get a list of all portfolios in the database.
 
         Returns:
-            list: List of dicts with portfolio info (title, filepath, project_count)
+            list: List of dicts with portfolio info (title, project_count)
         """
         from src.database.db import get_engine, UserReportTable
 
@@ -672,14 +668,16 @@ class UserReport(BaseReport):
 
         try:
             with Session(engine) as session:
+                # Force fresh query, don't use cache
+                session.expire_all()
+
                 stmt = select(UserReportTable)
                 portfolios = session.scalars(stmt).all()
 
                 portfolio_list = []
                 for portfolio in portfolios:
                     portfolio_list.append({
-                        'title': portfolio.title or 'Untitled',
-                        'filepath': portfolio.zipped_filepath or 'N/A',
+                        'title': portfolio.title,
                         'project_count': len(portfolio.project_reports)
                     })
 
@@ -687,7 +685,6 @@ class UserReport(BaseReport):
 
         except Exception:
             return []
-
 
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":

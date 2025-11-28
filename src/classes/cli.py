@@ -548,21 +548,19 @@ class ArtifactMiner(cmd.Cmd):
             # Invalid input
             print("Invalid input. Press '6' for preferences or 'back'/'cancel' to return.")
 
-    def do_delete(self, arg):
+    def do_portfolio_delete(self, arg):
         '''Delete a previously generated portfolio/user report'''
         self.update_history(self.cmd_history, "delete")
 
         print("\n=== Delete Portfolio ===")
         print("You can delete a portfolio by:")
         print("  1. Select from list of existing portfolios")
-        print("  2. Enter portfolio name (folder name from zip)")
-        print("  3. Enter filepath to zipped folder")
-        print("  4. Press Enter to use current filepath from preferences")
+        print("  2. Enter portfolio name (or press Enter to use preferences)")
 
         while True:
-            user_input = input("\nEnter your choice (1-4) or portfolio identifier (or 'back'/'cancel' to return): ").strip()
+            user_input = input("\nEnter your choice (1-2) or portfolio name (or 'back'/'cancel' to return): ").strip()
 
-            # Handle exit/quit
+            # Handle exit/quit FIRST
             if user_input.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
 
@@ -577,21 +575,24 @@ class ArtifactMiner(cmd.Cmd):
                 if selected_portfolio is None:
                     continue  # User cancelled or no portfolios found
                 user_input = selected_portfolio
-            # Option 4 (or empty): use preferences filepath
-            elif user_input == "4" or not user_input:
+            # Option 2 or empty: use input as portfolio name or get from preferences
+            elif user_input == "2" or not user_input:
                 user_input = self.preferences.get_project_filepath()
                 if not user_input:
-                    print("No filepath in preferences. Please try another option.")
+                    print("No filepath in preferences. Please enter a portfolio name.")
                     continue
-                print(f"Using filepath from preferences: {user_input}")
-            # Options 2 & 3: user_input is already the identifier
+                # Extract portfolio name from filepath
+                from pathlib import Path
+                user_input = Path(user_input).stem
+                print(f"Using portfolio from preferences: {user_input}")
+            # Otherwise, user_input is the portfolio name
 
             # Get portfolio info before deleting
             from src.classes.report import UserReport
             found, info = UserReport.get_portfolio_info(user_input)
 
             if not found:
-                print("\n✗ Portfolio not found in database")
+                print(f"\n✗ Portfolio '{user_input}' not found in database")
                 retry = input("Try again? (Y/N): ").strip().lower()
                 if retry != 'y':
                     break
@@ -599,18 +600,21 @@ class ArtifactMiner(cmd.Cmd):
 
             # Show what will be deleted
             print(f"\nFound portfolio: {info['title']}")
-            print(f"Filepath: {info['filepath']}")
             print(f"Associated projects: {info['project_count']}")
 
             # Confirm deletion
             confirm = input("\nAre you sure you want to delete this portfolio? (Y/N): ").strip().lower()
+
+            # Handle exit/quit during confirmation
+            if confirm in ['exit', 'quit']:
+                return self.do_exit(arg)
 
             if confirm != 'y':
                 print("Deletion cancelled")
                 print("\n" + self.options)
                 return
 
-            # Perform deletion
+            # Perform deletion using database_modify function
             success, message = UserReport.delete_portfolio(user_input)
 
             if success:
@@ -630,7 +634,7 @@ class ArtifactMiner(cmd.Cmd):
         List all existing portfolios and let user select one to delete.
 
         Returns:
-            str: The identifier (title or filepath) of selected portfolio, or None if cancelled
+            str: The title of selected portfolio, or None if cancelled
         """
         from src.classes.report import UserReport
 
@@ -644,21 +648,20 @@ class ArtifactMiner(cmd.Cmd):
         print("\n=== Existing Portfolios ===")
         for idx, portfolio in enumerate(portfolios, 1):
             print(f"({idx}) {portfolio['title']}")
-            print(f"    Filepath: {portfolio['filepath']}")
             print(f"    Projects: {portfolio['project_count']}")
             print()
 
         # Let user select
         while True:
-            choice = input(f"Select portfolio (1-{len(portfolios)}) or 'back'/'cancel' to return: ").strip()
+            choice = input(f"Select portfolio (1-{len(portfolios)}), 'back'/'cancel' to return, or 'exit'/'quit' to close app: ").strip()
+
+            # Handle exit/quit FIRST
+            if choice.lower() in ['exit', 'quit']:
+                self.do_exit("")
+                return None
 
             # Handle cancel
             if choice.lower() in ['back', 'cancel']:
-                return None
-
-            # Handle exit/quit
-            if choice.lower() in ['exit', 'quit']:
-                self.do_exit("")
                 return None
 
             # Validate selection
@@ -666,12 +669,11 @@ class ArtifactMiner(cmd.Cmd):
                 idx = int(choice)
                 if 1 <= idx <= len(portfolios):
                     selected = portfolios[idx - 1]
-                    # Return the title or filepath as identifier
-                    return selected['title'] or selected['filepath']
+                    return selected['title']
                 else:
                     print(f"Please enter a number between 1 and {len(portfolios)}")
             except ValueError:
-                print("Invalid input. Please enter a number.")
+                print("Invalid input. Please enter a number, 'back', 'cancel', 'exit', or 'quit'.")
 
     def _configure_date_range(self):
         '''Configure date filtering for files'''
@@ -860,7 +862,7 @@ class ArtifactMiner(cmd.Cmd):
                 case "view":
                     return self.do_view(arg)
                 case "delete":
-                    return self.do_delete(arg)
+                    return self.do_portfolio_delete(arg)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
@@ -940,7 +942,7 @@ class ArtifactMiner(cmd.Cmd):
             "5": self.do_login,
             "6": self.do_preferences,
             "7": self.do_view,
-            "8": self.do_delete,
+            "8": self.do_portfolio_delete,
         }
 
         # Make commands case-insensitive
