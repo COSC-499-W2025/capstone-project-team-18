@@ -8,6 +8,7 @@ import os
 from src.app import start_miner
 import sys
 import json
+from tqdm import tqdm # For CLI Progress Bar
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -401,7 +402,65 @@ class ArtifactMiner(cmd.Cmd):
         if ignored_files:
             print(f"Ignoring file types: {', '.join(ignored_files)}")
 
-        start_miner(self.project_filepath, self.user_email)
+        # Create progress bars dictionary
+        progress_bars = {}
+
+        def progress_callback(stage: str, current: int, total: int, item_name: str = ""):
+            """
+            Callback for tqdm progress updates.
+
+            Args:
+                stage: Current stage (e.g., "unzip", "discovery", "analysis", "saving")
+                current: Current item number
+                total: Total items
+                item_name: Name of current item being processed
+            """
+            if stage == "unzip":
+                if "unzip" not in progress_bars:
+                    progress_bars["unzip"] = tqdm(total=1, desc="Unzipping", unit="file", leave=True)
+                progress_bars["unzip"].n = current  # Set current progress
+                progress_bars["unzip"].refresh()    # Force display update
+                if current >= total:
+                    progress_bars["unzip"].close()
+
+            elif stage == "discovery":
+                if "discovery" not in progress_bars:
+                    progress_bars["discovery"] = tqdm(total=1, desc="Discovering", unit="project", leave=True)
+                progress_bars["discovery"].n = current
+                progress_bars["discovery"].refresh()
+                if current >= total:
+                    progress_bars["discovery"].close()
+
+            elif stage == "analysis":
+                if "analysis" not in progress_bars:
+                    progress_bars["analysis"] = tqdm(total=total, desc="Analyzing", unit="project", leave=True)
+                progress_bars["analysis"].n = current
+                # Show current project name (truncate if too long)
+                if item_name:
+                    progress_bars["analysis"].set_postfix_str(item_name[:30])
+                progress_bars["analysis"].refresh()
+                if current == total:
+                    progress_bars["analysis"].close()
+
+            elif stage == "saving":
+                if "saving" not in progress_bars:
+                    progress_bars["saving"] = tqdm(total=1, desc="Saving", unit="db", leave=True)
+                progress_bars["saving"].n = current
+                progress_bars["saving"].refresh()
+                if current >= total:
+                    progress_bars["saving"].close()
+
+            elif stage == "complete":
+                # Ensure all bars are closed
+                for bar in progress_bars.values():
+                    if not bar.disable:
+                        bar.close()
+                print("\n✓ Analysis complete!")
+
+
+        start_miner(self.project_filepath, self.user_email, progress_callback=progress_callback)
+
+        print("\n" + self.options)
 
     def do_login(self, arg):
         '''Configure user login credentials'''

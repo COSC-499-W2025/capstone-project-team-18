@@ -4,7 +4,7 @@ It provides logic for the CLI that the user will
 interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
-from typing import Optional
+from typing import Optional, Callable
 import tempfile
 from pathlib import Path
 
@@ -19,7 +19,11 @@ from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
 
 
-def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
+def start_miner(
+    zipped_file: str,
+    email: Optional[str] = None,
+    progress_callback: Optional[Callable[[str, int, int, str], None]] = None
+    ) -> None:
     """
     This function defines the main application
     logic for the Artifact Miner. Currently,
@@ -30,11 +34,38 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         - email: Email associated with git account
     """
 
+    # =================== Unzip Stage ===================
+
+    # Unzip stage - START
+    if progress_callback:
+        progress_callback("unzip", 0, 1, "")
+
     # Unzip the zipped file into temporary directory
     unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
     unzip_file(zipped_file, unzipped_dir)
 
+    # Unzip stage - COMPLETE
+    if progress_callback:
+        progress_callback("unzip", 1, 1, "")
+
+    # Import inside function to avoid circular import
+    from src.classes.cli import UserPreferences
+
+    # Load preferences to get language filter
+    prefs = UserPreferences()
+    language_filter = prefs.get("languages_to_include", [])
+
+    # =================== Discovery stage ===================
+
+    # Discovery stage - START
+    if progress_callback:
+        progress_callback("discovery", 0, 1, "")
+
     project_list = discover_projects(unzipped_dir)
+
+    # Discovery stage - COMPLETE
+    if progress_callback:
+        progress_callback("discovery", 1, 1, "")
 
     engine = get_engine()
 
@@ -46,7 +77,14 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         project_reports = []  # Stores ProjectReport objs
         project_report_rows = []  # Stores ProjectReportTable objs
 
-        for project in project_list:
+        total_projects = len(project_list)
+
+        # =================== Analysis Stage ===================
+        for idx, project in enumerate(project_list):
+            # Update at START of processing each project (idx is 0-based, so idx is the "current" count)
+            if progress_callback:
+                progress_callback("analysis", idx, total_projects, project.name)
+
             file_reports = extract_file_reports(
                 project, email)  # get the project's FileReports
 
@@ -74,6 +112,14 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
             project_row.file_reports.extend(file_report_rows)  # type: ignore
             project_report_rows.append(project_row)
 
+        # Update at END of all project analysis
+        if progress_callback:
+            progress_callback("analysis", total_projects, total_projects, "")
+
+        # =================== Saving stage ===================
+        if progress_callback:
+            progress_callback("saving", 0, 1, "")
+
         # make a UserReport with the ProjectReports
         dir_name = Path(zipped_file).stem  # name of zipped dir
         user_report = UserReport(project_reports, dir_name)
@@ -84,6 +130,15 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         # Insert all of the rows into the database (INSIDE the session block)
         session.add_all([user_row])  # type: ignore
         session.commit()
+
+        # Saving stage - COMPLETE
+        if progress_callback:
+            progress_callback("saving", 1, 1, "")
+
+        # =================== Analysis Complete ===================
+        if progress_callback:
+            progress_callback("complete", 1, 1, "")
+
 
     print("-------- Analysis Reports --------\n")
 
