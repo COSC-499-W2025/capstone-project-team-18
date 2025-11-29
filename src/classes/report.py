@@ -290,35 +290,80 @@ class ProjectReport(BaseReport):
         """
         Creates the project level statistic of
         CODING_LANGUAGE_RATIO.
+        Uses file-level statistics for byte counts.
+
+        Note: File filtering (venv, config files, etc.) is handled by project_discovery.py
         """
+        langauges_to_bytes = {}
 
-        langauges_to_loc = {}
+        # Track files by (filename, file_size) to detect true duplicates
+        seen_file_signatures = {}
 
-        # Map coding language to lines of code
-        for report in self.file_reports:
+        # Sort file_reports to prioritize non-database paths
+        sorted_reports = sorted(
+            self.file_reports,
+            key=lambda r: (
+                'database' in str(r.filepath).lower(),
+                str(r.filepath)
+            )
+        )
 
+        # Map coding language to file sizes in bytes
+        for report in sorted_reports:
             coding_language = report.get_value(
                 FileStatCollection.CODING_LANGUAGE.value)
 
             if coding_language is None:
                 continue
 
-            loc = report.get_value(FileStatCollection.LINES_IN_FILE.value)
+            # Use file-level statistics instead of os.path.getsize
+            file_size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
+            if file_size is None:
+                # Fallback to line count if bytes not available
+                file_size = report.get_value(FileStatCollection.LINES_IN_FILE.value)
+            if file_size is None:
+                # Last resort: count as 1 byte
+                file_size = 1
 
-            langauges_to_loc[coding_language] = loc + \
-                langauges_to_loc.get(coding_language, 0)
+            # Create a signature to detect true duplicates
+            # Only skip if BOTH filename AND size match (likely a database export duplicate)
+            filepath_lower = str(report.filepath).lower()
+            path_parts = filepath_lower.replace('\\', '/').split('/')
+            filename = path_parts[-1] if path_parts else ''
+            file_signature = (filename, file_size)
 
-        if len(langauges_to_loc) == 0:
-            # Don't log this stat if it isn't a coding project
+            if file_signature in seen_file_signatures:
+                # This is likely a duplicate database export - skip it
+                continue
+
+            # Mark this file signature as seen
+            seen_file_signatures[file_signature] = report.filepath
+
+            if file_size > 0:
+                langauges_to_bytes[coding_language] = langauges_to_bytes.get(
+                    coding_language, 0) + file_size
+            else:
+                # Count empty files as 1 byte (test files are often empty)
+                langauges_to_bytes[coding_language] = langauges_to_bytes.get(
+                    coding_language, 0) + 1
+
+        if len(langauges_to_bytes) == 0:
             return
 
-        # Calcuate the loc as percentages of the total
-        total = sum(langauges_to_loc.values())
-        language_ratio = {k: (v / total) for k,
-                          v in langauges_to_loc.items()}
+        # Calculate the bytes as percentages of the total
+        lang_ratio = {}
+        for lang, byte_count in langauges_to_bytes.items():
+            lang_ratio[lang] = byte_count
+
+        # Normalize to ensure ratios sum to 1.0 (100%)
+        total_ratio = sum(lang_ratio.values())
+        if total_ratio > 0:
+            for lang in lang_ratio:
+                # Round to 4 decimal places (0.01% precision)
+                lang_ratio[lang] = round(lang_ratio[lang] / total_ratio, 4)
 
         self.project_statistics.add(
-            Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, language_ratio))
+            Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, lang_ratio))
 
     def _calculate_ari_score(self):
         '''
@@ -492,34 +537,60 @@ class UserReport(BaseReport):
         present in the `ProjectReports` used to
         create the `UserReport` for the
         `USER_CODING_LANGUAGE_RATIO` statistic.
+
+        Simply aggregates the already-calculated project-level ratios.
+        No need to re-filter files since that's already done at project level.
         '''
-        lang_ratio = {}
+        lang_to_bytes = {}
 
         for proj_report in self.project_reports:
+            # Get the already-calculated coding language ratio from the project
             proj_lang_ratio = proj_report.get_value(
-                ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
+                ProjectStatCollection.CODING_LANGUAGE_RATIO.value
+            )
 
             if proj_lang_ratio is None:
                 continue
 
+            # Get the total byte count for this project to denormalize the ratios
+            # We need actual byte counts to properly aggregate across projects
+            proj_total_bytes = 0
+
+            # Skip if project was created via from_statistics (no file_reports)
+            if hasattr(proj_report, 'file_reports') and proj_report.file_reports is not None:
+                for file_report in proj_report.file_reports:
+                    file_size = file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
+                    if file_size is None:
+                        file_size = file_report.get_value(FileStatCollection.LINES_IN_FILE.value)
+                    if file_size is None:
+                        file_size = 1
+                    proj_total_bytes += file_size
+
+            # Convert ratios back to byte counts and aggregate
             for curr_lang, ratio in proj_lang_ratio.items():
                 if curr_lang is None:
                     continue
 
-                if curr_lang in lang_ratio:
-                    # language & ratio have already been added from another report
-                    lang_ratio[curr_lang] += ratio
-                else:
-                    # add new language & ratio
-                    lang_ratio[curr_lang] = ratio
+                # Convert ratio back to bytes for this project
+                lang_bytes = ratio * proj_total_bytes
 
-        if len(lang_ratio) < 1:
+                # Aggregate to user level
+                if curr_lang in lang_to_bytes:
+                    lang_to_bytes[curr_lang] += lang_bytes
+                else:
+                    lang_to_bytes[curr_lang] = lang_bytes
+
+        if len(lang_to_bytes) < 1:
             return  # don't log this stat b/c there are no coding languages
 
-        # now, we need to compute the even division the ratio of each language between all projects
-        for lang, ratio in lang_ratio.items():
-            ratio /= len(lang_ratio)
-            lang_ratio[lang] = ratio
+        # Normalize to ensure ratios sum to 1.0 (100%)
+        total_bytes = sum(lang_to_bytes.values())
+        lang_ratio = {}
+
+        if total_bytes > 0:
+            for lang, byte_count in lang_to_bytes.items():
+                # Round to 4 decimal places (0.01% precision)
+                lang_ratio[lang] = round(byte_count / total_bytes, 4)
 
         self.user_stats.add(
             Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio))
@@ -783,7 +854,7 @@ class UserReport(BaseReport):
                     parts: list[str] = []
                     for lang, ratio in langs_sorted:
                         lang_name = lang.value[0]
-                        percent = f"{int(ratio * 100)}%"
+                        percent = f"{ratio * 100:.2f}%"
                         parts.append(f"{lang_name} ({percent})")
                 except Exception:
                     ratio_line = "coding languages not found"

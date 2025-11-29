@@ -1,4 +1,4 @@
-from zipped_utils import get_os_name
+from utils.project_discovery.zipped_utils import get_os_name
 
 
 def test_host_os():
