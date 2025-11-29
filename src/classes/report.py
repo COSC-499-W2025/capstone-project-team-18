@@ -568,6 +568,7 @@ class UserReport(BaseReport):
         Returns:
             tuple: (success: bool, message: str)
         """
+        from src.database.utils.database_modify import delete_user_report_and_related_data
         from src.database.db import get_engine, UserReportTable
 
         engine = get_engine()
@@ -580,7 +581,7 @@ class UserReport(BaseReport):
                 else:
                     folder_name = identifier
 
-                # Find by title
+                # Find by title to get project count before deletion
                 stmt = select(UserReportTable).where(
                     UserReportTable.title == folder_name
                 )
@@ -593,22 +594,17 @@ class UserReport(BaseReport):
                 title = user_report.title
                 project_count = len(user_report.project_reports)
 
-                # Delete the user report - this should cascade to association table
-                session.delete(user_report)
-                session.flush()  # Force the delete to happen now
-                session.commit()  # Commit the transaction
+            # Use database_modify function for deletion (outside the session)
+            success = delete_user_report_and_related_data(title=title)
 
-                # Verify deletion
-                verify_stmt = select(UserReportTable).where(
-                    UserReportTable.title == folder_name
-                )
-                verify_result = session.scalar(verify_stmt)
-
-                if verify_result is not None:
-                    return False, f"Failed to delete portfolio '{title}' from database"
-
+            if success:
                 return True, f"Successfully deleted '{title}' and {project_count} associated project(s)"
+            else:
+                return False, f"Failed to delete portfolio '{title}' from database"
 
+        except ValueError as e:
+            # Handle "User report not found" from database_modify
+            return False, str(e)
         except Exception as e:
             return False, f"Database error: {str(e)}"
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from src.utils.zipped_utils import unzip_file
+from zipped_utils import unzip_file
 from src.utils.project_discovery import discover_projects
 
 from src.classes.analyzer import extract_file_reports
