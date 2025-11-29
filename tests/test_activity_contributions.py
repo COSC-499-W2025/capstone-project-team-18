@@ -76,3 +76,19 @@ def test_activity_contribution_from_git_project(project_realistic):
 
     contr = pr.get_value(
         ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)
+
+    # Bob added...
+    # data.db local file that should be ignored as it has no file domain
+    # helpers.py 3 / 3 lines CODE
+    # test_main 2 / 2 lines TEST
+    # schema.sql 1 / 3 lines CODE
+    # README.md  2 / 5 line DOC
+
+    # Which means in all,
+    # 4 / 8 CODE
+    # 2 / 8 TEST
+    # 2 / 8 DOC
+
+    assert contr[FileDomain.CODE] == approx(4/8)
+    assert contr[FileDomain.TEST] == approx(2/8)
+    assert contr[FileDomain.DOCUMENTATION] == approx(2/8)

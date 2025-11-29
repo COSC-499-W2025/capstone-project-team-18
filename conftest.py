@@ -264,7 +264,7 @@ def project_realistic(tmp_path: Path) -> ProjectFiles:
     commit_as(
         repo, "Bob", "bob@example.com",
         db_dir / "schema.sql",
-        "CREATE TABLE users\n(id INTEGER PRIMARY KEY,\n name NORMAL_TEXT\n);;",
+        "CREATE TABLE users\n(id INTEGER PRIMARY KEY,\n name NORMAL_TEXT\n);",
         "Edited DB schema",
         project_dir
     )
@@ -273,7 +273,7 @@ def project_realistic(tmp_path: Path) -> ProjectFiles:
     commit_as(
         repo, "Dana", "dana@example.com",
         docs_dir / "README.md",
-        "# RealisticProject\n\nA sample project for testing.",
+        "# RealisticProject\n\nA sample project for testing.\n",
         "Add documentation",
         project_dir
     )
@@ -282,7 +282,7 @@ def project_realistic(tmp_path: Path) -> ProjectFiles:
     commit_as(
         repo, "Bob", "bob@example.com",
         docs_dir / "README.md",
-        "\n## And I am adding more!\n - Here is my new line",
+        "## And I am adding more!\n - Here is my new line",
         "Add more documentation",
         project_dir,
         True
