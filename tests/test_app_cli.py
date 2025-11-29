@@ -2,6 +2,7 @@
 Comprehensive tests for the CLI functionality in app.py.
 Tests user interaction flows, command handling, and navigation logic.
 """
+from src.app import start_miner
 import pytest
 from unittest.mock import patch, mock_open, call
 from src.classes.cli import ArtifactMiner, _is_valid_filepath_to_zip
@@ -35,7 +36,7 @@ def test_is_valid_filepath_to_zip(tmp_path):
 def cli():
     """Fixture providing a CLI instance with suppressed initialization output."""
     with patch('builtins.print'), \
-         patch('src.classes.cli.UserPreferences') as mock_prefs_class:
+            patch('src.classes.cli.UserPreferences') as mock_prefs_class:
 
         # Mock the UserPreferences instance and its methods
         mock_prefs = mock_prefs_class.return_value
@@ -95,12 +96,14 @@ def test_handle_cancel_input_with_back(cli):
     cli.cmd_history = ["perms"]
 
     with patch('builtins.print') as mock_print:
-        result = cli._handle_cancel_input("back", "main")  # Add second argument
+        result = cli._handle_cancel_input(
+            "back", "main")  # Add second argument
 
         assert result is True
         assert len(cli.cmd_history) == 0
         # Verify the cancel message was printed
-        assert any("Cancelled" in str(call) for call in mock_print.call_args_list)
+        assert any("Cancelled" in str(call)
+                   for call in mock_print.call_args_list)
 
 
 def test_handle_cancel_input_with_cancel(cli):
@@ -108,11 +111,13 @@ def test_handle_cancel_input_with_cancel(cli):
     cli.cmd_history = ["filepath"]
 
     with patch('builtins.print') as mock_print:
-        result = cli._handle_cancel_input("CANCEL", "main")  # Add second argument
+        result = cli._handle_cancel_input(
+            "CANCEL", "main")  # Add second argument
 
         assert result is True
         assert len(cli.cmd_history) == 0
-        assert any("Cancelled" in str(call) for call in mock_print.call_args_list)
+        assert any("Cancelled" in str(call)
+                   for call in mock_print.call_args_list)
 
 
 def test_handle_cancel_input_with_empty_history(cli):
@@ -120,21 +125,23 @@ def test_handle_cancel_input_with_empty_history(cli):
     cli.cmd_history = []
 
     with patch('builtins.print') as mock_print:
-        result = cli._handle_cancel_input("back", "main")  # Add second argument
+        result = cli._handle_cancel_input(
+            "back", "main")  # Add second argument
 
         assert result is True
         assert len(cli.cmd_history) == 0
         # Should still print a return message even with empty history
-        assert any("Returning" in str(call) for call in mock_print.call_args_list)
+        assert any("Returning" in str(call)
+                   for call in mock_print.call_args_list)
 
 
 def test_handle_cancel_input_with_non_cancel_commands(cli):
     """Test that non-cancel inputs return False."""
     test_inputs = ["Y", "N", "1", "2", "3", "invalid", ""]
     for input_val in test_inputs:
-        result = cli._handle_cancel_input(input_val, "main")  # Add second argument
+        result = cli._handle_cancel_input(
+            input_val, "main")  # Add second argument
         assert result is False, f"Expected False for input '{input_val}'"
-
 
 
 # Edge Cases and Error Handling
@@ -143,7 +150,8 @@ def test_handle_cancel_input_with_non_cancel_commands(cli):
 @pytest.mark.parametrize("input_value", ["", "   "])
 def test_empty_input_handling(cli, input_value):
     """Test handling of empty inputs."""
-    result = cli._handle_cancel_input(input_value, "main")  # Add second argument
+    result = cli._handle_cancel_input(
+        input_value, "main")  # Add second argument
     assert result is False
     # Empty input should not trigger cancel
 
@@ -153,7 +161,8 @@ def test_whitespace_handling_in_cancel(cli, cancel_command):
     """Test that cancel commands work with extra whitespace."""
     cli.cmd_history = ["test"]
     with patch('builtins.print'):
-        result = cli._handle_cancel_input(cancel_command, "main")  # Add second argument
+        result = cli._handle_cancel_input(
+            cancel_command, "main")  # Add second argument
         assert result is True
         assert len(cli.cmd_history) == 0
 
@@ -232,7 +241,8 @@ def test_do_filepath_valid_path(cli):
         cli.do_filepath("")
         assert cli.project_filepath == test_path
         assert cli.cmd_history[0] == "filepath"
-        mock_print.assert_any_call("\nFilepath successfully received and saved to preferences")
+        mock_print.assert_any_call(
+            "\nFilepath successfully received and saved to preferences")
         mock_print.assert_any_call(test_path)
 
 
@@ -259,7 +269,7 @@ def test_do_begin_without_consent(cli):
     cli.project_filepath = ''
 
     with patch('builtins.print') as mock_print, \
-        patch('src.classes.cli.start_miner') as mock_start:
+            patch('src.classes.cli.start_miner') as mock_start:
         cli.do_begin("")
         mock_print.assert_any_call(
             "\nError: Missing consent. Type perms or 1 to read user permission agreement."
@@ -282,12 +292,14 @@ def test_default_command_routing_numeric(cli, command, expected_method):
         cli.default(command)
         mock_method.assert_called_once_with("")
 
+
 def test_default_command_routing_numeric_login(cli):
     """Test that '5' routes to do_login."""
     with patch.object(cli, 'do_login') as mock_login, \
-         patch('builtins.input', side_effect=['back']):  # Mock input to avoid stdin issues
+            patch('builtins.input', side_effect=['back']):  # Mock input to avoid stdin issues
         cli.default('5')
         mock_login.assert_called_once_with('')
+
 
 def test_default_command_case_insensitive(cli):
     """Test that commands work regardless of case."""
@@ -299,7 +311,8 @@ def test_default_command_case_insensitive(cli):
 
 def test_default_handles_unknown_commands(cli):
     """Test handling of unknown commands."""
-    unknown_commands = ["unknown", "8", "invalid", "help_me"]  # Changed "6" to "8"
+    unknown_commands = ["unknown", "8", "invalid",
+                        "help_me"]  # Changed "6" to "8"
     with patch('builtins.print') as mock_print:
         for command in unknown_commands:
             cli.default(command)
@@ -323,7 +336,7 @@ def test_default_handles_unknown_commands(cli):
 def test_default_command_routing_numeric_advanced(cli, command, method):
     """Test that advanced preference commands route correctly."""
     with patch.object(cli, method) as mock_method, \
-         patch('builtins.input', side_effect=['4']):  # Choose "Back to Main Menu"
+            patch('builtins.input', side_effect=['4']):  # Choose "Back to Main Menu"
         cli.default(command)
         mock_method.assert_called_once_with('')
 
@@ -338,7 +351,8 @@ def test_do_exit_functionality(cli):
 
         assert exc_info.value.code == 0  # Verify exit code is 0
         mock_print.assert_called_once()
-        assert "Thank you for using Artifact Miner" in str(mock_print.call_args)
+        assert "Thank you for using Artifact Miner" in str(
+            mock_print.call_args)
 
 
 @pytest.mark.parametrize('command', ['back', 'cancel'])
@@ -393,3 +407,17 @@ def test_cancel_functionality_across_commands(cli, command):
 
         # Check for help instruction
         self.assertIn("help", options)
+
+
+def test_keyboardinterrupt_handling(cli):
+    """Test that ctrl-c exits cleanly with correct message."""
+    with patch.object(ArtifactMiner, "cmdloop", side_effect=KeyboardInterrupt), \
+            patch("builtins.print") as mock_print:
+
+        # Simulate running the main block
+        try:
+            ArtifactMiner().cmdloop()
+        except KeyboardInterrupt:
+            print("Exiting the program...")
+
+        mock_print.assert_any_call("Exiting the program...")

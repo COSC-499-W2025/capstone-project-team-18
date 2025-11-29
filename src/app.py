@@ -98,4 +98,9 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
 
 if __name__ == '__main__':
     from src.classes.cli import ArtifactMiner
-    ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
+
+    try:
+        ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
+
+    except KeyboardInterrupt:
+        print("Exiting the program...")
