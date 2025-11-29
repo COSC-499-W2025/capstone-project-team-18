@@ -27,7 +27,8 @@ def normalize_path(user_path: str) -> str:
         return user_path
     # On Mac, map C:\Users\<username>\... or C:/Users/<username>/... to /Users/<username>/...
     if sys.platform == 'darwin':
-        match = re.match(r'^[cC]:[\\/]+Users[\\/]+([^\\/]+)[\\/]+(.+)', user_path)
+        match = re.match(
+            r'^[cC]:[\\/]+Users[\\/]+([^\\/]+)[\\/]+(.+)', user_path)
         if match:
             username, rest = match.groups()
             user_path = f"/Users/{username}/{rest}"
@@ -182,6 +183,7 @@ class UserPreferences:
     def reset_to_defaults(self) -> bool:
         """Reset to defaults - alias for reset."""
         return self.reset()
+
 
 def _is_valid_filepath_to_zip(filepath: str) -> int:
     """
@@ -397,7 +399,8 @@ class ArtifactMiner(cmd.Cmd):
         ignored_files = self.preferences.get_files_to_ignore()
 
         if start_time or end_time:
-            print(f"Date filtering: {start_time or 'Any'} to {end_time or 'Any'}")
+            print(
+                f"Date filtering: {start_time or 'Any'} to {end_time or 'Any'}")
         if ignored_files:
             print(f"Ignoring file types: {', '.join(ignored_files)}")
 
@@ -417,7 +420,8 @@ class ArtifactMiner(cmd.Cmd):
 
         # Get username with retry loop
         while True:
-            name = input("Enter your name: (or 'back'/'cancel' to return): ").strip()
+            name = input(
+                "Enter your name: (or 'back'/'cancel' to return): ").strip()
             if self._handle_cancel_input(name, "main"):
                 print("\n" + self.options)
                 return
@@ -430,7 +434,8 @@ class ArtifactMiner(cmd.Cmd):
 
         # Get password with retry loop
         while True:
-            password = input("Enter your password: (or 'back'/'cancel' to return): ").strip()
+            password = input(
+                "Enter your password: (or 'back'/'cancel' to return): ").strip()
             if self._handle_cancel_input(password, "main"):
                 print("\n" + self.options)
                 return
@@ -467,7 +472,8 @@ class ArtifactMiner(cmd.Cmd):
             print("(3) Reset to Defaults")
             print("(4) Back to Main Menu")
 
-            choice = input("\nSelect option (1-4), or 'exit'/'quit' to close app): ").strip()
+            choice = input(
+                "\nSelect option (1-4), or 'exit'/'quit' to close app): ").strip()
 
             # User enters exit/quit
             if choice.lower() in ['exit', 'quit']:
@@ -489,8 +495,6 @@ class ArtifactMiner(cmd.Cmd):
             else:
                 print("Invalid choice. Please select 1-4.")
 
-
-
     def do_view(self, arg):
         '''Display current preferences and configuration'''
         self.update_history(self.cmd_history, "view")
@@ -499,13 +503,13 @@ class ArtifactMiner(cmd.Cmd):
             print("\n=== Current Configuration ===")
             prefs = self.preferences.load_preferences()
 
-            print(f"User Consent: {'✓ Granted' if prefs.get('consent') else '✗ Not granted'}")
-            print(f"Project Filepath: {prefs.get('project_filepath') or 'Not set'}")
+            print(
+                f"User Consent: {'✓ Granted' if prefs.get('consent') else '✗ Not granted'}")
+            print(
+                f"Project Filepath: {prefs.get('project_filepath') or 'Not set'}")
             print(f"User Name: {prefs.get('user_name') or 'Not set'}")
             print(f"User Email: {prefs.get('user_email') or 'Not set'}")
             print(f"Date Range: {self.preferences.get_date_range_display()}")
-
-
 
             # Files to ignore
             ignored_files = prefs.get('files_to_ignore', [])
@@ -515,7 +519,8 @@ class ArtifactMiner(cmd.Cmd):
                 print("Ignored Extensions: None")
 
             print(f"Last Updated: {prefs.get('last_updated', 'Never')}")
-            print(f"Preferences File: {self.preferences.get_preferences_file_path()}")
+            print(
+                f"Preferences File: {self.preferences.get_preferences_file_path()}")
 
             # Prompt user for next action
             prompt = "\nPress '6' to configure preferences, or 'back'/'cancel' to return to main menu: "
@@ -535,18 +540,20 @@ class ArtifactMiner(cmd.Cmd):
                 return self.do_preferences(arg)
 
             # Invalid input
-            print("Invalid input. Press '6' for preferences or 'back'/'cancel' to return.")
+            print(
+                "Invalid input. Press '6' for preferences or 'back'/'cancel' to return.")
 
     def _configure_date_range(self):
         '''Configure date filtering for files'''
         print("\nConfigure date range for file filtering (YYYY-MM-DD format)")
 
-        while True: # Outer loop to retry on invalid date ranges
+        while True:  # Outer loop to retry on invalid date ranges
             start_date = None
             end_date = None
 
             while True:
-                start_input = input("Enter start date (or 'skip' for no limit): ").strip()
+                start_input = input(
+                    "Enter start date (or 'skip' for no limit): ").strip()
 
                 # Handle exit/quit
                 if start_input.lower() in ['exit', 'quit']:
@@ -566,7 +573,8 @@ class ArtifactMiner(cmd.Cmd):
                 print("Invalid date format. Use YYYY-MM-DD")
 
             while True:
-                end_input = input("Enter end date (or 'skip' for no limit): ").strip()
+                end_input = input(
+                    "Enter end date (or 'skip' for no limit): ").strip()
 
                 # Handle exit/quit
                 if end_input.lower() in ['exit', 'quit']:
@@ -604,7 +612,8 @@ class ArtifactMiner(cmd.Cmd):
             if success:
                 print("✓ Date range configuration saved")
                 if start_date and end_date:
-                    print(f"   Filtering files between {start_date} and {end_date}")
+                    print(
+                        f"   Filtering files between {start_date} and {end_date}")
                 elif start_date:
                     print(f"   Filtering files after {start_date}")
                 elif end_date:
@@ -614,8 +623,7 @@ class ArtifactMiner(cmd.Cmd):
             else:
                 print("✗ Failed to save date range configuration")
 
-            break # Exit the outer loop after successful save
-
+            break  # Exit the outer loop after successful save
 
     def _configure_files_to_ignore(self):
         '''Configure file extensions to ignore'''
@@ -626,7 +634,8 @@ class ArtifactMiner(cmd.Cmd):
         if current:
             print(f"Current ignored extensions: {', '.join(current)}")
 
-        extensions_input = input("Extensions to ignore (or 'clear' to remove all): ").strip()
+        extensions_input = input(
+            "Extensions to ignore (or 'clear' to remove all): ").strip()
 
         # User enters back / cancel
         if self._handle_cancel_input(extensions_input, "preferences"):
@@ -640,9 +649,11 @@ class ArtifactMiner(cmd.Cmd):
         if extensions_input.lower() == 'clear':
             extensions = []
         else:
-            extensions = [ext.strip() for ext in extensions_input.split(',') if ext.strip()]
+            extensions = [ext.strip()
+                          for ext in extensions_input.split(',') if ext.strip()]
             # Ensure extensions start with dot
-            extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in extensions]
+            extensions = [ext if ext.startswith(
+                '.') else f'.{ext}' for ext in extensions]
 
         success = self.preferences.update_files_to_ignore(extensions)
         if success:
@@ -653,10 +664,10 @@ class ArtifactMiner(cmd.Cmd):
         else:
             print("✗ Failed to save file ignore configuration")
 
-
     def _reset_preferences(self):
         '''Reset all preferences to defaults'''
-        confirm = input("Reset ALL preferences to defaults? This cannot be undone. (Y/N): ").strip()
+        confirm = input(
+            "Reset ALL preferences to defaults? This cannot be undone. (Y/N): ").strip()
 
         # User enters back /cancel
         if self._handle_cancel_input(confirm, "preferences"):
@@ -727,7 +738,6 @@ class ArtifactMiner(cmd.Cmd):
             print("\nNo previous command to return to.")
             print(self.options)
 
-
     def _handle_cancel_input(self, user_input, menu_location):
         '''
         Helper method to check if user wants to cancel and handle it.
@@ -752,7 +762,9 @@ class ArtifactMiner(cmd.Cmd):
         '''
         self.update_history(self.cmd_history, "email")
 
-        prompt = "Enter the email you use for your Git/GitHub account: (or 'back' / 'cancel' to return): "
+        prompt = "By providing your email, you give consent for the application to analyze all information stored by Git. \n" \
+            "If you don't wish to consent, enter 'back' / 'cancel' to return" \
+            "Enter the email you use for your Git/GitHub account: "
         answer = input(prompt).strip()
 
         # Check if user wants to cancel
