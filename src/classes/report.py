@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 import shutil
 import zipfile
+import os
 from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
 from git import NoSuchPathError, Repo, InvalidGitRepositoryError
@@ -145,6 +146,7 @@ class ProjectReport(BaseReport):
         """
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
+        self.project_path = project_path or "Unknown Path"
 
         if statistics is None:
             self.project_statistics = StatisticIndex()
@@ -168,13 +170,50 @@ class ProjectReport(BaseReport):
             self._find_coding_languages_ratio()
             self._calculate_ari_score()
             self._weighted_skills()
+            
             if user_email:
                 self._analyze_git_authorship(user_email)
+                if self.project_repo:
+                    self._total_contribution_percentage()
         else:
             self.project_statistics = statistics
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
+
+    def _total_contribution_percentage(self) -> None:
+        # Iterate over fileReports to get total lines responsible over whole project
+        total_contribution_lines = 0.0
+
+        # get total lines using project repo
+        total_lines = self._get_project_lines()
+        for file in self.file_reports:
+            file_commit_pct = file.get_value(
+                FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
+            if file_commit_pct is not None:
+                total_contribution_lines += file_commit_pct / 100 * \
+                    file.get_value(FileStatCollection.LINES_IN_FILE.value)
+        if total_lines > 0:
+            self.project_statistics.add(Statistic(
+                ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, round((total_contribution_lines / total_lines) * 100, 2)))
+        else:
+            self.project_statistics.add(Statistic(
+                ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, 0.0))
+
+    def _get_project_lines(self) -> int:
+
+        tracked_files = self.project_repo.git.ls_files().split("\n")
+        total = 0
+        for f in tracked_files:
+            try:
+                with open(os.path.join(self.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
+                    content = fp.read()
+                    count = len(content.split("\n"))
+                    total += count
+            except (FileNotFoundError, IsADirectoryError):
+                pass  # skip directories or removed files
+
+        return total
 
     def _weighted_skills(self) -> None:
         """
