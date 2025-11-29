@@ -91,7 +91,7 @@ class TestUserReportDates(unittest.TestCase):
         project3 = ProjectReport.from_statistics(project3_stats)
 
         # Create user report
-        user = UserReport([project1, project2, project3])
+        user = UserReport([project1, project2, project3], "UserReport1")
 
         # Test user start date (earliest project start)
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -103,7 +103,7 @@ class TestUserReportDates(unittest.TestCase):
 
     def test_empty_project_list(self):
         """Test that empty project list doesn't crash"""
-        user = UserReport([])
+        user = UserReport([], "")
 
         # Should not have start or end dates
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -122,7 +122,7 @@ class TestUserReportDates(unittest.TestCase):
         ])
         project = ProjectReport.from_statistics(project_stats)
 
-        user = UserReport([project])
+        user = UserReport([project], "UserReport2")
 
         # Start and end should be the same project's dates
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -156,7 +156,7 @@ class TestUserReportDates(unittest.TestCase):
         ])
         project3 = ProjectReport.from_statistics(project3_stats)
 
-        user = UserReport([project1, project2, project3])
+        user = UserReport([project1, project2, project3], "UserReport3")
 
         # Should use earliest start date from available projects
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -171,7 +171,7 @@ class TestUserReportDates(unittest.TestCase):
         project_stats = StatisticIndex([])  # No statistics
         project = ProjectReport.from_statistics(project_stats)
 
-        user = UserReport([project])
+        user = UserReport([project], "UserReport4")
 
         # Should have no dates
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -198,7 +198,7 @@ class TestUserReportDates(unittest.TestCase):
         ])
         project2 = ProjectReport.from_statistics(project2_stats)
 
-        user = UserReport([project1, project2])
+        user = UserReport([project1, project2], "UserReport5")
 
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
         user_end = user.get_value(UserStatCollection.USER_END_DATE.value)
@@ -232,7 +232,7 @@ class TestUserReportDates(unittest.TestCase):
             ])
             projects.append(ProjectReport.from_statistics(stats))
 
-        user = UserReport(projects)
+        user = UserReport(projects, "UserReport6")
 
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
         user_end = user.get_value(UserStatCollection.USER_END_DATE.value)
@@ -257,7 +257,7 @@ class TestUserReportDates(unittest.TestCase):
         ])
         project = ProjectReport.from_statistics(project_stats)
 
-        user = UserReport([project])
+        user = UserReport([project], "UserReport7")
 
         # Test inherited methods work
         self.assertIsNotNone(user.to_dict())
@@ -298,7 +298,8 @@ class TestUserReportDates(unittest.TestCase):
         ])
         work_project = ProjectReport.from_statistics(work_stats)
 
-        user = UserReport([college_project, internship_project, work_project])
+        user = UserReport(
+            [college_project, internship_project, work_project], "UserReport8")
 
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
         user_end = user.get_value(UserStatCollection.USER_END_DATE.value)

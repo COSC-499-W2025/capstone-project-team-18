@@ -1,27 +1,31 @@
-'''
-This file tests our SQLAlchemy database setup and relationships using a
-temporary SQLite database fixture.
-'''
-from pathlib import Path
+"""
+Tests for functions in `src/database/utils/database_access.py`.
+
+Focus:
+- get_project_from_project_name
+- get_file_reports (indirect + direct error cases)
+"""
+
+import pytest
 import datetime
 from datetime import timedelta
 import random
 
-import pytest
-from sqlalchemy import inspect
+from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
-
-from src.database.db import (
-    Base,
-    FileReportTable,
-    ProjectReportTable,
-    UserReportTable,
+from src.database.db import Base, ProjectReportTable, FileReportTable, UserReportTable
+from src.database.utils.database_access import get_project_from_project_name, get_user_report
+from src.classes.statistic import (
+    FileStatCollection,
+    ProjectStatCollection,
+    FileDomain,
+    CodingLanguage,
 )
-from src.database.utils.database_modify import create_row
-from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.classes.report import FileReport, ProjectReport, UserReport
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 
 
 def create_file_report(filename: str):
@@ -40,9 +44,6 @@ def create_file_report(filename: str):
     lines_in_file = int(random.randint(100, 250))
 
     random_create = datetime.datetime.now() + timedelta(hours=random.randint(1, 10))
-    random_access = datetime.datetime.now() + timedelta(
-        minutes=random.randint(1, 40), hours=random.randint(1, 5)
-    )
     random_modified = datetime.datetime.now() + timedelta(
         minutes=random.randint(1, 30), hours=random.randint(1, 3)
     )
@@ -76,7 +77,7 @@ def create_project_report(fr1: FileReport, fr2: FileReport, collaborative: bool)
     return pr
 
 
-def create_user_report(pr1: ProjectReport, pr2: ProjectReport | None):
+def create_user_report(pr1: ProjectReport, pr2: ProjectReport | None, name: str):
     '''
     Given one or two `ProjectReport` objects, return a `UserReport` object.
 
@@ -84,9 +85,9 @@ def create_user_report(pr1: ProjectReport, pr2: ProjectReport | None):
     creating user reports in `statistic.py`.
     '''
     if pr2 is not None:
-        return UserReport(project_reports=[pr1, pr2], report_name="UserReport1")
+        return UserReport(project_reports=[pr1, pr2], report_name=name)
     else:
-        return UserReport(project_reports=[pr1], report_name="UserReport2")
+        return UserReport(project_reports=[pr1], report_name=name)
 
 
 def get_row(report: FileReport | ProjectReport | UserReport):
@@ -114,6 +115,7 @@ def get_row(report: FileReport | ProjectReport | UserReport):
                 ProjectStatCollection.PROJECT_END_DATE.value),
             is_group_project=report.get_value(
                 ProjectStatCollection.IS_GROUP_PROJECT.value),
+            project_name=report.project_name
         )
         '''
         # To establish FK in file reports
@@ -123,8 +125,13 @@ def get_row(report: FileReport | ProjectReport | UserReport):
         '''
 
     else:
-        # TODO: Implement once we have logic for user report generation
-        return
+        new_row = UserReportTable(
+            title=report.report_name,  # type: ignore
+            user_start_date=report.get_value(
+                UserStatCollection.USER_START_DATE.value),
+            user_end_date=report.get_value(
+                UserStatCollection.USER_END_DATE.value),
+        )
 
     return new_row
 
@@ -147,7 +154,11 @@ def temp_db(tmp_path: Path):
 
     # Create fake project reports
     pr1 = create_project_report(fr2, fr3, False)
+    pr1.project_name = 'Project1'
     pr2 = create_project_report(fr4, fr1, True)
+    pr2.project_name = 'Project2'
+
+    ur1 = create_user_report(pr1, pr2, 'test_user_report')
 
     # Get rows for the file reports
     stmt1 = get_row(fr1)
@@ -164,10 +175,15 @@ def temp_db(tmp_path: Path):
     stmt7.file_reports.append(stmt4)  # type: ignore
     stmt7.file_reports.append(stmt1)  # type: ignore
 
+    # Get a user report row
+    stmt8 = get_row(ur1)
+    stmt8.project_reports.append(stmt6)  # type: ignore
+    stmt8.project_reports.append(stmt7)  # type: ignore
+
     with Session(engine) as session:
 
         # add file report & project report rows to the DB
-        session.add_all([stmt6, stmt7])
+        session.add_all([stmt8])
 
         session.commit()  # write the rows to the DB
     try:
@@ -178,92 +194,75 @@ def temp_db(tmp_path: Path):
         engine.dispose()
 
 
-def test_tables_exist(temp_db):
-    inspector = inspect(temp_db)
-    tables = set(inspector.get_table_names())
-    assert {"file_report", "project_report",
-            "user_report", "association_table"} <= tables
+def test_get_project_from_project_name_success(temp_db):
+    '''
+    Validate that given an existing project name, a `ProjectReport`
+    object is correctly returned.
+    '''
+    name = 'Project2'
+    pr = get_project_from_project_name(name, temp_db)
+
+    assert pr.project_name == name
+    assert len(pr.file_reports) == 2
+
+    assert pr.get_value(
+        ProjectStatCollection.IS_GROUP_PROJECT.value) is True
+
+    for fr in pr.file_reports:
+        assert fr.get_value(
+            FileStatCollection.FILE_SIZE_BYTES.value) is not None
+        assert fr.get_value(FileStatCollection.DATE_CREATED.value) is not None
+        assert fr.get_value(FileStatCollection.DATE_MODIFIED.value) is not None
+        assert fr.get_value(FileStatCollection.LINES_IN_FILE.value) is not None
 
 
-def test_sample_data_inserted(temp_db):
-    # check that data was actually put into the DB
+def test_get_project_with_invalid_name(temp_db):
+    with pytest.raises(NoResultFound):
+        get_project_from_project_name("does-not-exist", temp_db)
+
+
+def test_get_project_without_file_reports(temp_db):
+    project_report = ProjectReport(file_reports=None)
+    project_report.project_name = 'noFileReports'
+    proj_row = get_row(project_report)
     with Session(temp_db) as session:
-        file_count = session.query(FileReportTable).count()
-        project_count = session.query(ProjectReportTable).count()
-        # user_count = session.query(UserReportTable).count()
-
-        assert file_count == 4  # 4 file reports
-        assert project_count == 2  # 2 project reports
-        # assert user_count == 1  # 1 user report
+        session.add(proj_row)
+        session.commit()
+    with pytest.raises(ValueError):
+        get_project_from_project_name(project_report.project_name, temp_db)
 
 
-def test_file_to_project_relationship(temp_db):
-    '''
-    Check that one-to-many relationship of ProjectReport -> FileReports
-    is configured properly
-    '''
+def test_get_project_with_multiple_results(temp_db):
+    file_report = create_file_report("testReport.py")
+    file_report2 = create_file_report("testReport2.py")
+    project_report = ProjectReport([file_report])
+    project_report.project_name = 'fileReport'
+
+    project_report2 = ProjectReport([file_report2])
+    project_report2.project_name = 'fileReport'
+
+    proj_row = get_row(project_report)
+    proj_row2 = get_row(project_report2)
+
     with Session(temp_db) as session:
-        # check that pr1 is in DB
-        project = session.query(ProjectReportTable).first()
-        assert project is not None
-
-        # check that there are 2 file reports associated with pr1
-        assert len(project.file_reports) == 2
-
-        # child rows should reference parent PK via FK
-        for fr in project.file_reports:
-            assert fr.project_id == project.id
+        session.add_all([proj_row, proj_row2])
+        session.commit()
+    with pytest.raises(MultipleResultsFound):
+        get_project_from_project_name('fileReport', temp_db)
 
 
-"""
-def test_project_to_user_many_to_many(temp_db):
+def test_get_user_from_name_success(temp_db):
     '''
-    Check that bi-directional many-to-many relationship of
-    UserReport <-> ProjectReport is configured properly
+    Validate that given an existing user report
+    name, a `UserReport` object is correctly returned.
     '''
-    with Session(temp_db) as session:
-        user = session.query(UserReportTable).first()
-        assert user is not None
-        assert len(user.project_reports) == 2
+    name = 'test_user_report'
+    ur = get_user_report(name, temp_db)
 
-        # Back-populates should work in the other direction too
-        for p in user.project_reports:
-            assert user in p.user_reports
-"""
+    assert ur.report_name == name
+    assert len(ur.project_reports) == 2
 
-
-def test_create_row():
-    '''
-    Test that the `create_row()` function in `/src/database/utils/database_modify.py`
-    properly returns a new row for a given report object.
-    '''
-    # Check that a row is properly created from a FileReport
-    file_report = create_file_report("test.txt")
-    row = create_row(file_report)
-
-    assert type(row) == FileReportTable
-    assert row.filepath == "test.txt"
-    assert row.date_created == file_report.get_value(  # type: ignore
-        FileStatCollection.DATE_CREATED.value)
-
-    # Check that a row is properly created from a ProjectReport
-    file_report_2 = create_file_report("test_2.py")
-    project_report = create_project_report(file_report, file_report_2, False,)
-    proj_row = create_row(project_report)
-
-    assert type(proj_row) == ProjectReportTable
-    assert proj_row.project_start_date == project_report.get_value(  # type: ignore
-        ProjectStatCollection.PROJECT_START_DATE.value)
-    assert proj_row.project_name == "Unknown Project"
-
-    # Check that a row is properly created from a UserReport
-    file_report_3 = create_file_report('test_3.py')
-    file_report_4 = create_file_report('test_4.txt')
-    project_report_2 = create_project_report(
-        file_report_3, file_report_4, True)
-    user_report = create_user_report(project_report, project_report_2)
-    user_row = create_row(user_report)
-
-    assert type(user_row) == UserReportTable
-    assert user_row.user_start_date == user_report.get_value(  # type: ignore
-        UserStatCollection.USER_START_DATE.value)
+    for pr in ur.project_reports:
+        assert pr.get_value(
+            ProjectStatCollection.IS_GROUP_PROJECT.value) is not None
+        assert pr.project_name == "Project1" or pr.project_name == "Project2"

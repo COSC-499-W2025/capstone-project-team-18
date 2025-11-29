@@ -1,13 +1,11 @@
 '''
 This file will store all of the config and logic that we will need to access and modify our database (`db.py`)
 '''
-from typing import List
-
 from sqlalchemy import ForeignKey, Table, Column, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, Session
 from enum import Enum
 from dataclasses import is_dataclass, asdict
-
+from typing import List
 
 from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, StatisticIndex, Statistic
 from .utils.init_columns import make_columns
@@ -136,7 +134,12 @@ class UserReportTable(Base):
     '''
     __tablename__ = 'user_report'
 
+
     id = mapped_column(Integer, primary_key=True)
+
+    # name given by user, or name of zipped folder (default)
+    title = mapped_column(String)
+
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",

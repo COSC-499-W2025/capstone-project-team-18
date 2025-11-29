@@ -4,14 +4,17 @@ It provides logic for the CLI that the user will
 interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
+from typing import Optional
+import tempfile
+from pathlib import Path
+
 from sqlalchemy.orm import Session
 
-from typing import Optional
 from src.utils.zipped_utils import unzip_file
-from src.utils.project_discovery import discover_projects
+from src.utils.project_discovery.project_discovery import discover_projects
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
-import tempfile
+
 from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
 
@@ -33,7 +36,6 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
 
     project_list = discover_projects(unzipped_dir)
 
-    file_report_rows = []  # will store FileReportTable objs
     engine = get_engine()
 
     # Create tables if they do not exist
@@ -51,7 +53,8 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
             if file_reports is None:
                 continue  # skip if directory is empty
 
-            # create the rows for the file reports
+            # create the rows for the file reports FOR THIS PROJECT ONLY
+            file_report_rows = []  # Reset for each project
             for fr in file_reports:
                 file_report = create_row(fr)
                 file_report_rows.append(file_report)
@@ -60,6 +63,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
             project_report = ProjectReport(
                 project_name=project.name,
                 project_path=project.root_path,
+                project_repo=project.repo,
                 file_reports=file_reports,
                 user_email=email
             )
@@ -70,15 +74,16 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
             project_row.file_reports.extend(file_report_rows)  # type: ignore
             project_report_rows.append(project_row)
 
-    # make a UserReport with the ProjectReports
-    user_report = UserReport(project_reports)
-    # create a user_report row and configure FK relations
-    user_row = create_row(report=user_report)
-    user_row.project_reports.extend(project_report_rows)  # type: ignore
+        # make a UserReport with the ProjectReports
+        dir_name = Path(zipped_file).stem  # name of zipped dir
+        user_report = UserReport(project_reports, dir_name)
+        # create a user_report row and configure FK relations
+        user_row = create_row(report=user_report)
+        user_row.project_reports.extend(project_report_rows)  # type: ignore
 
-    # Insert all of the rows into the database
-    session.add_all([user_row])  # type: ignore
-    session.commit()
+        # Insert all of the rows into the database (INSIDE the session block)
+        session.add_all([user_row])  # type: ignore
+        session.commit()
 
     print("-------- Analysis Reports --------\n")
 
