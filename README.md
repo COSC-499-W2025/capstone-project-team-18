@@ -156,17 +156,15 @@ During these meetings, we will often use a whiteboard to take notes/visualize id
 
 #### Frequency of Communication
 
-In addition to weekly in-person meetings, we frequently communicate in a group chat to discuss day-to-day items, let teammates know when they've been assigned a pull request (PR), and get input from each other on bug fixes and features in the process of being implemented.
-
 Everyone is expected to be regularly active in the group chat and participate in conversations about the project.
 
 #### Communication Behavior
 
 As a team, we give everyone equal opportunity to speak during in-person meetings. In-person and online, we treat each other with respect and provide constructive feedback, comments, and criticism when necessary. When we receive feedback on our work, we give genuine consideration to what our teammate has said.
 
-#### Channels for discussions
+#### Channels for Discussions
 
-Idk what she means by this
+In addition to weekly in-person meetings, we frequently communicate in a group chat to discuss day-to-day items, let teammates know when they've been assigned a pull request (PR), and get input from each other on bug fixes and features in the process of being implemented.
 
 #### Collaboration Process
 
