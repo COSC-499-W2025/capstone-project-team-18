@@ -1,12 +1,36 @@
 # CLI User Guide
 
+## Table of Contents
+
+1. [CLI Tool: Project Artifact Miner](#cli-tool-project-artifact-miner)
+2. [Quick Start](#quick-start)
+3. [CLI Commands](#cli-commands)
+4. [Workflow](#workflow)
+    - [4.1 Permissions](#1-permissions)
+    - [2. Filepath](#2-filepath)
+    - [3. Begin](#3-begin)
+    - [4. Email Configuration](#4-email-configuration)
+5. [Example Session](#example-session)
+6. [Error Messages](#error-messages)
+7. [Testing](#testing)
+    - [7.1 How to Run](#how-to-run)
+    - [7.2 Current Features (Implemented)](#current-features-implemented)
+    - [7.3 Under-the-hood Components (WIP)](#under-the-hood-components-work-in-progress)
+    - [7.4 Planned/Next Steps](#plannednext-steps-from-code-comments)
+    - [7.5 Notes](#notes)
+8. [Milestone 1 Team Contract](#milestone-1-team-contract)
+
+## CLI Tool: Project Artifact Miner
+
+We are building a command‑line interface (CLI) tool for mining project artifacts. The CLI entrypoint lives in `src/app.py` and uses Python's standard `cmd` module to provide an interactive prompt.
+
 ## Quick Start
 ```bash
 cd src
 python3 app.py
 ```
 
-## Commands
+## CLI Commands
 | Input | Action |
 |-------|--------|
 | `1` | Grant permissions |
@@ -27,7 +51,7 @@ Do you consent to this program accessing files? (Y/N): Y
 - `N` = Exit app
 - `back`/`cancel` = Main menu
 
-### 2. File Path
+### 2. Filepath
 ```
 (PAF) 2
 Enter filepath: /path/to/project
@@ -81,11 +105,7 @@ python3 test_app_cli.py
 ```
 
 
-## CLI Tool: Project Artifact Miner
-
-We are building a command‑line interface (CLI) tool for mining project artifacts. The CLI entrypoint lives in `src/app.py` and uses Python's standard `cmd` module to provide an interactive prompt.
-
-### How to run
+### How to Run
 
 Prerequisites: Python 3.11+ recommended.
 
@@ -111,7 +131,7 @@ You should see the prompt `(PAF)` and a menu of options.
   - Built‑in `help`/`?` from `cmd` shows available commands.
 - Exit: `exit`
 
-### Under-the-hood components (work in progress)
+### Under-the-hood Components (work in progress)
 
 The following modules scaffold the analysis/reporting pipeline and are partially implemented (see comments and `raise ValueError("Unimplemented")` markers):
 
