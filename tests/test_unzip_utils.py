@@ -7,7 +7,7 @@ try:
     import py7zr
 except ImportError:
     py7zr = None
-from utils.project_discovery.zipped_utils import unzip_file
+from utils.zipped_utils import unzip_file
 
 
 def create_test_zip(zip_path, filename, content):

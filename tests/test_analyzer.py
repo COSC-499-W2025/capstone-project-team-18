@@ -7,8 +7,8 @@ from datetime import datetime
 import pytest
 from src.classes.analyzer import *
 from src.classes.statistic import FileStatCollection, CodingLanguage
-from src.utils.project_discovery import ProjectFiles
-from utils.project_discovery.zipped_utils import unzip_file
+from src.utils.project_discovery.project_discovery import ProjectFiles
+from src.utils.zipped_utils import unzip_file
 from conftest import _create_temp_file, RESOURCE_DIR
 
 

@@ -10,8 +10,8 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from utils.project_discovery.zipped_utils import unzip_file
-from src.utils.project_discovery import discover_projects
+from src.utils.zipped_utils import unzip_file
+from src.utils.project_discovery.project_discovery import discover_projects
 
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
