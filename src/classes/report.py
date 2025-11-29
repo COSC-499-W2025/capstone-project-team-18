@@ -170,6 +170,7 @@ class ProjectReport(BaseReport):
             self._find_coding_languages_ratio()
             self._calculate_ari_score()
             self._weighted_skills()
+            self._activity_type_contributions()
             if user_email:
                 self._analyze_git_authorship(user_email)
         else:
@@ -193,7 +194,7 @@ class ProjectReport(BaseReport):
         """
 
         activity_type_to_lines = {}
-        email_configured = True if self.email else False
+        git_analysis = True if self.email and self.project_repo else False
 
         for fr in self.file_reports:
             file_domain = fr.get_value(FileStatCollection.TYPE_OF_FILE.value)
@@ -206,9 +207,15 @@ class ProjectReport(BaseReport):
 
             percent = 1
 
-            if email_configured:
-                percent = fr.get_value(
-                    FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) / 100
+            # If git analysis, check to see if the user has contributed
+            # if so, take that percent. Else, that file is local and assume
+            # they contributed to it themeseleves
+            if git_analysis:
+                percent_lines_commited = fr.get_value(
+                    FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
+
+                if percent_lines_commited is not None:
+                    percent = percent_lines_commited / 100
 
             prev_lines = activity_type_to_lines.get(file_domain, 0)
 
