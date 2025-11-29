@@ -239,6 +239,7 @@ If a repeated issue is severe enough, the rest of the team may discuss executing
 ## Member Signatures (Printed)
 
 **Jimi Ademola**:
+- Jimi Ademola, 11-29-2025
 
 **Priyansh Mathur**
 
