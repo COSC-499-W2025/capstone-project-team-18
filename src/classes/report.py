@@ -344,6 +344,7 @@ class ProjectReport(BaseReport):
         inst = cls.__new__(cls)
         BaseReport.__init__(inst, statistics)
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
+        inst.file_reports = []
         return inst
 
     def _analyze_git_authorship(self, user_email: Optional[str] = None) -> None:
@@ -443,12 +444,13 @@ class UserReport(BaseReport):
         # rank the project reports according to their weights
         ranked_project_reports = sorted(
             project_reports, key=lambda p: p.get_project_weight(), reverse=True)
+
         self.resume_items = [report.generate_resume_item()
                              for report in ranked_project_reports]
 
         # self.resume_items = [report.generate_resume_item()
         #                     for report in project_reports]
-        # self.project_reports = project_reports or []
+        self.project_reports = project_reports or []
 
         # Build list of user-level statistics
         self.user_stats = StatisticIndex()
