@@ -8,7 +8,8 @@ import pytest
 from classes.report import ProjectReport
 from classes.statistic import ProjectStatCollection
 from src.classes.analyzer import extract_file_reports
-from src.utils.project_discovery import ProjectFiles
+from src.utils.project_discovery.project_discovery import ProjectFiles
+
 
 
 @pytest.fixture
