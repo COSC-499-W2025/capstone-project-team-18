@@ -245,6 +245,7 @@ If a repeated issue is severe enough, the rest of the team may discuss executing
 **Tawana Ndlovu**
 
 **Erem Ozdemir**
+- Erem Ozdemir, 11-30-2025
 
 **Sam Sikora**
 - Sam Sikora, 11-29-2025
