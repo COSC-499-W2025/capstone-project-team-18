@@ -19,6 +19,8 @@ class TextResumeRenderer(ResumeRender):
             to_return += f"{item.title} : {item.start_date.strftime("%B, %Y")} - {item.end_date.strftime("%B, %Y")}\n"
             for bullet in item.bullet_points:
                 to_return += f"   - {bullet}\n"
+            if item is not resume.items[-1]:
+                to_return += "\n"
             to_return += "\n"
 
         return to_return

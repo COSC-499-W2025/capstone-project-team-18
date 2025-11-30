@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 
 from src.utils.zipped_utils import unzip_file
 from src.utils.project_discovery.project_discovery import discover_projects
+from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
+
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
 from src.classes.resume.render import ResumeLatexRenderer
@@ -94,15 +96,10 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     with open("resume.tex", "w", encoding="utf-8") as f:
         f.write(latex_str)
 
-    print("-------- Analysis Reports --------\n")
-
-    print("-------- Resume --------\n")
-    print(resume)
-    print("------------------------\n")
-
-    print("-------- Portfolio --------\n")
-    print(user_report.to_user_readable_string())
-    print("\n-------------------------\n")
+    # Print the resume items
+    resume_CLI_stringify(user_report)
+    # Print the portfolio item
+    portfolio_CLI_stringify(user_report)
 
 
 if __name__ == '__main__':

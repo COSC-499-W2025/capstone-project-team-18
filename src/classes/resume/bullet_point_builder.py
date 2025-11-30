@@ -155,7 +155,7 @@ class GitCommitPercentage(BulletRule):
 
         if total_contrib_pct is not None:
             to_return.append(
-                f"Accounted for {total_contrib_pct}% of total contribution")
+                f"Accounted for {total_contrib_pct}% of total contribution in the final deliverable")
 
         return to_return
 
