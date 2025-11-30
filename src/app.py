@@ -92,7 +92,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     header_line = "Resume".center(resume_header_len, '-')
 
     print(header_line)
-    print(f'\n{resume}{'-' * len(header_line)}\n')
+    print(f'{resume}{'-' * len(header_line)}\n')
 
     portfolio = user_report.to_user_readable_string()
     portfolio_header_len = len(portfolio.split('\n')[0])
