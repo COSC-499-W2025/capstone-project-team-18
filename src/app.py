@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from src.utils.zipped_utils import unzip_file
 from src.utils.project_discovery.project_discovery import discover_projects
 from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
+
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
 

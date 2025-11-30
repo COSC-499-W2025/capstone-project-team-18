@@ -13,6 +13,8 @@ from git import NoSuchPathError, Repo, InvalidGitRepositoryError
 from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 
 class BaseReport:
@@ -428,6 +430,7 @@ class ProjectReport(BaseReport):
         inst = cls.__new__(cls)
         BaseReport.__init__(inst, statistics)
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
+        inst.file_reports = []
         return inst
 
     def _analyze_git_authorship(self, user_email: Optional[str] = None) -> None:
@@ -525,8 +528,13 @@ class UserReport(BaseReport):
             report_name (str): By default, the name of the zipped directory. Can be overwritten by user input
         """
 
-        self.resume_items = [project_reports.generate_resume_item()
-                             for project_reports in project_reports]
+        # rank the project reports according to their weights
+        ranked_project_reports = sorted(
+            project_reports, key=lambda p: p.get_project_weight(), reverse=True)
+
+        self.resume_items = [report.generate_resume_item()
+                             for report in ranked_project_reports]
+
         self.project_reports = project_reports or []
         self.report_name = report_name
         self.user_stats = StatisticIndex()  # list of user-level statistics
@@ -664,6 +672,131 @@ class UserReport(BaseReport):
             resume.add_item(item)
 
         return resume
+
+    @staticmethod
+    def delete_portfolio(identifier: str) -> tuple[bool, str]:
+        """
+        Delete a user report and its associated project reports from the database.
+
+        Args:
+            identifier: Either a portfolio title or filepath (extracts folder name from path)
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from src.database.utils.database_modify import delete_user_report_and_related_data
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                # Extract folder name from path if it's a path
+                if '/' in identifier or '\\' in identifier:
+                    folder_name = Path(identifier).stem
+                else:
+                    folder_name = identifier
+
+                # Find by title to get project count before deletion
+                stmt = select(UserReportTable).where(
+                    UserReportTable.title == folder_name
+                )
+                user_report = session.scalar(stmt)
+
+                if not user_report:
+                    return False, f"Portfolio '{folder_name}' not found in database"
+
+                # Store info for return message
+                title = user_report.title
+                project_count = len(user_report.project_reports)
+
+            # Use database_modify function for deletion (outside the session)
+            success = delete_user_report_and_related_data(title=title)
+
+            if success:
+                return True, f"Successfully deleted '{title}' and {project_count} associated project(s)"
+            else:
+                return False, f"Failed to delete portfolio '{title}' from database"
+
+        except ValueError as e:
+            # Handle "User report not found" from database_modify
+            return False, str(e)
+        except Exception as e:
+            return False, f"Database error: {str(e)}"
+
+    @staticmethod
+    def get_portfolio_info(identifier: str) -> tuple[bool, dict]:
+        """
+        Get information about a portfolio without deleting it.
+
+        Args:
+            identifier: Either a portfolio title or filepath (extracts folder name from path)
+
+        Returns:
+            tuple: (found: bool, info: dict with title and project_count)
+        """
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                # Extract folder name from path if it's a path
+                if '/' in identifier or '\\' in identifier:
+                    folder_name = Path(identifier).stem
+                else:
+                    folder_name = identifier
+
+                # Find by title
+                stmt = select(UserReportTable).where(
+                    UserReportTable.title == folder_name
+                )
+                user_report = session.scalar(stmt)
+
+                if not user_report:
+                    return False, {}
+
+                info = {
+                    'title': user_report.title,
+                    'project_count': len(user_report.project_reports)
+                }
+
+                return True, info
+
+        except Exception:
+            return False, {}
+
+    @staticmethod
+    def list_all_portfolios() -> list[dict]:
+        """
+        Get a list of all portfolios in the database.
+
+        Returns:
+            list: List of dicts with portfolio info (title, project_count)
+        """
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                # Force fresh query, don't use cache
+                session.expire_all()
+
+                stmt = select(UserReportTable)
+                portfolios = session.scalars(stmt).all()
+
+                portfolio_list = []
+                for portfolio in portfolios:
+                    portfolio_list.append({
+                        'title': portfolio.title,
+                        'project_count': len(portfolio.project_reports)
+                    })
+
+                return portfolio_list
+
+        except Exception:
+            return []
 
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
