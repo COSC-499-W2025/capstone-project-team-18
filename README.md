@@ -245,6 +245,7 @@ If a repeated issue is severe enough, the rest of the team may discuss executing
 - Priyansh Mathur, 11-29-2025
 
 **Tawana Ndlovu**
+- Tawana Ndlovu, 11-30-2025
 
 **Erem Ozdemir**
 - Erem Ozdemir, 11-30-2025
