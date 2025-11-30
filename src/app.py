@@ -4,14 +4,19 @@ It provides logic for the CLI that the user will
 interact with to begin the artifact miner.
 - To start the CLI tool, run this file.
 """
+from typing import Optional
+import tempfile
+from pathlib import Path
+
 from sqlalchemy.orm import Session
 
-from typing import Optional
 from src.utils.zipped_utils import unzip_file
-from src.utils.project_discovery import discover_projects
+from src.utils.project_discovery.project_discovery import discover_projects
+from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
+
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
-import tempfile
+
 from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
 
@@ -72,7 +77,8 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
             project_report_rows.append(project_row)
 
         # make a UserReport with the ProjectReports
-        user_report = UserReport(project_reports)
+        dir_name = Path(zipped_file).stem  # name of zipped dir
+        user_report = UserReport(project_reports, dir_name)
         # create a user_report row and configure FK relations
         user_row = create_row(report=user_report)
         user_row.project_reports.extend(project_report_rows)  # type: ignore
@@ -81,15 +87,11 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.add_all([user_row])  # type: ignore
         session.commit()
 
-    print("-------- Analysis Reports --------\n")
+    # Print the resume items
+    resume_CLI_stringify(user_report, email)
 
-    print("-------- Resume --------\n")
-    print(user_report.generate_resume(email))
-    print("------------------------\n")
-
-    print("-------- Portfolio --------\n")
-    print(user_report.to_user_readable_string())
-    print("\n-------------------------\n")
+    # Print the portfolio item
+    portfolio_CLI_stringify(user_report)
 
 
 if __name__ == '__main__':

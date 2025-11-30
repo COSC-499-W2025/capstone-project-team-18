@@ -85,7 +85,7 @@ class TestUserReportDates(unittest.TestCase):
         project3 = ProjectReport.from_statistics(project3_stats)
 
         # Create user report
-        user = UserReport([project1, project2, project3])
+        user = UserReport([project1, project2, project3], "UserReport1")
 
         # Test user start date (earliest project start)
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -97,7 +97,7 @@ class TestUserReportDates(unittest.TestCase):
 
     def test_empty_project_list(self):
         """Test that empty project list doesn't crash"""
-        user = UserReport([])
+        user = UserReport([], "")
 
         # Should not have start or end dates
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -116,7 +116,7 @@ class TestUserReportDates(unittest.TestCase):
         ])
         project = ProjectReport.from_statistics(project_stats)
 
-        user = UserReport([project])
+        user = UserReport([project], "UserReport2")
 
         # Start and end should be the same project's dates
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -150,7 +150,7 @@ class TestUserReportDates(unittest.TestCase):
         ])
         project3 = ProjectReport.from_statistics(project3_stats)
 
-        user = UserReport([project1, project2, project3])
+        user = UserReport([project1, project2, project3], "UserReport3")
 
         # Should use earliest start date from available projects
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -165,7 +165,7 @@ class TestUserReportDates(unittest.TestCase):
         project_stats = StatisticIndex([])  # No statistics
         project = ProjectReport.from_statistics(project_stats)
 
-        user = UserReport([project])
+        user = UserReport([project], "UserReport4")
 
         # Should have no dates
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
@@ -192,7 +192,7 @@ class TestUserReportDates(unittest.TestCase):
         ])
         project2 = ProjectReport.from_statistics(project2_stats)
 
-        user = UserReport([project1, project2])
+        user = UserReport([project1, project2], "UserReport5")
 
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
         user_end = user.get_value(UserStatCollection.USER_END_DATE.value)
@@ -226,7 +226,7 @@ class TestUserReportDates(unittest.TestCase):
             ])
             projects.append(ProjectReport.from_statistics(stats))
 
-        user = UserReport(projects)
+        user = UserReport(projects, "UserReport6")
 
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
         user_end = user.get_value(UserStatCollection.USER_END_DATE.value)
@@ -251,7 +251,7 @@ class TestUserReportDates(unittest.TestCase):
         ])
         project = ProjectReport.from_statistics(project_stats)
 
-        user = UserReport([project])
+        user = UserReport([project], "UserReport7")
 
         # Test inherited methods work
         self.assertIsNotNone(user.to_dict())
@@ -292,7 +292,8 @@ class TestUserReportDates(unittest.TestCase):
         ])
         work_project = ProjectReport.from_statistics(work_stats)
 
-        user = UserReport([college_project, internship_project, work_project])
+        user = UserReport(
+            [college_project, internship_project, work_project], "UserReport8")
 
         user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
         user_end = user.get_value(UserStatCollection.USER_END_DATE.value)
@@ -322,7 +323,7 @@ def test_weight_skills_single_project_single_skill():
     # Mock the project weight
     project.get_project_weight = Mock(return_value=2.0)
 
-    user = UserReport([project])
+    user = UserReport([project], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None
@@ -344,7 +345,7 @@ def test_weight_skills_single_project_multiple_skills():
     ])
     project = ProjectReport.from_statistics(project_stats)
 
-    user = UserReport([project])
+    user = UserReport([project], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None
@@ -375,7 +376,7 @@ def test_weight_skills_multiple_projects_overlapping_skills():
     project2 = ProjectReport.from_statistics(project2_stats)
     project2.get_project_weight = Mock(return_value=2.0)
 
-    user = UserReport([project1, project2])
+    user = UserReport([project1, project2], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None
@@ -389,7 +390,7 @@ def test_weight_skills_multiple_projects_overlapping_skills():
 
 def test_weight_skills_empty_project_list():
     """Test weighting skills with no projects"""
-    user = UserReport([])
+    user = UserReport([], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None
@@ -402,7 +403,7 @@ def test_weight_skills_project_with_no_skills():
     project_stats = StatisticIndex([])
     project = ProjectReport.from_statistics(project_stats)
 
-    user = UserReport([project])
+    user = UserReport([project], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None
@@ -432,7 +433,7 @@ def test_weight_skills_mixed_projects_some_with_skills():
     ])
     project3 = ProjectReport.from_statistics(project3_stats)
 
-    user = UserReport([project1, project2, project3])
+    user = UserReport([project1, project2, project3], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None
@@ -463,7 +464,7 @@ def test_weight_skills_incorporates_project_weight():
     project2 = ProjectReport.from_statistics(project2_stats)
     project2.get_project_weight = Mock(return_value=2.5)
 
-    user = UserReport([project1, project2])
+    user = UserReport([project1, project2], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     # Both projects contribute to TypeScript skill weight
@@ -500,7 +501,7 @@ def test_weight_skills_many_projects_many_skills():
         project.get_project_weight = Mock(return_value=weight)
         projects.append(project)
 
-    user = UserReport(projects)
+    user = UserReport(projects, "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None
@@ -528,7 +529,7 @@ def test_weight_skills_creates_user_skills_statistic():
     ])
     project = ProjectReport.from_statistics(project_stats)
 
-    user = UserReport([project])
+    user = UserReport([project], "")
 
     # Check that USER_SKILLS statistic exists by retrieving the value
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
@@ -547,7 +548,7 @@ def test_weight_skills_identical_skills_same_project():
     ])
     project = ProjectReport.from_statistics(project_stats)
 
-    user = UserReport([project])
+    user = UserReport([project], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     # Should handle gracefully - both should be accumulated
@@ -568,7 +569,7 @@ def test_weight_skills_preserves_skill_names():
     ])
     project = ProjectReport.from_statistics(project_stats)
 
-    user = UserReport([project])
+    user = UserReport([project], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     result_names = {skill.skill_name for skill in user_skills}
@@ -584,7 +585,7 @@ def test_weight_skills_returns_weighted_skills_objects():
     ])
     project = ProjectReport.from_statistics(project_stats)
 
-    user = UserReport([project])
+    user = UserReport([project], "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None
@@ -609,7 +610,7 @@ def test_weight_skills_three_projects_same_skill():
         project.get_project_weight = Mock(return_value=weight)
         projects.append(project)
 
-    user = UserReport(projects)
+    user = UserReport(projects, "")
     user_skills = user.get_value(UserStatCollection.USER_SKILLS.value)
 
     assert user_skills is not None

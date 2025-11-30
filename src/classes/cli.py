@@ -11,7 +11,8 @@ import json
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-
+from src.app import start_miner
+from sqlalchemy import select, delete
 
 
 def normalize_path(user_path: str) -> str:
@@ -27,7 +28,8 @@ def normalize_path(user_path: str) -> str:
         return user_path
     # On Mac, map C:\Users\<username>\... or C:/Users/<username>/... to /Users/<username>/...
     if sys.platform == 'darwin':
-        match = re.match(r'^[cC]:[\\/]+Users[\\/]+([^\\/]+)[\\/]+(.+)', user_path)
+        match = re.match(
+            r'^[cC]:[\\/]+Users[\\/]+([^\\/]+)[\\/]+(.+)', user_path)
         if match:
             username, rest = match.groups()
             user_path = f"/Users/{username}/{rest}"
@@ -144,6 +146,45 @@ class UserPreferences:
         """Update user email preference."""
         return self.update("user_email", email)
 
+    def get_date_range(self) -> tuple[str, str]:
+        """Get file date range (start_time, end_time)."""
+        prefs = self.load_preferences()
+        return (prefs.get("file_start_time", ""), prefs.get("file_end_time", ""))
+
+    def update_date_range(self, start_time: str, end_time: str) -> bool:
+        """Update file date range filtering."""
+        preferences = self.load_preferences()
+        preferences.update({
+            "file_start_time": start_time if start_time else None,
+            "file_end_time": end_time if end_time else None
+        })
+        return self.save_preferences(preferences)
+
+    def get_date_range_display(self) -> str:
+        """Get formatted date range string for display."""
+        start_time, end_time = self.get_date_range()
+
+        if start_time and end_time:
+            return f"{start_time} to {end_time}"
+        elif start_time and (end_time is None or end_time == 'null' or end_time == 'Null'):
+            return f"All files after {start_time}"
+        elif (start_time is None or start_time == 'null' or start_time == 'Null') and end_time:
+            return f"All files before {end_time}"
+        else:
+            return "All dates"
+
+    def get_files_to_ignore(self) -> List[str]:
+        """Get list of file extensions to ignore."""
+        return self.get("files_to_ignore", [])
+
+    def update_files_to_ignore(self, extensions: List[str]) -> bool:
+        """Update file extensions to ignore."""
+        return self.update("files_to_ignore", extensions)
+
+    def reset_to_defaults(self) -> bool:
+        """Reset to defaults - alias for reset."""
+        return self.reset()
+
 
 def _is_valid_filepath_to_zip(filepath: str) -> int:
     """
@@ -180,12 +221,16 @@ class ArtifactMiner(cmd.Cmd):
 
         # Config for CLI
         self.options = (
+            "=== Artifact Miner Main Menu ===\n"
             "Choose one of the following options:\n"
             "(1) Permissions\n"
             "(2) Set filepath\n"
             "(3) Begin Artifact Miner\n"
             "(4) Configure Email for Git Stats\n"
-            "(5) User Login\n"
+            "(5) User Login (Name & Password)\n"
+            "(6) Configure preferences\n"
+            "(7) View current preferences\n"
+            "(8) Delete a Portfolio\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -207,7 +252,7 @@ class ArtifactMiner(cmd.Cmd):
 
         title = 'Project Artifact Miner'
         print(f'\n{title}')
-        print(self.ruler * len(self.options.splitlines()[0]))
+        print(self.ruler * len(self.options.splitlines()[0]), "\n")
         print(self.options)
 
         # Show preferences file location
@@ -249,9 +294,13 @@ class ArtifactMiner(cmd.Cmd):
 
             # Check for cancel first
             # user entered 'back'/'cancel'
-            if self._handle_cancel_input(answer):
+            if self._handle_cancel_input(answer, "main"):
                 print("\n" + self.options)
                 break
+
+            # Handle exit/quit first
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
 
             answer = answer.upper()
             if answer == 'Y':  # user consents
@@ -288,8 +337,12 @@ class ArtifactMiner(cmd.Cmd):
             prompt = "Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return): "
             answer = input(prompt).strip()
 
+            # Handle exit/quit first
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
             # Check if user wants to cancel
-            if self._handle_cancel_input(answer):
+            if self._handle_cancel_input(answer, "main"):
                 self.project_filepath = ''
                 self.cmd_history.clear()
                 print("\n" + self.options)
@@ -341,14 +394,35 @@ class ArtifactMiner(cmd.Cmd):
             return
 
         print(f"\nBeginning analysis of: {self.project_filepath}")
+
+        # Show advanced configuration being used
+        prefs = self.preferences.load_preferences()
+        start_time, end_time = self.preferences.get_date_range()
+        ignored_files = self.preferences.get_files_to_ignore()
+
+        if start_time or end_time:
+            print(
+                f"Date filtering: {start_time or 'Any'} to {end_time or 'Any'}")
+        if ignored_files:
+            print(f"Ignoring file types: {', '.join(ignored_files)}")
+
         start_miner(self.project_filepath, self.user_email)
+
+        prompt = "\n Would you like to continue analyzing? (Y/N)"
+        answer = input(prompt).strip()
+
+        if answer in ['Y', 'y', 'Yes', 'yes']:
+            print("\n" + self.options)
+        else:
+            return self.do_exit(arg)
+
 
     def do_login(self, arg):
         '''Configure user login credentials'''
         self.update_history(self.cmd_history, "login")
 
         # Show current credentials if they exist
-        current_name, current_password, current_email = self.preferences.get_user_credentials()
+        current_name, current_password, current_email = self.preferences.get_credentials()
         if current_name:
             print(f"Current user: {current_name}")
             print("Password: [hidden]")
@@ -359,9 +433,12 @@ class ArtifactMiner(cmd.Cmd):
         while True:
             name = input(
                 "Enter your name: (or 'back'/'cancel' to return): ").strip()
-            if self._handle_cancel_input(name):
+            if self._handle_cancel_input(name, "main"):
                 print("\n" + self.options)
                 return
+            # Handle exit/quit first
+            if name.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
             if name:
                 break
             print("Name cannot be empty. Please try again.")
@@ -370,9 +447,12 @@ class ArtifactMiner(cmd.Cmd):
         while True:
             password = input(
                 "Enter your password: (or 'back'/'cancel' to return): ").strip()
-            if self._handle_cancel_input(password):
+            if self._handle_cancel_input(password, "main"):
                 print("\n" + self.options)
                 return
+            # Handle exit/quit first
+            if password.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
             if password:
                 break
             print("Password cannot be empty. Please try again.")
@@ -391,6 +471,372 @@ class ArtifactMiner(cmd.Cmd):
             print("Warning: Failed to save credentials to preferences file.")
 
         print("\n" + self.options)
+
+    def do_preferences(self, arg):
+        '''Advanced preferences configuration submenu'''
+        self.update_history(self.cmd_history, "preferences")
+
+        while True:
+            print("\n=== Preferences Configuration ===")
+            print("(1) Configure Date Range Filtering")
+            print("(2) Configure Files to Ignore")
+            print("(3) Reset to Defaults")
+            print("(4) Back to Main Menu")
+
+            choice = input(
+                "\nSelect option (1-4), or 'exit'/'quit' to close app): ").strip()
+
+            # User enters exit/quit
+            if choice.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            if self._handle_cancel_input(choice, "main"):
+                print("\n" + self.options)
+                return
+
+            if choice == "1":
+                self._configure_date_range()
+            elif choice == "2":
+                self._configure_files_to_ignore()
+            elif choice == "3":
+                self._reset_preferences()
+            elif choice == "4":
+                print("\n" + self.options)
+                return
+            else:
+                print("Invalid choice. Please select 1-4.")
+
+    def do_view(self, arg):
+        '''Display current preferences and configuration'''
+        self.update_history(self.cmd_history, "view")
+
+        while True:
+            print("\n=== Current Configuration ===")
+            prefs = self.preferences.load_preferences()
+
+            print(
+                f"User Consent: {'✓ Granted' if prefs.get('consent') else '✗ Not granted'}")
+            print(
+                f"Project Filepath: {prefs.get('project_filepath') or 'Not set'}")
+            print(f"User Name: {prefs.get('user_name') or 'Not set'}")
+            print(f"User Email: {prefs.get('user_email') or 'Not set'}")
+            print(f"Date Range: {self.preferences.get_date_range_display()}")
+
+            # Files to ignore
+            ignored_files = prefs.get('files_to_ignore', [])
+            if ignored_files:
+                print(f"Ignored Extensions: {', '.join(ignored_files)}")
+            else:
+                print("Ignored Extensions: None")
+
+            print(f"Last Updated: {prefs.get('last_updated', 'Never')}")
+            print(
+                f"Preferences File: {self.preferences.get_preferences_file_path()}")
+
+            # Prompt user for next action
+            prompt = "\nPress '6' to configure preferences, or 'back'/'cancel' to return to main menu: "
+            user_input = input(prompt).strip()
+
+            # Check if user wants to cancel
+            if self._handle_cancel_input(user_input, "main"):
+                print("\n" + self.options)
+                break
+
+            # Handle exit/quit
+            if user_input.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            # Check if user wants to go to preferences
+            if user_input == '6':
+                return self.do_preferences(arg)
+
+            # Invalid input
+            print(
+                "Invalid input. Press '6' for preferences or 'back'/'cancel' to return.")
+
+    def do_portfolio_delete(self, arg):
+        '''Delete a previously generated portfolio/user report'''
+        self.update_history(self.cmd_history, "delete")
+
+        print("\n=== Delete Portfolio ===")
+        print("You can delete a portfolio by:")
+        print("  1. Select from list of existing portfolios")
+        print("  2. Enter portfolio name (or press Enter to use preferences)")
+
+        while True:
+            user_input = input("\nEnter your choice (1-2) or portfolio name (or 'back'/'cancel' to return): ").strip()
+
+            # Handle exit/quit FIRST
+            if user_input.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            # Handle cancel
+            if self._handle_cancel_input(user_input, "main"):
+                print("\n" + self.options)
+                return
+
+            # Option 1: List existing portfolios
+            if user_input == "1":
+                selected_portfolio = self._list_and_select_portfolio()
+                if selected_portfolio is None:
+                    continue  # User cancelled or no portfolios found
+                user_input = selected_portfolio
+            # Option 2 or empty: use input as portfolio name or get from preferences
+            elif user_input == "2" or not user_input:
+                user_input = self.preferences.get_project_filepath()
+                if not user_input:
+                    print("No filepath in preferences. Please enter a portfolio name.")
+                    continue
+                # Extract portfolio name from filepath
+                from pathlib import Path
+                user_input = Path(user_input).stem
+                print(f"Using portfolio from preferences: {user_input}")
+            # Otherwise, user_input is the portfolio name
+
+            # Get portfolio info before deleting
+            from src.classes.report import UserReport
+            found, info = UserReport.get_portfolio_info(user_input)
+
+            if not found:
+                print(f"\n✗ Portfolio '{user_input}' not found in database")
+                retry = input("Try again? (Y/N): ").strip().lower()
+                if retry != 'y':
+                    break
+                continue
+
+            # Show what will be deleted
+            print(f"\nFound portfolio: {info['title']}")
+            print(f"Associated projects: {info['project_count']}")
+
+            # Confirm deletion
+            confirm = input("\nAre you sure you want to delete this portfolio? (Y/N): ").strip().lower()
+
+            # Handle exit/quit during confirmation
+            if confirm in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            if confirm != 'y':
+                print("Deletion cancelled")
+                print("\n" + self.options)
+                return
+
+            # Perform deletion using database_modify function
+            success, message = UserReport.delete_portfolio(user_input)
+
+            if success:
+                print(f"\n✓ {message}")
+            else:
+                print(f"\n✗ {message}")
+                retry = input("Try again? (Y/N): ").strip().lower()
+                if retry != 'y':
+                    break
+                continue
+
+            print("\n" + self.options)
+            return
+
+    def _list_and_select_portfolio(self) -> Optional[str]:
+        """
+        List all existing portfolios and let user select one to delete.
+
+        Returns:
+            str: The title of selected portfolio, or None if cancelled
+        """
+        from src.classes.report import UserReport
+
+        portfolios = UserReport.list_all_portfolios()
+
+        if not portfolios:
+            print("\nNo portfolios found in database.")
+            return None
+
+        # Display portfolios
+        print("\n=== Existing Portfolios ===")
+        for idx, portfolio in enumerate(portfolios, 1):
+            print(f"({idx}) {portfolio['title']}")
+            print(f"    Projects: {portfolio['project_count']}")
+            print()
+
+        # Let user select
+        while True:
+            choice = input(f"Select portfolio (1-{len(portfolios)}), 'back'/'cancel' to return, or 'exit'/'quit' to close app: ").strip()
+
+            # Handle exit/quit FIRST
+            if choice.lower() in ['exit', 'quit']:
+                self.do_exit("")
+                return None
+
+            # Handle cancel
+            if choice.lower() in ['back', 'cancel']:
+                return None
+
+            # Validate selection
+            try:
+                idx = int(choice)
+                if 1 <= idx <= len(portfolios):
+                    selected = portfolios[idx - 1]
+                    return selected['title']
+                else:
+                    print(f"Please enter a number between 1 and {len(portfolios)}")
+            except ValueError:
+                print("Invalid input. Please enter a number, 'back', 'cancel', 'exit', or 'quit'.")
+
+    def _configure_date_range(self):
+        '''Configure date filtering for files'''
+        print("\nConfigure date range for file filtering (YYYY-MM-DD format)")
+
+        while True:  # Outer loop to retry on invalid date ranges
+            start_date = None
+            end_date = None
+
+            while True:
+                start_input = input(
+                    "Enter start date (or 'skip' for no limit): ").strip()
+
+                # Handle exit/quit
+                if start_input.lower() in ['exit', 'quit']:
+                    return self.do_exit("")
+
+                # User enters back / cancel
+                if self._handle_cancel_input(start_input, "preferences"):
+                    return
+
+                if start_input.lower() == 'skip':
+                    start_date = None
+                    break
+
+                if self._parse_date_input(start_input):
+                    start_date = start_input
+                    break
+                print("Invalid date format. Use YYYY-MM-DD")
+
+            while True:
+                end_input = input(
+                    "Enter end date (or 'skip' for no limit): ").strip()
+
+                # Handle exit/quit
+                if end_input.lower() in ['exit', 'quit']:
+                    return self.do_exit("")
+
+                # User enters back / cancel
+                if self._handle_cancel_input(end_input, "preferences"):
+                    return
+
+                if end_input.lower() == 'skip':
+                    end_date = None
+                    break
+
+                if self._parse_date_input(end_input):
+                    end_date = end_input
+                    break
+                print("Invalid date format. Use YYYY-MM-DD")
+
+            # Validate date range logic: start must be before end
+            if start_date and end_date:
+                start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+
+                # start_dt > end_dt and not start_dt >= end_dt  so that if user
+                # only wants to analyze files for a single given date, they can.
+                if start_dt > end_dt:
+                    print("\n✗ Error: Start date must be earlier than end date.")
+                    print(f"   Start: {start_date}")
+                    print(f"   End: {end_date}")
+                    print("   Please try again.\n")
+                    continue  # Loop back to ask for dates again
+
+            # If gotten here, dates are valid, save and exit
+            success = self.preferences.update_date_range(start_date, end_date)
+            if success:
+                print("✓ Date range configuration saved")
+                if start_date and end_date:
+                    print(
+                        f"   Filtering files between {start_date} and {end_date}")
+                elif start_date:
+                    print(f"   Filtering files after {start_date}")
+                elif end_date:
+                    print(f"   Filtering files before {end_date}")
+                else:
+                    print("   No date filtering applied")
+            else:
+                print("✗ Failed to save date range configuration")
+
+            break  # Exit the outer loop after successful save
+
+    def _configure_files_to_ignore(self):
+        '''Configure file extensions to ignore'''
+        print("\nConfigure file extensions to ignore during analysis")
+        print("Enter extensions separated by commas (e.g., .log, .tmp, .cache)")
+
+        current = self.preferences.get_files_to_ignore()
+        if current:
+            print(f"Current ignored extensions: {', '.join(current)}")
+
+        extensions_input = input(
+            "Extensions to ignore (or 'clear' to remove all): ").strip()
+
+        # User enters back / cancel
+        if self._handle_cancel_input(extensions_input, "preferences"):
+            return
+
+        # Handle exit/quit
+        if extensions_input.lower() in ['exit', 'quit']:
+            self.do_exit("")
+            return
+
+        if extensions_input.lower() == 'clear':
+            extensions = []
+        else:
+            extensions = [ext.strip()
+                          for ext in extensions_input.split(',') if ext.strip()]
+            # Ensure extensions start with dot
+            extensions = [ext if ext.startswith(
+                '.') else f'.{ext}' for ext in extensions]
+
+        success = self.preferences.update_files_to_ignore(extensions)
+        if success:
+            if extensions:
+                print(f"✓ Now ignoring: {', '.join(extensions)}")
+            else:
+                print("✓ Cleared all ignored extensions")
+        else:
+            print("✗ Failed to save file ignore configuration")
+
+    def _reset_preferences(self):
+        '''Reset all preferences to defaults'''
+        confirm = input(
+            "Reset ALL preferences to defaults? This cannot be undone. (Y/N): ").strip()
+
+        # User enters back /cancel
+        if self._handle_cancel_input(confirm, "preferences"):
+            return
+
+        # Handle exit/quit
+        if confirm.lower() in ['exit', 'quit']:
+            return self.do_exit("")
+
+        if confirm.lower() == 'y':
+            # User enters back /cancel
+            if self._handle_cancel_input(confirm, "preferences"):
+                return
+
+            success = self.preferences.reset()
+            if success:
+                print("✓ All preferences reset to defaults")
+                # Reload instance variables
+                self._load_existing_preferences()
+            else:
+                print("✗ Failed to reset preferences")
+        else:
+            print("Reset cancelled")
+
+    def _parse_date_input(self, date_str: str) -> bool:
+        '''Validate date input format (YYYY-MM-DD)'''
+        try:
+            datetime.strptime(date_str, '%Y-%m-%d')
+            return True
+        except ValueError:
+            return False
 
     def update_history(self, cmd_history: list, cmd: str):
         '''
@@ -422,26 +868,30 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_email(arg)
                 case "login":
                     return self.do_login(arg)
+                case "preferences":
+                    return self.do_preferences(arg)
+                case "view":
+                    return self.do_view(arg)
+                case "delete":
+                    return self.do_portfolio_delete(arg)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
 
-    def do_cancel(self, arg):
-        """helper method for cancel command"""
-        self.do_back(arg)
-
-    def _handle_cancel_input(self, user_input):
+    def _handle_cancel_input(self, user_input, menu_location):
         '''
         Helper method to check if user wants to cancel and handle it.
         Returns True if cancel was triggered, False otherwise.
         '''
         if user_input.strip().lower() in ['back', 'cancel']:
-            # Remove the current command from history since user is cancelling
+          # Remove the current command from history since user is cancelling
+
             if len(self.cmd_history) > 0:
-                cancelled_cmd = self.cmd_history.pop()  # Now correctly removes from end
+                cancelled_cmd = self.cmd_history.pop()
                 print(f"\nCancelled '{cancelled_cmd}' operation.")
+                print(f"Returning to {menu_location} menu.")
             else:
-                print("\nReturning to main menu.")
+                print(f"\nReturning to {menu_location} menu.")
             return True
 
         return False
@@ -452,29 +902,48 @@ class ArtifactMiner(cmd.Cmd):
         '''
         self.update_history(self.cmd_history, "email")
 
-        prompt = "Enter the email you use for your Git/GitHub account: (or 'back' / 'cancel' to return): "
+        # Show current email if exists
+        current_email = self.preferences.get('user_email')
+        if current_email:
+            print(f"Current email: {current_email}\n")
+
+        prompt = "By providing your email, you give consent for the application to analyze all information stored by Git. \n" \
+            "If you don't wish to consent, enter 'x' to revoke permissions\n" \
+            "Enter the email you use for your Git/GitHub account: "
         answer = input(prompt).strip()
 
         # Check if user wants to cancel
-        if self._handle_cancel_input(answer):
+        if self._handle_cancel_input(answer, "main"):
             print("\n" + self.options)
             return  # Return to main menu
+
+        # Handle exit/quit first
+        if answer.lower() in ['exit', 'quit']:
+            return self.do_exit(arg)
 
         while (not self.is_valid_email(answer)):
             prompt = "Please enter a valid email: (or 'back' / 'cancel' to return): "
             answer = input(prompt).strip()
 
             # Check if user wants to cancel
-            if self._handle_cancel_input(answer):
+            if self._handle_cancel_input(answer, "main"):
                 print("\n" + self.options)
                 return  # Return to main menu
 
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
         # Process the email
-        self.user_email = answer
-        # Save email to preferences
-        success = self.preferences.update_user_email(answer)
-        print("\nEmail successfully received and saved to preferences")
-        print(self.user_email)
+        if (answer.lower() == 'x'):
+            self.user_email = ''
+            success = self.preferences.update_user_email('')
+            print("\nEmail successfully revoked and saved to preferences")
+        else:
+            self.user_email = answer
+            # Save email to preferences
+            success = self.preferences.update_user_email(answer)
+            print("\nEmail successfully received and saved to preferences")
+            print(self.user_email)
         if not success:
             print("Warning: Failed to save email to preferences file.")
         print("\n" + self.options)
@@ -482,7 +951,7 @@ class ArtifactMiner(cmd.Cmd):
     def is_valid_email(self, email: str) -> bool:
         """Email validation helper method."""
         EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        return bool(re.match(EMAIL_REGEX, email))
+        return bool(re.match(EMAIL_REGEX, email) or email.lower() == 'x')
 
     def default(self, line):
         '''
@@ -496,6 +965,9 @@ class ArtifactMiner(cmd.Cmd):
             "3": self.do_begin,
             "4": self.do_email,
             "5": self.do_login,
+            "6": self.do_preferences,
+            "7": self.do_view,
+            "8": self.do_portfolio_delete,
         }
 
         # Make commands case-insensitive
@@ -507,5 +979,5 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_exit(self, arg):
         '''Exits the program.'''
-        print('Exiting the program...')
-        return True
+        print("\nThank you for using Artifact Miner! Exiting the program...")
+        sys.exit(0)

@@ -258,6 +258,12 @@ class ProjectStatCollection(Enum):
         expected_type=float
     )
 
+    TOTAL_PROJECT_LINES = ProjectStatisticTemplate(
+        name="TOTAL_PROJECT_LINES",
+        description="Total lines contained in a project",
+        expected_type=float
+    )
+
 
 class UserStatCollection(Enum):
     USER_START_DATE = UserStatisticTemplate(

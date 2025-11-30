@@ -35,7 +35,6 @@ def test_generate_resume():
         "Software Engineer : 2020-01-01 - 2021-01-01\n"
         "   - Developed features\n"
         "   - Fixed bugs\n"
-        "\n"
     )
     assert generated == expected_output
 
@@ -61,7 +60,8 @@ def test_userreport_can_create_resume():
     ])
 
     user_report = UserReport(
-        [ProjectReport.from_statistics(project_statistics)]
+        [ProjectReport.from_statistics(project_statistics)],
+        "UserReport1"
     )
 
     resume_item = user_report.generate_resume(None)

@@ -58,7 +58,8 @@ class Resume:
             resume += f"{item.title} : {item.start_date} - {item.end_date}\n"
             for bullet in item.bullet_points:
                 resume += f"   - {bullet}\n"
-            resume += "\n"
+            if item is not self.items[-1]:
+                resume += "\n"  # we don't want a newline after the last item
         return resume
 
     def __str__(self) -> str:
@@ -132,7 +133,7 @@ def bullet_point_builder(project_report: "ProjectReport") -> list[str]:
 
     if total_contrib_pct is not None:
         bullet_points.append(
-            f"Accounted for {total_contrib_pct}% of total contribution")
+            f"Accounted for {total_contrib_pct}% of total contribution in the final deliverable")
 
     # Ensure at least one bullet exists
     if len(bullet_points) == 0:
