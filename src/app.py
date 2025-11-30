@@ -14,6 +14,7 @@ from src.utils.zipped_utils import unzip_file
 from src.utils.project_discovery.project_discovery import discover_projects
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
+from src.classes.resume.render import ResumeLatexRenderer
 
 from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
@@ -85,10 +86,18 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.add_all([user_row])  # type: ignore
         session.commit()
 
+    resume = user_report.generate_resume()
+
+    # Download latex resume to file system
+    latex_str = resume.export(ResumeLatexRenderer())
+
+    with open("resume.tex", "w", encoding="utf-8") as f:
+        f.write(latex_str)
+
     print("-------- Analysis Reports --------\n")
 
     print("-------- Resume --------\n")
-    print(user_report.generate_resume())
+    print(resume)
     print("------------------------\n")
 
     print("-------- Portfolio --------\n")
