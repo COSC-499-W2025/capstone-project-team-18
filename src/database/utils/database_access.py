@@ -3,88 +3,16 @@ This file contains all functions that will be called when we
 want to access data from the database. In SQL, this would be
 queries like SELECT, etc.
 '''
-from src.classes.statistic import StatisticIndex, Statistic, ProjectStatCollection, FileStatCollection, FileDomain, CodingLanguage
-from src.classes.report import ProjectReport, FileReport, UserReport
-from src.database.db import ProjectReportTable, UserReportTable, get_engine, __repr__
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection, FileDomain, CodingLanguage
+from src.classes.report import FileReport, ProjectReport, UserReport
+from src.database.db import ProjectReportTable, UserReportTable, get_engine
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from pprint import pprint
-
 
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def get_user_report_titles(engine=None) -> list[str]:
-    """
-    Return a list of all stored user report titles.
-    """
-    if engine is None:
-        engine = get_engine()
-    with Session(engine) as session:
-        titles = session.execute(select(UserReportTable.title)).scalars().all()
-        return [t for t in titles if t]
-
-
-def get_user_report_by_zipped_filepath(zipped_filepath: str, engine=None) -> UserReport:
-    """
-    Retrieve a stored user report by its zipped filepath.
-    """
-    if engine is None:
-        engine = get_engine()
-
-    with Session(engine) as session:
-        try:
-            result = session.execute(
-                select(UserReportTable).where(UserReportTable.zipped_filepath == zipped_filepath)
-            ).scalars().one()
-        except NoResultFound:
-            logging.error(
-                f'Error: No user report found with zipped filepath "{zipped_filepath}"')
-            raise
-        except MultipleResultsFound:
-            logging.error(
-                f'Error: Multiple user reports found with zipped filepath "{zipped_filepath}"')
-            raise
-
-        project_reports = [
-            _project_report_from_row(pr, engine) for pr in result.project_reports
-        ]
-
-        return UserReport(
-            project_reports=project_reports,
-            title=result.title or "",
-            zipped_filepath=result.zipped_filepath or ""
-        )
-
-
-def user_report_title_exists(title: str, engine=None) -> bool:
-    """
-    Check if a user report with the provided title already exists.
-    """
-    return title in get_user_report_titles(engine)
-
-
-def list_user_report_metadata(engine=None) -> list[dict[str, str]]:
-    """
-    Return a list of dictionaries describing saved user reports.
-    Each entry contains at least a title and the associated zipped filepath.
-    """
-    if engine is None:
-        engine = get_engine()
-    with Session(engine) as session:
-        reports = session.execute(select(UserReportTable)).scalars().all()
-        metadata: list[dict[str, str]] = []
-        for r in reports:
-            metadata.append(
-                {
-                    "title": r.title or "",
-                    "zipped_filepath": r.zipped_filepath or "",
-                }
-            )
-        return metadata
 
 
 def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
@@ -93,7 +21,8 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
     and converts it into a `ProjectReport` object.
 
     Args:
-        proj_name (str): The name of the project (given by the user)
+        proj_name (str): The name of the project report
+        to retrieve (given by the user)
 
     Returns:
         ProjectReport
@@ -128,7 +57,7 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
 
             # make the ProjectReport obj
             project_report = ProjectReport(
-                file_reports=get_file_reports(result.id, engine),
+                file_reports=get_file_reports(result, engine),
                 project_name=name,
                 statistics=statistics,
             )
@@ -145,7 +74,7 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
             raise
 
 
-def get_file_reports(id: int, engine) -> list[FileReport]:
+def get_file_reports(report: ProjectReportTable, engine) -> list[FileReport]:
     '''
     Helper function for `get_project_from_project_name()`.
     For a given project report's ID in the database, get all of,
@@ -155,18 +84,11 @@ def get_file_reports(id: int, engine) -> list[FileReport]:
     get the file reports that were used to make the project report.
     '''
     with Session(engine) as session:
-        project = session.get(ProjectReportTable, id)
-
-        if project is None:
-            logging.error(f'Error: No project with id {id}')
-            raise ValueError()
-
-        file_report_rows = project.file_reports  # List[FileReportTable]
+        file_report_rows = report.file_reports  # List[FileReportTable]
 
         if len(file_report_rows) == 0 or file_report_rows is None:
-            logging.error(
+            raise ValueError(
                 f'Error: No file report(s) found for project with id {id}')
-            raise ValueError()
 
         file_reports = []
         for row in file_report_rows:
@@ -203,56 +125,78 @@ def get_file_reports(id: int, engine) -> list[FileReport]:
         return file_reports
 
 
-def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
-    """
-    Build a ProjectReport from an existing ProjectReportTable row.
-    """
-    statistics = StatisticIndex()
+def get_user_report(name: str, engine=None) -> UserReport:
+    '''
+    Retrieves the row that corresponds to the given user
+    report's name and converts it into a `UserReport` object.
 
-    for stat_template in ProjectStatCollection:
-        column_name = stat_template.value.name.lower()
+    Args:
+        name (str): The name of the user report to retrieve (given by the user)
 
-        if hasattr(row, column_name):
-            value = getattr(row, column_name)
-            if value is not None:
-                statistics.add(Statistic(stat_template.value, value))
+    Returns:
+        UserReport
+    '''
 
-    name = row.project_name or "Unknown Project"
-
-    project_report = ProjectReport(
-        file_reports=get_file_reports(row.id, engine),
-        project_name=name,
-        statistics=statistics,
-    )
-    return project_report
-
-
-def get_user_report_by_title(title: str, engine=None) -> UserReport:
-    """
-    Retrieve a stored user report and rebuild the object by its unique title.
-    """
+    # for testing purposes, we need to be able to pass the engine for
+    # the temporary database to the function when we call it.
     if engine is None:
         engine = get_engine()
-
     with Session(engine) as session:
         try:
+            # First, get the row that matches the given name
             result = session.execute(
-                select(UserReportTable).where(UserReportTable.title == title)
-            ).scalars().one()
+                select(UserReportTable)
+                .where(UserReportTable.title == name)
+            ).scalars().one()  # UserReport object
+
+            statistics = StatisticIndex()
+
+            # Build the UserReport-level statistics
+            for stat_template in UserStatCollection:
+                column_name = stat_template.value.name.lower()
+
+                # get stat if col exists and has value
+                if hasattr(result, column_name):
+                    value = getattr(result, column_name)
+                    if value is not None:
+                        statistics.add(Statistic(stat_template.value, value))
+
+            if result.title:
+                name = result.title
+            else:
+                raise ValueError(
+                    f"Error: Missing user report's name. Value stored in DB: {result.title}")
+
+            # Build the list of ProjectReports that correspond the the UserReport
+            project_reports = []
+
+            # List[ProjectReportTable]
+            project_report_rows = result.project_reports
+
+            if len(project_report_rows) == 0 or project_report_rows is None:
+                raise ValueError(
+                    f'Error: No project report(s) found for user report with name {name}')
+
+            for row in project_report_rows:
+                proj_report = get_project_from_project_name(
+                    proj_name=row.project_name,
+                    engine=engine
+                )
+                project_reports.append(proj_report)
+
+            # make the UserReport obj
+            user_report = UserReport(
+                project_reports,
+                report_name=name
+            )
+
+            return user_report
+
+        # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logging.error(f'Error: No user report found with title "{title}"')
+            logging.error(f'Error: No user report found with name "{name}"')
             raise
         except MultipleResultsFound:
             logging.error(
-                f'Error: Multiple user reports found with title "{title}"')
+                f'Error: Multiple user reports found with name "{name}"')
             raise
-
-        project_reports = [
-            _project_report_from_row(pr, engine) for pr in result.project_reports
-        ]
-
-        return UserReport(
-            project_reports=project_reports,
-            title=result.title or "",
-            zipped_filepath=result.zipped_filepath or ""
-        )

@@ -35,7 +35,8 @@ association_table = Table(
     Base.metadata,
     Column("project_report_id", ForeignKey(
         "project_report.id"), primary_key=True),
-    Column("user_report_id", ForeignKey("user_report.id"), primary_key=True),
+    Column("user_report_id", ForeignKey(
+        "user_report.id"), primary_key=True),
 )
 
 
@@ -107,7 +108,7 @@ class ProjectReportTable(Base):
         "UserReportTable",
         secondary=association_table,
         back_populates="project_reports",
-        cascade="save-update, merge",
+        cascade="save-update, merge"
     )
 
     project_name = mapped_column(String)
@@ -134,15 +135,18 @@ class UserReportTable(Base):
     '''
     __tablename__ = 'user_report'
 
+
     id = mapped_column(Integer, primary_key=True)
+
+    # name given by user, or name of zipped folder (default)
     title = mapped_column(String)
-    zipped_filepath = mapped_column(String)
+
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",
         secondary=association_table,
         back_populates="user_reports",
-        cascade="save-update, merge",
+        cascade="save-update, merge"
     )
 
 

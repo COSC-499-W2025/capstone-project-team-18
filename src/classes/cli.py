@@ -12,11 +12,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from src.app import start_miner
-from src.database.utils.database_access import (
-    get_user_report_by_title,
-    get_project_from_project_name,
-    get_user_report_by_zipped_filepath,
-)
+from sqlalchemy import select, delete
 
 
 def normalize_path(user_path: str) -> str:
@@ -232,7 +228,7 @@ class ArtifactMiner(cmd.Cmd):
             "(5) User Login (Name & Password)\n"
             "(6) Configure preferences\n"
             "(7) View current preferences\n"
-            "(8) Retrieve Resume Items\n"
+            "(8) Delete a Portfolio\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -407,7 +403,16 @@ class ArtifactMiner(cmd.Cmd):
         if ignored_files:
             print(f"Ignoring file types: {', '.join(ignored_files)}")
 
-        start_miner(self.project_filepath, self.user_email, prompt_for_title=True)
+        start_miner(self.project_filepath, self.user_email)
+
+        prompt = "\n Would you like to continue analyzing? (Y/N)"
+        answer = input(prompt).strip()
+
+        if answer in ['Y', 'y', 'Yes', 'yes']:
+            print("\n" + self.options)
+        else:
+            return self.do_exit(arg)
+
 
     def do_login(self, arg):
         '''Configure user login credentials'''
@@ -543,83 +548,132 @@ class ArtifactMiner(cmd.Cmd):
             # Invalid input
             print("Invalid input. Press '6' for preferences or 'back'/'cancel' to return.")
 
-    def do_resume_items(self, arg):
-        '''Retrieve resume items from a project or user report'''
-        self.update_history(self.cmd_history, "resume_items")
+    def do_portfolio_delete(self, arg):
+        '''Delete a previously generated portfolio/user report'''
+        self.update_history(self.cmd_history, "delete")
 
-        print("\n=== Retrieve Resume Items ===")
-        print("(1) Enter a ProjectReport name to regenerate its resume item")
-        print("(2) Enter a UserReport title to regenerate all its resume items")
-        print("(3) Use current stored filepath to find the matching UserReport (default)")
+        print("\n=== Delete Portfolio ===")
+        print("You can delete a portfolio by:")
+        print("  1. Select from list of existing portfolios")
+        print("  2. Enter portfolio name (or press Enter to use preferences)")
 
-        choice = input(
-            "\nSelect option (1-3), or press Enter for default: "
-        ).strip()
+        while True:
+            user_input = input("\nEnter your choice (1-2) or portfolio name (or 'back'/'cancel' to return): ").strip()
 
-        if choice.lower() in ['exit', 'quit']:
-            return self.do_exit(arg)
-
-        if self._handle_cancel_input(choice, "main"):
-            print("\n" + self.options)
-            return
-
-        if choice in ("1", "project"):
-            name = input(
-                "Enter the project name: (or 'back'/'cancel' to return): ").strip()
-            if self._handle_cancel_input(name, "main"):
-                print("\n" + self.options)
-                return
-            if name.lower() in ['exit', 'quit']:
+            # Handle exit/quit FIRST
+            if user_input.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
-            try:
-                pr = get_project_from_project_name(name)
-            except Exception:
-                print("No project report found with that name.")
-                print("\n" + self.options)
-                return
-            item = pr.generate_resume_item()
-            print("\n-------- Resume Item --------\n")
-            print(f"{item.title} : {item.start_date} - {item.end_date}")
-            for bullet in item.bullet_points:
-                print(f"   - {bullet}")
-            print("\n" + self.options)
-            return
 
-        if choice in ("2", "user", "userreport"):
-            title = input(
-                "Enter the UserReport title: (or 'back'/'cancel' to return): ").strip()
-            if self._handle_cancel_input(title, "main"):
+            # Handle cancel
+            if self._handle_cancel_input(user_input, "main"):
                 print("\n" + self.options)
                 return
-            if title.lower() in ['exit', 'quit']:
+
+            # Option 1: List existing portfolios
+            if user_input == "1":
+                selected_portfolio = self._list_and_select_portfolio()
+                if selected_portfolio is None:
+                    continue  # User cancelled or no portfolios found
+                user_input = selected_portfolio
+            # Option 2 or empty: use input as portfolio name or get from preferences
+            elif user_input == "2" or not user_input:
+                user_input = self.preferences.get_project_filepath()
+                if not user_input:
+                    print("No filepath in preferences. Please enter a portfolio name.")
+                    continue
+                # Extract portfolio name from filepath
+                from pathlib import Path
+                user_input = Path(user_input).stem
+                print(f"Using portfolio from preferences: {user_input}")
+            # Otherwise, user_input is the portfolio name
+
+            # Get portfolio info before deleting
+            from src.classes.report import UserReport
+            found, info = UserReport.get_portfolio_info(user_input)
+
+            if not found:
+                print(f"\n✗ Portfolio '{user_input}' not found in database")
+                retry = input("Try again? (Y/N): ").strip().lower()
+                if retry != 'y':
+                    break
+                continue
+
+            # Show what will be deleted
+            print(f"\nFound portfolio: {info['title']}")
+            print(f"Associated projects: {info['project_count']}")
+
+            # Confirm deletion
+            confirm = input("\nAre you sure you want to delete this portfolio? (Y/N): ").strip().lower()
+
+            # Handle exit/quit during confirmation
+            if confirm in ['exit', 'quit']:
                 return self.do_exit(arg)
-            try:
-                ur = get_user_report_by_title(title)
-            except Exception:
-                print("No user report found with that title.")
+
+            if confirm != 'y':
+                print("Deletion cancelled")
                 print("\n" + self.options)
                 return
-            print("\n-------- Resume --------\n")
-            print(ur.generate_resume())
+
+            # Perform deletion using database_modify function
+            success, message = UserReport.delete_portfolio(user_input)
+
+            if success:
+                print(f"\n✓ {message}")
+            else:
+                print(f"\n✗ {message}")
+                retry = input("Try again? (Y/N): ").strip().lower()
+                if retry != 'y':
+                    break
+                continue
+
             print("\n" + self.options)
             return
 
-        # Default: use stored filepath
-        path = self.preferences.get_project_filepath()
-        if not path:
-            print("No stored filepath found in preferences.")
-            print("\n" + self.options)
-            return
-        path = normalize_path(path)
-        try:
-            ur = get_user_report_by_zipped_filepath(path)
-        except Exception:
-            print("No user report found for the stored filepath.")
-            print("\n" + self.options)
-            return
-        print("\n-------- Resume --------\n")
-        print(ur.generate_resume())
-        print("\n" + self.options)
+    def _list_and_select_portfolio(self) -> Optional[str]:
+        """
+        List all existing portfolios and let user select one to delete.
+
+        Returns:
+            str: The title of selected portfolio, or None if cancelled
+        """
+        from src.classes.report import UserReport
+
+        portfolios = UserReport.list_all_portfolios()
+
+        if not portfolios:
+            print("\nNo portfolios found in database.")
+            return None
+
+        # Display portfolios
+        print("\n=== Existing Portfolios ===")
+        for idx, portfolio in enumerate(portfolios, 1):
+            print(f"({idx}) {portfolio['title']}")
+            print(f"    Projects: {portfolio['project_count']}")
+            print()
+
+        # Let user select
+        while True:
+            choice = input(f"Select portfolio (1-{len(portfolios)}), 'back'/'cancel' to return, or 'exit'/'quit' to close app: ").strip()
+
+            # Handle exit/quit FIRST
+            if choice.lower() in ['exit', 'quit']:
+                self.do_exit("")
+                return None
+
+            # Handle cancel
+            if choice.lower() in ['back', 'cancel']:
+                return None
+
+            # Validate selection
+            try:
+                idx = int(choice)
+                if 1 <= idx <= len(portfolios):
+                    selected = portfolios[idx - 1]
+                    return selected['title']
+                else:
+                    print(f"Please enter a number between 1 and {len(portfolios)}")
+            except ValueError:
+                print("Invalid input. Please enter a number, 'back', 'cancel', 'exit', or 'quit'.")
 
     def _configure_date_range(self):
         '''Configure date filtering for files'''
@@ -807,8 +861,8 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_preferences(arg)
                 case "view":
                     return self.do_view(arg)
-                case "resume_items":
-                    return self.do_resume_items(arg)
+                case "delete":
+                    return self.do_portfolio_delete(arg)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
@@ -888,7 +942,7 @@ class ArtifactMiner(cmd.Cmd):
             "5": self.do_login,
             "6": self.do_preferences,
             "7": self.do_view,
-            "8": self.do_resume_items,
+            "8": self.do_portfolio_delete,
         }
 
         # Make commands case-insensitive

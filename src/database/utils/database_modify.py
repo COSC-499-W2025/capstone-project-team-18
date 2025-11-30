@@ -30,10 +30,8 @@ def create_row(report: FileReport | ProjectReport | UserReport):
             row.project_name = report.project_name
     elif isinstance(report, UserReport):
         row = UserReportTable()
-        if getattr(report, "title", None):
-            row.title = report.title  # type: ignore[assignment]
-        if getattr(report, "zipped_filepath", None):
-            row.zipped_filepath = report.zipped_filepath  # type: ignore[assignment]
+        if report.report_name:
+            row.title = report.report_name
     else:
         raise ValueError(f"Unknown report type: {type(report)}")
 
