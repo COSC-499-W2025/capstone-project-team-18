@@ -30,6 +30,16 @@ def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
         if hasattr(row, column_name):
             value = getattr(row, column_name)
             if value is not None:
+                # Rebuild CodingLanguage enums for stored ratios
+                if column_name == 'coding_language_ratio':
+                    lang_ratios: dict[CodingLanguage, float] = {}
+                    for key, val in value.items():
+                        for lang in CodingLanguage:
+                            if lang.value[0].lower() == str(key).lower():
+                                lang_ratios[lang] = val
+                                break
+                    value = lang_ratios
+
                 statistics.add(Statistic(stat_template.value, value))
 
     name = row.project_name or "Unknown Project"

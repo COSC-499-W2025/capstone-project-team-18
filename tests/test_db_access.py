@@ -13,11 +13,11 @@ import random
 
 from pathlib import Path
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
 from src.database.db import Base, ProjectReportTable, FileReportTable, UserReportTable
-from src.database.utils.database_access import get_project_from_project_name, get_user_report
+from src.database.utils.database_access import get_project_from_project_name, get_user_report, _project_report_from_row
 from src.database.utils.database_modify import rename_user_report
 from src.classes.statistic import (
     FileStatCollection,
@@ -288,3 +288,31 @@ def test_rename_user_report_conflict(temp_db):
     ok, msg = rename_user_report("test_user_report", "existing_portfolio", temp_db)
     assert ok is False
     assert "already exists" in msg
+
+
+def test_project_report_from_row_rebuilds_coding_language_ratio(tmp_path):
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        proj = ProjectReportTable(
+            project_name="proj",
+            coding_language_ratio={"Python": 0.6, "Java": 0.4}
+        )
+        file_row = FileReportTable(
+            filepath="a.py",
+            lines_in_file=1,
+            date_created=datetime.datetime.now(),
+            date_modified=datetime.datetime.now(),
+            file_size_bytes=1
+        )
+        proj.file_reports.append(file_row)  # type: ignore
+        session.add(proj)
+        session.commit()
+
+        row = session.execute(select(ProjectReportTable)).scalar_one()
+        pr = _project_report_from_row(row, engine)
+        ratio = pr.get_value(ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
+
+        assert ratio.get(CodingLanguage.PYTHON) == 0.6
+        assert ratio.get(CodingLanguage.JAVA) == 0.4

@@ -241,6 +241,28 @@ def test_do_portfolio_retrieve_uses_preferences_when_blank(cli):
         mock_get.assert_called_once_with("last")
 
 
+def test_do_portfolio_retrieve_option_two_prompts_for_name(cli):
+    """Entering '2' should prompt for a portfolio name and use it."""
+    mock_report = type("Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
+    with patch('builtins.input', side_effect=['2', 'my-portfolio']), \
+            patch('src.classes.cli.print'), \
+            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
+        cli.do_portfolio_retrieve("")
+        mock_get.assert_called_once_with("my-portfolio")
+
+
+def test_do_portfolio_retrieve_option_two_blank_uses_last(cli):
+    """Entering '2' then blank should fall back to last analyzed name."""
+    cli.preferences.get.return_value = ""  # no last_portfolio_title
+    cli.preferences.get_project_filepath.return_value = "/tmp/last.zip"
+    mock_report = type("Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
+    with patch('builtins.input', side_effect=['2', '']), \
+            patch('src.classes.cli.print'), \
+            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
+        cli.do_portfolio_retrieve("")
+        mock_get.assert_called_once_with("last")
+
+
 def test_do_perms_user_cancels(cli):
     """Test permissions flow when user cancels with 'back'."""
     with patch('builtins.input', return_value='back'), \

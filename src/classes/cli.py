@@ -691,6 +691,29 @@ class ArtifactMiner(cmd.Cmd):
                 if selected is None:
                     continue
                 portfolio_name = selected
+            elif user_input == "2":
+                portfolio_name = input("Enter portfolio name: ").strip()
+
+                if portfolio_name.lower() in ['exit', 'quit']:
+                    return self.do_exit(arg)
+
+                if self._handle_cancel_input(portfolio_name, "main"):
+                    print("\n" + self.options)
+                    return
+
+                if not portfolio_name:
+                    # Fall back to last analyzed just like blank input
+                    last_title = self.preferences.get("last_portfolio_title", "")
+                    if last_title:
+                        portfolio_name = last_title
+                        print(f"Using last analyzed portfolio: {portfolio_name}")
+                    else:
+                        pref_path = self.preferences.get_project_filepath()
+                        if not pref_path:
+                            print("Portfolio name cannot be empty.")
+                            continue
+                        portfolio_name = Path(pref_path).stem
+                        print(f"Using last analyzed portfolio: {portfolio_name}")
             elif user_input == "":
                 # Try last stored portfolio title first (honors renames)
                 last_title = self.preferences.get("last_portfolio_title", "")
