@@ -3,15 +3,13 @@ Reports hold statistics.
 """
 from typing import Any, Optional
 from pathlib import Path
-import tempfile
-import shutil
-import zipfile
 from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
 from git import NoSuchPathError, Repo, InvalidGitRepositoryError
-from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
+from src.classes.resume.bullet_point_builder import BulletPointBuilder
+from src.classes.resume.resume import Resume, ResumeItem
 
 
 class BaseReport:
@@ -83,6 +81,8 @@ class ProjectReport(BaseReport):
     in a FileReport to create a project level statistics
     of "total lines written."
     """
+
+    bullet_builder = BulletPointBuilder()
 
     def get_project_weight(self) -> float:
         """
@@ -275,7 +275,7 @@ class ProjectReport(BaseReport):
         end_date = self.get_value(
             ProjectStatCollection.PROJECT_END_DATE.value)
 
-        bullet_points = bullet_point_builder(self)
+        bullet_points = self.bullet_builder.build(self)
 
         return ResumeItem(
             title=self.project_name,
@@ -315,10 +315,12 @@ class ProjectReport(BaseReport):
                 continue
 
             # Use file-level statistics instead of os.path.getsize
-            file_size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
+            file_size = report.get_value(
+                FileStatCollection.FILE_SIZE_BYTES.value)
             if file_size is None:
                 # Fallback to line count if bytes not available
-                file_size = report.get_value(FileStatCollection.LINES_IN_FILE.value)
+                file_size = report.get_value(
+                    FileStatCollection.LINES_IN_FILE.value)
             if file_size is None:
                 # Last resort: count as 1 byte
                 file_size = 1
@@ -557,9 +559,11 @@ class UserReport(BaseReport):
             # Skip if project was created via from_statistics (no file_reports)
             if hasattr(proj_report, 'file_reports') and proj_report.file_reports is not None:
                 for file_report in proj_report.file_reports:
-                    file_size = file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
+                    file_size = file_report.get_value(
+                        FileStatCollection.FILE_SIZE_BYTES.value)
                     if file_size is None:
-                        file_size = file_report.get_value(FileStatCollection.LINES_IN_FILE.value)
+                        file_size = file_report.get_value(
+                            FileStatCollection.LINES_IN_FILE.value)
                     if file_size is None:
                         file_size = 1
                     proj_total_bytes += file_size
