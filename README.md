@@ -247,6 +247,7 @@ If a repeated issue is severe enough, the rest of the team may discuss executing
 **Erem Ozdemir**
 
 **Sam Sikora**
+- Sam Sikora, 11-29-2025
 
 **Alex Taschuk**
 - Alex Taschuk, 11-29-2025
