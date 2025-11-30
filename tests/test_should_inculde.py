@@ -6,7 +6,7 @@ in the Analyzer class
 import pytest
 from src.classes.analyzer import get_appropriate_analyzer
 from pathlib import Path
-from src.utils.project_discovery import ProjectFiles
+from src.utils.project_discovery.project_discovery import ProjectFiles
 
 
 def test_should_include_file_not_in_git_repo(project_no_git_dir: ProjectFiles):

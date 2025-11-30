@@ -11,7 +11,8 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from src.utils.zipped_utils import unzip_file
-from src.utils.project_discovery import discover_projects
+from src.utils.project_discovery.project_discovery import discover_projects
+from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
 
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
@@ -86,15 +87,11 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.add_all([user_row])  # type: ignore
         session.commit()
 
-    print("-------- Analysis Reports --------\n")
+    # Print the resume items
+    resume_CLI_stringify(user_report)
 
-    print("-------- Resume --------\n")
-    print(user_report.generate_resume())
-    print("------------------------\n")
-
-    print("-------- Portfolio --------\n")
-    print(user_report.to_user_readable_string())
-    print("\n-------------------------\n")
+    # Print the portfolio item
+    portfolio_CLI_stringify(user_report)
 
 
 if __name__ == '__main__':
