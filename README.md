@@ -168,7 +168,9 @@ In addition to weekly in-person meetings, we frequently communicate in a group c
 
 #### Collaboration Process
 
-Each member of the team is expected to put an equal amount of effort and work towards the project.
+Each member of the team is expected to put an equal amount of effort and work towards the project. We understand that individual workload outside of this course may vary from person to person throughout the semester, and that the complexity of tasks for the project will vary. Given this, it is expected that on a semester-long timeline, each member is contributing a "fair" amount to the project (i.e., they are not assigning themselves only easy tasks, or on the contrary, assigning themselves too many tasks, leaving very little for the others).
+
+If at any point during the semester is there be a period of time (1-2 weeks) where a member is overloaded with work and will not have the bandwidth to contribute as much as the others, they should communicate this with the other members to ensure that the team's workload allocation takes this into consideration so as to minimize the amount of progress that is slowed down during that time.
 
 PRs are expected to be thorough but concise. Before any PR is merged to a parent branch, two teammates are assigned to review the code and leave thoughts, comments, suggestions, etc., which may require the PR's author to fix some code in the PR. If this requires a larger team discussion, it should be set aside for the next in-person meeting, if necessary.
 
