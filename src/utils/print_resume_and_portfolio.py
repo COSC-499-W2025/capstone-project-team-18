@@ -2,8 +2,11 @@
 This file contains functions to format and print the
 resume items and portfolio
 '''
-from src.classes.report import ProjectReport, UserReport
 from src.classes.resume import Resume
+from src.classes.report import ProjectReport, UserReport
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def resume_CLI_stringify(user_report: UserReport):
@@ -30,12 +33,15 @@ def resume_CLI_stringify(user_report: UserReport):
     ```
     '''
     resume = user_report.generate_resume()
-    resume_header_len = len(
-        f'{resume.items[0].title} : {resume.items[0].start_date} - {resume.items[0].end_date}')
-    header_line = "Resume".center(resume_header_len, '-')
+    try:
+        resume_header_len = len(
+            f'{resume.items[0].title} : {resume.items[0].start_date} - {resume.items[0].end_date}')
+        header_line = "Resume".center(resume_header_len, '-')
 
-    print(header_line)
-    print(f'{resume}{'-' * len(header_line)}\n')
+        print(header_line)
+        print(f'{resume}{'-' * len(header_line)}\n')
+    except IndexError:
+        logging.error(f'`resume.items[0]` is not a valid index')
 
 
 def portfolio_CLI_stringify(user_report: UserReport):
@@ -54,8 +60,13 @@ def portfolio_CLI_stringify(user_report: UserReport):
     ```
     '''
     portfolio = user_report.to_user_readable_string()
-    portfolio_header_len = len(portfolio.split('\n')[0])
-    header_line = "Portfolio".center(portfolio_header_len, '-')
+
+    if "\n" in portfolio:
+        portfolio_header_len = len(portfolio.split('\n')[0])
+        header_line = "Portfolio".center(portfolio_header_len, '-')
+    else:
+        # default to 20 if no portfolio is found
+        header_line = "Portfolio".center(20, '-')
 
     print(header_line)
     print(portfolio)
