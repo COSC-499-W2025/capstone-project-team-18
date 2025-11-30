@@ -150,38 +150,29 @@ class ProjectReport(BaseReport):
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
         self.project_path = project_path or "Unknown Path"
+        self.project_repo = project_repo
         self.email = user_email
 
-        if statistics is None:
-            self.project_statistics = StatisticIndex()
-            self.project_repo = project_repo
-            # Initialize project_repo from project_path if not provided
-            if project_repo is not None:
-                self.project_repo = project_repo
-            elif project_path is not None:
-                from os.path import exists
-                if not exists(project_path):
-                    raise FileNotFoundError(
-                        f"Project path does not exist: {project_path}")
-                try:
-                    self.project_repo = Repo(project_path)
-                except (InvalidGitRepositoryError, NoSuchPathError):
-                    self.project_repo = None
-            else:
-                self.project_repo = None
-            # Aggregate statistics from file reports
-            self._determine_start_end_dates()
-            self._find_coding_languages_ratio()
-            self._calculate_ari_score()
-            self._weighted_skills()
-            self._activity_type_contributions()
+        self.project_statistics = StatisticIndex()
 
-            if user_email:
-                self._analyze_git_authorship(user_email)
-                if self.project_repo:
-                    self._total_contribution_percentage()
-        else:
+        # In this case, we are loading from the database and we are explicitly
+        # given statistics. We load those stats in, and move on
+        if statistics is not None:
             self.project_statistics = statistics
+            super().__init__(self.project_statistics)
+            return
+
+        # Aggregate statistics from file reports
+        self._determine_start_end_dates()
+        self._find_coding_languages_ratio()
+        self._calculate_ari_score()
+        self._weighted_skills()
+        self._activity_type_contributions()
+
+        if self.email:
+            self._analyze_git_authorship()
+            if self.project_repo:
+                self._total_contribution_percentage()
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
@@ -486,9 +477,12 @@ class ProjectReport(BaseReport):
         inst.file_reports = []
         return inst
 
-    def _analyze_git_authorship(self, user_email: Optional[str] = None) -> None:
+    def _analyze_git_authorship(self) -> None:
         """
         Analyzes Git commit history to determine authorship statistics.
+        This function uses self.email to calculate the user's commit percentage.
+        If self.email is not set, this function should not run as we don't have
+        the consent of the user.
 
         Creates the following project level statistics:
         - IS_GROUP_PROJECT: Boolean indicating if multiple authors contributed
@@ -496,12 +490,10 @@ class ProjectReport(BaseReport):
         - AUTHORS_PER_FILE: Dictionary mapping file paths to number of unique authors
         - USER_COMMIT_PERCENTAGE: Percentage of commits made by the user (if applicable)
 
-        Args:
-            user_email: Optional email of the user to calculate their commit percentage
         """
 
         if self.project_repo is None:
-            return None
+            return
 
         repo = self.project_repo
 
@@ -524,9 +516,9 @@ class ProjectReport(BaseReport):
 
         # Calculate user's commit percentage if project has multiple authors
         user_commit_percentage = None
-        if total_authors > 1 and user_email:
+        if total_authors > 1 and self.email:
             user_commits = commit_count_by_author.get(
-                user_email, 0)
+                self.email, 0)
             if total_commits > 0:
                 user_commit_percentage = (
                     user_commits / total_commits) * 100

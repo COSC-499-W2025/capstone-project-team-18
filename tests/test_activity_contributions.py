@@ -67,6 +67,7 @@ def test_activity_contribution_from_git_project(project_realistic):
         file_reports=frs,
         project_path=project_realistic.root_path,
         project_name=project_realistic.name,
+        project_repo=project_realistic.repo,
         user_email=my_email
     )
 
