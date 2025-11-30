@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from src.utils.zipped_utils import unzip_file
 from src.utils.project_discovery.project_discovery import discover_projects
+from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
 
@@ -85,22 +86,11 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.add_all([user_row])  # type: ignore
         session.commit()
 
-    # Format to print everything nicely
-    resume = user_report.generate_resume()
-    resume_header_len = len(
-        f'{resume.items[0].title} : {resume.items[0].start_date} - {resume.items[0].end_date}')
-    header_line = "Resume".center(resume_header_len, '-')
+    # Print the resume items
+    resume_CLI_stringify(user_report)
 
-    print(header_line)
-    print(f'{resume}{'-' * len(header_line)}\n')
-
-    portfolio = user_report.to_user_readable_string()
-    portfolio_header_len = len(portfolio.split('\n')[0])
-    header_line = "Portfolio".center(portfolio_header_len, '-')
-
-    print(header_line)
-    print(portfolio)
-    print('-' * len(header_line))
+    # Print the portfolio item
+    portfolio_CLI_stringify(user_report)
 
 
 if __name__ == '__main__':
