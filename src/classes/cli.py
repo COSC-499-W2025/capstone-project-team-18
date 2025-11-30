@@ -762,8 +762,13 @@ class ArtifactMiner(cmd.Cmd):
         '''
         self.update_history(self.cmd_history, "email")
 
+        # Show current email if exists
+        current_email = self.preferences.get('user_email')
+        if current_email:
+            print(f"Current email: {current_email}\n")
+
         prompt = "By providing your email, you give consent for the application to analyze all information stored by Git. \n" \
-            "If you don't wish to consent, enter 'back' / 'cancel' to return" \
+            "If you don't wish to consent, enter 'x' to revoke permissions\n" \
             "Enter the email you use for your Git/GitHub account: "
         answer = input(prompt).strip()
 
@@ -785,12 +790,20 @@ class ArtifactMiner(cmd.Cmd):
                 print("\n" + self.options)
                 return  # Return to main menu
 
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
         # Process the email
-        self.user_email = answer
-        # Save email to preferences
-        success = self.preferences.update_user_email(answer)
-        print("\nEmail successfully received and saved to preferences")
-        print(self.user_email)
+        if (answer.lower() == 'x'):
+            self.user_email = ''
+            success = self.preferences.update_user_email('')
+            print("\nEmail successfully revoked and saved to preferences")
+        else:
+            self.user_email = answer
+            # Save email to preferences
+            success = self.preferences.update_user_email(answer)
+            print("\nEmail successfully received and saved to preferences")
+            print(self.user_email)
         if not success:
             print("Warning: Failed to save email to preferences file.")
         print("\n" + self.options)
@@ -798,7 +811,7 @@ class ArtifactMiner(cmd.Cmd):
     def is_valid_email(self, email: str) -> bool:
         """Email validation helper method."""
         EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        return bool(re.match(EMAIL_REGEX, email))
+        return bool(re.match(EMAIL_REGEX, email) or email.lower() == 'x')
 
     def default(self, line):
         '''
