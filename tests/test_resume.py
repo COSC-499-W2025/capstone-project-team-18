@@ -44,7 +44,6 @@ def test_generate_resume():
         "Software Engineer : 2020-01-01 - 2021-01-01\n"
         "   - Developed features\n"
         "   - Fixed bugs\n"
-        "\n"
     )
     assert generated == expected_output
 

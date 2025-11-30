@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from git import Repo
 import os
-from src.utils.project_discovery import ProjectFiles, discover_projects
+from src.utils.project_discovery.project_discovery import ProjectFiles, discover_projects
 
 """
 When pytest runs, we consider capstone-project-team-18

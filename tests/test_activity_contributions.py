@@ -1,6 +1,6 @@
 from pytest import approx
 from src.classes.report import ProjectReport
-from src.utils.project_discovery import ProjectFiles
+from src.utils.project_discovery.project_discovery import ProjectFiles
 from src.classes.analyzer import extract_file_reports
 from src.classes.statistic import ProjectStatCollection, FileDomain
 from conftest import _make_project_file

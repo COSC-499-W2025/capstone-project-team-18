@@ -13,7 +13,7 @@ import logging
 import re
 from typing import Optional, Any
 import ast
-from src.utils.project_discovery import ProjectFiles
+from src.utils.project_discovery.project_discovery import ProjectFiles
 from charset_normalizer import from_path
 from git import GitCommandError, Repo, InvalidGitRepositoryError
 import tinycss2
@@ -106,8 +106,9 @@ class BaseFileAnalyzer:
             return False
 
         try:
+            # Use repo-relative path for blame - GitPython expects a path
+            # relative to the repository working tree, not an absolute path
             self.blame_info = self.repo.blame('HEAD', self.relative_path)
-
             return True
         except (ValueError, GitCommandError, Exception) as e:
             logger.debug(
