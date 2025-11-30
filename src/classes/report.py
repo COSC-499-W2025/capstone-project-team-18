@@ -448,8 +448,6 @@ class UserReport(BaseReport):
         self.resume_items = [report.generate_resume_item()
                              for report in ranked_project_reports]
 
-        # self.resume_items = [report.generate_resume_item()
-        #                     for report in project_reports]
         self.project_reports = project_reports or []
 
         # Build list of user-level statistics
