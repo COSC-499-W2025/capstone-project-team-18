@@ -18,6 +18,7 @@ from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
 from src.database.db import Base, ProjectReportTable, FileReportTable, UserReportTable
 from src.database.utils.database_access import get_project_from_project_name, get_user_report
+from src.database.utils.database_modify import rename_user_report
 from src.classes.statistic import (
     FileStatCollection,
     ProjectStatCollection,
@@ -266,3 +267,24 @@ def test_get_user_from_name_success(temp_db):
         assert pr.get_value(
             ProjectStatCollection.IS_GROUP_PROJECT.value) is not None
         assert pr.project_name == "Project1" or pr.project_name == "Project2"
+
+
+def test_rename_user_report_success(temp_db):
+    ok, msg = rename_user_report("test_user_report", "renamed_portfolio", temp_db)
+    assert ok is True
+    assert "renamed_portfolio" in msg
+
+    renamed = get_user_report("renamed_portfolio", temp_db)
+    assert renamed.report_name == "renamed_portfolio"
+
+
+def test_rename_user_report_conflict(temp_db):
+    from src.database.db import UserReportTable
+
+    with Session(temp_db) as session:
+        session.add(UserReportTable(title="existing_portfolio"))
+        session.commit()
+
+    ok, msg = rename_user_report("test_user_report", "existing_portfolio", temp_db)
+    assert ok is False
+    assert "already exists" in msg
