@@ -32,7 +32,7 @@ def test_generate_resume():
     resume.add_item(item)
     generated = str(resume)
     expected_output = (
-        "Software Engineer : 2020-01-01 - 2021-01-01\n"
+        "Software Engineer : January, 2020 - January, 2021\n"
         "   - Developed features\n"
         "   - Fixed bugs\n"
     )

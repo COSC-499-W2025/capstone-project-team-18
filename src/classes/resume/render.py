@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.classes.resume.resume import Resume
+    from src.classes.resume.resume import Resume, ResumeItem
 
 
 class ResumeRender(ABC):
@@ -11,39 +11,148 @@ class ResumeRender(ABC):
     def render(self, resume: Resume) -> str: ...
 
 
-class ResumeLatexRenderer(ResumeRender):
-    def render(self, resume: Resume) -> str:
-        tex = [
-            r"\documentclass{article}",
-            r"\usepackage[margin=1in]{geometry}",
-            r"\begin{document}",
-            r"\section*{Experience}"
-        ]
-
-        for item in resume.items:
-            tex.append(rf"\subsection*{{{item.title}}}")
-            tex.append(rf"\textit{{{item.start_date} -- {item.end_date}}}\\")
-            tex.append(r"\begin{itemize}")
-            for b in item.bullet_points:
-                tex.append(rf"\item {b}")
-            tex.append(r"\end{itemize}")
-
-        if resume.skills:
-            tex.append(r"\section*{Skills}")
-            tex.append(", ".join(resume.skills))
-
-        tex.append(r"\end{document}")
-        return "\n".join(tex)
-
-
 class TextResumeRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         to_return = ""
 
         for item in resume.items:
-            to_return += f"{item.title} : {item.start_date} - {item.end_date}\n"
+            to_return += f"{item.title} : {item.start_date.strftime("%B, %Y")} - {item.end_date.strftime("%B, %Y")}\n"
             for bullet in item.bullet_points:
                 to_return += f"   - {bullet}\n"
             to_return += "\n"
 
         return to_return
+
+
+LATEX_SPECIAL_CHARS = {
+    "&": r"\&",
+    "%": r"\%",
+    "$": r"\$",
+    "#": r"\#",
+    "_": r"\_",
+    "{": r"\{",
+    "}": r"\}",
+    "~": r"\textasciitilde{}",
+    "^": r"\textasciicircum{}",
+    "\\": r"\textbackslash{}",
+}
+
+
+def latex_escape(text: str) -> str:
+    return "".join(LATEX_SPECIAL_CHARS.get(c, c) for c in text)
+
+
+# --- Renderer ---
+class ResumeLatexRenderer(ResumeRender):
+    """
+    Generates a stable LaTeX resume using the Jake Gutierrez template.
+    """
+
+    prefix = r"""
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+% Formatting
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Clean margins
+\usepackage[margin=0.7in]{geometry}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Section formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\pdfgentounicode=1
+
+% --- Custom Commands ---
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+"""
+
+    def render(self, resume: Resume) -> str:
+        tex = [self.prefix, r"\begin{document}"]
+
+        # Header
+        tex.extend([
+            r"\begin{center}",
+            rf"\textbf{{\Huge \scshape Your Name}}\\[2pt]",
+            r"\end{center}",
+            "",
+        ])
+
+        # Projects
+        tex.append(r"\section{Projects}")
+        tex.append(r"\resumeSubHeadingListStart")
+
+        for item in resume.items:
+            title = latex_escape(item.title)
+            date = f"{item.start_date.strftime("%B, %Y")} -- {item.end_date.strftime("%B, %Y")}"
+
+            tex.append(
+                rf"\resumeProjectHeading"
+                rf"{{\textbf{{{title}}}}}"
+                rf"{{{date}}}"
+            )
+
+            tex.append(r"\resumeItemListStart")
+            for b in item.bullet_points:
+                tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+            tex.append(r"\resumeItemListEnd")
+
+        tex.append(r"\resumeSubHeadingListEnd")
+        tex.append("")
+
+        # Skills
+        if resume.skills:
+            skills = ", ".join(latex_escape(s) for s in resume.skills)
+            tex.append(r"\section{Technical Skills}")
+            tex.append(r"\begin{itemize}[leftmargin=0.15in, label={}]")
+            tex.append(rf"  \item {{{skills}}}")
+            tex.append(r"\end{itemize}")
+
+        tex.append(r"\end{document}")
+
+        return "\n".join(tex)
