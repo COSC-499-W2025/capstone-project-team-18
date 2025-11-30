@@ -430,6 +430,7 @@ class ProjectReport(BaseReport):
         inst = cls.__new__(cls)
         BaseReport.__init__(inst, statistics)
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
+        inst.file_reports = []
         return inst
 
     def _analyze_git_authorship(self, user_email: Optional[str] = None) -> None:
@@ -527,8 +528,13 @@ class UserReport(BaseReport):
             report_name (str): By default, the name of the zipped directory. Can be overwritten by user input
         """
 
-        self.resume_items = [project_reports.generate_resume_item()
-                             for project_reports in project_reports]
+        # rank the project reports according to their weights
+        ranked_project_reports = sorted(
+            project_reports, key=lambda p: p.get_project_weight(), reverse=True)
+
+        self.resume_items = [report.generate_resume_item()
+                             for report in ranked_project_reports]
+
         self.project_reports = project_reports or []
         self.report_name = report_name
         self.user_stats = StatisticIndex()  # list of user-level statistics
