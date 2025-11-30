@@ -296,13 +296,34 @@ def test_unkown_coding_language(tmp_path):
     assert report.get_value(FileStatCollection.CODING_LANGUAGE.value) == None
 
 
+def test_file_domain_is_not_test(tmp_path):
+    """
+    Test that the test domain doesn't pick up on
+    things with test simply in the name
+    """
+
+    filenames = ["intestine_analysis.py",
+                 "testsaver.java", "protest_action.ts",
+                 "latest_testresults.py", "unit_testdata_loader.py"]
+
+    for filename in filenames:
+        file = _create_temp_file(
+            filename, "print('Hello, world!')", path=tmp_path)
+
+        report = CodeFileAnalyzer(file[0], file[1]).analyze()
+
+        assert report.get_value(
+            FileStatCollection.TYPE_OF_FILE.value) == FileDomain.CODE
+
+
 def test_file_domain_is_test_by_filename(tmp_path):
     """
     Test if a coding file starts with test_ or
     has _test in the name it is a test file
     """
 
-    filenames = ["test_example.py", "example_test.py", "hello_test_example"]
+    filenames = ["test_example.py", "example_test.py", "hello_test_example",
+                 "sam_testing.py", "utils.test.py", "api-test-get-requests.js"]
 
     for filename in filenames:
         file = _create_temp_file(

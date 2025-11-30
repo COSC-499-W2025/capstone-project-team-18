@@ -4,6 +4,7 @@ a file and generate a report with statistics.
 """
 import os
 import time
+import re
 from .report import FileReport
 from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage, FileStatisticTemplate
 import datetime
@@ -382,12 +383,15 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         the test keyword
         """
 
+        TEST_FILE_REGEX = re.compile(
+            r"(?:^|[\W_])(test|tests|spec|specs|testing)(?:[\W_]|$)", re.IGNORECASE)
+
         fd = FileDomain.CODE
 
         path = Path(self.filepath)
         name = path.name.lower()
 
-        if name.startswith("test_") or "_test" in name:
+        if TEST_FILE_REGEX.search(name):
             fd = FileDomain.TEST
 
         directory_test_keywords = {"test", "tests", "spec"}
