@@ -85,15 +85,22 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.add_all([user_row])  # type: ignore
         session.commit()
 
-    print("-------- Analysis Reports --------\n")
+    # Format to print everything nicely
+    resume = user_report.generate_resume()
+    resume_header_len = len(
+        f'{resume.items[0].title} : {resume.items[0].start_date} - {resume.items[0].end_date}')
+    header_line = "Resume".center(resume_header_len, '-')
 
-    print("-------- Resume --------\n")
-    print(user_report.generate_resume())
-    print("------------------------\n")
+    print(header_line)
+    print(f'\n{resume}{'-' * len(header_line)}\n')
 
-    print("-------- Portfolio --------\n")
-    print(user_report.to_user_readable_string())
-    print("\n-------------------------\n")
+    portfolio = user_report.to_user_readable_string()
+    portfolio_header_len = len(portfolio.split('\n')[0])
+    header_line = "Portfolio".center(portfolio_header_len, '-')
+
+    print(header_line)
+    print(portfolio)
+    print('-' * len(header_line))
 
 
 if __name__ == '__main__':
