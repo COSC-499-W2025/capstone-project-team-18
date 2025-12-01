@@ -4,6 +4,7 @@ a file and generate a report with statistics.
 """
 import os
 import time
+import re
 from .report import FileReport
 from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage, FileStatisticTemplate
 import datetime
@@ -332,20 +333,40 @@ class CodeFileAnalyzer(TextFileAnalyzer):
     def _process(self) -> None:
         super()._process()
 
-        stats = [
-            Statistic(FileStatCollection.TYPE_OF_FILE.value,
-                      FileDomain.CODE),
-        ]
-
         file_commit_percentage = self._get_file_commit_percentage()
 
         if file_commit_percentage is not None:
-            stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
-                                   file_commit_percentage))
+            self.stats.add(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                                     file_commit_percentage))
 
-        self.stats.extend(stats)
-
+        self._determine_file_domain()
         self._find_coding_language()
+
+    def _determine_file_domain(self) -> None:
+        """
+        Checks to see if the code is a test file or rather
+        just a plain code file.
+
+        It checks the filename and directory and looks for
+        the test keyword
+        """
+
+        TEST_FILE_REGEX = re.compile(
+            r"(?:^|[\W_])(test|tests|spec|specs|testing)(?:[\W_]|$)", re.IGNORECASE)
+
+        fd = FileDomain.CODE
+
+        path = Path(self.filepath)
+        name = path.name.lower()
+
+        if TEST_FILE_REGEX.search(name):
+            fd = FileDomain.TEST
+
+        directory_test_keywords = {"test", "tests", "spec"}
+        if directory_test_keywords & {p.lower() for p in path.parts}:
+            fd = FileDomain.TEST
+
+        self.stats.add(Statistic(FileStatCollection.TYPE_OF_FILE.value, fd))
 
     def _find_coding_language(self) -> None:
         """
