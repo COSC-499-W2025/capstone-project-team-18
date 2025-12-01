@@ -7,14 +7,19 @@ from typing import Optional
 from src.classes.resume import Resume
 =======
 from src.classes.resume.resume import Resume
+<<<<<<< HEAD
 >>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
 from src.classes.report import ProjectReport, UserReport
+=======
+from src.classes.report import UserReport
+
+>>>>>>> 3fdfc34 (Removed duplicated resume processing)
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def resume_CLI_stringify(user_report: UserReport, email: Optional[str]):
+def resume_CLI_stringify(resume: Resume):
     '''
     Given a `UserReport` object, print generate the
     resume items of the report and print them to
@@ -37,7 +42,7 @@ def resume_CLI_stringify(user_report: UserReport, email: Optional[str]):
     ------------------------------------------------------------
     ```
     '''
-    resume = user_report.generate_resume(email)
+
     try:
         resume_header_len = len(
             f'{resume.items[0].title} : {resume.items[0].start_date} - {resume.items[0].end_date}')
