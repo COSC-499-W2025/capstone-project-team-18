@@ -233,6 +233,7 @@ class ArtifactMiner(cmd.Cmd):
             "(7) View current preferences\n"
             "(8) Delete a Portfolio\n"
             "(9) Retrieve a Portfolio\n"
+            "(10) Get resume bullet point\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -1093,6 +1094,7 @@ class ArtifactMiner(cmd.Cmd):
             "7": self.do_view,
             "8": self.do_portfolio_delete,
             "9": self.do_portfolio_retrieve,
+            "10": self.do_resume_bullet_point,
         }
 
         # Make commands case-insensitive
