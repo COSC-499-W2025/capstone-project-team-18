@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from src.app import start_miner
 from sqlalchemy import select, delete
+from src.database.utils.database_modify import rename_user_report
 
 
 def normalize_path(user_path: str) -> str:
@@ -231,6 +232,7 @@ class ArtifactMiner(cmd.Cmd):
             "(6) Configure preferences\n"
             "(7) View current preferences\n"
             "(8) Delete a Portfolio\n"
+            "(9) Retrieve a Portfolio\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -407,6 +409,7 @@ class ArtifactMiner(cmd.Cmd):
             print(f"Ignoring file types: {', '.join(ignored_files)}")
 
         start_miner(self.project_filepath, self.user_email)
+        self._prompt_portfolio_name()
 
         prompt = "\n Would you like to continue analyzing? (Y/N)"
         answer = input(prompt).strip()
@@ -416,6 +419,36 @@ class ArtifactMiner(cmd.Cmd):
         else:
             return self.do_exit(arg)
 
+    def _prompt_portfolio_name(self):
+        """
+        Prompt the user to optionally rename the most recently created portfolio.
+        Keeps the existing name (zipped folder stem) if left blank.
+        """
+        if not self.project_filepath:
+            return
+
+        default_title = Path(self.project_filepath).stem
+        prompt = f"Enter a name for your portfolio (leave blank to keep '{default_title}'): "
+        new_title = input(prompt).strip()
+
+        if new_title.lower() in ['exit', 'quit']:
+            return self.do_exit("")
+
+        if self._handle_cancel_input(new_title, "main"):
+            print("\n" + self.options)
+            return
+
+        if not new_title:
+            print(f"Keeping existing portfolio name '{default_title}'")
+            # Track last portfolio title for retrieval
+            if hasattr(self.preferences, "update") and callable(getattr(self.preferences, "update", None)):
+                self.preferences.update("last_portfolio_title", default_title)
+            return
+
+        success, message = rename_user_report(default_title, new_title)
+        print(message)
+        if success and hasattr(self.preferences, "update") and callable(getattr(self.preferences, "update", None)):
+            self.preferences.update("last_portfolio_title", new_title)
 
     def do_login(self, arg):
         '''Configure user login credentials'''
@@ -564,7 +597,8 @@ class ArtifactMiner(cmd.Cmd):
         print("  2. Enter portfolio name (or press Enter to use preferences)")
 
         while True:
-            user_input = input("\nEnter your choice (1-2) or portfolio name (or 'back'/'cancel' to return): ").strip()
+            user_input = input(
+                "\nEnter your choice (1-2) or portfolio name (or 'back'/'cancel' to return): ").strip()
 
             # Handle exit/quit FIRST
             if user_input.lower() in ['exit', 'quit']:
@@ -609,7 +643,8 @@ class ArtifactMiner(cmd.Cmd):
             print(f"Associated projects: {info['project_count']}")
 
             # Confirm deletion
-            confirm = input("\nAre you sure you want to delete this portfolio? (Y/N): ").strip().lower()
+            confirm = input(
+                "\nAre you sure you want to delete this portfolio? (Y/N): ").strip().lower()
 
             # Handle exit/quit during confirmation
             if confirm in ['exit', 'quit']:
@@ -635,6 +670,90 @@ class ArtifactMiner(cmd.Cmd):
             print("\n" + self.options)
             return
 
+    def do_portfolio_retrieve(self, arg):
+        '''Retrieve and display a stored portfolio'''
+        self.update_history(self.cmd_history, "retrieve")
+
+        print("\n=== Retrieve Portfolio ===")
+        print("You can retrieve a portfolio by:")
+        print("  1. Select from list of existing portfolios")
+        print("  2. Enter portfolio name (or leave blank to use last analyzed)")
+
+        while True:
+            user_input = input(
+                "\nEnter your choice (1-2), portfolio name, or leave blank for last analyzed (or 'back'/'cancel' to return): "
+            ).strip()
+
+            if user_input.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            if self._handle_cancel_input(user_input, "main"):
+                print("\n" + self.options)
+                return
+
+            portfolio_name = user_input
+
+            if user_input == "1":
+                selected = self._list_and_select_portfolio()
+                if selected is None:
+                    continue
+                portfolio_name = selected
+            elif user_input == "2":
+                portfolio_name = input("Enter portfolio name: ").strip()
+
+                if portfolio_name.lower() in ['exit', 'quit']:
+                    return self.do_exit(arg)
+
+                if self._handle_cancel_input(portfolio_name, "main"):
+                    print("\n" + self.options)
+                    return
+
+                if not portfolio_name:
+                    # Fall back to last analyzed just like blank input
+                    last_title = self.preferences.get(
+                        "last_portfolio_title", "")
+                    if last_title:
+                        portfolio_name = last_title
+                        print(
+                            f"Using last analyzed portfolio: {portfolio_name}")
+                    else:
+                        pref_path = self.preferences.get_project_filepath()
+                        if not pref_path:
+                            print("Portfolio name cannot be empty.")
+                            continue
+                        portfolio_name = Path(pref_path).stem
+                        print(
+                            f"Using last analyzed portfolio: {portfolio_name}")
+            elif user_input == "":
+                # Try last stored portfolio title first (honors renames)
+                last_title = self.preferences.get("last_portfolio_title", "")
+                if last_title:
+                    portfolio_name = last_title
+                    print(f"Using last analyzed portfolio: {portfolio_name}")
+                else:
+                    pref_path = self.preferences.get_project_filepath()
+                    if not pref_path:
+                        print(
+                            "No stored filepath in preferences. Please enter a portfolio name.")
+                        continue
+                    portfolio_name = Path(pref_path).stem
+                    print(f"Using last analyzed portfolio: {portfolio_name}")
+
+            try:
+                from src.database.utils.database_access import get_user_report
+                from src.utils.print_resume_and_portfolio import portfolio_CLI_stringify
+                report = get_user_report(portfolio_name)
+                portfolio_CLI_stringify(report)
+                print("\n" + self.options)
+                return
+            except Exception:
+                print(
+                    f"\n✗ Portfolio '{portfolio_name}' not found in database")
+                retry = input("Try again? (Y/N): ").strip().lower()
+                if retry != 'y':
+                    print("\n" + self.options)
+                    return
+
     def _list_and_select_portfolio(self) -> Optional[str]:
         """
         List all existing portfolios and let user select one to delete.
@@ -659,7 +778,8 @@ class ArtifactMiner(cmd.Cmd):
 
         # Let user select
         while True:
-            choice = input(f"Select portfolio (1-{len(portfolios)}), 'back'/'cancel' to return, or 'exit'/'quit' to close app: ").strip()
+            choice = input(
+                f"Select portfolio (1-{len(portfolios)}), 'back'/'cancel' to return, or 'exit'/'quit' to close app: ").strip()
 
             # Handle exit/quit FIRST
             if choice.lower() in ['exit', 'quit']:
@@ -677,9 +797,11 @@ class ArtifactMiner(cmd.Cmd):
                     selected = portfolios[idx - 1]
                     return selected['title']
                 else:
-                    print(f"Please enter a number between 1 and {len(portfolios)}")
+                    print(
+                        f"Please enter a number between 1 and {len(portfolios)}")
             except ValueError:
-                print("Invalid input. Please enter a number, 'back', 'cancel', 'exit', or 'quit'.")
+                print(
+                    "Invalid input. Please enter a number, 'back', 'cancel', 'exit', or 'quit'.")
 
     def _configure_date_range(self):
         '''Configure date filtering for files'''
@@ -874,6 +996,8 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_view(arg)
                 case "delete":
                     return self.do_portfolio_delete(arg)
+                case "retrieve":
+                    return self.do_portfolio_retrieve(arg)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
@@ -968,6 +1092,7 @@ class ArtifactMiner(cmd.Cmd):
             "6": self.do_preferences,
             "7": self.do_view,
             "8": self.do_portfolio_delete,
+            "9": self.do_portfolio_retrieve,
         }
 
         # Make commands case-insensitive
