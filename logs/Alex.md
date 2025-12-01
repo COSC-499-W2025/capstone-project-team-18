@@ -16,11 +16,13 @@
 
 **[Week 9, Oct. 27 – Nov. 02](#week-9-oct-27--nov-02)**
 
-**[Week 10, Nov. 03 – Nov. 09](#week-10-nov-03--nov-09)**
+**[Week 10, Nov. 03 – 09](#week-10-nov-03--nov-09)**
 
 **[Week 11, Nov. 10 – 16](#week-11-nov-10--nov-16)**
 
-**[Week 12, Nov. 17 – Nov. 23](#week-12-nov-17--nov-23)**
+**[Week 12, Nov. 17 – 23](#week-12-nov-17--nov-23)**
+
+**[Week 13, Nov. 24 – 29](#week-13-nov-24--nov-29)**
 
 ****
 
@@ -174,3 +176,33 @@ Lastly, I reviewed the following PRs:
 - [#206: Created Project-Level Weighted skills Statistic, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/206)
 - [#226: Added feature for deleting user reports and related data by either id, title, or zipped files, Priyansh](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/226)
 - [#227 Git Projects Use Git Stats instead of File Metdata, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/227)
+
+## Week 13, Nov. 24 – Nov. 29
+
+### Peer Eval
+
+![Peer Eval](/logs/log_images/personal_log_imgs/alex/week13.png)
+
+### Recap
+
+This week, I spent time making suring the deliverables for Milestone 1 will be done in time. I also worked on finishing open issues that were assigned to me.
+
+**Issues/PRs**
+
+[#254 - created function to get UserReport from database](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/254): This PR contributed towards Requirement 14, which is that the user can retrieve previously generated portfolio items. The PR included a function which would accept the name of a `UserReport`, retrieve the row in the `user_report` table with the corresponding value, convert the row to a `UserReport` object and return it.
+
+[#265 - Rank ProjectReports by weight](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/265): This PR completes Requirement 17, which is to summarize the top rank projects. I made changes to the `__init__` function in the `UserReport` class to sort the object's list of `ProjectReports` according to each report's weight.
+
+[#272 - dynamically generate resume and portfolio header lengths](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/272): This PR improved the formatting of résumé and portfolio items that are printed to the CLI.
+
+[#268 - Milestone 1 Team Contract](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/268): I wrote up the team contract for our team and had everyone review and sign it before merging the PR.
+
+Additionally, I began working on issue [#166](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/166), which is a refactoring issue to create global and non-global fixtures that our pytests can use. To be specific, I wrote a fixture for the `test_analyzer_git_methods.py` file along with some helper functions. I then rewrote all of the tests within this file to use the new fixtures and helper functions.
+
+Here are the PRs that I reviewed this week:
+
+- [#223: store user preferences as json - PR #3: Advanced Preferences & View System, Erem](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/223)
+- [#242: Fix coding language ratio calculation by filtering duplicate files and venv files, Erem](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/242)
+- [#245: Aggregate `git blame` stats for project overview, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/245)
+- [#260: 216 b create cli menu option to delete a user report, Erem](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/260)
+- [#263: ProjectReport Clean up `__init__`, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/263)
