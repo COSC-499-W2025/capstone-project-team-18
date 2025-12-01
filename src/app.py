@@ -97,7 +97,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         f.write(latex_str)
 
     # Print the resume items
-    resume_CLI_stringify(user_report, email)
+    resume_CLI_stringify(resume)
 
     # Print the portfolio item
     portfolio_CLI_stringify(user_report)
