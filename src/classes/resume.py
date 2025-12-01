@@ -50,7 +50,8 @@ class Resume:
             resume += f"{item.title} : {item.start_date} - {item.end_date}\n"
             for bullet in item.bullet_points:
                 resume += f"   - {bullet}\n"
-            resume += "\n"
+            if item is not self.items[-1]:
+                resume += "\n"  # we don't want a newline after the last item
         return resume
 
     def __str__(self) -> str:
