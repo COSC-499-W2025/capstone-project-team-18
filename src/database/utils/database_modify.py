@@ -9,6 +9,7 @@ from src.database.db import FileReportTable, ProjectReportTable, UserReportTable
 from enum import Enum
 
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from src.database.db import get_engine
 
 
@@ -122,3 +123,44 @@ def delete_user_report_and_related_data(report_id=None, title=None, zipped_filep
     except Exception as e:
         print(f"Error deleting user report and related data: {e}")
         return False
+
+
+def rename_user_report(current_title: str, new_title: str, engine=None) -> tuple[bool, str]:
+    """
+    Rename a user report if the new title is unique.
+
+    Args:
+        current_title (str): Existing title to update.
+        new_title (str): Desired unique title.
+        engine: Optional SQLAlchemy engine (used in tests).
+
+    Returns:
+        tuple[bool, str]: Success flag and status message.
+    """
+    if engine is None:
+        engine = get_engine()
+
+    if not new_title:
+        return False, "New title cannot be empty"
+
+    if new_title == current_title:
+        return True, f"Keeping existing title '{current_title}'"
+
+    with Session(engine) as session:
+        current = session.execute(
+            select(UserReportTable).where(UserReportTable.title == current_title)
+        ).scalar_one_or_none()
+
+        if current is None:
+            return False, f"Portfolio '{current_title}' not found"
+
+        conflict = session.execute(
+            select(UserReportTable).where(UserReportTable.title == new_title)
+        ).scalar_one_or_none()
+
+        if conflict is not None:
+            return False, f"Portfolio title '{new_title}' already exists"
+
+        current.title = new_title
+        session.commit()
+        return True, f"Portfolio renamed to '{new_title}'"
