@@ -154,6 +154,7 @@ class ProjectReport(BaseReport):
         self.project_path = project_path or "Unknown Path"
         self.project_repo = project_repo
         self.email = user_email
+        self.sub_dirs = self._get_sub_dirs()
 
         self.project_statistics = StatisticIndex()
 
@@ -212,6 +213,15 @@ class ProjectReport(BaseReport):
 
         return total
 
+    def _get_sub_dirs(self) -> set[str]:
+        """
+        Get the sub directory of this project
+        top level directory
+        """
+
+        root = Path(self.project_path)
+        return {p.name for p in root.rglob('*') if p.is_dir()}
+
     def _weighted_skills(self) -> None:
         """
         Creates the project level statistic of
@@ -225,6 +235,7 @@ class ProjectReport(BaseReport):
         """
 
         skill_to_count = {}
+        dirnames = self._get_sub_dirs()
 
         # Map coding language to lines of code
         for report in self.file_reports:
@@ -236,6 +247,14 @@ class ProjectReport(BaseReport):
                 continue
 
             for package in imported_packages:
+
+                if package == "app":
+                    pass
+
+                if package in dirnames:
+                    # If a local import, disgreaded
+                    continue
+
                 skill_to_count[package] = skill_to_count.get(package, 0) + 1
 
         if len(skill_to_count) == 0:
@@ -541,6 +560,48 @@ class UserReport(BaseReport):
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
         self._calculate_user_ari()
+        self._weight_skills()
+
+    def _weight_skills(self):
+        """
+        Calculates the user level stat of USER_SKILLS.
+
+        We do this by lopping through a project level skills.
+        The weight of a user skill, is the project level weight
+        multiplied by the projects weight score.
+        """
+
+        users_skills = {}
+        user_weighted_skills = []
+
+        for project in self.project_reports:
+
+            project_weighted_skills = project.statistics.get_value(
+                ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value)
+
+            if project_weighted_skills is None:
+                continue
+
+            for weighted_skill in project_weighted_skills:
+                # If already a user skill, get weight
+                prev_weight = users_skills.get(weighted_skill.skill_name, 0)
+
+                # Add the weight and skill name to user_skills
+                users_skills[weighted_skill.skill_name] = prev_weight + \
+                    weighted_skill.weight * project.get_project_weight()
+
+        for skill_name in users_skills.keys():
+            user_weighted_skills.append(
+                WeightedSkills(
+                    skill_name=skill_name,
+                    weight=users_skills[skill_name]
+                )
+            )
+
+        self.add_statistic(
+            Statistic(UserStatCollection.USER_SKILLS.value,
+                      user_weighted_skills)
+        )
 
     def _determine_start_end_dates(self):
         # Loop through and find the earliest start date and latest end date of all projects
@@ -659,14 +720,17 @@ class UserReport(BaseReport):
         self.user_stats.add(
             Statistic(UserStatCollection.USER_ARI_WRITING_SCORE.value, float(avg_score)))
 
-    def generate_resume(self) -> Resume:
+    def generate_resume(self, email: Optional[str]) -> Resume:
         """
         Generates a Resume object based on the ResumeItem
         that are generated from the ProjectReports. As well
         as adding skills from the User Statistics.
         """
 
-        resume = Resume()
+        weighted_skills = self.statistics.get_value(
+            UserStatCollection.USER_SKILLS.value)
+
+        resume = Resume(email, weighted_skills)
 
         for item in self.resume_items:
             resume.add_item(item)
@@ -874,8 +938,9 @@ class UserReport(BaseReport):
                         def _skill_str(ws: WeightedSkills) -> str:
                             n = getattr(ws, "skill_name", None) or str(ws)
                             w = getattr(ws, "weight", None)
-                            return f"{n} ({w})" if w is not None else f"{n}"
-                        skills_line = ", ".join(_skill_str(ws) for ws in value)
+                            return f"{n}"
+                        skills_line = ", ".join(_skill_str(ws)
+                                                for ws in value[:15])
                 except Exception:
                     pass
                 lines.append(f"Your skills include: {skills_line}.")

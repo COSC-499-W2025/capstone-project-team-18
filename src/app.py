@@ -88,7 +88,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.add_all([user_row])  # type: ignore
         session.commit()
 
-    resume = user_report.generate_resume()
+    resume = user_report.generate_resume(email)
 
     # Download latex resume to file system
     latex_str = resume.export(ResumeLatexRenderer())
@@ -97,11 +97,17 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         f.write(latex_str)
 
     # Print the resume items
-    resume_CLI_stringify(user_report)
+    resume_CLI_stringify(user_report, email)
+
     # Print the portfolio item
     portfolio_CLI_stringify(user_report)
 
 
 if __name__ == '__main__':
     from src.classes.cli import ArtifactMiner
-    ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
+
+    try:
+        ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
+
+    except KeyboardInterrupt:
+        print("Exiting the program...")

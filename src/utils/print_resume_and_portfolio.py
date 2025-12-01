@@ -2,6 +2,7 @@
 This file contains functions to format and print the
 resume items and portfolio
 '''
+from typing import Optional
 from src.classes.resume.resume import Resume
 from src.classes.report import ProjectReport, UserReport
 import logging
@@ -9,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def resume_CLI_stringify(user_report: UserReport):
+def resume_CLI_stringify(user_report: UserReport, email: Optional[str]):
     '''
     Given a `UserReport` object, print generate the
     resume items of the report and print them to
@@ -32,7 +33,7 @@ def resume_CLI_stringify(user_report: UserReport):
     ------------------------------------------------------------
     ```
     '''
-    resume = user_report.generate_resume()
+    resume = user_report.generate_resume(email)
     try:
         resume_header_len = len(
             f'{resume.items[0].title} : {resume.items[0].start_date} - {resume.items[0].end_date}')
