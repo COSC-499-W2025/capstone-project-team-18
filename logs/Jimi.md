@@ -16,9 +16,12 @@
 
 **[Week 9, Oct. 27-Nov. 2](#week-9-oct-27-nov-2)**
 
-**[Week 10, Nov. 3-9](#week-8-nov-39)**
+**[Week 10, Nov. 3-9](#week-10-nov-39)**
 
-**[Week 12, Nov. 17-23](#week-8-nov-1723)**
+**[Week 12, Nov. 17-23](#week-12-nov-1723)**
+
+**[Week 13, Nov. 24-30](#week-13-nov-2430)**
+
 
 
 
@@ -113,3 +116,13 @@ This week's goals as a team were to create more specifications within the projec
 ### Recap
 
 This week's goals as a team were to imporve upon the project demo we had created. We needed to add more specifications, including how we calculated the ratio of coding languages, add user preferences and more. This week , one of my roles was to refactor some of the git based features. This meant adding logic to ignore files and adjust behaviour based on whether a user provided an email or if a user didn't commit to a file. This would increase the true accuracy of a report. From that point, I worked on adding more git features such as a comprehensive statistic calculating the true percentage of code a user was responsible for in the final deliverable. All of these functions were tested, reviewed and checked thoroughly by. myself and group members. Apart from my own work, I assisted in code review for multiple PRs including Alex and Priyansh. They were working on database and CLI functionality and were able to merge after we discussed possible areas of improvement. AQs for next week, I hope to review all the contribution style features to ensure they not only work, but refactor where possible to reduce bloat. I also hope to refactor the test directory, add some features to better extrapolate the skills used in each project and increase the global documentation for our project.
+
+## Week 13, Nov. 24-30
+
+### Peer Eval
+
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week13_log.png)
+
+### Recap
+
+This week's goals as a team were to prepare for the upcoming Milestone 1 demo. To do this we needed to ensure our CLI was fleshed out and usable for not only the developers but for users new to the system. That included creating many interfaces to deal with preferences and other CLI settings. This week I worked on some minor PRs related to that including [#238](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/238) and [#271](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/271) which were focused on some bugs and permissions that weren't previously included. Additionally, after a meeting this week, we decided to aggregate the `git blame` stats that we were tracking individually and get a overview of how much a user committed to a repository by line. This was merged in [#245](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/245) .Currently in review is the expansion of user skills which uses dicts to track if patterns exist in file names or content which signify certain patterns. This additionally weighs them which will later be used in ranking each skill. As for reviews and assisting the group, I reviewed mutliple PRs, including [#257](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/257), [#268](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/268), [#254](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/254).
