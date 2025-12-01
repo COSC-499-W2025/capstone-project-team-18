@@ -145,8 +145,9 @@ class TestFileReportWithAnalysis:
             "    return x + y\n"
         )
 
-        file_path = _create_temp_file("test.py", content, temp_dir)
-        file_report = FileReport.create_with_analysis(str(temp_dir), "test.py")
+        file_path = _create_temp_file("example.py", content, temp_dir)
+        file_report = FileReport.create_with_analysis(
+            str(temp_dir), "example.py")
 
         # Test Python-specific statistics
         assert file_report.get_value(
@@ -207,8 +208,9 @@ class TestFileReportWithAnalysis:
             "};\n"
         )
 
-        file_path = _create_temp_file("test.js", content, temp_dir)
-        file_report = FileReport.create_with_analysis(str(temp_dir), "test.js")
+        file_path = _create_temp_file("example.js", content, temp_dir)
+        file_report = FileReport.create_with_analysis(
+            str(temp_dir), "example.js")
 
         # Test JavaScript-specific statistics
         assert file_report.get_value(

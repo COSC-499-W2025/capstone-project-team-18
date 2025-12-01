@@ -88,7 +88,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.commit()
 
     # Print the resume items
-    resume_CLI_stringify(user_report)
+    resume_CLI_stringify(user_report, email)
 
     # Print the portfolio item
     portfolio_CLI_stringify(user_report)
