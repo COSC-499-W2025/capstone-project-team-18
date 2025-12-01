@@ -213,6 +213,7 @@ class ProjectReport(BaseReport):
 
         return total
 
+<<<<<<< HEAD
     def _activity_type_contributions(self) -> None:
         """
         This function will analyze the user's
@@ -261,6 +262,8 @@ class ProjectReport(BaseReport):
         self.project_statistics.add(Statistic(
             ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines))
 
+=======
+>>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
     def _get_sub_dirs(self) -> set[str]:
         """
         Get the sub directory of this project
@@ -286,9 +289,12 @@ class ProjectReport(BaseReport):
 
         skill_to_count = {}
         dirnames = self._get_sub_dirs()
+<<<<<<< HEAD
 
         # Track files that contribute to each skill for duplication
         high_level_skill_files: Dict[str, set] = {}
+=======
+>>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
 
         # Map coding language to lines of code
         for report in self.file_reports:
@@ -322,6 +328,7 @@ class ProjectReport(BaseReport):
                     # If a local import, disgreaded
                     continue
 
+<<<<<<< HEAD
                 # map package name to Skill, e.g pandas -> Data Analytics
                 high_level_skill = SkillMapper.map_package_to_skill(package)
                 if high_level_skill:
@@ -334,6 +341,9 @@ class ProjectReport(BaseReport):
                         high_level_skill_files[skill_name].add(report.filepath)
                         skill_to_count[skill_name] = \
                             skill_to_count.get(skill_name, 0) + 1
+=======
+                skill_to_count[package] = skill_to_count.get(package, 0) + 1
+>>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
 
         if len(skill_to_count) == 0:
             # Don't log this stat if it isn't a coding project

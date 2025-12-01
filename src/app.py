@@ -88,7 +88,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.add_all([user_row])  # type: ignore
         session.commit()
 
-    resume = user_report.generate_resume()
+    resume = user_report.generate_resume(email)
 
     # Download latex resume to file system
     latex_str = resume.export(ResumeLatexRenderer())
@@ -96,15 +96,11 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
     with open("resume.tex", "w", encoding="utf-8") as f:
         f.write(latex_str)
 
-    print("-------- Analysis Reports --------\n")
+    # Print the resume items
+    resume_CLI_stringify(user_report, email)
 
-    print("-------- Resume --------\n")
-    print(resume)
-    print("------------------------\n")
-
-    print("-------- Portfolio --------\n")
-    print(user_report.to_user_readable_string())
-    print("\n-------------------------\n")
+    # Print the portfolio item
+    portfolio_CLI_stringify(user_report)
 
 
 if __name__ == '__main__':

@@ -466,6 +466,7 @@ def test_cancel_functionality_across_commands(cli, command):
         # Check for help instruction
         self.assertIn("help", options)
 
+<<<<<<< HEAD
 def test_resume_bullet_exit_calls_do_exit(cli):
     """If the user types 'exit', do_exit should be called and no bullets printed."""
     with patch.object(cli, "do_exit") as mock_exit, \
@@ -555,6 +556,8 @@ def test_resume_bullet_success_path(cli):
             "Artifact Miner Main Menu" in str(call)
             for call in mock_print.call_args_list
         )
+=======
+>>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
 
 def test_keyboardinterrupt_handling(cli):
     """Test that ctrl-c exits cleanly with correct message."""

@@ -3,7 +3,11 @@ This file contains functions to format and print the
 resume items and portfolio
 '''
 from typing import Optional
+<<<<<<< HEAD
 from src.classes.resume import Resume
+=======
+from src.classes.resume.resume import Resume
+>>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
 from src.classes.report import ProjectReport, UserReport
 import logging
 logging.basicConfig(level=logging.INFO)
