@@ -128,7 +128,7 @@ I also tackled a critical bug fix in PR [#242](https://github.com/COSC-499-W2025
 
 For code reviews, I checked out Alex's database retrieval PR [#236](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/236) which added methods for fetching stored reports from the database, and Tawana's chronological skills list PR [#246](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/246) that organizes skills by time period for resume generation.
 
-# Week 12, Nov 17-23
+# Week 13, Nov 24-30
 
 ![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week13_log.png)
 
