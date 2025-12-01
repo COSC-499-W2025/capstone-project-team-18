@@ -1,3 +1,13 @@
+# Week 13 11/24 - 11/30
+
+# Peer Evaluation!
+[Peer Eval THN](./log_images/personal_log_imgs/tawana/tawana_week13_log.png)
+
+# Recap on your week goals
+This week, I completed Issue `#253` by adding the new CLI feature (10) Get resume bullet point, which retrieves resume-ready bullet points for any previously stored ProjectReport. The feature integrates with get_project_from_project_name() and uses bullet_point_builder() to generate bullets based on project stats, with full handling for exit, back/cancel, empty input, and missing project names. I also updated the CLI menu and routing, and added tests to test_app_cli.py to validate all input paths and successful bullet generation. All tests pass.
+
+I also reviewed team PRs, including Jimi’s `#270` (Ctrl+C handling), Alex’s `#268` (Milestone 1 Team Contract), Sam’s `#263` (ProjectReport refactor), and Sam’s `#257` (weighted skills logic).
+
 # Week 12 11/17 - 11/23
 
 # Peer Evaluation!
