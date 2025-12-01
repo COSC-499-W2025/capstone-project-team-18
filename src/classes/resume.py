@@ -6,6 +6,10 @@ for building and managing resumes.
 from dataclasses import dataclass
 from datetime import date
 from .statistic import ProjectStatCollection, WeightedSkills, CodingLanguage
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .report import ProjectReport
 
 
 @dataclass
