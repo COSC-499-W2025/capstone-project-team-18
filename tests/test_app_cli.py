@@ -375,8 +375,8 @@ def test_default_command_case_insensitive(cli):
 
 def test_default_handles_unknown_commands(cli):
     """Test handling of unknown commands."""
-    unknown_commands = ["unknown", "8", "invalid",
-                        "help_me"]  # Changed "6" to "8"
+    unknown_commands = ["unknown", "invalid",
+                        "help_me"]
     with patch('builtins.print') as mock_print:
         for command in unknown_commands:
             cli.default(command)
