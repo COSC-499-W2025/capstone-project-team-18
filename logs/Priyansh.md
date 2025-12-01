@@ -18,6 +18,10 @@
 
 **[Week 10, Nov. 3-9](#week-10-nov-3-9)**
 
+**[Week 12, Nov. 17-23](#week-12-nov-17-23)**
+
+**[Week 13, Nov. 24-30](#week-13-nov-24-30)**
+
 ---
 
 ## Week 3, Sept. 15-21
@@ -140,4 +144,15 @@ Additionally, I completed Issue #157 to implement project ranking functionality.
 
 I reviewed numerous PRs this week including PR #179 (Chronological List of Projects) by Tawana, PR #217 (Find Repo at Project Discovery) by Sam, PR #220 (helper method) by Jimi, PR #209 (fix json serialization check) by Alex, PR #201 (Fixed Pathing in Analyze Git Function) by Sam, PR #190 (Metadata Corruption, Picking wrong analyzer, and Incorrect Handling of Email Bugs) by Sam, PR #185 (tie DB into backend logic) by Alex. My feedback focused on code correctness, test coverage, and edge case handling.
 
+## Week 13, Nov. 24-30
+
+### Peer Eval
+![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week13_log.png)
+
+### Recap
+This week's focus was on enhancing user experience, database functionality, resume generation, and project analysis capabilities to support more robust portfolio management.
+
+I completed PR #274 (233 add cli prompt for naming user reports and listing by title). This PR adds a prompt to name your portfolio after it's created (or keep the zip name), remembers that title, and adds a menu option to retrieve portfolios by listing them, typing a name, or loading the last one you analyzed. The implementation includes comprehensive tests and closes issues #233 and #228. This feature significantly improves the user experience when managing multiple reports by providing flexible naming and retrieval options.
+
+I reviewed numerous PRs this week including PR #272 (dynamically generate resume and portfolio header lengths) by Alex, PR #271 (Add prompt to cover user permissions for third-party Git features) by Jimi, PR #260 (216 b create cli menu option to delete a user report) by Erem, PR #254 (created function to get UserReport from database) by Alex, PR #273 (Rework Resume Class Structure, Refactor ResumeBuilder) by Sam, PR #264 (Project-Level Activity Type Contribution Attributes) by Sam. My feedback focused on code correctness, test coverage, and alignment with project goals.
 
