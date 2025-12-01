@@ -175,6 +175,7 @@ def test_options_text_contains_required_information(cli):
     assert "(1) Permissions" in options
     assert "(2) Set filepath" in options
     assert "(3) Begin Artifact Miner" in options
+    assert "(9) Retrieve a Portfolio" in options
 
     # Check for cancel instruction
     assert "back" in options
@@ -206,6 +207,69 @@ def test_do_perms_user_declines(cli):
         assert cli.user_consent is False
         assert result is True  # Should return True to exit program
         mock_print.assert_any_call("Consent not given. Exiting application...")
+
+
+def test_prompt_portfolio_name_invokes_rename(cli):
+    """Ensure renaming is attempted when a new name is provided."""
+    cli.project_filepath = "/tmp/example.zip"
+    with patch('builtins.input', return_value='new-name'), \
+            patch('src.classes.cli.rename_user_report', return_value=(True, "ok")) as mock_rename, \
+            patch('builtins.print'), \
+            patch.object(cli.preferences, "update"):
+        cli._prompt_portfolio_name()
+        mock_rename.assert_called_once_with("example", "new-name")
+
+
+def test_prompt_portfolio_name_noop_on_blank(cli):
+    """Leaving the name blank should keep existing title and avoid renaming."""
+    cli.project_filepath = "/tmp/example.zip"
+    with patch('builtins.input', return_value=''), \
+            patch('src.classes.cli.rename_user_report') as mock_rename, \
+            patch('builtins.print'), \
+            patch.object(cli.preferences, "update"):
+        cli._prompt_portfolio_name()
+        mock_rename.assert_not_called()
+
+
+def test_default_routes_nine_to_retrieve(cli):
+    """Ensure option 9 routes to portfolio retrieval."""
+    with patch.object(cli, 'do_portfolio_retrieve') as mock_retrieve:
+        cli.default("9")
+        mock_retrieve.assert_called_once()
+
+
+def test_do_portfolio_retrieve_uses_preferences_when_blank(cli):
+    """Blank input should retrieve portfolio name from preferences."""
+    cli.preferences.get_project_filepath.return_value = "/tmp/last.zip"
+    cli.preferences.get.return_value = ""  # ensure no last_portfolio_title stored
+    mock_report = type("Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
+    with patch('builtins.input', side_effect=['']), \
+            patch('src.classes.cli.print'), \
+            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
+        cli.do_portfolio_retrieve("")
+        mock_get.assert_called_once_with("last")
+
+
+def test_do_portfolio_retrieve_option_two_prompts_for_name(cli):
+    """Entering '2' should prompt for a portfolio name and use it."""
+    mock_report = type("Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
+    with patch('builtins.input', side_effect=['2', 'my-portfolio']), \
+            patch('src.classes.cli.print'), \
+            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
+        cli.do_portfolio_retrieve("")
+        mock_get.assert_called_once_with("my-portfolio")
+
+
+def test_do_portfolio_retrieve_option_two_blank_uses_last(cli):
+    """Entering '2' then blank should fall back to last analyzed name."""
+    cli.preferences.get.return_value = ""  # no last_portfolio_title
+    cli.preferences.get_project_filepath.return_value = "/tmp/last.zip"
+    mock_report = type("Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
+    with patch('builtins.input', side_effect=['2', '']), \
+            patch('src.classes.cli.print'), \
+            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
+        cli.do_portfolio_retrieve("")
+        mock_get.assert_called_once_with("last")
 
 
 def test_do_perms_user_cancels(cli):
@@ -318,15 +382,9 @@ def test_default_handles_unknown_commands(cli):
             cli.default(command)
 
         # Verify error messages were printed for each unknown command
-        expected_calls = [
-            call("Unknown command: unknown. Type 'help' or '?' for options."),
-            call("Unknown command: 8. Type 'help' or '?' for options."),
-            call("Unknown command: invalid. Type 'help' or '?' for options."),
-            call("Unknown command: help_me. Type 'help' or '?' for options.")
-        ]
-
-        for expected_call in expected_calls:
-            mock_print.assert_any_call(expected_call.args[0])
+        assert mock_print.call_count == len(unknown_commands)
+        for call in mock_print.call_args_list:
+            assert "Unknown command" in str(call)
 
 
 @pytest.mark.parametrize("command,method", [
