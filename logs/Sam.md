@@ -1,6 +1,22 @@
+# Week 13 11/24 - 11/30
+
+![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week13_log.png)
+
+I completed many different features this week for the deliverable of Milestone #1. First, I created a way to collect and combine many different project skills and rank them against each other. These "User skills" are then included in both the resume and the portfilo (PR #257). Then, I created logic to determine if a code file was a test file (PR #259). Then, using that new logic, I compeleted the milestone requirement of measuring "activity type contribution frequency" by counting how much a user contributed to each file domain (PR #264).
+
+I completed a minor refactor, of our project report class (PR #263) and I refactored our resume class strutcure to adhead to DRY and extendable principles, and I created a new feature that exports the resume to a latex file (PR #273).
+
+I also reviewed these PRS:
+- #242
+- #265
+- #270 In one of my comments, I coded my changes in PR #258 to merge into that branch.
+- #272
+
+Looking forward this week to finishing things up for the semester like the presentation and reports!
+
 # Week 12 11/15 - 11/23
 
-1[Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week12_log.png)
+![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week12_log.png)
 
 This week, I completed the milestone requirement of "Extract key skills from a given project". I identifyed the skills at the project level (PR #206). Next, I completed the milestone of "Output all the key information for a project." I did this by developing the bullet points that would be listed under every project in the resume (skills, coding languages, was it a group project) and handled the printing to the terminal (PR #198).
 
