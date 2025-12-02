@@ -1118,9 +1118,7 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "resume_bullet_point")
 
         print("\n=== Get Resume Bullet Point ===")
-        print("Enter the project name (folder name / ProjectReport.project_name):")
-
-        user_input = input("Project name (or 'back'/'cancel' to return): ").strip()
+        user_input = input("Enter the project name (folder name / ProjectReport.project_name, or 'back'/'cancel' to return): ").strip()
 
         # Handle exit/quit
         if user_input.lower() in ['exit', 'quit']:
