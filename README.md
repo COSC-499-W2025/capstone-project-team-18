@@ -121,8 +121,11 @@ Enter the email you use for your Git/GitHub account: spencer@example.com
 
 ### 5. User Login
 ```
-TODO
+Enter your login credentials:
+Enter your name: (or 'back'/'cancel' to return): Spencer
+Enter your password: (or 'back'/'cancel' to return): password
 ```
+- Note: This feature will be fleshed out more in the following semester
 
 ### 6. Configure Preferences
 ```
