@@ -2,7 +2,7 @@
 Tests the Resume class and its methods.
 """
 
-from src.classes.resume import Resume, ResumeItem
+from src.classes.resume.resume import Resume, ResumeItem
 from src.classes.report import ProjectReport, UserReport
 from src.classes.statistic import StatisticIndex, Statistic, ProjectStatCollection
 from datetime import date
@@ -30,11 +30,12 @@ def test_generate_resume():
         end_date=date(2021, 1, 1)
     )
     resume.add_item(item)
-    generated = resume.generate_resume()
+    generated = str(resume)
     expected_output = (
-        "Software Engineer : 2020-01-01 - 2021-01-01\n"
+        "Software Engineer : January, 2020 - January, 2021\n"
         "   - Developed features\n"
         "   - Fixed bugs\n"
+        "\n"
     )
     assert generated == expected_output
 

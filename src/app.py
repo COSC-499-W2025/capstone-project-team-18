@@ -16,6 +16,7 @@ from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio
 
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
+from src.classes.resume.render import ResumeLatexRenderer
 
 from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
@@ -87,8 +88,16 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.add_all([user_row])  # type: ignore
         session.commit()
 
+    resume = user_report.generate_resume(email)
+
+    # Download latex resume to file system
+    latex_str = resume.export(ResumeLatexRenderer())
+
+    with open("resume.tex", "w", encoding="utf-8") as f:
+        f.write(latex_str)
+
     # Print the resume items
-    resume_CLI_stringify(user_report, email)
+    resume_CLI_stringify(resume)
 
     # Print the portfolio item
     portfolio_CLI_stringify(user_report)

@@ -10,9 +10,10 @@ import os
 from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
 from git import NoSuchPathError, Repo, InvalidGitRepositoryError
-from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
+from src.classes.resume.bullet_point_builder import BulletPointBuilder
+from src.classes.resume.resume import Resume, ResumeItem
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from src.utils.data_processing import normalize
@@ -87,6 +88,8 @@ class ProjectReport(BaseReport):
     in a FileReport to create a project level statistics
     of "total lines written."
     """
+
+    bullet_builder = BulletPointBuilder()
 
     def get_project_weight(self) -> float:
         """
@@ -377,7 +380,7 @@ class ProjectReport(BaseReport):
         end_date = self.get_value(
             ProjectStatCollection.PROJECT_END_DATE.value)
 
-        bullet_points = bullet_point_builder(self)
+        bullet_points = self.bullet_builder.build(self)
 
         return ResumeItem(
             title=self.project_name,
