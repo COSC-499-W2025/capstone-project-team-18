@@ -61,7 +61,7 @@ class ActivityTypeContributionRule(BulletRule):
                 fd_str.append(
                     f"{float_to_percent(float_percent)} on {fd.value}")
 
-        return [f"During the project, I contributed split my time between following acitivity types: {", ".join(fd_str)}"]
+        return [f"During the project, I split my contributions between following acitivity types: {", ".join(fd_str)}"]
 
 
 class WeightedSkillsRule(BulletRule):
