@@ -88,7 +88,7 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
         session.commit()
 
     # Print the resume items
-    resume_CLI_stringify(user_report)
+    resume_CLI_stringify(user_report, email)
 
     # Print the portfolio item
     portfolio_CLI_stringify(user_report)
@@ -96,4 +96,9 @@ def start_miner(zipped_file: str, email: Optional[str] = None) -> None:
 
 if __name__ == '__main__':
     from src.classes.cli import ArtifactMiner
-    ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
+
+    try:
+        ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
+
+    except KeyboardInterrupt:
+        print("Exiting the program...")
