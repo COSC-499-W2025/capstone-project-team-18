@@ -2,14 +2,13 @@
 
 ## Table of Contents
 
-1. [CLI Tool: Project Artifact Miner](#cli-tool-project-artifact-miner)
+1. [CLI Tool: Project Artifact Miner](#project-artifact-miner-a-cli-tool)
     - [1.1 Quickstart](#quick-start)
-    - [1.2 CLI Command Quick Reference](#cli-commands)
+    - [1.2 CLI Command Quick Reference](#cli-command-quick-reference)
     - [1.3 Workflow](#workflow)
-    - [1.4 Error Messages](#error-messages)
-    - [1.5 Testing](#testing)
-3. [Milestone 1 Documentation](#milestone-1)
-    - [2.1 Team Contract](#milestone-1-team-contract)
+    - [1.4 Testing](#testing)
+3. [Milestone 1 Documentation](#milestone-1-documentation)
+    - [2.1 Team Contract](#team-contract)
     - [2.2 Diagrams](#diagrams)
     - [2.3 Requirements Checklist](#requirements-checklist)
 
