@@ -1,0 +1,116 @@
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+% Formatting
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Clean margins
+\usepackage[margin=0.7in]{geometry}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Section formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\pdfgentounicode=1
+
+% --- Custom Commands ---
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+
+\begin{document}
+\begin{center}
+\textbf{\Huge \scshape Your Name}\\[2pt]
+\end{center}
+
+\section{Projects}
+\resumeSubHeadingListStart
+\resumeProjectHeading{\textbf{COSC310Group}}{January, 2025 -- April, 2025}
+\resumeItemListStart
+\resumeItem{Project was coded using the Python language}
+\resumeItem{Utilized skills tkinter, app, pytest}
+\resumeItem{Collaborated in a team of 5 contributors}
+\resumeItem{Authored 59.16\% of commits}
+\resumeItem{Accounted for 63.44\% of total contribution in the final deliverable}
+\resumeItem{During the project, I split my contributions between following acitivity types: 66\% on code, 34\% on test}
+\resumeItemListEnd
+\resumeProjectHeading{\textbf{backserver}}{January, 2024 -- February, 2024}
+\resumeItemListStart
+\resumeItem{Project was coded using the Python language}
+\resumeItem{Utilized skills time, mysql, paho}
+\resumeItem{Collaborated in a team of 1 contributors}
+\resumeItem{Authored 94.12\% of commits}
+\resumeItem{Accounted for 73.69\% of total contribution in the final deliverable}
+\resumeItem{During the project, I split my contributions between following acitivity types: 13\% on documentation, 87\% on code}
+\resumeItemListEnd
+\resumeProjectHeading{\textbf{TouristHelperApp}}{November, 2024 -- December, 2024}
+\resumeItemListStart
+\resumeItem{Project was coded using the Java language}
+\resumeItem{Utilized skills android, androidx, org}
+\resumeItem{Collaborated in a team of 4 contributors}
+\resumeItem{Authored 60.19\% of commits}
+\resumeItem{Accounted for 48.55\% of total contribution in the final deliverable}
+\resumeItemListEnd
+\resumeProjectHeading{\textbf{bayesian-scRNAseq-label-transfer}}{July, 2023 -- August, 2023}
+\resumeItemListStart
+\resumeItem{Project was coded using the R language}
+\resumeItem{I individually designed, developed, and led the project}
+\resumeItem{Accounted for 99.34\% of total contribution in the final deliverable}
+\resumeItemListEnd
+\resumeProjectHeading{\textbf{EarthLingo}}{January, 2024 -- January, 2024}
+\resumeItemListStart
+\resumeItem{Project was coded using the Typescript language}
+\resumeItem{Utilized skills react, next, axios}
+\resumeItem{I individually designed, developed, and led the project}
+\resumeItem{Accounted for 98.05\% of total contribution in the final deliverable}
+\resumeItemListEnd
+\resumeSubHeadingListEnd
+
+\section{Technical Skills}
+\begin{itemize}[leftmargin=0.15in, label={}]
+  \item {android, androidx, react, time, tkinter, mysql, app}
+\end{itemize}
+\end{document}

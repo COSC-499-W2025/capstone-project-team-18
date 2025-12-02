@@ -1,11 +1,11 @@
 {
-    "consent": false,
+    "consent": true,
     "files_to_ignore": [],
     "file_start_time": null,
     "file_end_time": null,
-    "last_updated": null,
-    "project_filepath": null,
+    "last_updated": "2025-12-02T21:27:01.472004",
+    "project_filepath": "/workspaces/capstone-project-team-18/Archive.zip",
     "user_name": "",
     "user_password": "",
-    "user_email": ""
+    "user_email": "sikora.samj@gmail.com"
 }

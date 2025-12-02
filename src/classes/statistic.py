@@ -53,6 +53,7 @@ class CodingLanguage(Enum):
     CSS = ("CSS", [".css", ".scss", ".sass", ".less"])
     SQL = ("SQL", [".sql", ".ddl", ".dml"])
     SHELL = ("Shell", [".sh", ".bash", ".zsh", ".fish"])
+    R = ("R", [".R", ".r"])
 
 # The following are StatisticTemplate classes. A StatisticTemplate is simply a
 # description of a data point. It has a name, description, expected value, and it is either
