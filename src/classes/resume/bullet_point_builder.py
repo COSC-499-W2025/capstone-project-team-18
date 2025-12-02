@@ -39,7 +39,8 @@ class ActivityTypeContributionRule(BulletRule):
         """
         This function will log the activity type contribution
         project statistic on the project. If a filedomian contribtion
-        was under 5 percent, it will not show
+        was under 5 percent, it will not show. If the bullet point would
+        only list one file domain (like code), it will not show
 
         Args:
             report (ProjectReport): The project report to analyze.
@@ -60,6 +61,9 @@ class ActivityTypeContributionRule(BulletRule):
             if float_percent > 0.05:
                 fd_str.append(
                     f"{float_to_percent(float_percent)} on {fd.value}")
+
+        if len(fd_str) <= 1:
+            return []
 
         return [f"During the project, I split my contributions between following acitivity types: {", ".join(fd_str)}"]
 

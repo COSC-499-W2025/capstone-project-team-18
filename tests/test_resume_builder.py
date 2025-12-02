@@ -28,20 +28,37 @@ def test_activity_type_contribution_bp_expected():
     assert f"12% on code, 28% on design, 30% on documentation, 30% on test" in bp
 
 
+def test_activity_type_contribution_bp_one_leading():
+    """
+    Check where on file domain dominates ActivityTypeContributionRule
+    """
+
+    ratio = {
+        FileDomain.CODE: 0.9999991,
+        FileDomain.DESIGN: 0.0000009
+    }
+
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = ActivityTypeContributionRule().generate(report)  # type: ignore
+
+    assert len(bp) == 0
+
+
 def test_activity_type_contribution_bp_near_zero():
     """
     Check behavior near zero of ActivityTypeContributionRule
     """
 
     ratio = {
-        FileDomain.CODE: 0.9999991,
+        FileDomain.CODE: 0.3999999,
+        FileDomain.TEST: 0.6,
         FileDomain.DESIGN: 0.0000001
     }
 
     report = type("Report", (), {"get_value": lambda self, key: ratio})()
     bp = ActivityTypeContributionRule().generate(report)[0]  # type: ignore
 
-    assert f"100% on code" in bp
+    assert f"40% on code, 60% on test" in bp
     assert "design" not in bp
 
 
