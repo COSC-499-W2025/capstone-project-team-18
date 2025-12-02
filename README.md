@@ -431,20 +431,16 @@ If a repeated issue is severe enough, the rest of the team may discuss executing
 
 ## Diagrams
 
-<figure style="text-align: center;">
-  <img src="documentation/milestone-1/data-flow-diagrams/DFD-Level0.jpg" />
-  <figcaption><strong>Figure 1:</strong> Data Flow Diagram Level 0</figcaption>
-</figure>
+### Data Flow Diagram - Level 0 & Level 1
 
-<figure style="text-align: center;">
-  <img src="documentation/milestone-1/data-flow-diagrams/DFD-Level0.jpg" />
-  <figcaption><strong>Figure 2:</strong> Data Flow Diagram Level 0</figcaption>
-</figure>
+![dfd lvl 0](/documentation/milestone-1/data-flow-diagrams/DFD-Level0.jpg)
 
-<figure style="text-align: center;">
-  <img src="/documentation/milestone-1/system-architecture/system-architecture.jpeg" />
-  <figcaption><strong>Figure 3:</strong> System Architecture</figcaption>
-</figure>
+![dfd lvl 1](/documentation/milestone-1/data-flow-diagrams/DFD-Level1.jpg)
+
+### System Architecture
+
+![system architecture](/documentation/milestone-1/system-architecture/system-architecture.jpeg)
+
 
 ## Requirements Checklist
 
