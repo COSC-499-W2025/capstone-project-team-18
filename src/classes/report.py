@@ -15,6 +15,7 @@ from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from src.utils.data_processing import normalize
 
 
 class BaseReport:
@@ -167,6 +168,7 @@ class ProjectReport(BaseReport):
         self._find_coding_languages_ratio()
         self._calculate_ari_score()
         self._weighted_skills()
+        self._activity_type_contributions()
 
         if self.email:
             self._analyze_git_authorship()
@@ -209,6 +211,54 @@ class ProjectReport(BaseReport):
                 pass  # skip directories or removed files
 
         return total
+
+    def _activity_type_contributions(self) -> None:
+        """
+        This function will analyze the user's
+        contributions to each file domain in a
+        project out of all of their contributions.
+
+        If the user's email is configured, it will
+        use PERCENTAGE_LINES_COMMITTED file stat.
+
+        Otherwise, it is assumed that they worked on
+        all files and we will just use the distrubition
+        of the project files.
+        """
+
+        activity_type_to_lines = {}
+        git_analysis = True if self.email and self.project_repo else False
+
+        for fr in self.file_reports:
+            file_domain = fr.get_value(FileStatCollection.TYPE_OF_FILE.value)
+
+            lines_in_file = fr.get_value(
+                FileStatCollection.LINES_IN_FILE.value)
+
+            if not file_domain or not lines_in_file:
+                continue
+
+            percent = 1
+
+            # If git analysis, check to see if the user has contributed
+            # if so, take that percent. Else, that file is local and assume
+            # they contributed to it themeseleves
+            if git_analysis:
+                percent_lines_commited = fr.get_value(
+                    FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
+
+                if percent_lines_commited is not None:
+                    percent = percent_lines_commited / 100
+
+            prev_lines = activity_type_to_lines.get(file_domain, 0)
+
+            activity_type_to_lines[file_domain] = prev_lines + \
+                lines_in_file * percent
+
+        normalize(activity_type_to_lines)
+
+        self.project_statistics.add(Statistic(
+            ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines))
 
     def _get_sub_dirs(self) -> set[str]:
         """
