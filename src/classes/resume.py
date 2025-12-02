@@ -6,6 +6,11 @@ for building and managing resumes.
 from dataclasses import dataclass
 from datetime import date
 from .statistic import ProjectStatCollection, WeightedSkills, CodingLanguage
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .report import ProjectReport
+from typing import Optional
 
 
 @dataclass
@@ -34,23 +39,31 @@ class Resume:
 
     # TODO: Expand more attributes like contact info, summary, etc.
 
-    def __init__(self):
+    def __init__(self, email: Optional[str] = None, weight_skills: Optional[list[WeightedSkills]] = None):
         self.items = []
+        self.email = email if email else None
         self.skills = []
+
+        if weight_skills:
+
+            weight_skills.sort(reverse=True)
+
+            for weighted_skill in weight_skills[:7]:
+                self.skills.append(weighted_skill.skill_name)
 
     def add_item(self, item: ResumeItem):
         self.items.append(item)
 
-    def add_skill(self, skill: str):
-        self.skills.append(skill)
-
     def generate_resume(self) -> str:
         resume = ""
+        resume += f"Email: {self.email}\n\n" if self.email else ""
+        resume += f"Core skills {", ".join(self.skills)}\n\n" if self.skills else ""
         for item in self.items:
             resume += f"{item.title} : {item.start_date} - {item.end_date}\n"
             for bullet in item.bullet_points:
                 resume += f"   - {bullet}\n"
-            resume += "\n"
+            if item is not self.items[-1]:
+                resume += "\n"  # we don't want a newline after the last item
         return resume
 
     def __str__(self) -> str:
@@ -124,7 +137,7 @@ def bullet_point_builder(project_report: "ProjectReport") -> list[str]:
 
     if total_contrib_pct is not None:
         bullet_points.append(
-            f"Accounted for {total_contrib_pct}% of total contribution")
+            f"Accounted for {total_contrib_pct}% of total contribution in the final deliverable")
 
     # Ensure at least one bullet exists
     if len(bullet_points) == 0:
