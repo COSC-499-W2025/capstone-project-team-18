@@ -3,7 +3,7 @@ This file provides functionality to map imports, filenames and keywords to skill
 such as DevOps or Machine Learning
 """
 
-from typing import Dict, List, Set, Optional
+from typing import Dict, Set, Optional
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -219,23 +219,6 @@ class SkillMapper:
             keywords={
                 'container', 'image', 'orchestration', 'pod',
                 'deployment', 'service', 'ingress', 'namespace'
-            }
-        ),
-
-        Skill.INFRASTRUCTURE_AS_CODE: SkillIndicator(
-            packages={
-                'terraform', 'pulumi', 'boto3', 'awscli',
-                'azure', 'google-cloud', 'cloudformation'
-            },
-            file_patterns={
-                '*.tf', '*.tfvars', 'terraform*',
-                'cloudformation*.yml', 'cloudformation*.yaml',
-                'stack*.yml', 'stack*.yaml'
-            },
-            file_extensions={'.tf', '.tfvars', '.hcl'},
-            keywords={
-                'infrastructure', 'terraform', 'cloudformation',
-                'provisioning', 'resource', 'stack'
             }
         ),
 
