@@ -9,7 +9,8 @@ str bullet points
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, Protocol, Any
-from src.classes.statistic import ProjectStatCollection, StatisticTemplate, CodingLanguage
+from src.classes.statistic import ProjectStatCollection, StatisticTemplate, CodingLanguage, FileDomain
+from src.utils.data_processing import float_to_percent
 
 
 class ProjectReport(Protocol):
@@ -31,6 +32,36 @@ class BulletRule(ABC):
 class FallBackRule(BulletRule):
     def generate(self, report: ProjectReport) -> List[str]:
         return [f"I contributued and worked on the project {report.project_name}"]
+
+
+class ActivityTypeContributionRule(BulletRule):
+    def generate(self, report: ProjectReport) -> List[str]:
+        """
+        This function will log the activity type contribution
+        project statistic on the project. If a filedomian contribtion
+        was under 5 percent, it will not show
+
+        Args:
+            report (ProjectReport): The project report to analyze.
+
+        Returns:
+            List[str]: A bullet point for the resume item.
+        """
+
+        activity_type: dict[FileDomain, float] = report.get_value(
+            ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)
+
+        if activity_type is None or len(activity_type) == 0:
+            return []
+
+        fd_str = []
+
+        for fd, float_percent in activity_type.items():
+            if float_percent > 0.05:
+                fd_str.append(
+                    f"{float_to_percent(float_percent)} on {fd.value}")
+
+        return [f"During the project, I contributed split my time between following acitivity types: {", ".join(fd_str)}"]
 
 
 class WeightedSkillsRule(BulletRule):
@@ -166,7 +197,8 @@ class BulletPointBuilder:
             CodingLanguageRule(),
             WeightedSkillsRule(),
             GroupProjectRule(),
-            GitCommitPercentage()
+            GitCommitPercentage(),
+            ActivityTypeContributionRule()
         ]
 
         self.fallback: BulletRule = FallBackRule()
