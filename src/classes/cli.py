@@ -14,6 +14,8 @@ from typing import Dict, Any, List, Optional
 from src.app import start_miner
 from sqlalchemy import select, delete
 from src.database.utils.database_modify import rename_user_report
+from src.database.utils.database_access import get_project_from_project_name
+from src.classes.resume import bullet_point_builder
 
 
 def normalize_path(user_path: str) -> str:
@@ -233,6 +235,7 @@ class ArtifactMiner(cmd.Cmd):
             "(7) View current preferences\n"
             "(8) Delete a Portfolio\n"
             "(9) Retrieve a Portfolio\n"
+            "(10) Get resume bullet point\n"
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -998,6 +1001,8 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_portfolio_delete(arg)
                 case "retrieve":
                     return self.do_portfolio_retrieve(arg)
+                case "resume_bullet_point":
+                    return self.do_resume_bullet_point(arg)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
@@ -1093,6 +1098,7 @@ class ArtifactMiner(cmd.Cmd):
             "7": self.do_view,
             "8": self.do_portfolio_delete,
             "9": self.do_portfolio_retrieve,
+            "10": self.do_resume_bullet_point,
         }
 
         # Make commands case-insensitive
@@ -1106,3 +1112,40 @@ class ArtifactMiner(cmd.Cmd):
         '''Exits the program.'''
         print("\nThank you for using Artifact Miner! Exiting the program...")
         sys.exit(0)
+
+    def do_resume_bullet_point(self, arg):
+        """Retrieve and print a resume bullet point for a stored project."""
+        self.update_history(self.cmd_history, "resume_bullet_point")
+
+        print("\n=== Get Resume Bullet Point ===")
+        user_input = input("Enter the project name (folder name / ProjectReport.project_name, or 'back'/'cancel' to return): ").strip()
+
+        # Handle exit/quit
+        if user_input.lower() in ['exit', 'quit']:
+            return self.do_exit(arg)
+
+        # Handle back/cancel
+        if self._handle_cancel_input(user_input, "main"):
+            print("\n" + self.options)
+            return
+
+        if not user_input:
+            print("Project name cannot be empty.")
+            print("\n" + self.options)
+            return
+
+        try:
+            project_report = get_project_from_project_name(user_input)
+        except Exception:
+            print(f"\nNo project found for name '{user_input}' in the database.")
+            print("\n" + self.options)
+            return
+
+        # Build resume bullet(s) from the ProjectReport
+        bullets = bullet_point_builder(project_report)
+
+        print("\nGenerated resume bullet point(s):\n")
+        for bp in bullets:
+            print(f"- {bp}")
+
+        print("\n" + self.options)
