@@ -46,7 +46,7 @@ Prerequisites: Python 3.11+ recommended.
 | `7` View Current Preferences                  | View the current state of each preference                                                                                                                                                               |
 | `8` Delete a Portfolio                        | Delete a portfolio item from the database by selecting from the list of existing portfolios, providing a portfolio name, or using the portfolio of the zip file most recently analyzed.                 |
 | `9` Retrieve a Portfolio                      | Retrieve a portfolio item from the database by selecting from the list of existing portfolios, providing a portfolio name, or using the portfolio of the zip file most recently analyzed.               |
-| `10` Retrieve a Project's Résumé Bullet Point | Retrieve a résumé bullet point by selecting a project from the database, from the list of existing projects, providing a portfolio name, or using the portfolio of the zip file most recently analyzed. |
+| `10` Get resume bullet point | Retrieve a résumé bullet point by selecting a project from the database, from the list of existing projects, providing a portfolio name, or using the portfolio of the zip file most recently analyzed. |
 | `back`/`cancel` | Return to previous page or main menu
 | `exit`/ `ctrl + c` | exit application
 
@@ -65,6 +65,7 @@ Choose one of the following options:
 (7) View current preferences
 (8) Delete a Portfolio
 (9) Retrieve a Portfolio
+(10) Get resume bullet point
 Type 'back' or 'cancel' to return to this main menu
 Type help or ? to list commands
 ```
