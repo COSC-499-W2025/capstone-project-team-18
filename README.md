@@ -11,7 +11,7 @@
 3. [Milestone 1 Documentation](#milestone-1)
     - [2.1 Team Contract](#milestone-1-team-contract)
     - [2.2 Diagrams](#diagrams)
-    - [2.3 Requirements Checklist]
+    - [2.3 Requirements Checklist](#requirements-checklist)
 
 # Project Artifact Miner: A CLI Tool
 
@@ -85,7 +85,8 @@ the files and/or folders in 3rd party software?
 ### 2. Filepath
 ```
 (PAF) 2
-Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return): /path/to/projects.zip
+Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return):
+/path/to/projects.zip
 ```
 - Enter any valid filepath to a compressed directory
 
@@ -431,18 +432,17 @@ If a repeated issue is severe enough, the rest of the team may discuss executing
 ## Diagrams
 
 <figure style="text-align: center;">
-  <img src="/workspaces/capstone-project-team-18/documentation/milestone-1/data-flow-diagrams/DFD-Level0.jpg" />
+  <img src="documentation/milestone-1/data-flow-diagrams/DFD-Level0.jpg" />
   <figcaption><strong>Figure 1:</strong> Data Flow Diagram Level 0</figcaption>
 </figure>
 
 <figure style="text-align: center;">
-  <img src="/workspaces/capstone-project-team-18/documentation/milestone-1/data-flow-diagrams/DFD-Level0.jpg" />
+  <img src="documentation/milestone-1/data-flow-diagrams/DFD-Level0.jpg" />
   <figcaption><strong>Figure 2:</strong> Data Flow Diagram Level 0</figcaption>
 </figure>
 
-
 <figure style="text-align: center;">
-  <img src="/workspaces/capstone-project-team-18/documentation/milestone-1/system-architecture/system-architecture.jpeg" />
+  <img src="/documentation/milestone-1/system-architecture/system-architecture.jpeg" />
   <figcaption><strong>Figure 3:</strong> System Architecture</figcaption>
 </figure>
 
