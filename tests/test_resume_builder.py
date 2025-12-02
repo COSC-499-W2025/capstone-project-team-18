@@ -1,12 +1,48 @@
-from src.classes.resume.bullet_point_builder import BulletPointBuilder, CodingLanguageRule, WeightedSkillsRule
+from src.classes.resume.bullet_point_builder import BulletPointBuilder, CodingLanguageRule, WeightedSkillsRule, ActivityTypeContributionRule
 from src.classes.statistic import (
     WeightedSkills,
     CodingLanguage,
     Statistic,
     StatisticIndex,
     ProjectStatCollection,
+    FileDomain
 )
 from src.classes.report import ProjectReport
+
+
+def test_activity_type_contribution_bp_expected():
+    """
+    Check expected behavior of ActivityTypeContributionRule
+    """
+
+    ratio = {
+        FileDomain.CODE: 0.12,
+        FileDomain.DESIGN: 0.28,
+        FileDomain.DOCUMENTATION: 0.30,
+        FileDomain.TEST: 0.30
+    }
+
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = ActivityTypeContributionRule().generate(report)[0]  # type: ignore
+
+    assert f"12% on code, 28% on design, 30% on documentation, 30% on test" in bp
+
+
+def test_activity_type_contribution_bp_near_zero():
+    """
+    Check behavior near zero of ActivityTypeContributionRule
+    """
+
+    ratio = {
+        FileDomain.CODE: 0.9999991,
+        FileDomain.DESIGN: 0.0000001
+    }
+
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = ActivityTypeContributionRule().generate(report)[0]  # type: ignore
+
+    assert f"100% on code" in bp
+    assert "design" not in bp
 
 
 def test_coding_language_bp_multiple():
