@@ -25,11 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 def extract_file_reports(
-                        project_file: Optional[ProjectFiles],
-                        email: Optional[str] = None,
-                        language_filter: Optional[list[str]] = None
-                        ) -> Optional[list[FileReport]]:
-
+    project_file: Optional[ProjectFiles],
+    email: Optional[str] = None,
+    language_filter: Optional[list[str]] = None
+) -> Optional[list[FileReport]]:
     """
     Method to extract individual fileReports within each project
     """
@@ -43,6 +42,9 @@ def extract_file_reports(
     # list of reports for each file in an individual project to be returned
     reports = []
     for file in projectFiles:
+
+        if project_file.name == "EarthLingo":
+            pass
 
         analyzer = get_appropriate_analyzer(
             project_file.root_path,
@@ -140,7 +142,6 @@ class BaseFileAnalyzer:
             bool: True if the file should be included, False otherwise.
         """
 
-
        # Check language filter
         if self.language_filter:
             if not self._matches_language_filter():
@@ -161,7 +162,6 @@ class BaseFileAnalyzer:
             return True
 
         return False
-
 
     def _matches_language_filter(self) -> bool:
         """
@@ -350,7 +350,6 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         - WORD_COUNT
         - CHARACTER_COUNT
         - SENTENCE_COUNT
-        - ARI_WRITING_SCORE
         - TYPE_OF_FILE
     """
 
@@ -375,27 +374,10 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
             Statistic(FileStatCollection.CHARACTER_COUNT.value,
                       character_count),
             Statistic(FileStatCollection.SENTENCE_COUNT.value,
-                      sentence_count),
-            Statistic(FileStatCollection.ARI_WRITING_SCORE.value,
-                      self._ari_score(character_count, word_count, sentence_count))
+                      sentence_count)
         ]
 
         self.stats.extend(stats)
-
-    def _ari_score(self, character_count: int, word_count: int, sentence_count: int) -> float:
-        """
-        Calculates the Automated readability index (ARI) readability
-        score for English text. The output is the US grade level
-        that is needed to read this text (e.g. 6.7 would be about
-        a 7th grade level). Formula is defined here:
-
-        https://en.wikipedia.org/wiki/Automated_readability_index
-        """
-        # Handle edge cases to prevent division by zero
-        if word_count == 0 or sentence_count == 0:
-            return 0.0
-
-        return 4.71 * (character_count / word_count) + 0.5 * (word_count / sentence_count) - 21.43
 
 
 class CodeFileAnalyzer(TextFileAnalyzer):

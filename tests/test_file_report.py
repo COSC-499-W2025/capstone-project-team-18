@@ -114,8 +114,6 @@ class TestFileReportWithAnalysis:
             FileStatCollection.CHARACTER_COUNT.value) is not None
         assert file_report.get_value(
             FileStatCollection.SENTENCE_COUNT.value) is not None
-        assert file_report.get_value(
-            FileStatCollection.ARI_WRITING_SCORE.value) is not None
 
         # Test file type is correctly identified
         file_type = file_report.get_value(
@@ -348,8 +346,6 @@ class TestFileReportEdgeCases:
             FileStatCollection.CHARACTER_COUNT.value)
         sentence_count = file_report.get_value(
             FileStatCollection.SENTENCE_COUNT.value)
-        ari_score = file_report.get_value(
-            FileStatCollection.ARI_WRITING_SCORE.value)
 
         assert isinstance(word_count, int)
         assert word_count > 0
@@ -359,8 +355,6 @@ class TestFileReportEdgeCases:
 
         assert isinstance(sentence_count, int)
         assert sentence_count > 0
-
-        assert isinstance(ari_score, float)
 
     def test_multiple_file_analysis_consistency(self, temp_dir):
         """Test that analyzing the same file multiple times gives consistent results."""
@@ -387,68 +381,6 @@ class TestFileReportEdgeCases:
         assert (report1.get_value(FileStatCollection.NUMBER_OF_CLASSES.value) ==
                 report2.get_value(FileStatCollection.NUMBER_OF_CLASSES.value))
 
-    def test_ari_score_edge_cases(self, temp_dir):
-        """Test ARI score calculation with edge cases that could cause division by zero."""
-
-        # Test with content that has no sentences (no punctuation)
-        content_no_sentences = "word word word word word"  # No punctuation
-        file_path = _create_temp_file(
-            "no_sentences.md", content_no_sentences, temp_dir)
-        file_report = FileReport.create_with_analysis(
-            str(temp_dir), "no_sentences.md")
-
-        # Should not crash and should return 0.0 for ARI score
-        ari_score = file_report.get_value(
-            FileStatCollection.ARI_WRITING_SCORE.value)
-        assert ari_score == 0.0
-
-        # Should still have other stats
-        word_count = file_report.get_value(FileStatCollection.WORD_COUNT.value)
-        assert word_count > 0
-        sentence_count = file_report.get_value(
-            FileStatCollection.SENTENCE_COUNT.value)
-        assert sentence_count == 0
-
-        # Test with empty content
-        file_path_empty = _create_temp_file("empty.md", "", temp_dir)
-        file_report_empty = FileReport.create_with_analysis(
-            str(temp_dir), "empty.md")
-
-        # Should not crash and should return 0.0 for ARI score
-        ari_score_empty = file_report_empty.get_value(
-            FileStatCollection.ARI_WRITING_SCORE.value)
-        assert ari_score_empty == 0.0
-
-        # Word and sentence counts should be 0
-        word_count_empty = file_report_empty.get_value(
-            FileStatCollection.WORD_COUNT.value)
-        sentence_count_empty = file_report_empty.get_value(
-            FileStatCollection.SENTENCE_COUNT.value)
-        assert word_count_empty == 0
-        assert sentence_count_empty == 0
-
-    def test_text_file_with_proper_sentences(self, temp_dir):
-        """Test text file analysis with proper sentence structure."""
-        content = "This is sentence one. This is sentence two! Is this sentence three?"
-
-        file_path = _create_temp_file(
-            "proper_sentences.txt", content, temp_dir)
-        file_report = FileReport.create_with_analysis(
-            str(temp_dir), "proper_sentences.txt")
-
-        # Should work without division by zero and calculate proper ARI score
-        word_count = file_report.get_value(FileStatCollection.WORD_COUNT.value)
-        sentence_count = file_report.get_value(
-            FileStatCollection.SENTENCE_COUNT.value)
-        ari_score = file_report.get_value(
-            FileStatCollection.ARI_WRITING_SCORE.value)
-
-        assert word_count > 0
-        assert sentence_count > 0
-        assert isinstance(ari_score, float)
-        # ARI score should be calculated properly (not 0.0) since we have both words and sentences
-        assert ari_score != 0.0
-
     def test_natural_language_file_with_only_words(self, temp_dir):
         """Test natural language analysis with words but no sentence punctuation."""
         content = "just some words without any punctuation marks"
@@ -461,12 +393,9 @@ class TestFileReportEdgeCases:
         word_count = file_report.get_value(FileStatCollection.WORD_COUNT.value)
         sentence_count = file_report.get_value(
             FileStatCollection.SENTENCE_COUNT.value)
-        ari_score = file_report.get_value(
-            FileStatCollection.ARI_WRITING_SCORE.value)
 
         assert word_count > 0
         assert sentence_count == 0  # No punctuation
-        assert ari_score == 0.0  # Should be 0.0 due to division by zero protection
 
 
 class TestFileReportStatisticsIntegration:
