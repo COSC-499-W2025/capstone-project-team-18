@@ -1,31 +1,90 @@
-from src.classes.resume import coding_language_bp, weight_skills_bp, bullet_point_builder
+from src.classes.resume.bullet_point_builder import BulletPointBuilder, CodingLanguageRule, WeightedSkillsRule, ActivityTypeContributionRule
 from src.classes.statistic import (
     WeightedSkills,
     CodingLanguage,
     Statistic,
     StatisticIndex,
     ProjectStatCollection,
+    FileDomain
 )
 from src.classes.report import ProjectReport
 
 
+def test_activity_type_contribution_bp_expected():
+    """
+    Check expected behavior of ActivityTypeContributionRule
+    """
+
+    ratio = {
+        FileDomain.CODE: 0.12,
+        FileDomain.DESIGN: 0.28,
+        FileDomain.DOCUMENTATION: 0.30,
+        FileDomain.TEST: 0.30
+    }
+
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = ActivityTypeContributionRule().generate(report)[0]  # type: ignore
+
+    assert f"12% on code, 28% on design, 30% on documentation, 30% on test" in bp
+
+
+def test_activity_type_contribution_bp_one_leading():
+    """
+    Check where on file domain dominates ActivityTypeContributionRule
+    """
+
+    ratio = {
+        FileDomain.CODE: 0.9999991,
+        FileDomain.DESIGN: 0.0000009
+    }
+
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = ActivityTypeContributionRule().generate(report)  # type: ignore
+
+    assert len(bp) == 0
+
+
+def test_activity_type_contribution_bp_near_zero():
+    """
+    Check behavior near zero of ActivityTypeContributionRule
+    """
+
+    ratio = {
+        FileDomain.CODE: 0.3999999,
+        FileDomain.TEST: 0.6,
+        FileDomain.DESIGN: 0.0000001
+    }
+
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = ActivityTypeContributionRule().generate(report)[0]  # type: ignore
+
+    assert f"40% on code, 60% on test" in bp
+    assert "design" not in bp
+
+
 def test_coding_language_bp_multiple():
     ratio = {CodingLanguage.PYTHON: 0.6, CodingLanguage.JAVASCRIPT: 0.4}
-    bp = coding_language_bp(ratio)
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = CodingLanguageRule().generate(report)[0]  # type: ignore
+
     assert "Python" in bp
-    assert "Javascript" in bp
+    assert "Javascript" in bp or "JavaScript" in bp
     assert bp.startswith("Implemented code mainly in")
 
 
 def test_coding_language_bp_single():
     ratio = {CodingLanguage.PYTHON: 1.0}
-    bp = coding_language_bp(ratio)
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = CodingLanguageRule().generate(report)[0]  # type: ignore
+
     assert bp == "Project was coded using the Python language"
 
 
 def test_coding_language_bp_small_shares():
     ratio = {CodingLanguage.PYTHON: 0.05, CodingLanguage.JAVASCRIPT: 0.05}
-    bp = coding_language_bp(ratio)
+    report = type("Report", (), {"get_value": lambda self, key: ratio})()
+    bp = CodingLanguageRule().generate(report)[0]  # type: ignore
+
     assert "small amounts" in bp
 
 
@@ -36,7 +95,9 @@ def test_weight_skills_bp_top_three():
         WeightedSkills("Docker", 0.3),
         WeightedSkills("CI/CD", 0.2),
     ]
-    bp = weight_skills_bp(skills)
+    report = type("Report", (), {"get_value": lambda self, key: skills})()
+    bp = WeightedSkillsRule().generate(report)[0]  # type: ignore
+
     assert "Machine Learning" in bp
     assert "Python" in bp
     assert "Docker" in bp
@@ -65,7 +126,8 @@ def test_bullet_point_builder_aggregates_stats():
     si = StatisticIndex(stats)
     report = ProjectReport.from_statistics(si)
 
-    bullets = bullet_point_builder(report)
+    bp = BulletPointBuilder()
+    bullets = bp.build(report)
 
     # should include language, skills, collaboration, and percentages
     assert any("python" in b.lower() for b in bullets)
@@ -83,5 +145,6 @@ def test_bullet_point_builder_individual():
     ]
     si = StatisticIndex(stats)
     report = ProjectReport.from_statistics(si)
-    bullets = bullet_point_builder(report)
+    bp = BulletPointBuilder()
+    bullets = bp.build(report)
     assert any("individ" in b.lower() for b in bullets)

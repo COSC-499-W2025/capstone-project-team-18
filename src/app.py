@@ -12,8 +12,11 @@ from sqlalchemy.orm import Session
 
 from src.utils.zipped_utils import unzip_file
 from src.utils.project_discovery.project_discovery import discover_projects
+from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
+
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
+from src.classes.resume.render import ResumeLatexRenderer
 
 from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
@@ -129,16 +132,26 @@ def start_miner(
 
 
     print("-------- Analysis Reports --------\n")
+    resume = user_report.generate_resume(email)
 
-    print("-------- Resume --------\n")
-    print(user_report.generate_resume())
-    print("------------------------\n")
+    # Download latex resume to file system
+    latex_str = resume.export(ResumeLatexRenderer())
 
-    print("-------- Portfolio --------\n")
-    print(user_report.to_user_readable_string())
-    print("\n-------------------------\n")
+    with open("resume.tex", "w", encoding="utf-8") as f:
+        f.write(latex_str)
+
+    # Print the resume items
+    resume_CLI_stringify(resume)
+
+    # Print the portfolio item
+    portfolio_CLI_stringify(user_report)
 
 
 if __name__ == '__main__':
     from src.classes.cli import ArtifactMiner
-    ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
+
+    try:
+        ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
+
+    except KeyboardInterrupt:
+        print("Exiting the program...")

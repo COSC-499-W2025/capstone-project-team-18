@@ -2,7 +2,7 @@
 Tests the Resume class and its methods.
 """
 
-from src.classes.resume import Resume, ResumeItem
+from src.classes.resume.resume import Resume, ResumeItem
 from src.classes.report import ProjectReport, UserReport
 from src.classes.statistic import StatisticIndex, Statistic, ProjectStatCollection
 from datetime import date
@@ -21,15 +21,6 @@ def test_add_item():
     assert resume.items[0].title == "Software Engineer"
 
 
-def test_add_skill():
-    resume = Resume()
-    resume.add_skill("Python")
-    resume.add_skill("Java")
-    assert len(resume.skills) == 2
-    assert "Python" in resume.skills
-    assert "Java" in resume.skills
-
-
 def test_generate_resume():
     resume = Resume()
     item = ResumeItem(
@@ -39,9 +30,9 @@ def test_generate_resume():
         end_date=date(2021, 1, 1)
     )
     resume.add_item(item)
-    generated = resume.generate_resume()
+    generated = str(resume)
     expected_output = (
-        "Software Engineer : 2020-01-01 - 2021-01-01\n"
+        "Software Engineer : January, 2020 - January, 2021\n"
         "   - Developed features\n"
         "   - Fixed bugs\n"
         "\n"
@@ -74,7 +65,7 @@ def test_userreport_can_create_resume():
         "UserReport1"
     )
 
-    resume_item = user_report.generate_resume()
+    resume_item = user_report.generate_resume(None)
 
     assert isinstance(resume_item, Resume)
     assert len(resume_item.items) == 1
