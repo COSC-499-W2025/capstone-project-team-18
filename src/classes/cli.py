@@ -14,11 +14,8 @@ from typing import Dict, Any, List, Optional
 from src.app import start_miner
 from sqlalchemy import select, delete
 from src.database.utils.database_modify import rename_user_report
-<<<<<<< HEAD
 from src.database.utils.database_access import get_project_from_project_name
 from src.classes.resume import bullet_point_builder
-=======
->>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
 
 
 def normalize_path(user_path: str) -> str:
@@ -238,10 +235,8 @@ class ArtifactMiner(cmd.Cmd):
             "(7) View current preferences\n"
             "(8) Delete a Portfolio\n"
             "(9) Retrieve a Portfolio\n"
-<<<<<<< HEAD
             "(10) Get resume bullet point\n"
-=======
->>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
+
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -1007,11 +1002,8 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_portfolio_delete(arg)
                 case "retrieve":
                     return self.do_portfolio_retrieve(arg)
-<<<<<<< HEAD
                 case "resume_bullet_point":
                     return self.do_resume_bullet_point(arg)
-=======
->>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
         else:
             print("\nNo previous command to return to.")
             print(self.options)
@@ -1107,10 +1099,7 @@ class ArtifactMiner(cmd.Cmd):
             "7": self.do_view,
             "8": self.do_portfolio_delete,
             "9": self.do_portfolio_retrieve,
-<<<<<<< HEAD
             "10": self.do_resume_bullet_point,
-=======
->>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
         }
 
         # Make commands case-insensitive
@@ -1130,7 +1119,8 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "resume_bullet_point")
 
         print("\n=== Get Resume Bullet Point ===")
-        user_input = input("Enter the project name (folder name / ProjectReport.project_name, or 'back'/'cancel' to return): ").strip()
+        user_input = input(
+            "Enter the project name (folder name / ProjectReport.project_name, or 'back'/'cancel' to return): ").strip()
 
         # Handle exit/quit
         if user_input.lower() in ['exit', 'quit']:
@@ -1149,7 +1139,8 @@ class ArtifactMiner(cmd.Cmd):
         try:
             project_report = get_project_from_project_name(user_input)
         except Exception:
-            print(f"\nNo project found for name '{user_input}' in the database.")
+            print(
+                f"\nNo project found for name '{user_input}' in the database.")
             print("\n" + self.options)
             return
 

@@ -242,7 +242,8 @@ def test_do_portfolio_retrieve_uses_preferences_when_blank(cli):
     """Blank input should retrieve portfolio name from preferences."""
     cli.preferences.get_project_filepath.return_value = "/tmp/last.zip"
     cli.preferences.get.return_value = ""  # ensure no last_portfolio_title stored
-    mock_report = type("Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
+    mock_report = type(
+        "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
     with patch('builtins.input', side_effect=['']), \
             patch('src.classes.cli.print'), \
             patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
@@ -252,7 +253,8 @@ def test_do_portfolio_retrieve_uses_preferences_when_blank(cli):
 
 def test_do_portfolio_retrieve_option_two_prompts_for_name(cli):
     """Entering '2' should prompt for a portfolio name and use it."""
-    mock_report = type("Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
+    mock_report = type(
+        "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
     with patch('builtins.input', side_effect=['2', 'my-portfolio']), \
             patch('src.classes.cli.print'), \
             patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
@@ -264,7 +266,8 @@ def test_do_portfolio_retrieve_option_two_blank_uses_last(cli):
     """Entering '2' then blank should fall back to last analyzed name."""
     cli.preferences.get.return_value = ""  # no last_portfolio_title
     cli.preferences.get_project_filepath.return_value = "/tmp/last.zip"
-    mock_report = type("Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
+    mock_report = type(
+        "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
     with patch('builtins.input', side_effect=['2', '']), \
             patch('src.classes.cli.print'), \
             patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
@@ -466,12 +469,12 @@ def test_cancel_functionality_across_commands(cli, command):
         # Check for help instruction
         self.assertIn("help", options)
 
-<<<<<<< HEAD
+
 def test_resume_bullet_exit_calls_do_exit(cli):
     """If the user types 'exit', do_exit should be called and no bullets printed."""
     with patch.object(cli, "do_exit") as mock_exit, \
-         patch("builtins.input", return_value="exit"), \
-         patch("builtins.print") as mock_print:
+            patch("builtins.input", return_value="exit"), \
+            patch("builtins.print") as mock_print:
         cli.do_resume_bullet_point("")
 
         mock_exit.assert_called_once_with("")
@@ -480,10 +483,11 @@ def test_resume_bullet_exit_calls_do_exit(cli):
             for call in mock_print.call_args_list
         )
 
+
 def test_resume_bullet_back_or_cancel_returns_to_menu(cli):
     """If user types 'back', the command should cancel and return to main menu."""
     with patch("builtins.input", return_value="back"), \
-         patch("builtins.print") as mock_print:
+            patch("builtins.print") as mock_print:
         cli.do_resume_bullet_point("")
 
         assert cli.cmd_history == []
@@ -496,11 +500,12 @@ def test_resume_bullet_back_or_cancel_returns_to_menu(cli):
             for call in mock_print.call_args_list
         )
 
+
 def test_resume_bullet_empty_project_name(cli):
     """Blank project name should show validation message and not hit DB."""
     with patch("builtins.input", return_value=""), \
-         patch("builtins.print") as mock_print, \
-         patch("src.classes.cli.get_project_from_project_name") as mock_get:
+            patch("builtins.print") as mock_print, \
+            patch("src.classes.cli.get_project_from_project_name") as mock_get:
         cli.do_resume_bullet_point("")
 
         mock_get.assert_not_called()
@@ -513,21 +518,24 @@ def test_resume_bullet_empty_project_name(cli):
             for call in mock_print.call_args_list
         )
 
+
 def test_resume_bullet_project_not_found(cli):
     """If the DB lookup fails, print 'not found' message and return."""
     with patch("builtins.input", return_value="missing-project"), \
-         patch("builtins.print") as mock_print, \
-         patch("src.classes.cli.get_project_from_project_name", side_effect=Exception("not found")):
+            patch("builtins.print") as mock_print, \
+            patch("src.classes.cli.get_project_from_project_name", side_effect=Exception("not found")):
         cli.do_resume_bullet_point("")
 
         assert any(
-            "No project found for name 'missing-project' in the database." in str(call)
+            "No project found for name 'missing-project' in the database." in str(
+                call)
             for call in mock_print.call_args_list
         )
         assert not any(
             "Generated resume bullet point(s)" in str(call)
             for call in mock_print.call_args_list
         )
+
 
 def test_resume_bullet_success_path(cli):
     """Happy path: valid project name → bullets generated and printed."""
@@ -537,9 +545,9 @@ def test_resume_bullet_success_path(cli):
     dummy_report = DummyProjectReport()
 
     with patch("builtins.input", return_value="my-project"), \
-         patch("src.classes.cli.get_project_from_project_name", return_value=dummy_report) as mock_get, \
-         patch("src.classes.cli.bullet_point_builder", return_value=["Bullet one", "Bullet two"]) as mock_builder, \
-         patch("builtins.print") as mock_print:
+            patch("src.classes.cli.get_project_from_project_name", return_value=dummy_report) as mock_get, \
+            patch("src.classes.cli.bullet_point_builder", return_value=["Bullet one", "Bullet two"]) as mock_builder, \
+            patch("builtins.print") as mock_print:
 
         cli.do_resume_bullet_point("")
 
@@ -550,14 +558,15 @@ def test_resume_bullet_success_path(cli):
             "Generated resume bullet point(s):" in str(call)
             for call in mock_print.call_args_list
         )
-        assert any("- Bullet one" in str(call) for call in mock_print.call_args_list)
-        assert any("- Bullet two" in str(call) for call in mock_print.call_args_list)
+        assert any("- Bullet one" in str(call)
+                   for call in mock_print.call_args_list)
+        assert any("- Bullet two" in str(call)
+                   for call in mock_print.call_args_list)
         assert any(
             "Artifact Miner Main Menu" in str(call)
             for call in mock_print.call_args_list
         )
-=======
->>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
+
 
 def test_keyboardinterrupt_handling(cli):
     """Test that ctrl-c exits cleanly with correct message."""
