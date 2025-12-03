@@ -57,7 +57,7 @@ class Resume:
     def generate_resume(self) -> str:
         resume = ""
         resume += f"Email: {self.email}\n\n" if self.email else ""
-        resume += f"Core skills {", ".join(self.skills)}\n\n" if self.skills else ""
+        resume += f"Core skills: {", ".join(self.skills)}\n\n" if self.skills else ""
         for item in self.items:
             resume += f"{item.title} : {item.start_date} - {item.end_date}\n"
             for bullet in item.bullet_points:
@@ -205,4 +205,4 @@ def weight_skills_bp(weighted_skills: list[WeightedSkills]) -> str:
 
     top = sorted_skills[:3]
 
-    return f"Utilized skills {', '.join([s.skill_name for s in top])}"
+    return f"Utilized skills: {', '.join([s.skill_name for s in top])}"
