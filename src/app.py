@@ -81,7 +81,7 @@ def start_miner(
                 progress_callback("analysis", idx, total_projects, project.name)
 
             file_reports = extract_file_reports(
-                project, email)  # get the project's FileReports
+                project, email, language_filter)  # get the project's FileReports
 
             if file_reports is None:
                 continue  # skip if directory is empty
