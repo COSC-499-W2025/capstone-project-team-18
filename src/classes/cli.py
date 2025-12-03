@@ -953,7 +953,7 @@ class ArtifactMiner(cmd.Cmd):
 
         print("\nOptions:")
         print("  - Enter language names separated by commas")
-        print("  - Type 'all' or 'clear' to remove the filter (analyze all languages)")
+        print("  - Type 'clear' to remove the filter (analyze all languages)")
         print("  - Type 'back' or 'cancel' to return")
 
         languages_input = input("\nLanguages to analyze (or 'back'/'cancel'): ").strip()
@@ -966,7 +966,7 @@ class ArtifactMiner(cmd.Cmd):
         if languages_input.lower() in ['exit', 'quit']:
             return self.do_exit("")
 
-        if languages_input.lower() in ['all', 'clear']:
+        if languages_input.lower() in ['clear']:
             languages = []
             message = "✓ Language filter removed - now analyzing all languages"
         else:
