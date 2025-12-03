@@ -24,7 +24,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[str] = None) -> Optional[list[FileReport]]:
+def extract_file_reports(
+                        project_file: Optional[ProjectFiles],
+                        email: Optional[str] = None,
+                        language_filter: Optional[list[str]] = None
+                        ) -> Optional[list[FileReport]]:
+
     """
     Method to extract individual fileReports within each project
     """
@@ -40,7 +45,11 @@ def extract_file_reports(project_file: Optional[ProjectFiles], email: Optional[s
     for file in projectFiles:
 
         analyzer = get_appropriate_analyzer(
-            project_file.root_path, file, project_file.repo, email)
+            project_file.root_path,
+            file,
+            project_file.repo,
+            email,
+            language_filter)
 
         if analyzer.should_inculde() is False:
             continue
@@ -84,7 +93,8 @@ class BaseFileAnalyzer:
                  path_to_top_level_project: str,
                  relative_path: str,
                  repo: Optional[Repo] = None,
-                 email: Optional[str] = None
+                 email: Optional[str] = None,
+                 language_filter: Optional[list[str]] = None
                  ):
 
         self.path_to_top_level_project = path_to_top_level_project
@@ -92,6 +102,7 @@ class BaseFileAnalyzer:
         self.filepath = f"{path_to_top_level_project}/{relative_path}"
         self.repo = repo
         self.email = email
+        self.language_filter = language_filter
         self.stats = StatisticIndex()
         self.blame_info = None
         self.is_git_tracked = self.file_in_git_repo()
@@ -129,7 +140,11 @@ class BaseFileAnalyzer:
             bool: True if the file should be included, False otherwise.
         """
 
-        # TODO : Implement user preferences for excluding certain file types
+
+       # Check language filter
+        if self.language_filter:
+            if not self._matches_language_filter():
+                return False
 
         if not self.is_git_tracked or not self.email or not self.repo:
             return True
@@ -144,6 +159,30 @@ class BaseFileAnalyzer:
 
         if self.email in short_log:
             return True
+
+        return False
+
+
+    def _matches_language_filter(self) -> bool:
+        """
+        Check if file matches the language filter.
+
+        Returns:
+            bool: True if file matches filter or no filter set, False otherwise
+        """
+        if not self.language_filter:
+            return True
+
+        file_ext = Path(self.filepath).suffix.lower()
+
+        # Check each language in the filter
+        for lang_name in self.language_filter:
+            # Find matching CodingLanguage enum
+            for coding_lang in CodingLanguage:
+                # coding_lang.value is a tuple (name, [extensions])
+                if coding_lang.value[0].lower() == lang_name.lower():
+                    if file_ext in coding_lang.value[1]:
+                        return True
 
         return False
 
@@ -954,7 +993,8 @@ def get_appropriate_analyzer(
     path_to_top_level_project: str,
     relative_path: str,
     repo: Optional[Repo] = None,
-    email: Optional[str] = None
+    email: Optional[str] = None,
+    language_filter: Optional[list[str]] = None
 ) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
@@ -967,44 +1007,44 @@ def get_appropriate_analyzer(
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:
-        return NaturalLanguageAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return NaturalLanguageAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
     # Python files
     if extension == '.py':
-        return PythonAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return PythonAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
     # Java files
     if extension == '.java':
-        return JavaAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return JavaAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
     # JavaScript files
     if extension in {'.js', '.jsx'}:
-        return JavaScriptAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return JavaScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
     # C files
     if extension == '.c':
-        return CAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return CAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
-        return TypeScriptAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return TypeScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
     # CSS files
     if extension == '.css':
-        return CSSAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return CSSAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
-        return HTMLAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return HTMLAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
     # PHP files
     if extension == '.php':
-        return PHPAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return PHPAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
     # Text-based files
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
-        return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email)
+        return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
     for language in CodingLanguage:
         if extension in language.value[1]:
-            return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email)
+            return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
     # Default to base analyzer
-    return BaseFileAnalyzer(path_to_top_level_project, relative_path, repo, email)
+    return BaseFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
