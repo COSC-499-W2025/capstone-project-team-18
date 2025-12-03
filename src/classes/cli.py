@@ -966,7 +966,7 @@ class ArtifactMiner(cmd.Cmd):
         if languages_input.lower() in ['exit', 'quit']:
             return self.do_exit("")
 
-        if languages_input.lower() in ['clear']:
+        if languages_input.lower() == 'clear':
             languages = []
             message = "✓ Language filter removed - now analyzing all languages"
         else:
