@@ -55,12 +55,10 @@ def test_is_git_repo_true_and_false(temp_git_repo, tmp_path: Path):
     assert analyzer.is_git_tracked is True
 
     # Directory that isn't a repository
-    nonrepo_dir = tmp_path / "NoGit"
-    nonrepo_dir.mkdir()
-
-    local_dir = get_temp_local_dir(dir_name='local-dir', path=tmp_path)
-    local_file = get_temp_file(
-        filename='no-repo.py', content='print("not a git repo")', path=tmp_path / 'local-dir')
+    local_dir = get_temp_local_dir(dir_name='NoGit', path=tmp_path)
+    local_file = get_temp_file(filename='no-repo.py',
+                               content='print("not a git repo")',
+                               path=local_dir)
 
     analyzer = get_appropriate_analyzer(
         str(local_dir), str(local_file.relative_to(local_dir)))
