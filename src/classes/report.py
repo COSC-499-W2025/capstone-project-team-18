@@ -6,12 +6,17 @@ from pathlib import Path
 import tempfile
 import shutil
 import zipfile
+import os
 from git import Repo, InvalidGitRepositoryError
 from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
 from git import NoSuchPathError, Repo, InvalidGitRepositoryError
-from .resume import Resume, ResumeItem, bullet_point_builder
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
+from src.classes.resume.bullet_point_builder import BulletPointBuilder
+from src.classes.resume.resume import Resume, ResumeItem
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+from src.utils.data_processing import normalize
 
 
 class BaseReport:
@@ -84,6 +89,8 @@ class ProjectReport(BaseReport):
     of "total lines written."
     """
 
+    bullet_builder = BulletPointBuilder()
+
     def get_project_weight(self) -> float:
         """
         Ranks the project using a linear combination of lines of code, date range, and individual contribution.
@@ -145,36 +152,125 @@ class ProjectReport(BaseReport):
         """
         self.file_reports = file_reports or []
         self.project_name = project_name or "Unknown Project"
+        self.project_path = project_path or "Unknown Path"
+        self.project_repo = project_repo
+        self.email = user_email
+        self.sub_dirs = self._get_sub_dirs()
 
-        if statistics is None:
-            self.project_statistics = StatisticIndex()
-            self.project_repo = project_repo
-            # Initialize project_repo from project_path if not provided
-            if project_repo is not None:
-                self.project_repo = project_repo
-            elif project_path is not None:
-                from os.path import exists
-                if not exists(project_path):
-                    raise FileNotFoundError(
-                        f"Project path does not exist: {project_path}")
-                try:
-                    self.project_repo = Repo(project_path)
-                except (InvalidGitRepositoryError, NoSuchPathError):
-                    self.project_repo = None
-            else:
-                self.project_repo = None
-            # Aggregate statistics from file reports
-            self._determine_start_end_dates()
-            self._find_coding_languages_ratio()
-            self._calculate_ari_score()
-            self._weighted_skills()
-            if user_email:
-                self._analyze_git_authorship(user_email)
-        else:
+        self.project_statistics = StatisticIndex()
+
+        # In this case, we are loading from the database and we are explicitly
+        # given statistics. We load those stats in, and move on
+        if statistics is not None:
             self.project_statistics = statistics
+            super().__init__(self.project_statistics)
+            return
+
+        # Aggregate statistics from file reports
+        self._determine_start_end_dates()
+        self._find_coding_languages_ratio()
+        self._calculate_ari_score()
+        self._weighted_skills()
+        self._activity_type_contributions()
+
+        if self.email:
+            self._analyze_git_authorship()
+            if self.project_repo:
+                self._total_contribution_percentage()
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
+
+    def _total_contribution_percentage(self) -> None:
+        # Iterate over fileReports to get total lines responsible over whole project
+        total_contribution_lines = 0.0
+
+        # get total lines using project repo
+        total_lines = self._get_project_lines()
+        for file in self.file_reports:
+            file_commit_pct = file.get_value(
+                FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
+            if file_commit_pct is not None:
+                total_contribution_lines += file_commit_pct / 100 * \
+                    file.get_value(FileStatCollection.LINES_IN_FILE.value)
+        if total_lines > 0:
+            self.project_statistics.add(Statistic(
+                ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, round((total_contribution_lines / total_lines) * 100, 2)))
+        else:
+            self.project_statistics.add(Statistic(
+                ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, 0.0))
+
+    def _get_project_lines(self) -> int:
+
+        tracked_files = self.project_repo.git.ls_files().split("\n")
+        total = 0
+        for f in tracked_files:
+            try:
+                with open(os.path.join(self.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
+                    content = fp.read()
+                    count = len(content.split("\n"))
+                    total += count
+            except (FileNotFoundError, IsADirectoryError):
+                pass  # skip directories or removed files
+
+        return total
+
+    def _activity_type_contributions(self) -> None:
+        """
+        This function will analyze the user's
+        contributions to each file domain in a
+        project out of all of their contributions.
+
+        If the user's email is configured, it will
+        use PERCENTAGE_LINES_COMMITTED file stat.
+
+        Otherwise, it is assumed that they worked on
+        all files and we will just use the distrubition
+        of the project files.
+        """
+
+        activity_type_to_lines = {}
+        git_analysis = True if self.email and self.project_repo else False
+
+        for fr in self.file_reports:
+            file_domain = fr.get_value(FileStatCollection.TYPE_OF_FILE.value)
+
+            lines_in_file = fr.get_value(
+                FileStatCollection.LINES_IN_FILE.value)
+
+            if not file_domain or not lines_in_file:
+                continue
+
+            percent = 1
+
+            # If git analysis, check to see if the user has contributed
+            # if so, take that percent. Else, that file is local and assume
+            # they contributed to it themeseleves
+            if git_analysis:
+                percent_lines_commited = fr.get_value(
+                    FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
+
+                if percent_lines_commited is not None:
+                    percent = percent_lines_commited / 100
+
+            prev_lines = activity_type_to_lines.get(file_domain, 0)
+
+            activity_type_to_lines[file_domain] = prev_lines + \
+                lines_in_file * percent
+
+        normalize(activity_type_to_lines)
+
+        self.project_statistics.add(Statistic(
+            ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines))
+
+    def _get_sub_dirs(self) -> set[str]:
+        """
+        Get the sub directory of this project
+        top level directory
+        """
+
+        root = Path(self.project_path)
+        return {p.name for p in root.rglob('*') if p.is_dir()}
 
     def _weighted_skills(self) -> None:
         """
@@ -189,6 +285,7 @@ class ProjectReport(BaseReport):
         """
 
         skill_to_count = {}
+        dirnames = self._get_sub_dirs()
 
         # Map coding language to lines of code
         for report in self.file_reports:
@@ -200,6 +297,14 @@ class ProjectReport(BaseReport):
                 continue
 
             for package in imported_packages:
+
+                if package == "app":
+                    pass
+
+                if package in dirnames:
+                    # If a local import, disgreaded
+                    continue
+
                 skill_to_count[package] = skill_to_count.get(package, 0) + 1
 
         if len(skill_to_count) == 0:
@@ -275,7 +380,7 @@ class ProjectReport(BaseReport):
         end_date = self.get_value(
             ProjectStatCollection.PROJECT_END_DATE.value)
 
-        bullet_points = bullet_point_builder(self)
+        bullet_points = self.bullet_builder.build(self)
 
         return ResumeItem(
             title=self.project_name,
@@ -315,10 +420,12 @@ class ProjectReport(BaseReport):
                 continue
 
             # Use file-level statistics instead of os.path.getsize
-            file_size = report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
+            file_size = report.get_value(
+                FileStatCollection.FILE_SIZE_BYTES.value)
             if file_size is None:
                 # Fallback to line count if bytes not available
-                file_size = report.get_value(FileStatCollection.LINES_IN_FILE.value)
+                file_size = report.get_value(
+                    FileStatCollection.LINES_IN_FILE.value)
             if file_size is None:
                 # Last resort: count as 1 byte
                 file_size = 1
@@ -389,11 +496,15 @@ class ProjectReport(BaseReport):
         inst = cls.__new__(cls)
         BaseReport.__init__(inst, statistics)
         inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
+        inst.file_reports = []
         return inst
 
-    def _analyze_git_authorship(self, user_email: Optional[str] = None) -> None:
+    def _analyze_git_authorship(self) -> None:
         """
         Analyzes Git commit history to determine authorship statistics.
+        This function uses self.email to calculate the user's commit percentage.
+        If self.email is not set, this function should not run as we don't have
+        the consent of the user.
 
         Creates the following project level statistics:
         - IS_GROUP_PROJECT: Boolean indicating if multiple authors contributed
@@ -401,12 +512,10 @@ class ProjectReport(BaseReport):
         - AUTHORS_PER_FILE: Dictionary mapping file paths to number of unique authors
         - USER_COMMIT_PERCENTAGE: Percentage of commits made by the user (if applicable)
 
-        Args:
-            user_email: Optional email of the user to calculate their commit percentage
         """
 
         if self.project_repo is None:
-            return None
+            return
 
         repo = self.project_repo
 
@@ -429,9 +538,9 @@ class ProjectReport(BaseReport):
 
         # Calculate user's commit percentage if project has multiple authors
         user_commit_percentage = None
-        if total_authors > 1 and user_email:
+        if total_authors > 1 and self.email:
             user_commits = commit_count_by_author.get(
-                user_email, 0)
+                self.email, 0)
             if total_commits > 0:
                 user_commit_percentage = (
                     user_commits / total_commits) * 100
@@ -486,8 +595,13 @@ class UserReport(BaseReport):
             report_name (str): By default, the name of the zipped directory. Can be overwritten by user input
         """
 
-        self.resume_items = [project_reports.generate_resume_item()
-                             for project_reports in project_reports]
+        # rank the project reports according to their weights
+        ranked_project_reports = sorted(
+            project_reports, key=lambda p: p.get_project_weight(), reverse=True)
+
+        self.resume_items = [report.generate_resume_item()
+                             for report in ranked_project_reports]
+
         self.project_reports = project_reports or []
         self.report_name = report_name
         self.user_stats = StatisticIndex()  # list of user-level statistics
@@ -496,6 +610,48 @@ class UserReport(BaseReport):
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
         self._calculate_user_ari()
+        self._weight_skills()
+
+    def _weight_skills(self):
+        """
+        Calculates the user level stat of USER_SKILLS.
+
+        We do this by lopping through a project level skills.
+        The weight of a user skill, is the project level weight
+        multiplied by the projects weight score.
+        """
+
+        users_skills = {}
+        user_weighted_skills = []
+
+        for project in self.project_reports:
+
+            project_weighted_skills = project.statistics.get_value(
+                ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value)
+
+            if project_weighted_skills is None:
+                continue
+
+            for weighted_skill in project_weighted_skills:
+                # If already a user skill, get weight
+                prev_weight = users_skills.get(weighted_skill.skill_name, 0)
+
+                # Add the weight and skill name to user_skills
+                users_skills[weighted_skill.skill_name] = prev_weight + \
+                    weighted_skill.weight * project.get_project_weight()
+
+        for skill_name in users_skills.keys():
+            user_weighted_skills.append(
+                WeightedSkills(
+                    skill_name=skill_name,
+                    weight=users_skills[skill_name]
+                )
+            )
+
+        self.add_statistic(
+            Statistic(UserStatCollection.USER_SKILLS.value,
+                      user_weighted_skills)
+        )
 
     def _determine_start_end_dates(self):
         # Loop through and find the earliest start date and latest end date of all projects
@@ -557,9 +713,11 @@ class UserReport(BaseReport):
             # Skip if project was created via from_statistics (no file_reports)
             if hasattr(proj_report, 'file_reports') and proj_report.file_reports is not None:
                 for file_report in proj_report.file_reports:
-                    file_size = file_report.get_value(FileStatCollection.FILE_SIZE_BYTES.value)
+                    file_size = file_report.get_value(
+                        FileStatCollection.FILE_SIZE_BYTES.value)
                     if file_size is None:
-                        file_size = file_report.get_value(FileStatCollection.LINES_IN_FILE.value)
+                        file_size = file_report.get_value(
+                            FileStatCollection.LINES_IN_FILE.value)
                     if file_size is None:
                         file_size = 1
                     proj_total_bytes += file_size
@@ -612,19 +770,147 @@ class UserReport(BaseReport):
         self.user_stats.add(
             Statistic(UserStatCollection.USER_ARI_WRITING_SCORE.value, float(avg_score)))
 
-    def generate_resume(self) -> Resume:
+    def generate_resume(self, email: Optional[str]) -> Resume:
         """
         Generates a Resume object based on the ResumeItem
         that are generated from the ProjectReports. As well
         as adding skills from the User Statistics.
         """
 
-        resume = Resume()
+        weighted_skills = self.statistics.get_value(
+            UserStatCollection.USER_SKILLS.value)
+
+        resume = Resume(email, weighted_skills)
 
         for item in self.resume_items:
             resume.add_item(item)
 
         return resume
+
+    @staticmethod
+    def delete_portfolio(identifier: str) -> tuple[bool, str]:
+        """
+        Delete a user report and its associated project reports from the database.
+
+        Args:
+            identifier: Either a portfolio title or filepath (extracts folder name from path)
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from src.database.utils.database_modify import delete_user_report_and_related_data
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                # Extract folder name from path if it's a path
+                if '/' in identifier or '\\' in identifier:
+                    folder_name = Path(identifier).stem
+                else:
+                    folder_name = identifier
+
+                # Find by title to get project count before deletion
+                stmt = select(UserReportTable).where(
+                    UserReportTable.title == folder_name
+                )
+                user_report = session.scalar(stmt)
+
+                if not user_report:
+                    return False, f"Portfolio '{folder_name}' not found in database"
+
+                # Store info for return message
+                title = user_report.title
+                project_count = len(user_report.project_reports)
+
+            # Use database_modify function for deletion (outside the session)
+            success = delete_user_report_and_related_data(title=title)
+
+            if success:
+                return True, f"Successfully deleted '{title}' and {project_count} associated project(s)"
+            else:
+                return False, f"Failed to delete portfolio '{title}' from database"
+
+        except ValueError as e:
+            # Handle "User report not found" from database_modify
+            return False, str(e)
+        except Exception as e:
+            return False, f"Database error: {str(e)}"
+
+    @staticmethod
+    def get_portfolio_info(identifier: str) -> tuple[bool, dict]:
+        """
+        Get information about a portfolio without deleting it.
+
+        Args:
+            identifier: Either a portfolio title or filepath (extracts folder name from path)
+
+        Returns:
+            tuple: (found: bool, info: dict with title and project_count)
+        """
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                # Extract folder name from path if it's a path
+                if '/' in identifier or '\\' in identifier:
+                    folder_name = Path(identifier).stem
+                else:
+                    folder_name = identifier
+
+                # Find by title
+                stmt = select(UserReportTable).where(
+                    UserReportTable.title == folder_name
+                )
+                user_report = session.scalar(stmt)
+
+                if not user_report:
+                    return False, {}
+
+                info = {
+                    'title': user_report.title,
+                    'project_count': len(user_report.project_reports)
+                }
+
+                return True, info
+
+        except Exception:
+            return False, {}
+
+    @staticmethod
+    def list_all_portfolios() -> list[dict]:
+        """
+        Get a list of all portfolios in the database.
+
+        Returns:
+            list: List of dicts with portfolio info (title, project_count)
+        """
+        from src.database.db import get_engine, UserReportTable
+
+        engine = get_engine()
+
+        try:
+            with Session(engine) as session:
+                # Force fresh query, don't use cache
+                session.expire_all()
+
+                stmt = select(UserReportTable)
+                portfolios = session.scalars(stmt).all()
+
+                portfolio_list = []
+                for portfolio in portfolios:
+                    portfolio_list.append({
+                        'title': portfolio.title,
+                        'project_count': len(portfolio.project_reports)
+                    })
+
+                return portfolio_list
+
+        except Exception:
+            return []
 
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
@@ -702,8 +988,9 @@ class UserReport(BaseReport):
                         def _skill_str(ws: WeightedSkills) -> str:
                             n = getattr(ws, "skill_name", None) or str(ws)
                             w = getattr(ws, "weight", None)
-                            return f"{n} ({w})" if w is not None else f"{n}"
-                        skills_line = ", ".join(_skill_str(ws) for ws in value)
+                            return f"{n}"
+                        skills_line = ", ".join(_skill_str(ws)
+                                                for ws in value[:15])
                 except Exception:
                     pass
                 lines.append(f"Your skills include: {skills_line}.")

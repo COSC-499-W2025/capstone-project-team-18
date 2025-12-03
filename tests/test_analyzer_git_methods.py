@@ -76,13 +76,17 @@ def test_get_file_commit_percentage_two_authors(tmp_path: Path):
 
         # Alice percentage should be ~33.33
         analyzer.email = "alice@example.com"
-        alice_pct = analyzer._get_file_commit_percentage()
+        report = analyzer.analyze()
+        alice_pct = report.get_value(
+            FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
         assert alice_pct is not None
         assert pytest.approx(alice_pct, 0.01) == 20.00
 
         # Bob percentage should be ~66.67
         analyzer.email = "bob@example.com"
-        bob_pct = analyzer._get_file_commit_percentage()
+        report = analyzer.analyze()
+        bob_pct = report.get_value(
+            FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
         assert bob_pct is not None
         assert pytest.approx(bob_pct, 0.01) == 80.00
 

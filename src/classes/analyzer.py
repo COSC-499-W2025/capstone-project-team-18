@@ -4,6 +4,7 @@ a file and generate a report with statistics.
 """
 import os
 import time
+import re
 from .report import FileReport
 from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage, FileStatisticTemplate
 import datetime
@@ -116,8 +117,9 @@ class BaseFileAnalyzer:
             return False
 
         try:
+            # Use repo-relative path for blame - GitPython expects a path
+            # relative to the repository working tree, not an absolute path
             self.blame_info = self.repo.blame('HEAD', self.relative_path)
-
             return True
         except (ValueError, GitCommandError, Exception) as e:
             logger.debug(
@@ -297,7 +299,46 @@ class TextFileAnalyzer(BaseFileAnalyzer):
                       len(lines_broken)),
         ]
 
+        self._get_file_commit_percentage()
         self.stats.extend(stats)
+
+    def _get_file_commit_percentage(self) -> None:
+        """
+        Calculate the percentage of lines in the file
+        that were authored by the user with the given email.
+        """
+
+        # If the file is not tracked by git or email is None, return None
+        if self.is_git_tracked is False or self.email is None or self.repo is None:
+            return
+
+        file_percent = None
+
+        try:
+            # gets blame for each line
+            blame_info = self.repo.blame('HEAD', self.relative_path)
+
+            commit_count = 0
+            line_count = 0
+            for commit, lines in blame_info:
+                line_count += len(lines)
+                if commit.author.email == self.email:
+                    commit_count += len(lines)
+
+            if line_count == 0:
+                file_percent = 0.0
+            else:
+                file_percent = round((commit_count / line_count) * 100, 2)
+        except InvalidGitRepositoryError as e:
+            logger.debug(f"InvalidGitRepositoryError: {e}")
+            return
+        except Exception as e:
+            logger.debug(f"Exception while computing commit percentage: {e}")
+            return
+
+        if file_percent is not None:
+            self.stats.add(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
+                                     file_percent))
 
 
 class NaturalLanguageAnalyzer(TextFileAnalyzer):
@@ -370,20 +411,34 @@ class CodeFileAnalyzer(TextFileAnalyzer):
     def _process(self) -> None:
         super()._process()
 
-        stats = [
-            Statistic(FileStatCollection.TYPE_OF_FILE.value,
-                      FileDomain.CODE),
-        ]
-
-        file_commit_percentage = self._get_file_commit_percentage()
-
-        if file_commit_percentage is not None:
-            stats.append(Statistic(FileStatCollection.PERCENTAGE_LINES_COMMITTED.value,
-                                   file_commit_percentage))
-
-        self.stats.extend(stats)
-
+        self._determine_file_domain()
         self._find_coding_language()
+
+    def _determine_file_domain(self) -> None:
+        """
+        Checks to see if the code is a test file or rather
+        just a plain code file.
+
+        It checks the filename and directory and looks for
+        the test keyword
+        """
+
+        TEST_FILE_REGEX = re.compile(
+            r"(?:^|[\W_])(test|tests|spec|specs|testing)(?:[\W_]|$)", re.IGNORECASE)
+
+        fd = FileDomain.CODE
+
+        path = Path(self.filepath)
+        name = path.name.lower()
+
+        if TEST_FILE_REGEX.search(name):
+            fd = FileDomain.TEST
+
+        directory_test_keywords = {"test", "tests", "spec"}
+        if directory_test_keywords & {p.lower() for p in path.parts}:
+            fd = FileDomain.TEST
+
+        self.stats.add(Statistic(FileStatCollection.TYPE_OF_FILE.value, fd))
 
     def _find_coding_language(self) -> None:
         """
@@ -400,38 +455,6 @@ class CodeFileAnalyzer(TextFileAnalyzer):
             # Each language.value is a tuple (name, extensions)
             if suffix in language.value[1]:
                 return self.stats.add(Statistic(FileStatCollection.CODING_LANGUAGE.value, language))
-
-    def _get_file_commit_percentage(self) -> Optional[float]:
-        """
-        Calculate the percentage of lines in the file
-        that were authored by the user with the given email.
-        """
-
-        # If the file is not tracked by git or email is None, return None
-        if self.is_git_tracked is False or self.email is None or self.repo is None:
-            return None
-
-        try:
-            # gets blame for each line
-            blame_info = self.repo.blame('HEAD', self.relative_path)
-
-            commit_count = 0
-            line_count = 0
-            for commit, lines in blame_info:
-                line_count += len(lines)
-                if commit.author.email == self.email:
-                    commit_count += len(lines)
-
-            if line_count == 0:
-                return 0.0
-
-            return round((commit_count / line_count) * 100, 2)
-        except InvalidGitRepositoryError as e:
-            logger.debug(f"InvalidGitRepositoryError: {e}")
-            return None
-        except Exception as e:
-            logger.debug(f"Exception while computing commit percentage: {e}")
-            return None
 
 
 class PythonAnalyzer(CodeFileAnalyzer):
