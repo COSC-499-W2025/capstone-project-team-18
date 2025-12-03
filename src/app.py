@@ -34,19 +34,7 @@ def start_miner(
         - email: Email associated with git account
     """
 
-    # =================== Unzip Stage ===================
 
-    # Unzip stage - START
-    if progress_callback:
-        progress_callback("unzip", 0, 1, "")
-
-    # Unzip the zipped file into temporary directory
-    unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
-    unzip_file(zipped_file, unzipped_dir)
-
-    # Unzip stage - COMPLETE
-    if progress_callback:
-        progress_callback("unzip", 1, 1, "")
 
     # Import inside function to avoid circular import
     from src.classes.cli import UserPreferences
@@ -55,16 +43,20 @@ def start_miner(
     prefs = UserPreferences()
     language_filter = prefs.get("languages_to_include", [])
 
-    # =================== Discovery stage ===================
+    # =================== Unzip Stage ===================
 
-    # Discovery stage - START
-    if progress_callback:
-        progress_callback("discovery", 0, 1, "")
+    # Unzip the zipped file into temporary directory
+    unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
+    unzip_file(zipped_file, unzipped_dir)
+
+    # =================== Discovery stage ===================
 
     project_list = discover_projects(unzipped_dir)
 
-    # Discovery stage - COMPLETE
+    # Initialize progress bar with total project count
     if progress_callback:
+        progress_callback("start", 0, len(project_list), "")
+        progress_callback("unzip", 1, 1, "")
         progress_callback("discovery", 1, 1, "")
 
     engine = get_engine()
@@ -118,7 +110,7 @@ def start_miner(
 
         # =================== Saving stage ===================
         if progress_callback:
-            progress_callback("saving", 0, 1, "")
+            progress_callback("saving", 1, 1, "")
 
         # make a UserReport with the ProjectReports
         dir_name = Path(zipped_file).stem  # name of zipped dir
@@ -130,10 +122,6 @@ def start_miner(
         # Insert all of the rows into the database (INSIDE the session block)
         session.add_all([user_row])  # type: ignore
         session.commit()
-
-        # Saving stage - COMPLETE
-        if progress_callback:
-            progress_callback("saving", 1, 1, "")
 
         # =================== Analysis Complete ===================
         if progress_callback:

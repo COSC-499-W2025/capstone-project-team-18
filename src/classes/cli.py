@@ -396,14 +396,17 @@ class ArtifactMiner(cmd.Cmd):
         prefs = self.preferences.load_preferences()
         start_time, end_time = self.preferences.get_date_range()
         ignored_files = self.preferences.get_files_to_ignore()
+        languages = prefs.get('languages_to_include', [])
 
         if start_time or end_time:
             print(f"Date filtering: {start_time or 'Any'} to {end_time or 'Any'}")
         if ignored_files:
             print(f"Ignoring file types: {', '.join(ignored_files)}")
+        if languages:
+            print(f"Language filter: {', '.join(languages)}")
 
-        # Create progress bars dictionary
-        progress_bars = {}
+        # Create a single progress bar for the entire process
+        progress_bar = None
 
         def progress_callback(stage: str, current: int, total: int, item_name: str = ""):
             """
@@ -415,52 +418,52 @@ class ArtifactMiner(cmd.Cmd):
                 total: Total items
                 item_name: Name of current item being processed
             """
-            if stage == "unzip":
-                if "unzip" not in progress_bars:
-                    progress_bars["unzip"] = tqdm(total=1, desc="Unzipping", unit="file", leave=True)
-                progress_bars["unzip"].n = current  # Set current progress
-                progress_bars["unzip"].refresh()    # Force display update
-                if current >= total:
-                    progress_bars["unzip"].close()
+            nonlocal progress_bar
+
+            if stage == "start":
+                # Initialize progress bar with total steps
+                # 1 step for unzip, 1 for discovery, total projects for analysis, 1 for saving
+                total_steps = 1 + 1 + total + 1
+                progress_bar = tqdm(
+                    total=total_steps,
+                    desc="Processing",
+                    unit="step",
+                    bar_format='{desc}: {percentage:3.0f}%|{bar}|',  # REMOVED {n_fmt}/{total_fmt}
+                    leave=True  # Keep the bar visible after completion
+                )
+
+            elif stage == "unzip":
+                if progress_bar:
+                    progress_bar.set_description("Unzipping")
+                    progress_bar.update(1)
 
             elif stage == "discovery":
-                if "discovery" not in progress_bars:
-                    progress_bars["discovery"] = tqdm(total=1, desc="Discovering", unit="project", leave=True)
-                progress_bars["discovery"].n = current
-                progress_bars["discovery"].refresh()
-                if current >= total:
-                    progress_bars["discovery"].close()
+                if progress_bar:
+                    progress_bar.set_description("Discovering")
+                    progress_bar.update(1)
 
             elif stage == "analysis":
-                if "analysis" not in progress_bars:
-                    progress_bars["analysis"] = tqdm(total=total, desc="Analyzing", unit="project", leave=True)
-                progress_bars["analysis"].n = current
-                # Show current project name (truncate if too long)
-                if item_name:
-                    progress_bars["analysis"].set_postfix_str(item_name[:30])
-                progress_bars["analysis"].refresh()
-                if current == total:
-                    progress_bars["analysis"].close()
+                if progress_bar:
+                    progress_bar.set_description(f"Analyzing ({current}/{total})")
+                    if current > 0:  # Don't update on initial call
+                        progress_bar.update(1)
 
             elif stage == "saving":
-                if "saving" not in progress_bars:
-                    progress_bars["saving"] = tqdm(total=1, desc="Saving", unit="db", leave=True)
-                progress_bars["saving"].n = current
-                progress_bars["saving"].refresh()
-                if current >= total:
-                    progress_bars["saving"].close()
+                if progress_bar:
+                    progress_bar.set_description("Saving")
+                    progress_bar.update(1)
 
             elif stage == "complete":
-                # Ensure all bars are closed
-                for bar in progress_bars.values():
-                    if not bar.disable:
-                        bar.close()
-                print("\n✓ Analysis complete!")
+                if progress_bar:
+                    progress_bar.set_description("✓ Complete")
+                    progress_bar.refresh()  # Force final update to show ✓ Complete
+                    progress_bar.close()
+                    print()  # Add blank line after progress bar
 
-
+        # Call start_miner with progress callback
         start_miner(self.project_filepath, self.user_email, progress_callback=progress_callback)
 
-        print("\n" + self.options)
+        print(self.options)
 
     def do_login(self, arg):
         '''Configure user login credentials'''
