@@ -412,8 +412,6 @@ class ArtifactMiner(cmd.Cmd):
                 f"Date filtering: {start_time or 'Any'} to {end_time or 'Any'}")
         if ignored_files:
             print(f"Ignoring file types: {', '.join(ignored_files)}")
-        if languages:
-            print(f"Language filter: {', '.join(languages)}")
 
         # Create a single progress bar for the entire process
         progress_bar = None
