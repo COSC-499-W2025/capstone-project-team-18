@@ -237,6 +237,7 @@ class ArtifactMiner(cmd.Cmd):
             "(8) Delete a Portfolio\n"
             "(9) Retrieve a Portfolio\n"
             "(10) Get resume bullet point\n"
+
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
         )
@@ -1227,7 +1228,8 @@ class ArtifactMiner(cmd.Cmd):
         self.update_history(self.cmd_history, "resume_bullet_point")
 
         print("\n=== Get Resume Bullet Point ===")
-        user_input = input("Enter the project name (folder name / ProjectReport.project_name, or 'back'/'cancel' to return): ").strip()
+        user_input = input(
+            "Enter the project name (folder name / ProjectReport.project_name, or 'back'/'cancel' to return): ").strip()
 
         # Handle exit/quit
         if user_input.lower() in ['exit', 'quit']:
@@ -1246,7 +1248,8 @@ class ArtifactMiner(cmd.Cmd):
         try:
             project_report = get_project_from_project_name(user_input)
         except Exception:
-            print(f"\nNo project found for name '{user_input}' in the database.")
+            print(
+                f"\nNo project found for name '{user_input}' in the database.")
             print("\n" + self.options)
             return
 
