@@ -358,7 +358,7 @@ class SkillMapper:
             },
             file_patterns={
                 # Backend
-                'app.*', 'server.*', 'api.*', 'routes.*', 'router.*',
+                'server.*', 'api.*', 'routes.*', 'router.*',
                 'views.*', 'controller*', 'middleware*',
                 # Frontend
                 'index.html', 'index.jsx', 'index.tsx',
@@ -462,8 +462,8 @@ class SkillMapper:
                 'passlib', 'bcrypt', 'secrets'
             },
             file_patterns={
-                'auth*.py', 'security*.py', 'crypto*.py',
-                'authentication*.py', 'authorization*.py'
+                'auth*', 'security*', 'crypto*',
+                'authentication*', 'authorization*'
             },
             file_extensions={},
             keywords={
