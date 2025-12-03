@@ -15,12 +15,14 @@ class TextResumeRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         to_return = ""
         to_return += f"Email: {resume.email}\n\n" if resume.email else ""
-        to_return += f"Core skills: {", ".join(resume.skills)}\n\n" if resume.skills else ""
+        to_return += f"Core skills {", ".join(resume.skills)}\n\n" if resume.skills else ""
 
         for item in resume.items:
             to_return += f"{item.title} : {item.start_date.strftime("%B, %Y")} - {item.end_date.strftime("%B, %Y")}\n"
             for bullet in item.bullet_points:
                 to_return += f"   - {bullet}\n"
+            if item is not resume.items[-1]:
+                to_return += "\n"
             to_return += "\n"
 
         return to_return

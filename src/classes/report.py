@@ -12,6 +12,8 @@ from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStat
 from git import NoSuchPathError, Repo, InvalidGitRepositoryError
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
+from src.classes.resume.bullet_point_builder import BulletPointBuilder
+from src.classes.resume.resume import Resume, ResumeItem
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from src.utils.data_processing import normalize
