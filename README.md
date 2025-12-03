@@ -286,7 +286,7 @@ Enter portfolio name: personal_projects
 === Get Resume Bullet Point ===
 Project name (or 'back'/'cancel' to return): projectA
 
-Generated resume bullet point(s):
+Resume bullet point for project with name projectA
 ...
 ```
 - `projectA` is a project folder within the `personal_projects` portfolio
