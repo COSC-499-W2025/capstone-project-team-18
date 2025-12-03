@@ -8,6 +8,7 @@ import os
 from src.app import start_miner
 import sys
 import json
+from tqdm import tqdm # For CLI Progress Bar
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -404,6 +405,7 @@ class ArtifactMiner(cmd.Cmd):
         prefs = self.preferences.load_preferences()
         start_time, end_time = self.preferences.get_date_range()
         ignored_files = self.preferences.get_files_to_ignore()
+        languages = prefs.get('languages_to_include', [])
 
         if start_time or end_time:
             print(
@@ -411,8 +413,63 @@ class ArtifactMiner(cmd.Cmd):
         if ignored_files:
             print(f"Ignoring file types: {', '.join(ignored_files)}")
 
-        start_miner(self.project_filepath, self.user_email)
-        self._prompt_portfolio_name()
+        # Create a single progress bar for the entire process
+        progress_bar = None
+
+        def progress_callback(stage: str, current: int, total: int, item_name: str = ""):
+            """
+            Callback for tqdm progress updates.
+
+            Args:
+                stage: Current stage (e.g., "unzip", "discovery", "analysis", "saving")
+                current: Current item number
+                total: Total items
+                item_name: Name of current item being processed
+            """
+            nonlocal progress_bar
+
+            if stage == "start":
+                # Initialize progress bar with total steps
+                # 1 step for unzip, 1 for discovery, total projects for analysis, 1 for saving
+                total_steps = 1 + 1 + total + 1
+                progress_bar = tqdm(
+                    total=total_steps,
+                    desc="Processing",
+                    unit="step",
+                    bar_format='{desc}: {percentage:3.0f}%|{bar}|',  # REMOVED {n_fmt}/{total_fmt}
+                    leave=True  # Keep the bar visible after completion
+                )
+
+            elif stage == "unzip":
+                if progress_bar:
+                    progress_bar.set_description("Unzipping")
+                    progress_bar.update(1)
+
+            elif stage == "discovery":
+                if progress_bar:
+                    progress_bar.set_description("Discovering")
+                    progress_bar.update(1)
+
+            elif stage == "analysis":
+                if progress_bar:
+                    progress_bar.set_description(f"Analyzing ({current}/{total})")
+                    if current > 0:  # Don't update on initial call
+                        progress_bar.update(1)
+
+            elif stage == "saving":
+                if progress_bar:
+                    progress_bar.set_description("Saving")
+                    progress_bar.update(1)
+
+            elif stage == "complete":
+                if progress_bar:
+                    progress_bar.set_description("✓ Complete")
+                    progress_bar.refresh()  # Force final update to show ✓ Complete
+                    progress_bar.close()
+                    print()  # Add blank line after progress bar
+
+        # Call start_miner with progress callback
+        start_miner(self.project_filepath, self.user_email, progress_callback=progress_callback)
 
         prompt = "\n Would you like to continue analyzing? (Y/N)"
         answer = input(prompt).strip()
