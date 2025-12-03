@@ -213,7 +213,6 @@ class ProjectReport(BaseReport):
 
         return total
 
-<<<<<<< HEAD
     def _activity_type_contributions(self) -> None:
         """
         This function will analyze the user's
@@ -262,8 +261,6 @@ class ProjectReport(BaseReport):
         self.project_statistics.add(Statistic(
             ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines))
 
-=======
->>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
     def _get_sub_dirs(self) -> set[str]:
         """
         Get the sub directory of this project
@@ -289,18 +286,40 @@ class ProjectReport(BaseReport):
 
         skill_to_count = {}
         dirnames = self._get_sub_dirs()
-<<<<<<< HEAD
 
         # Track files that contribute to each skill for duplication
         high_level_skill_files: Dict[str, set] = {}
-=======
->>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
 
         # Map coding language to lines of code
         for report in self.file_reports:
 
             imported_packages: Optional[list[str]] = report.get_value(
                 FileStatCollection.IMPORTED_PACKAGES.value)
+
+            if imported_packages is None:
+                continue
+
+            for package in imported_packages:
+
+                if package == "app":
+                    pass
+
+                if package in dirnames:
+                    # If a local import, disgreaded
+                    continue
+
+                # map package name to Skill, e.g pandas -> Data Analytics
+                high_level_skill = SkillMapper.map_package_to_skill(package)
+                if high_level_skill:
+                    skill_name = high_level_skill.value
+                    if skill_name not in high_level_skill_files:
+                        high_level_skill_files[skill_name] = set()
+
+                    # Only count each file once per skill
+                    if report.filepath not in high_level_skill_files[skill_name]:
+                        high_level_skill_files[skill_name].add(report.filepath)
+                        skill_to_count[skill_name] = \
+                            skill_to_count.get(skill_name, 0) + 1
 
             # Check if the filename itself indicates a skill (e.g., Dockerfile, *.yml in .github/)
             high_level_skill = SkillMapper.map_filepath_to_skill(
@@ -315,35 +334,6 @@ class ProjectReport(BaseReport):
                     high_level_skill_files[skill_name].add(report.filepath)
                     skill_to_count[skill_name] = \
                         skill_to_count.get(skill_name, 0) + 1
-
-            if imported_packages is None:
-                continue
-
-            for package in imported_packages:
-
-                if package == "app":
-                    pass
-
-                if package in dirnames:
-                    # If a local import, disgreaded
-                    continue
-
-<<<<<<< HEAD
-                # map package name to Skill, e.g pandas -> Data Analytics
-                high_level_skill = SkillMapper.map_package_to_skill(package)
-                if high_level_skill:
-                    skill_name = high_level_skill.value
-                    if skill_name not in high_level_skill_files:
-                        high_level_skill_files[skill_name] = set()
-
-                    # Only count each file once per skill
-                    if report.filepath not in high_level_skill_files[skill_name]:
-                        high_level_skill_files[skill_name].add(report.filepath)
-                        skill_to_count[skill_name] = \
-                            skill_to_count.get(skill_name, 0) + 1
-=======
-                skill_to_count[package] = skill_to_count.get(package, 0) + 1
->>>>>>> 9eff716 (Merge branch 'develop' into 252-export-user-resume-to-file-using-latex)
 
         if len(skill_to_count) == 0:
             # Don't log this stat if it isn't a coding project
