@@ -179,9 +179,6 @@ class ProjectReport(BaseReport):
         if self.project_repo:
             self._total_contribution_percentage(project_lines)
 
-        self.project_statistics.add(Statistic(
-            ProjectStatCollection.TOTAL_PROJECT_LINES.value, project_lines))
-
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
 
@@ -208,7 +205,9 @@ class ProjectReport(BaseReport):
         If the project is a git repo, iterate through every
         file in the repo and get the sum. Otherwise,
         compute the sum of all `LINES_IN_FILE` stats in a
-        project's `self.file_reports[]`.
+        project's `self.file_reports[]`. Then, create a
+        `TOTAL_PROJECT_LINES` statistic with the sum and
+        return the value.
 
         :return float: Total number of lines in the project
         '''
@@ -230,6 +229,9 @@ class ProjectReport(BaseReport):
                 print(f'linecount: {val}')
                 if val is not None:
                     total += val
+
+        self.project_statistics.add(Statistic(
+            ProjectStatCollection.TOTAL_PROJECT_LINES.value, total))
         return total
 
     def _activity_type_contributions(self) -> None:
