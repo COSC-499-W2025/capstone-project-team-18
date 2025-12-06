@@ -134,7 +134,7 @@ The following modules scaffold the analysis/reporting pipeline and are partially
 
 ****
 
-# Milestone 1 Team Contract
+# Milestone 1 Team Contract [PDF](./contract.pdf)
 
 **Team 18**: Jimi Ademola, Priyansh Mathur, Tawana Ndlovu, Erem Ozdemir, Sam Sikora, Alex Taschuk
 
