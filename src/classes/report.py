@@ -204,9 +204,11 @@ class ProjectReport(BaseReport):
 
     def _get_project_lines(self) -> float:
         '''
-        Calculate the total number of lines in a project
-        By computing the sum of all `LINES_IN_FILE` stats
-        for a project's `self.file_reports[]`.
+        Calculate the total number of lines in a project.
+        If the project is a git repo, iterate through every
+        file in the repo and get the sum. Otherwise,
+        compute the sum of all `LINES_IN_FILE` stats in a
+        project's `self.file_reports[]`.
 
         :return float: Total number of lines in the project
         '''
