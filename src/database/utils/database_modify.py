@@ -64,14 +64,13 @@ def create_row(report: FileReport | ProjectReport | UserReport):
 
         # stats that have a dict where the key is not a json serializable type
         not_json_serializable = {
-            "coding_language_ratio", "user_coding_language_ratio", "activity_type_contributions"}
+            "coding_language_ratio", "user_coding_language_ratio", "activity_type_contributions", "project_skills_demonstrated", "user_skills"}
+
         if isinstance(value, dict) and col_name in not_json_serializable:
             value = {lang.value[0]: ratio for lang, ratio in value.items()}
-        if isinstance(value, list):
-            if col_name == 'project_skills_demonstrated' or col_name == 'user_skills':
-                value = [s.to_dict() for s in value]
-            else:
-                continue
+
+        if isinstance(value, list) and col_name in not_json_serializable:
+            value = [s.to_dict() for s in value]
 
         # add the statistic to the row if column exists
         if hasattr(row, col_name):
