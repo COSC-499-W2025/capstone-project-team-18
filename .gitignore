@@ -52,3 +52,7 @@ test_unzip.tar.gz
 test_unzip.zip
 test_unzip.7z
 test_unzip_extract/*
+
+
+#database
+src/database/*
