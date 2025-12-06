@@ -211,13 +211,23 @@ class ProjectReport(BaseReport):
         :return float: Total number of lines in the project
         '''
         total = 0.0
-        for fr in self.file_reports:
-            val = fr.get_value(FileStatCollection.LINES_IN_FILE.value)
-            print(f'file name: {fr.filepath}')
-            print(f'linecount: {val}')
-            if val is not None:
-                total += val
-
+        if self.project_repo:
+            tracked_files = self.project_repo.git.ls_files().split("\n")
+            for f in tracked_files:
+                try:
+                    with open(os.path.join(self.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
+                        content = fp.read()
+                        count = len(content.split("\n"))
+                        total += count
+                except (FileNotFoundError, IsADirectoryError):
+                    pass  # skip directories or removed files
+        else:
+            for fr in self.file_reports:
+                val = fr.get_value(FileStatCollection.LINES_IN_FILE.value)
+                print(f'file name: {fr.filepath}')
+                print(f'linecount: {val}')
+                if val is not None:
+                    total += val
         return total
 
     def _activity_type_contributions(self) -> None:
@@ -579,8 +589,6 @@ class ProjectReport(BaseReport):
             if total_commits > 0:
                 user_commit_percentage = (
                     user_commits / total_commits) * 100
-        elif self.email:
-            user_commit_percentage = 100.00  # repo is individual project
 
         authors_per_file = {}
         for item in repo.tree().traverse():
