@@ -770,7 +770,11 @@ class ArtifactMiner(cmd.Cmd):
 
             if user_input == "1":
                 selected = self._list_and_select_portfolio()
-                if selected is None:
+
+                if self._handle_cancel_input(portfolio_name, "retrieve"):
+                    continue
+
+                elif selected is None:
                     continue
                 portfolio_name = selected
             elif user_input == "2":
