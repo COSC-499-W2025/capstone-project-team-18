@@ -25,11 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 def extract_file_reports(
-                        project_file: Optional[ProjectFiles],
-                        email: Optional[str] = None,
-                        language_filter: Optional[list[str]] = None
-                        ) -> Optional[list[FileReport]]:
-
+    project_file: Optional[ProjectFiles],
+    email: Optional[str] = None,
+    language_filter: Optional[list[str]] = None
+) -> Optional[list[FileReport]]:
     """
     Method to extract individual fileReports within each project
     """
@@ -140,7 +139,6 @@ class BaseFileAnalyzer:
             bool: True if the file should be included, False otherwise.
         """
 
-
        # Check language filter
         if self.language_filter:
             if not self._matches_language_filter():
@@ -161,7 +159,6 @@ class BaseFileAnalyzer:
             return True
 
         return False
-
 
     def _matches_language_filter(self) -> bool:
         """

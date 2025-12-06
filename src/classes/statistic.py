@@ -184,7 +184,7 @@ class FileStatCollection(Enum):
         expected_type=list,
     )
 
-    # percenatge is not greatest indicator as any minor change is associated with ownership
+    # percentage is not greatest indicator as any minor change is associated with ownership
     PERCENTAGE_LINES_COMMITTED = FileStatisticTemplate(
         name="PERCENTAGE_LINES_COMMITTED",
         description="percentage of lines attributed to individal in file",
