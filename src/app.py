@@ -26,7 +26,7 @@ def start_miner(
     zipped_file: str,
     email: Optional[str] = None,
     progress_callback: Optional[Callable[[str, int, int, str], None]] = None
-    ) -> None:
+) -> None:
     """
     This function defines the main application
     logic for the Artifact Miner. Currently,
@@ -36,25 +36,20 @@ def start_miner(
         - zipped_file : The filepath to the zipped file.
         - email: Email associated with git account
     """
-
-
-
     # Import inside function to avoid circular import
     from src.classes.cli import UserPreferences
 
-    # Load preferences to get language filter
+    # Load preferences to get language filter and project timeline
     prefs = UserPreferences()
     language_filter = prefs.get("languages_to_include", [])
-
-    # =================== Unzip Stage ===================
+    start_date = prefs.get("file_start_time", "")
+    end_date = prefs.get("file_end_time", "")
 
     # Unzip the zipped file into temporary directory
     unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
     unzip_file(zipped_file, unzipped_dir)
 
-    # =================== Discovery stage ===================
-
-    project_list = discover_projects(unzipped_dir)
+    project_list = discover_projects(unzipped_dir)  # find project folders
 
     # Initialize progress bar with total project count
     if progress_callback:
@@ -74,14 +69,16 @@ def start_miner(
 
         total_projects = len(project_list)
 
-        # =================== Analysis Stage ===================
+        # analyze projects
         for idx, project in enumerate(project_list):
             # Update at START of processing each project (idx is 0-based, so idx is the "current" count)
             if progress_callback:
-                progress_callback("analysis", idx, total_projects, project.name)
+                progress_callback(
+                    "analysis", idx, total_projects, project.name)
 
             file_reports = extract_file_reports(
-                project, email, language_filter)  # get the project's FileReports
+                # get the project's FileReports
+                project, email, language_filter,)
 
             if file_reports is None:
                 continue  # skip if directory is empty
@@ -111,7 +108,7 @@ def start_miner(
         if progress_callback:
             progress_callback("analysis", total_projects, total_projects, "")
 
-        # =================== Saving stage ===================
+        # make UserReport and save everything to the DB
         if progress_callback:
             progress_callback("saving", 1, 1, "")
 
@@ -129,7 +126,6 @@ def start_miner(
         # =================== Analysis Complete ===================
         if progress_callback:
             progress_callback("complete", 1, 1, "")
-
 
     print("-------- Analysis Reports --------\n")
     resume = user_report.generate_resume(email)

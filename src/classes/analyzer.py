@@ -2,22 +2,22 @@
 This file holds all the Analyzer classes. These are classes will analyze
 a file and generate a report with statistics.
 """
-import os
-import time
+
 import re
-from .report import FileReport
-from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage, FileStatisticTemplate
-import datetime
-from pathlib import Path
-import logging
-import re
-from typing import Optional, Any
 import ast
-from src.utils.project_discovery.project_discovery import ProjectFiles
-from charset_normalizer import from_path
-from git import GitCommandError, Repo, InvalidGitRepositoryError
+import datetime
+import logging
+from pathlib import Path
+from typing import Optional
+
 import tinycss2
 from bs4 import BeautifulSoup
+from charset_normalizer import from_path
+from git import GitCommandError, Repo, InvalidGitRepositoryError
+
+from src.classes.report import FileReport
+from src.classes.statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage
+from src.utils.project_discovery.project_discovery import ProjectFiles
 
 
 logging.basicConfig(level=logging.INFO)
@@ -42,10 +42,6 @@ def extract_file_reports(
     # list of reports for each file in an individual project to be returned
     reports = []
     for file in projectFiles:
-
-        if project_file.name == "EarthLingo":
-            pass
-
         analyzer = get_appropriate_analyzer(
             project_file.root_path,
             file,
@@ -79,11 +75,12 @@ class BaseFileAnalyzer:
     Attributes:
         filepath (str): The path to the file being analyzed.
         stats (StatisticIndex): The index holding collected statistics.
-        realtive_path (str): The path to the file relative to the
-            top-level project directory.
         repo (Optional[Repo]): The Git repository object if the file
             is part of a Git repository.
         email (Optional[str]): The email of the user analyzing the file.
+        language_filter (list[str]): A list of programming languages set by the user to analyze. If the current file's language is NOT in this list, we do not analyze it.
+        start_date (str): A user-defined preferance. All files with a creation date BEFORE this date should NOT be analyzed.
+        end_date (str): A user-defined preferance. All files with a creation date AFTER this date should NOT be analyzed.
 
     Statistics:
         - DATE_CREATED
@@ -96,7 +93,6 @@ class BaseFileAnalyzer:
                  relative_path: str,
                  repo: Optional[Repo] = None,
                  email: Optional[str] = None,
-                 language_filter: Optional[list[str]] = None
                  ):
 
         self.path_to_top_level_project = path_to_top_level_project
@@ -104,20 +100,21 @@ class BaseFileAnalyzer:
         self.filepath = f"{path_to_top_level_project}/{relative_path}"
         self.repo = repo
         self.email = email
-        self.language_filter = language_filter
         self.stats = StatisticIndex()
         self.blame_info = None
         self.is_git_tracked = self.file_in_git_repo()
+
+        file_dates = self._get_file_dates()
+        self.start_date = file_dates[0]
+        self.end_date = file_dates[1]
 
     def file_in_git_repo(self) -> bool:
         """
         Check to see the project is in a git repository and
         if so, that this specific file is tracked by git.
         """
-
         if self.repo is None:
             return False
-
         try:
             # Use repo-relative path for blame - GitPython expects a path
             # relative to the repository working tree, not an absolute path
@@ -141,11 +138,19 @@ class BaseFileAnalyzer:
         Returns:
             bool: True if the file should be included, False otherwise.
         """
+        from src.classes.cli import UserPreferences
+        prefs = UserPreferences()
+        language_filter = prefs.get("languages_to_include", [])
+        start_date = prefs.get("file_start_time", "")
+        end_date = prefs.get("file_end_time", "")
+
+        # check date validity
+        if not self._filter_dates(start_date, end_date):
+            return False
 
        # Check language filter
-        if self.language_filter:
-            if not self._matches_language_filter():
-                return False
+        if not self._matches_language_filter(language_filter):
+            return False
 
         if not self.is_git_tracked or not self.email or not self.repo:
             return True
@@ -163,20 +168,89 @@ class BaseFileAnalyzer:
 
         return False
 
-    def _matches_language_filter(self) -> bool:
+    def _get_file_dates(self) -> list[datetime.datetime]:
+        '''
+        Get a file's creation and modified date.
+
+        If the file is part of a Git repository, we get the creation
+        and last modified dates from the Git commit history. If not,
+        we fall back to the filesystem metadata.
+
+        Special note here:
+        - Linux corrupts the st_birthtime to be the time that the file
+        was unzipped. Linux's date access actually contains the true
+        birthtime so we treat that as `DATE_CREATED`.
+
+        Returns:
+            file_dates (list[datetime.datetime]): A list that contains two elements. `file_date[0]` is the file's creation date and `file_date[1]` is the file's modified date.
+        '''
+        file_dates = []
+        if self.is_git_tracked:
+            # Get the creation date from the first commit and get the last
+            # modified date from the latest commit
+            try:
+                commits = list(self.repo.iter_commits(  # pyright: ignore[reportOptionalMemberAccess]
+                    paths=self.relative_path))
+            except Exception as e:
+                logger.debug(f"InvalidGitRepositoryError: {e}")
+                commits = []
+            if commits:
+                file_dates.append(datetime.datetime.fromtimestamp(
+                    commits[-1].authored_date))  # add start date
+
+                file_dates.append(datetime.datetime.fromtimestamp(
+                    commits[0].authored_date))  # add end date
+        else:
+            # get file's creation date and modified date
+            metadata = Path(self.filepath).stat()
+            # fallback to filesystem metadata
+            file_dates.append(
+                # add start date
+                datetime.datetime.fromtimestamp(metadata.st_atime))
+
+            file_dates.append(
+                # add end date
+                datetime.datetime.fromtimestamp(metadata.st_mtime))
+
+        return file_dates
+
+    def _filter_dates(self, file_start: str, file_end: str):
+        '''
+        Filters out files that are not within the user-provided
+        start and end date that is in `preferences.json`. This
+        comparison is done against `self.start_date` and `self.end_date`.
+
+        Returns `True` if the file is valid (within the daterange)
+        and `False` if it is not.
+        '''
+        validity = True  # file is valid by default
+        # convert to datetime obj
+        if file_start is not None:
+            start = datetime.datetime.strptime(file_start, '%Y-%m-%d')
+            # file is out of bound of user's preferences
+            if start < self.start_date:
+                validity = False
+
+        if file_end is not None:
+            end = datetime.datetime.strptime(file_end, '%Y-%m-%d')
+            if end < self.end_date:
+                validity = False
+        return validity
+
+    def _matches_language_filter(self, language_filter: list[str]) -> bool:
         """
         Check if file matches the language filter.
 
         Returns:
             bool: True if file matches filter or no filter set, False otherwise
         """
-        if not self.language_filter:
+        if not language_filter:
             return True
 
         file_ext = Path(self.filepath).suffix.lower()
 
         # Check each language in the filter
-        for lang_name in self.language_filter:
+        for lang_name in language_filter:
             # Find matching CodingLanguage enum
             for coding_lang in CodingLanguage:
                 # coding_lang.value is a tuple (name, [extensions])
@@ -198,59 +272,24 @@ class BaseFileAnalyzer:
         - Last modified date
         - Size (in bytes)
 
-        If the file is part of a Git repository, we get the creation
-        and last modified dates from the Git commit history. If not,
-        we fall back to the filesystem metadata.
-
         Likewise with any of the analyzers that extend this class,
         you can call this _process method and know that these basic
         statistics will be collected in the self.stats StatisticIndex.
 
         """
-
         metadata = None
         metadata = Path(self.filepath).stat()
 
         stats = [
-            Statistic(FileStatCollection.FILE_SIZE_BYTES.value,
-                      metadata.st_size),
-        ]
+            Statistic(FileStatCollection.FILE_SIZE_BYTES.value, metadata.st_size),]
 
-        if self.is_git_tracked:
-            # Get the creation date from the first commit
-            # and get the last modified date from the latest commit
+        # add start date stat
+        stats.append(
+            Statistic(FileStatCollection.DATE_CREATED.value, self.start_date))
 
-            try:
-                commits = list(self.repo.iter_commits(  # pyright: ignore[reportOptionalMemberAccess]
-                    paths=self.relative_path))
-            except Exception as e:
-                logger.debug(f"InvalidGitRepositoryError: {e}")
-                commits = []
-
-            if commits:
-                first_commit = commits[-1]
-                latest_commit = commits[0]
-
-                stats.append(Statistic(FileStatCollection.DATE_CREATED.value, datetime.datetime.fromtimestamp(
-                    first_commit.authored_date)))
-                stats.append(Statistic(FileStatCollection.DATE_MODIFIED.value, datetime.datetime.fromtimestamp(
-                    latest_commit.authored_date)))
-        else:
-            # Fallback to filesystem metadata
-
-            """
-            Special note here:
-
-            Linux corrupts the st_birthtime to be the time that
-            the file was unzipped.
-            Linux's date access actually contains the true birthtime so
-            we treat that as DATE_CREATED
-            """
-
-            stats.append(Statistic(FileStatCollection.DATE_CREATED.value, datetime.datetime.fromtimestamp(
-                metadata.st_atime)))
-            stats.append(Statistic(FileStatCollection.DATE_MODIFIED.value, datetime.datetime.fromtimestamp(
-                metadata.st_mtime)))
+        # add end date stat
+        stats.append(
+            Statistic(FileStatCollection.DATE_MODIFIED.value, self.end_date))
 
         self.stats.extend(stats)
 
@@ -259,7 +298,6 @@ class BaseFileAnalyzer:
         Analyze the file and return a FileReport with collected statistics.
         """
         self._process()
-
         return FileReport(statistics=self.stats, filepath=self.relative_path)
 
 
