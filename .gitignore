@@ -45,7 +45,6 @@ coverage.xml
 # dotenv environment variables
 .env
 .env.*
-src/database/data.db
 
 # creatde test files
 test_unzip.tar.gz
@@ -55,4 +54,5 @@ test_unzip_extract/*
 
 
 #database
-src/database/*
+src/database/data.db
+src/database/preferences.json
