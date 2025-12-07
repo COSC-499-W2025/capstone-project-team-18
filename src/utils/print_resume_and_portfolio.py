@@ -57,7 +57,6 @@ def portfolio_CLI_stringify(user_report: UserReport):
     You started your first project on 6/15/2023!
     Your latest contribution was on 10/22/2025.
     Your coding languages: Python (70.80%), Typescript (24.63%), Javascript (2.76%), SQL (1.62%), CSS (0.14%), HTML (0.04%).
-    User Ari Writing Score: 2.888479298179292
     --------------------------------------------
     ```
     '''

@@ -231,8 +231,6 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path: Path):
     REAL_WORD_COUNT = 83
     REAL_ALPHA_NUMERIC_CHARACTER_COUNT = 356
     REAL_SENTENCE_COUNT = 6
-    REAL_ARI_SCORE = 4.71 * (REAL_ALPHA_NUMERIC_CHARACTER_COUNT / REAL_WORD_COUNT) + \
-        0.5 * (REAL_WORD_COUNT / REAL_SENTENCE_COUNT) - 21.43
     REAL_TYPE_OF_FILE = FileDomain.DOCUMENTATION
 
     measured_word_count = report.get_value(FileStatCollection.WORD_COUNT.value)
@@ -240,15 +238,12 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path: Path):
         FileStatCollection.CHARACTER_COUNT.value)
     measured_sentence_count = report.get_value(
         FileStatCollection.SENTENCE_COUNT.value)
-    measured_ari_score = report.get_value(
-        FileStatCollection.ARI_WRITING_SCORE.value)
     measured_type_of_file = report.get_value(
         FileStatCollection.TYPE_OF_FILE.value)
 
     assert REAL_WORD_COUNT == measured_word_count, f"Expected {REAL_WORD_COUNT}, got {measured_word_count}"
     assert REAL_ALPHA_NUMERIC_CHARACTER_COUNT == measured_character_count, f"Expected {REAL_ALPHA_NUMERIC_CHARACTER_COUNT}, got {measured_character_count}"
     assert REAL_SENTENCE_COUNT == measured_sentence_count, f"Expected {REAL_SENTENCE_COUNT}, got {measured_sentence_count}"
-    assert REAL_ARI_SCORE == measured_ari_score, f"Expected {REAL_ARI_SCORE}, got {measured_ari_score}"
     assert REAL_TYPE_OF_FILE == measured_type_of_file, f"Expected {REAL_TYPE_OF_FILE}, got {measured_type_of_file}"
 
 # ---------- Test CodingAnalyzer ---------

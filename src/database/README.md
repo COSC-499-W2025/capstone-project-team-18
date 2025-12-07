@@ -55,7 +55,6 @@ erDiagram
         int word_count
         int character_count
         int sentence_count
-        float ari_writing_score
         int number_of_functions
         int number_of_classes
         int number_of_interfaces
