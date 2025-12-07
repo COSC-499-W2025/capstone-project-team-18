@@ -167,7 +167,6 @@ class ProjectReport(BaseReport):
         # Aggregate statistics from file reports
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
-        self._calculate_ari_score()
         self._weighted_skills()
         self._activity_type_contributions()
 
@@ -517,26 +516,6 @@ class ProjectReport(BaseReport):
         self.project_statistics.add(
             Statistic(ProjectStatCollection.CODING_LANGUAGE_RATIO.value, lang_ratio))
 
-    def _calculate_ari_score(self):
-        '''
-        Uses all of the FileReports that make up the ProjectReport
-        to calculate the average ARI writing score for the project
-        using all files that have the `ARI_WRITING_SCORE` stat.
-        '''
-        avg_score = 0
-        scores_count = 0  # the number of FileReports that have an ARI stat
-        for report in self.file_reports:
-            curr_score = report.get_value(
-                FileStatCollection.ARI_WRITING_SCORE.value)
-            if curr_score is None:
-                continue
-            scores_count += 1
-            avg_score += curr_score
-        if scores_count > 0:
-            avg_score /= scores_count
-        self.project_statistics.add(
-            Statistic(ProjectStatCollection.AVG_ARI_WRITING_SCORE.value, float(avg_score)))
-
     @classmethod
     def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
         """Create a ProjectReport directly from a StatisticIndex for testing"""
@@ -665,7 +644,6 @@ class UserReport(BaseReport):
         # Function calls to generate statistics
         self._determine_start_end_dates()
         self._find_coding_languages_ratio()
-        self._calculate_user_ari()
         self._weight_skills()
 
     def _weight_skills(self):
@@ -806,25 +784,6 @@ class UserReport(BaseReport):
 
         self.user_stats.add(
             Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio))
-
-    def _calculate_user_ari(self):
-        '''
-        Uses all of the ProjectReports that make up the UserReport
-        to calculate the average ARI writing score for the user
-        '''
-        avg_score = 0
-        scores_count = 0  # the number of FileReports that have an ARI stat
-        for report in self.project_reports:
-            curr_score = report.get_value(
-                ProjectStatCollection.AVG_ARI_WRITING_SCORE.value)
-            if curr_score is None:
-                continue
-            scores_count += 1
-            avg_score += curr_score
-        if scores_count > 0:
-            avg_score /= scores_count
-        self.user_stats.add(
-            Statistic(UserStatCollection.USER_ARI_WRITING_SCORE.value, float(avg_score)))
 
     def generate_resume(self, email: Optional[str]) -> Resume:
         """
@@ -1053,12 +1012,6 @@ class UserReport(BaseReport):
                 continue
 
             title = self._title_from_name(name)
-
-            if name == UserStatCollection.USER_ARI_WRITING_SCORE.value.name:
-                score = 0
-                score += self.get_value(
-                    UserStatCollection.USER_ARI_WRITING_SCORE.value)
-                skills_line = f"Your Automated readability index (ARI) score: {score}"
 
             # Try to print the user's coding languages and its percent relative to all coding languages from the user
             if name == UserStatCollection.USER_CODING_LANGUAGE_RATIO.value.name:

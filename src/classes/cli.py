@@ -19,6 +19,11 @@ from src.database.utils.database_access import get_project_from_project_name
 from src.classes.resume.bullet_point_builder import BulletPointBuilder
 
 
+def bullet_point_builder(project_report):
+    """Helper wrapper so tests can patch bullet point generation easily."""
+    return BulletPointBuilder().build(project_report)
+
+
 def normalize_path(user_path: str) -> str:
     r"""
     Normalize a user-provided file path so it works cross-platform.
@@ -475,6 +480,9 @@ class ArtifactMiner(cmd.Cmd):
         # Call start_miner with progress callback
         start_miner(self.project_filepath, self.user_email,
                     progress_callback=progress_callback)
+
+        # Let the user rename the newly created portfolio if desired
+        self._prompt_portfolio_name()
 
         prompt = "\n Would you like to continue analyzing? (Y/N)"
         answer = input(prompt).strip()
@@ -1260,7 +1268,7 @@ class ArtifactMiner(cmd.Cmd):
             return
 
         # Build resume bullet(s) from the ProjectReport
-        bullets = BulletPointBuilder().build(project_report)
+        bullets = bullet_point_builder(project_report)
 
         print("\nGenerated resume bullet point(s):\n")
         for bp in bullets:

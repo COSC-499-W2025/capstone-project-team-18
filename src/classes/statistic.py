@@ -154,12 +154,6 @@ class FileStatCollection(Enum):
         expected_type=int,
     )
 
-    ARI_WRITING_SCORE = FileStatisticTemplate(
-        name="ARI_WRITING_SCORE",
-        description="automated readability index score",
-        expected_type=float,
-    )
-
     NUMBER_OF_FUNCTIONS = FileStatisticTemplate(
         name="NUMBER_OF_FUNCTIONS",
         description="number of functions in the file",
@@ -253,12 +247,6 @@ class ProjectStatCollection(Enum):
         expected_type=dict[CodingLanguage, float]
     )
 
-    AVG_ARI_WRITING_SCORE = ProjectStatisticTemplate(
-        name="AVG_ARI_WRITING_SCORE",
-        description="The average ARI score of all FileReports",
-        expected_type=float
-    )
-
     TOTAL_PROJECT_LINES = ProjectStatisticTemplate(
         name="TOTAL_PROJECT_LINES",
         description="Total lines contained in a project",
@@ -295,12 +283,6 @@ class UserStatCollection(Enum):
         name="USER_CODING_LANGUAGE_RATIO",
         description="ratio, by lines of code, of coding languages in the user's projects",
         expected_type=dict[CodingLanguage, float]
-    )
-
-    USER_ARI_WRITING_SCORE = ProjectStatisticTemplate(
-        name="USER_ARI_WRITING_SCORE",
-        description="The average ARI score of all ProjectReports",
-        expected_type=float
     )
 
 
