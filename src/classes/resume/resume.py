@@ -19,9 +19,14 @@ class ResumeItem:
     """
 
     title: str
+    frameworks: list[WeightedSkills]
     bullet_points: list[str]
     start_date: date
     end_date: date
+
+    # Keep only the top three frameworks
+    def __post_init__(self):
+        self.frameworks = sorted(self.frameworks, reverse=True)[:3]
 
 
 class Resume:
@@ -35,7 +40,7 @@ class Resume:
 
     """
 
-    # TODO: Expand more attributes like contact info, summary, etc.
+    items: list[ResumeItem]
 
     def __init__(self, email: Optional[str] = None, weight_skills: Optional[list[WeightedSkills]] = None):
         self.items = []
