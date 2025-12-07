@@ -225,8 +225,6 @@ class ProjectReport(BaseReport):
         else:
             for fr in self.file_reports:
                 val = fr.get_value(FileStatCollection.LINES_IN_FILE.value)
-                print(f'file name: {fr.filepath}')
-                print(f'linecount: {val}')
                 if val is not None:
                     total += val
 
