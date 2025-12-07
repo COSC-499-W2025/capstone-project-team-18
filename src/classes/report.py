@@ -629,7 +629,7 @@ class UserReport(BaseReport):
     from many different ReportReports
     """
 
-    def __init__(self, project_reports: list[ProjectReport], report_name: str):
+    def __init__(self, project_reports: list[ProjectReport], report_name: str, statistics: Optional[StatisticIndex] = None):
         """
         Initialize UserReport with project reports to calculate user-level statistics.
 
@@ -640,7 +640,18 @@ class UserReport(BaseReport):
         Args:
             project_reports (list[ProjectReport]): List of ProjectReport objects containing project-level statistics
             report_name (str): By default, the name of the zipped directory. Can be overwritten by user input
+            statistics: Optional `StatisticIndex` when rebuilding `UserReport` from DB row
         """
+
+        self.report_name = report_name
+        self.project_reports = project_reports or []
+
+        # In this case, we are loading from the database and we are explicitly
+        # given statistics. We load those stats in, and move on
+        if statistics is not None:
+            self.user_stats = statistics
+            super().__init__(self.user_stats)
+            return
 
         # rank the project reports according to their weights
         ranked_project_reports = sorted(
@@ -649,8 +660,6 @@ class UserReport(BaseReport):
         self.resume_items = [report.generate_resume_item()
                              for report in ranked_project_reports]
 
-        self.project_reports = project_reports or []
-        self.report_name = report_name
         self.user_stats = StatisticIndex()  # list of user-level statistics
 
         # Function calls to generate statistics
