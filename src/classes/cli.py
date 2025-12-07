@@ -8,7 +8,7 @@ import os
 from src.app import start_miner
 import sys
 import json
-from tqdm import tqdm # For CLI Progress Bar
+from tqdm import tqdm  # For CLI Progress Bar
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -16,7 +16,7 @@ from src.app import start_miner
 from sqlalchemy import select, delete
 from src.database.utils.database_modify import rename_user_report
 from src.database.utils.database_access import get_project_from_project_name
-from src.classes.resume import bullet_point_builder
+from src.classes.resume.bullet_point_builder import BulletPointBuilder
 
 
 def normalize_path(user_path: str) -> str:
@@ -439,7 +439,7 @@ class ArtifactMiner(cmd.Cmd):
                     total=total_steps,
                     desc="Processing",
                     unit="step",
-                    bar_format='{desc}: {percentage:3.0f}%|{bar}|',  # REMOVED {n_fmt}/{total_fmt}
+                    bar_format='{desc}: {percentage:3.0f}%|{bar}|',
                     leave=True  # Keep the bar visible after completion
                 )
 
@@ -455,7 +455,8 @@ class ArtifactMiner(cmd.Cmd):
 
             elif stage == "analysis":
                 if progress_bar:
-                    progress_bar.set_description(f"Analyzing ({current}/{total})")
+                    progress_bar.set_description(
+                        f"Analyzing ({current}/{total})")
                     if current > 0:  # Don't update on initial call
                         progress_bar.update(1)
 
@@ -472,7 +473,8 @@ class ArtifactMiner(cmd.Cmd):
                     print()  # Add blank line after progress bar
 
         # Call start_miner with progress callback
-        start_miner(self.project_filepath, self.user_email, progress_callback=progress_callback)
+        start_miner(self.project_filepath, self.user_email,
+                    progress_callback=progress_callback)
 
         prompt = "\n Would you like to continue analyzing? (Y/N)"
         answer = input(prompt).strip()
@@ -580,7 +582,8 @@ class ArtifactMiner(cmd.Cmd):
             print("(4) Reset to Defaults")
             print("(5) Back to Main Menu")
 
-            choice = input("\nSelect option (1-5), or 'exit'/'quit' to close app): ").strip()
+            choice = input(
+                "\nSelect option (1-5), or 'exit'/'quit' to close app): ").strip()
 
             # User enters exit/quit
             if choice.lower() in ['exit', 'quit']:
@@ -1000,7 +1003,8 @@ class ArtifactMiner(cmd.Cmd):
         '''Configure programming language filtering'''
         print("\n=== Language Filtering ===")
         print("Filter analysis by programming languages")
-        print("Common languages: Python, Java, JavaScript, C++, C#, Ruby, Go, PHP, TypeScript")
+        print(
+            "Common languages: Python, Java, JavaScript, C++, C#, Ruby, Go, PHP, TypeScript")
 
         current = self.preferences.get("languages_to_include", [])
         if current:
@@ -1013,7 +1017,8 @@ class ArtifactMiner(cmd.Cmd):
         print("  - Type 'clear' to remove the filter (analyze all languages)")
         print("  - Type 'back' or 'cancel' to return")
 
-        languages_input = input("\nLanguages to analyze (or 'back'/'cancel'): ").strip()
+        languages_input = input(
+            "\nLanguages to analyze (or 'back'/'cancel'): ").strip()
 
         # Handle cancel
         if self._handle_cancel_input(languages_input, "preferences"):
@@ -1028,7 +1033,8 @@ class ArtifactMiner(cmd.Cmd):
             message = "✓ Language filter removed - now analyzing all languages"
         else:
             # Parse and normalize language names
-            languages = [lang.strip().title() for lang in languages_input.split(',') if lang.strip()]
+            languages = [lang.strip().title()
+                         for lang in languages_input.split(',') if lang.strip()]
             message = f"✓ Now filtering for: {', '.join(languages)}"
 
         success = self.preferences.update("languages_to_include", languages)
@@ -1254,7 +1260,7 @@ class ArtifactMiner(cmd.Cmd):
             return
 
         # Build resume bullet(s) from the ProjectReport
-        bullets = bullet_point_builder(project_report)
+        bullets = BulletPointBuilder().build(project_report)
 
         print("\nGenerated resume bullet point(s):\n")
         for bp in bullets:
