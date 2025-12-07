@@ -28,13 +28,13 @@ def extract_file_reports(
     project_file: Optional[ProjectFiles],
     email: Optional[str] = None,
     language_filter: Optional[list[str]] = None
-) -> Optional[list[FileReport]]:
+) -> list[FileReport]:
     """
     Method to extract individual fileReports within each project
     """
 
     if project_file is None:
-        return None
+        return []
 
     # Given a single project for a user and the project's structure return a list with each fileReport
     projectFiles = project_file.file_paths
@@ -42,9 +42,6 @@ def extract_file_reports(
     # list of reports for each file in an individual project to be returned
     reports = []
     for file in projectFiles:
-
-        if project_file.name == "EarthLingo":
-            pass
 
         analyzer = get_appropriate_analyzer(
             project_file.root_path,

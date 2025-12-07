@@ -472,9 +472,22 @@ class ArtifactMiner(cmd.Cmd):
                     progress_bar.close()
                     print()  # Add blank line after progress bar
 
-        # Call start_miner with progress callback
-        start_miner(self.project_filepath, self.user_email,
-                    progress_callback=progress_callback)
+            elif stage == "stop":
+                if progress_bar:
+                    progress_bar.set_description("X Error! ")
+                    progress_bar.refresh()
+                    progress_bar.close()
+                    print()  # Add blank line after stopping
+
+        try:
+            # Call start_miner with progress callback
+            start_miner(self.project_filepath, self.user_email,
+                        progress_callback=progress_callback)
+        except Exception as e:
+            progress_callback("stop", 0, 0, "")
+
+            print("We ran into an error while proccessing: ")
+            print(e)
 
         prompt = "\n Would you like to continue analyzing? (Y/N)"
         answer = input(prompt).strip()
