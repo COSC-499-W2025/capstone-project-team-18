@@ -481,6 +481,9 @@ class ArtifactMiner(cmd.Cmd):
         start_miner(self.project_filepath, self.user_email,
                     progress_callback=progress_callback)
 
+        # Let the user rename the newly created portfolio if desired
+        self._prompt_portfolio_name()
+
         prompt = "\n Would you like to continue analyzing? (Y/N)"
         answer = input(prompt).strip()
 
