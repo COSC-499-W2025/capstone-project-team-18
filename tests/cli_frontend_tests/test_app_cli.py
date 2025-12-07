@@ -537,6 +537,37 @@ def test_resume_bullet_project_not_found(cli):
         )
 
 
+def test_resume_bullet_success_path(cli):
+    """Happy path: valid project name → bullets generated and printed."""
+    class DummyProjectReport:
+        project_name = "my-project"
+
+    dummy_report = DummyProjectReport()
+
+    with patch("builtins.input", return_value="my-project"), \
+            patch("src.classes.cli.get_project_from_project_name", return_value=dummy_report) as mock_get, \
+            patch("src.classes.cli.bullet_point_builder", return_value=["Bullet one", "Bullet two"]) as mock_builder, \
+            patch("builtins.print") as mock_print:
+
+        cli.do_resume_bullet_point("")
+
+        mock_get.assert_called_once_with("my-project")
+        mock_builder.assert_called_once_with(dummy_report)
+
+        assert any(
+            "Generated resume bullet point(s):" in str(call)
+            for call in mock_print.call_args_list
+        )
+        assert any("- Bullet one" in str(call)
+                   for call in mock_print.call_args_list)
+        assert any("- Bullet two" in str(call)
+                   for call in mock_print.call_args_list)
+        assert any(
+            "Artifact Miner Main Menu" in str(call)
+            for call in mock_print.call_args_list
+        )
+
+
 def test_keyboardinterrupt_handling(cli):
     """Test that ctrl-c exits cleanly with correct message."""
     with patch.object(ArtifactMiner, "cmdloop", side_effect=KeyboardInterrupt), \

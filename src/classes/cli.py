@@ -19,6 +19,11 @@ from src.database.utils.database_access import get_project_from_project_name
 from src.classes.resume.bullet_point_builder import BulletPointBuilder
 
 
+def bullet_point_builder(project_report):
+    """Helper wrapper so tests can patch bullet point generation easily."""
+    return BulletPointBuilder().build(project_report)
+
+
 def normalize_path(user_path: str) -> str:
     r"""
     Normalize a user-provided file path so it works cross-platform.
@@ -1260,7 +1265,7 @@ class ArtifactMiner(cmd.Cmd):
             return
 
         # Build resume bullet(s) from the ProjectReport
-        bullets = BulletPointBuilder().build(project_report)
+        bullets = bullet_point_builder(project_report)
 
         print("\nGenerated resume bullet point(s):\n")
         for bp in bullets:

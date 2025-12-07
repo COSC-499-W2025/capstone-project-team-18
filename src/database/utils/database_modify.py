@@ -128,6 +128,8 @@ def delete_user_report_and_related_data(report_id=None, title=None, zipped_filep
 def rename_user_report(current_title: str, new_title: str, engine=None) -> tuple[bool, str]:
     """
     Rename a user report if the new title is unique.
+    If multiple rows share the current title, the most recently created
+    (highest id) row is renamed to avoid collisions.
 
     Args:
         current_title (str): Existing title to update.
@@ -148,8 +150,10 @@ def rename_user_report(current_title: str, new_title: str, engine=None) -> tuple
 
     with Session(engine) as session:
         current = session.execute(
-            select(UserReportTable).where(UserReportTable.title == current_title)
-        ).scalar_one_or_none()
+            select(UserReportTable)
+            .where(UserReportTable.title == current_title)
+            .order_by(UserReportTable.id.desc())
+        ).scalars().first()
 
         if current is None:
             return False, f"Portfolio '{current_title}' not found"
