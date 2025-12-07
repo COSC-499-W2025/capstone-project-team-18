@@ -309,7 +309,7 @@ To run all unit tests, simply enter `pytest`. To run a specific test file, enter
 
 # Milestone 1 Documentation
 
-## Team Contract
+## Team Contract [ [pdf](./documentation/milestone-1/contract.pdf) ]
 
 **Team 18**: Jimi Ademola, Priyansh Mathur, Tawana Ndlovu, Erem Ozdemir, Sam Sikora, Alex Taschuk
 
