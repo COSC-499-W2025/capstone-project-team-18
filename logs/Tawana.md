@@ -1,3 +1,15 @@
+# Week 14 12/01 - 12/07
+
+# Peer Evaluation!
+[Peer Eval THN](./log_images/personal_log_imgs/tawana/tawana_week14_log.png)
+
+# Recap on your week goals
+This week, I focused primarily on reviewing team PRs and supporting the completion of Milestone 1. I reviewed Sam’s `#273` (reworked resume class structure and LaTeX export), `#300` (updated resume printing using the new builder), and `#311` (hot fix for naming reports). I also reviewed Alex’s `#285` (Milestone 1 README updates) and Priyansh’s `#306` (fix for duplicate portfolio title renaming). My feedback ensured clarity, correct integration with existing logic, and that tests and documentation were consistent.
+
+In addition to code reviews, I helped create and polish our Milestone 1 presentation, focusing on organization, flow, and readability. I also participated in delivering the presentation in class and reviewing other teams’ presentations as part of the milestone evaluations.
+
+Overall, this week centered on quality assurance, presentation work, and strengthening team coordination as we wrapped up Milestone 1.
+
 # Week 13 11/24 - 11/30
 
 # Peer Evaluation!
