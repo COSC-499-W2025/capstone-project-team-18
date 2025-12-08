@@ -1183,9 +1183,7 @@ class ArtifactMiner(cmd.Cmd):
         return False
 
     def do_email(self, arg):
-        '''
-        Add an email to the user's configuration such that inidividual contributions can be measured in a Git-tracked project
-        '''
+        '''Add an email to the user's configuration such that inidividual contributions can be measured in a Git-tracked project'''
         self.update_history(self.cmd_history, "email")
 
         # Show current email if exists
