@@ -7,7 +7,7 @@
     - [1.2 CLI Command Quick Reference](#cli-command-quick-reference)
     - [1.3 Workflow](#workflow)
     - [1.4 Testing](#testing)
-2. [Repository Branches](#branches)
+2. [Repository Branches](#repository-branches)
 3. [Milestone 1 Documentation](#milestone-1-documentation)
     - [3.1 Team Contract](#team-contract--pdf-)
     - [3.2 Diagrams](#diagrams)
