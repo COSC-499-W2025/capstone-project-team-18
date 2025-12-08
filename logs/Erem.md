@@ -136,3 +136,17 @@ For code reviews, I checked out Alex's database retrieval PR [#236](https://gith
 This week I focused on enhancing the user experience and fixing critical bugs for Milestone 1. I implemented professional progress bars using `tqdm` in PR [#267](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/267), adding real-time visual feedback across the analysis pipeline (unzip, discovery, analysis, saving) with percentage updates and ETAs. I also added language filtering functionality in PR [#261](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/261), allowing users to filter analysis by specific programming languages through the preferences menu. My merged PR [#242](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/242) fixed a critical bug where coding language ratios weren't summing to 100%. I discovered the code was counting duplicate files and virtual environment pollution, so I implemented smart deduplication and comprehensive filtering to match GitHub's methodology. I completed PR [#260](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/260) adding a CLI menu option to delete portfolios from the database with proper cascading deletion and safety confirmations.
 
 For code reviews, I evaluated Alex's project ranking PR [#265](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/265), Jimi's Git permissions prompt PR [#271](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/271), and both of Sam's PRs for test file identification [#259](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/259) and activity type contributions [#264](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/264).
+
+
+## Week 14, Nov. 30 – Dec. 07
+
+### Peer Eval
+
+![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week14_log.png)
+
+### Recap
+This week I focused on fixing critical navigation bugs and completing features for Milestone 1. I resolved issue #291 in PR #303 where the back command in the retrieve portfolio submenu was incorrectly returning to main menu instead of the previous retrieval menu step. I then tackled the more complex issue #292 in PR #314, implementing distinct behaviors for back and cancel commands, cancel now returns to main menu while preserving history, allowing subsequent back commands to navigate through previous menus correctly. I also reopened and updated PR #260 to fix navigation issues in the delete portfolio feature.
+
+My merged PRs from earlier in the week include the tqdm progress bars implementation in PR #267 and language filtering functionality in PR #261.
+
+For code reviews, I evaluated Sam's chronological skills/projects PR #309, and his empty project handling PR #307, Priyansh's portfolio naming prompt PR #304, and Alex's README documentation update PR #285.
