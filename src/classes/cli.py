@@ -293,7 +293,10 @@ class ArtifactMiner(cmd.Cmd):
         '''
         Provides consent statement. User may enter Y/N to agree or disagree.
         '''
-        self.update_history(self.cmd_history, "perms")
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "perms")
+
         # TODO: agreement doesn't print properly if the terminal isn't wide enough
         agreement = (
             "Do you consent to this program accessing all files and/or folders"
@@ -304,11 +307,16 @@ class ArtifactMiner(cmd.Cmd):
         while True:
             answer = input(agreement).strip()
 
-            # Check for cancel first
-            # user entered 'back'/'cancel'
-            if self._handle_cancel_input(answer, "main"):
-                print("\n" + self.options)
-                break
+            # Check for cancel/back
+            if answer.lower() == 'cancel':
+                if self._handle_cancel_input(answer, "main"):
+                    print("\n" + self.options)
+                    return
+            elif answer.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
 
             # Handle exit/quit first
             if answer.lower() in ['exit', 'quit']:
@@ -338,7 +346,10 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_filepath(self, arg):
         '''User specifies the project's filepath'''
-        self.update_history(self.cmd_history, "filepath")
+
+         # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "filepath")
 
         # Show current filepath if exists
         current_path = self.preferences.get_project_filepath()
@@ -353,12 +364,18 @@ class ArtifactMiner(cmd.Cmd):
             if answer.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
 
-            # Check if user wants to cancel
-            if self._handle_cancel_input(answer, "main"):
+            # Check for cancel/back
+            if answer.lower() == 'cancel':
                 self.project_filepath = ''
-                self.cmd_history.clear()
-                print("\n" + self.options)
-                return  # Return to main menu
+                if self._handle_cancel_input(answer, "main"):
+                    print("\n" + self.options)
+                    return
+            elif answer.lower() == 'back':
+                self.project_filepath = ''
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
 
             # Normalize the user input path
             normalized_path = normalize_path(answer)
@@ -388,7 +405,10 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_begin(self, arg):
         '''Begin the mining process. User must give consent and provide filepath prior.'''
-        self.update_history(self.cmd_history, "begin")
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "begin")
 
         if not self.user_consent:
             print(
@@ -520,8 +540,12 @@ class ArtifactMiner(cmd.Cmd):
         if new_title.lower() in ['exit', 'quit']:
             return self.do_exit("")
 
-        if self._handle_cancel_input(new_title, "main"):
-            print("\n" + self.options)
+        # Check for cancel / back
+        if new_title.lower() == 'cancel':
+            if self._handle_cancel_input(new_title, "main"):
+                print("\n" + self.options)
+                return
+        elif new_title.lower() == 'back':
             return
 
         if not new_title:
@@ -538,7 +562,10 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_login(self, arg):
         '''Configure user login credentials'''
-        self.update_history(self.cmd_history, "login")
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "login")
 
         # Show current credentials if they exist
         current_name, current_password, current_email = self.preferences.get_credentials()
@@ -552,12 +579,22 @@ class ArtifactMiner(cmd.Cmd):
         while True:
             name = input(
                 "Enter your name: (or 'back'/'cancel' to return): ").strip()
-            if self._handle_cancel_input(name, "main"):
-                print("\n" + self.options)
-                return
-            # Handle exit/quit first
+
+            # Check for cancel / back
+            if name.lower() == 'cancel':
+                if self._handle_cancel_input(name, "main"):
+                    print("\n" + self.options)
+                    return
+            elif name.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            # Handle exit/quit
             if name.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
+
             if name:
                 break
             print("Name cannot be empty. Please try again.")
@@ -566,9 +603,18 @@ class ArtifactMiner(cmd.Cmd):
         while True:
             password = input(
                 "Enter your password: (or 'back'/'cancel' to return): ").strip()
-            if self._handle_cancel_input(password, "main"):
-                print("\n" + self.options)
-                return
+
+            # Check for back / cancel
+            if password.lower() == 'cancel':
+                if self._handle_cancel_input(password, "main"):
+                    print("\n" + self.options)
+                    return
+            elif name.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
             # Handle exit/quit first
             if password.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
@@ -593,7 +639,10 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_preferences(self, arg):
         '''Advanced preferences configuration submenu'''
-        self.update_history(self.cmd_history, "preferences")
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "preferences")
 
         while True:
             print("\n=== Preferences Configuration ===")
@@ -610,9 +659,16 @@ class ArtifactMiner(cmd.Cmd):
             if choice.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
 
-            if self._handle_cancel_input(choice, "main"):
-                print("\n" + self.options)
-                return
+            # Check for cancel / back
+            if choice.lower() == 'cancel':
+                if self._handle_cancel_input(choice, "main"):
+                    print("\n" + self.options)
+                    return
+            elif choice.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
 
             if choice == "1":
                 self._configure_date_range()
@@ -630,7 +686,10 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_view(self, arg):
         '''Display current preferences and configuration'''
-        self.update_history(self.cmd_history, "view")
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "view")
 
         while True:
             print("\n=== Current Configuration ===")
@@ -667,9 +726,15 @@ class ArtifactMiner(cmd.Cmd):
             user_input = input(prompt).strip()
 
             # Check if user wants to cancel
-            if self._handle_cancel_input(user_input, "main"):
-                print("\n" + self.options)
-                break
+            if user_input.lower() == 'cancel':
+                if self._handle_cancel_input(user_input, "main"):
+                    print("\n" + self.options)
+                    break
+            elif user_input.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
 
             # Handle exit/quit
             if user_input.lower() in ['exit', 'quit']:
@@ -685,7 +750,10 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_portfolio_delete(self, arg):
         '''Delete a previously generated portfolio/user report'''
-        self.update_history(self.cmd_history, "delete")
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "delete")
 
         print("\n=== Delete Portfolio ===")
         print("You can delete a portfolio by:")
@@ -701,9 +769,15 @@ class ArtifactMiner(cmd.Cmd):
                 return self.do_exit(arg)
 
             # Handle cancel
-            if self._handle_cancel_input(user_input, "main"):
-                print("\n" + self.options)
-                return
+            if user_input.lower() == 'cancel':
+                if self._handle_cancel_input(user_input, "main"):
+                    print("\n" + self.options)
+                    return
+            elif user_input.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
 
             # Option 1: List existing portfolios
             if user_input == "1":
@@ -768,7 +842,10 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_portfolio_retrieve(self, arg):
         '''Retrieve and display a stored portfolio'''
-        self.update_history(self.cmd_history, "retrieve")
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "retrieve")
 
         while True:
 
@@ -785,18 +862,27 @@ class ArtifactMiner(cmd.Cmd):
             if user_input.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
 
-            # Handle cancel at top leve (returns to main menu)
-            if self._handle_cancel_input(user_input, "main"):
-                print("\n" + self.options)
-                return
+            # Handle cancel (returns to main menu, preserves history)
+            if user_input.lower() == 'cancel':
+                if self._handle_cancel_input(user_input, "main"):
+                    print("\n" + self.options)
+                    return
+
+            # Handle back (returns to previous in history)
+            if user_input.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
 
             portfolio_name = user_input
 
             if user_input == "1":
                 selected = self._list_and_select_portfolio()
 
-                if self._handle_cancel_input(portfolio_name, "retrieve"):
-                    continue
+                # Check if user cancelled/backed from list selection
+                if selected is None:
+                    continue  # Stay in retrieve loop
 
                 elif selected is None:
                     continue
@@ -807,8 +893,15 @@ class ArtifactMiner(cmd.Cmd):
                 if portfolio_name.lower() in ['exit', 'quit']:
                     return self.do_exit(arg)
 
-                if self._handle_cancel_input(portfolio_name, "retrieve"):
-                    continue
+                # Handle cancel from portfolio name input
+                if portfolio_name.lower() == 'cancel':
+                    if self._handle_cancel_input(portfolio_name, "main"):
+                        print("\n" + self.options)
+                        return
+
+                # Handle back from portfolio name input
+                if portfolio_name.lower() == 'back':
+                    continue  # Return to retrieve menu
 
                 if not portfolio_name:
                     # Fall back to last analyzed just like blank input
@@ -894,13 +987,18 @@ class ArtifactMiner(cmd.Cmd):
             choice = input(
                 f"Select portfolio (1-{len(portfolios)}), 'back'/'cancel' to return, or 'exit'/'quit' to close app: ").strip()
 
-            # Handle exit/quit FIRST
+            # Handle exit/quit first
             if choice.lower() in ['exit', 'quit']:
                 self.do_exit("")
                 return None
 
-            # Handle cancel
-            if choice.lower() in ['back', 'cancel']:
+            # Handle cancel (return to main menu)
+            if choice.lower() == 'cancel':
+                self._handle_cancel_input(choice, "main")
+                return None
+
+            # Handle back (return to retrieve menu)
+            if choice.lower() == 'back':
                 return None
 
             # Validate selection
@@ -933,8 +1031,9 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_exit("")
 
                 # User enters back / cancel
-                if self._handle_cancel_input(start_input, "preferences"):
-                    return
+                if start_input.lower() == 'cancel' or start_input.lower() == 'back':
+                    if self._handle_cancel_input(start_input, "preferences"):
+                        return
 
                 if start_input.lower() == 'skip':
                     start_date = None
@@ -954,8 +1053,9 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_exit("")
 
                 # User enters back / cancel
-                if self._handle_cancel_input(end_input, "preferences"):
-                    return
+                if end_input.lower() == 'cancel' or end_input.lower() == 'back':
+                    if self._handle_cancel_input(end_input, "preferences"):
+                        return
 
                 if end_input.lower() == 'skip':
                     end_date = None
@@ -1011,8 +1111,9 @@ class ArtifactMiner(cmd.Cmd):
             "Extensions to ignore (or 'clear' to remove all): ").strip()
 
         # User enters back / cancel
-        if self._handle_cancel_input(extensions_input, "preferences"):
-            return
+        if extensions_input.lower() == 'cancel' or extensions_input.lower() == 'back':
+            if self._handle_cancel_input(extensions_input, "preferences"):
+                return
 
         # Handle exit/quit
         if extensions_input.lower() in ['exit', 'quit']:
@@ -1059,8 +1160,9 @@ class ArtifactMiner(cmd.Cmd):
             "\nLanguages to analyze (or 'back'/'cancel'): ").strip()
 
         # Handle cancel
-        if self._handle_cancel_input(languages_input, "preferences"):
-            return
+        if languages_input.lower() == 'cancel' or languages_input.lower() == 'back':
+            if self._handle_cancel_input(languages_input, "preferences"):
+                return
 
         # Handle exit/quit
         if languages_input.lower() in ['exit', 'quit']:
@@ -1087,8 +1189,9 @@ class ArtifactMiner(cmd.Cmd):
             "Reset ALL preferences to defaults? This cannot be undone. (Y/N): ").strip()
 
         # User enters back /cancel
-        if self._handle_cancel_input(confirm, "preferences"):
-            return
+        if confirm.lower() == 'cancel' or confirm.lower() == 'back':
+            if self._handle_cancel_input(confirm, "preferences"):
+                return
 
         # Handle exit/quit
         if confirm.lower() in ['exit', 'quit']:
@@ -1128,62 +1231,63 @@ class ArtifactMiner(cmd.Cmd):
 
         return cmd_history
 
-    def do_back(self, arg):
-        '''Return to the previous screen'''
-
-        if len(self.cmd_history) > 1:  # Need at least 2 items to go back
-            # Get the last command (the one we want to go back to)
-            previous_cmd = self.cmd_history[-1]  # Get last command
-            self.cmd_history.pop()  # Remove current command from history
-
-            match previous_cmd:
-                case "perms":
-                    return self.do_perms(arg)
-                case "filepath":
-                    return self.do_filepath(arg)
-                case "begin":
-                    return self.do_begin(arg)
-                case "email":
-                    return self.do_email(arg)
-                case "login":
-                    return self.do_login(arg)
-                case "preferences":
-                    return self.do_preferences(arg)
-                case "view":
-                    return self.do_view(arg)
-                case "delete":
-                    return self.do_portfolio_delete(arg)
-                case "retrieve":
-                    return self.do_portfolio_retrieve(arg)
-                case "resume_bullet_point":
-                    return self.do_resume_bullet_point(arg)
-        else:
-            print("\nNo previous command to return to.")
-            print(self.options)
-
     def _handle_cancel_input(self, user_input, menu_location):
         '''
-        Helper method to check if user wants to cancel and handle it.
+        Helper method to check if user wants to cancel or go back.
+        - 'cancel': Returns to main menu, preserves history
+        - 'back': Returns to previous menu in history
         Returns True if cancel was triggered, False otherwise.
         '''
-        if user_input.strip().lower() in ['back', 'cancel']:
-          # Remove the current command from history since user is cancelling
+        user_input_lower = user_input.strip().lower()
 
-            if len(self.cmd_history) > 0:
-                cancelled_cmd = self.cmd_history.pop()
-                print(f"\nCancelled '{cancelled_cmd}' operation.")
-                print(f"Returning to {menu_location} menu.")
-            else:
-                print(f"\nReturning to {menu_location} menu.")
+        if user_input_lower == 'cancel':
+            # Cancel returns to main menu without modifying history
+            print(f"\nCancelled operation.")
+            print(f"Returning to main menu.")
             return True
 
         return False
+
+    def do_back(self, arg):
+        '''Return to the previous screen using command history'''
+
+        # Check if there's a previous command to return to
+        if len(self.cmd_history) > 0:
+            previous_cmd = self.cmd_history[-1]
+            print(f"\nReturning to {previous_cmd} menu.")
+
+            match previous_cmd:
+                case "perms":
+                    return self.do_perms("from_back")
+                case "filepath":
+                    return self.do_filepath("from_back")
+                case "begin":
+                    return self.do_begin("from_back")
+                case "email":
+                    return self.do_email("from_back")
+                case "login":
+                    return self.do_login("from_back")
+                case "preferences":
+                    return self.do_preferences("from_back")
+                case "view":
+                    return self.do_view("from_back")
+                case "delete":
+                    return self.do_portfolio_delete("from_back")
+                case "retrieve":
+                    return self.do_portfolio_retrieve("from_back")
+                case "resume_bullet_point":
+                    return self.do_resume_bullet_point("from_back")
+        else:
+            print("\n", self.options)
 
     def do_email(self, arg):
         '''
         Add an email to the user's configuration such that inidividual contributions can be measured in a Git-tracked project
         '''
-        self.update_history(self.cmd_history, "email")
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "email")
 
         # Show current email if exists
         current_email = self.preferences.get('user_email')
@@ -1196,11 +1300,17 @@ class ArtifactMiner(cmd.Cmd):
         answer = input(prompt).strip()
 
         # Check if user wants to cancel
-        if self._handle_cancel_input(answer, "main"):
-            print("\n" + self.options)
-            return  # Return to main menu
+        if answer.lower() == 'cancel':
+            if self._handle_cancel_input(answer, "main"):
+                print("\n" + self.options)
+                return
+        elif answer.lower() == 'back':
+            # Pop current menu from history before calling do_back
+            if len(self.cmd_history) > 0:
+                self.cmd_history.pop()
+            return self.do_back(arg)
 
-        # Handle exit/quit first
+        # Handle exit/quit
         if answer.lower() in ['exit', 'quit']:
             return self.do_exit(arg)
 
@@ -1209,10 +1319,16 @@ class ArtifactMiner(cmd.Cmd):
             answer = input(prompt).strip()
 
             # Check if user wants to cancel
-            if self._handle_cancel_input(answer, "main"):
-                print("\n" + self.options)
-                return  # Return to main menu
-
+            if answer.lower() == 'cancel':
+                if self._handle_cancel_input(answer, "main"):
+                    print("\n" + self.options)
+                    return
+            elif answer.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+            # User entered exit
             if answer.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
 
@@ -1269,7 +1385,10 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_resume_bullet_point(self, arg):
         """Retrieve and print a resume bullet point for a stored project."""
-        self.update_history(self.cmd_history, "resume_bullet_point")
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "resume_bullet_point")
 
         print("\n=== Get Resume Bullet Point ===")
         user_input = input(
@@ -1280,9 +1399,15 @@ class ArtifactMiner(cmd.Cmd):
             return self.do_exit(arg)
 
         # Handle back/cancel
-        if self._handle_cancel_input(user_input, "main"):
-            print("\n" + self.options)
-            return
+        if user_input.lower() == 'cancel':
+            if self._handle_cancel_input(user_input, "main"):
+                print("\n" + self.options)
+                return
+        elif user_input.lower() == 'back':
+            # Pop current menu from history before calling do_back
+            if len(self.cmd_history) > 0:
+                self.cmd_history.pop()
+            return self.do_back(arg)
 
         if not user_input:
             print("Project name cannot be empty.")
