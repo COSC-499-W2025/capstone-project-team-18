@@ -609,7 +609,7 @@ class ArtifactMiner(cmd.Cmd):
                 if self._handle_cancel_input(password, "main"):
                     print("\n" + self.options)
                     return
-            elif name.lower() == 'back':
+            elif password.lower() == 'back':
                 # Pop current menu from history before calling do_back
                 if len(self.cmd_history) > 0:
                     self.cmd_history.pop()
