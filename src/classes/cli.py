@@ -477,9 +477,24 @@ class ArtifactMiner(cmd.Cmd):
                     progress_bar.close()
                     print()  # Add blank line after progress bar
 
-        # Call start_miner with progress callback
-        start_miner(self.project_filepath, self.user_email,
-                    progress_callback=progress_callback)
+            elif stage == "stop":
+                if progress_bar:
+                    progress_bar.set_description("X Error! ")
+                    progress_bar.refresh()
+                    progress_bar.close()
+                    print()  # Add blank line after stopping
+
+        try:
+            # Call start_miner with progress callback
+            start_miner(self.project_filepath, self.user_email,
+                        progress_callback=progress_callback)
+        except Exception as e:
+            progress_callback("stop", 0, 0, "")
+
+            print("We ran into an error while proccessing: ")
+            print(e)
+
+            return
 
         # Let the user rename the newly created portfolio if desired
         self._prompt_portfolio_name()
@@ -757,19 +772,22 @@ class ArtifactMiner(cmd.Cmd):
         '''Retrieve and display a stored portfolio'''
         self.update_history(self.cmd_history, "retrieve")
 
-        print("\n=== Retrieve Portfolio ===")
-        print("You can retrieve a portfolio by:")
-        print("  1. Select from list of existing portfolios")
-        print("  2. Enter portfolio name (or leave blank to use last analyzed)")
-
         while True:
+
+            print("\n=== Retrieve Portfolio ===")
+            print("You can retrieve a portfolio by:")
+            print("  1. Select from list of existing portfolios")
+            print("  2. Enter portfolio name (or leave blank to use last analyzed)")
+
             user_input = input(
                 "\nEnter your choice (1-2), portfolio name, or leave blank for last analyzed (or 'back'/'cancel' to return): "
             ).strip()
 
+            # Handle exit/quit
             if user_input.lower() in ['exit', 'quit']:
                 return self.do_exit(arg)
 
+            # Handle cancel at top leve (returns to main menu)
             if self._handle_cancel_input(user_input, "main"):
                 print("\n" + self.options)
                 return
@@ -778,7 +796,11 @@ class ArtifactMiner(cmd.Cmd):
 
             if user_input == "1":
                 selected = self._list_and_select_portfolio()
-                if selected is None:
+
+                if self._handle_cancel_input(portfolio_name, "retrieve"):
+                    continue
+
+                elif selected is None:
                     continue
                 portfolio_name = selected
             elif user_input == "2":
@@ -787,9 +809,8 @@ class ArtifactMiner(cmd.Cmd):
                 if portfolio_name.lower() in ['exit', 'quit']:
                     return self.do_exit(arg)
 
-                if self._handle_cancel_input(portfolio_name, "main"):
-                    print("\n" + self.options)
-                    return
+                if self._handle_cancel_input(portfolio_name, "retrieve"):
+                    continue
 
                 if not portfolio_name:
                     # Fall back to last analyzed just like blank input
@@ -807,6 +828,7 @@ class ArtifactMiner(cmd.Cmd):
                         portfolio_name = Path(pref_path).stem
                         print(
                             f"Using last analyzed portfolio: {portfolio_name}")
+
             elif user_input == "":
                 # Try last stored portfolio title first (honors renames)
                 last_title = self.preferences.get("last_portfolio_title", "")
@@ -828,11 +850,22 @@ class ArtifactMiner(cmd.Cmd):
                 report = get_user_report(portfolio_name)
                 portfolio_CLI_stringify(report)
                 print("\n" + self.options)
-                return
+
+                # Ask if user wants to retrieve another
+                another = input(
+                    "\nRetrieve another portfolio? (Y/N): ").strip().lower()
+                if another == 'y':
+                    continue  # Loop back to retrieve menu
+                else:
+                    print("\n" + self.options)
+                    return
+
             except Exception:
                 print(
                     f"\n✗ Portfolio '{portfolio_name}' not found in database")
                 retry = input("Try again? (Y/N): ").strip().lower()
+                if retry == 'y':
+                    continue  # Stay in retrieve menu
                 if retry != 'y':
                     print("\n" + self.options)
                     return

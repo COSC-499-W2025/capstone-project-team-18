@@ -244,7 +244,7 @@ def test_do_portfolio_retrieve_uses_preferences_when_blank(cli):
     cli.preferences.get.return_value = ""  # ensure no last_portfolio_title stored
     mock_report = type(
         "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
-    with patch('builtins.input', side_effect=['']), \
+    with patch('builtins.input', side_effect=['', 'n']), \
             patch('src.classes.cli.print'), \
             patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
         cli.do_portfolio_retrieve("")
@@ -255,7 +255,7 @@ def test_do_portfolio_retrieve_option_two_prompts_for_name(cli):
     """Entering '2' should prompt for a portfolio name and use it."""
     mock_report = type(
         "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
-    with patch('builtins.input', side_effect=['2', 'my-portfolio']), \
+    with patch('builtins.input', side_effect=['2', 'my-portfolio', 'n']), \
             patch('src.classes.cli.print'), \
             patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
         cli.do_portfolio_retrieve("")
@@ -268,7 +268,7 @@ def test_do_portfolio_retrieve_option_two_blank_uses_last(cli):
     cli.preferences.get_project_filepath.return_value = "/tmp/last.zip"
     mock_report = type(
         "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
-    with patch('builtins.input', side_effect=['2', '']), \
+    with patch('builtins.input', side_effect=['2', '', 'n']), \
             patch('src.classes.cli.print'), \
             patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
         cli.do_portfolio_retrieve("")

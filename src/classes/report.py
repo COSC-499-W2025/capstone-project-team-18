@@ -4,6 +4,14 @@ Reports hold statistics.
 import os
 from typing import Any, Dict, Optional
 from pathlib import Path
+import tempfile
+import shutil
+import zipfile
+import os
+from git import Repo, InvalidGitRepositoryError
+from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
+from git import NoSuchPathError, Repo
+from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
 
 from git import Repo
@@ -15,6 +23,7 @@ from src.classes.resume.bullet_point_builder import BulletPointBuilder
 from src.classes.resume.resume import Resume, ResumeItem
 
 from src.utils.data_processing import normalize
+from src.classes.skills import SkillMapper
 
 
 class BaseReport:
@@ -290,81 +299,100 @@ class ProjectReport(BaseReport):
 
     def _weighted_skills(self) -> None:
         """
-        Creates the project level statistic of
-        WEIGHTED_SKILLS.
+        Computes two project-level statistics:
 
-        We do this by analyzing the
-        imported packages in coding files.
+        1. PROJECT_SKILLS_DEMONSTRATED
+        - High-level skills inferred from file paths & imported packages
+        - Deduped so each file contributes at most once per skill
 
-        We weight the skills based on how many
-        files import the package.
+        2. PROJECT_FRAMEWORKS
+        - Raw counts of third-party frameworks/libraries (import frequency)
         """
 
-        from .skills import SkillMapper
+        def count_one_per_file(counter: dict, fileset: dict, key: str, filepath: str):
+            """
+            Increments `counter[key]` only once per filepath.
+            Ensures high-level skills are deduped per file.
+            """
+            if key not in fileset:
+                fileset[key] = set()
 
-        skill_to_count = {}
+            if filepath not in fileset[key]:
+                fileset[key].add(filepath)
+                counter[key] = counter.get(key, 0) + 1
+
         dirnames = self._get_sub_dirs()
 
-        # Track files that contribute to each skill for duplication
+        # High-level skill tracking (deduped per file)
+        high_level_skill_counter: Dict[str, int] = {}
         high_level_skill_files: Dict[str, set] = {}
 
-        # Map coding language to lines of code
+        project_framework_counter: Dict[str, int] = {}
+        project_framework_files: Dict[str, set] = {}
+
         for report in self.file_reports:
-
             imported_packages: Optional[list[str]] = report.get_value(
-                FileStatCollection.IMPORTED_PACKAGES.value)
+                FileStatCollection.IMPORTED_PACKAGES.value
+            )
 
-            # Check if the filename itself indicates a skill (e.g., Dockerfile, *.yml in .github/)
-            high_level_skill = SkillMapper.map_filepath_to_skill(
-                report.filepath)
-            if high_level_skill:
-                skill_name = high_level_skill.value
-                if skill_name not in high_level_skill_files:
-                    high_level_skill_files[skill_name] = set()
+            # 1. Skill from filename (e.g., Dockerfile → DevOps)
+            file_skill = SkillMapper.map_filepath_to_skill(report.filepath)
+            if file_skill:
+                count_one_per_file(
+                    high_level_skill_counter,
+                    high_level_skill_files,
+                    file_skill.value,
+                    report.filepath
+                )
 
-                # Only count each file once per skill
-                if report.filepath not in high_level_skill_files[skill_name]:
-                    high_level_skill_files[skill_name].add(report.filepath)
-                    skill_to_count[skill_name] = \
-                        skill_to_count.get(skill_name, 0) + 1
-
-            if imported_packages is None:
+            if imported_packages is None or imported_packages == []:
                 continue
 
             for package in imported_packages:
 
-                if package == "app":
-                    pass
-
-                if package in dirnames:
-                    # If a local import, disgreaded
+                if package == "app" or package in dirnames:
                     continue
 
-                # map package name to Skill, e.g pandas -> Data Analytics
-                high_level_skill = SkillMapper.map_package_to_skill(package)
-                if high_level_skill:
-                    skill_name = high_level_skill.value
-                    if skill_name not in high_level_skill_files:
-                        high_level_skill_files[skill_name] = set()
+                count_one_per_file(
+                    project_framework_counter,
+                    project_framework_files,
+                    package,
+                    report.filepath
+                )
 
-                    # Only count each file once per skill
-                    if report.filepath not in high_level_skill_files[skill_name]:
-                        high_level_skill_files[skill_name].add(report.filepath)
-                        skill_to_count[skill_name] = \
-                            skill_to_count.get(skill_name, 0) + 1
+                package_skill = SkillMapper.map_package_to_skill(package)
+                if package_skill:
+                    count_one_per_file(
+                        high_level_skill_counter,
+                        high_level_skill_files,
+                        package_skill.value,
+                        report.filepath
+                    )
 
-        if len(skill_to_count) == 0:
-            # Don't log this stat if it isn't a coding project
-            return
+        def _add_weighted_stat(stat_key, counter: dict) -> None:
+            """Adds a weighted Statistic entry if the counter has values."""
+            if not counter:
+                return
 
-        total = sum(skill_to_count.values())
-        weighted_skills = [
-            WeightedSkills(skill_name=k, weight=v / total)
-            for k, v in skill_to_count.items()
-        ]
+            total = sum(counter.values())
+            weighted = [
+                WeightedSkills(skill_name=k, weight=v / total)
+                for k, v in counter.items()
+            ]
 
-        self.project_statistics.add(
-            Statistic(ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value, weighted_skills))
+            self.project_statistics.add(
+                Statistic(stat_key, weighted)
+            )
+
+        _add_weighted_stat(
+            ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value,
+            high_level_skill_counter
+        )
+
+        _add_weighted_stat(
+            ProjectStatCollection.PROJECT_FRAMEWORKS.value,
+            project_framework_counter
+        )
 
     def _determine_start_end_dates(self) -> None:
         """
@@ -425,11 +453,15 @@ class ProjectReport(BaseReport):
             ProjectStatCollection.PROJECT_START_DATE.value)
         end_date = self.get_value(
             ProjectStatCollection.PROJECT_END_DATE.value)
+        frameworks = self.get_value(
+            ProjectStatCollection.PROJECT_FRAMEWORKS.value
+        )
 
         bullet_points = self.bullet_builder.build(self)
 
         return ResumeItem(
             title=self.project_name,
+            frameworks=frameworks if frameworks else [],
             bullet_points=bullet_points,
             start_date=start_date,
             end_date=end_date
@@ -1044,6 +1076,18 @@ class UserReport(BaseReport):
             else:
                 lines.append(f"{title}: {value!r}")
 
+        # Add chronological projects]
+        projects_str = self.get_chronological_projects(as_string=True)
+        if projects_str:
+            lines.append("\nProjects in chronological order:")
+            lines.append(projects_str)
+
+        # Add chronological skills
+        skills_str = self.get_chronological_skills(as_string=True)
+        if skills_str:
+            lines.append("\nSkills in chronological order:")
+            lines.append(skills_str)
+
         return "\n".join(lines)
 
     @staticmethod
@@ -1061,7 +1105,7 @@ class UserReport(BaseReport):
         include_end_date: bool = False,
         newest_first: bool = False,
         numbered: bool = False,
-    ) -> list | str:
+    ) -> list[str] | str:
         """
         Return the user's projects ordered by start date.
         This implementation includes inclusion of start & end dates
@@ -1117,7 +1161,7 @@ class UserReport(BaseReport):
         self,
         as_string: bool = True,
         newest_first: bool = False,
-    ) -> list | str:
+    ) -> list[str] | str:
         """
         Produce a chronological list of skills exercised by the user across all projects.
 

@@ -259,6 +259,12 @@ class ProjectStatCollection(Enum):
         expected_type=dict[FileDomain, float]
     )
 
+    PROJECT_FRAMEWORKS = ProjectStatisticTemplate(
+        name="PROJECT_FRAMEWORKS",
+        description="These are the imported packages",
+        expected_type=list[WeightedSkills]
+    )
+
 
 class UserStatCollection(Enum):
     USER_START_DATE = UserStatisticTemplate(

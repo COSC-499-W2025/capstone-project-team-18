@@ -82,7 +82,7 @@ def start_miner(
             file_reports = extract_file_reports(
                 project, email, language_filter)  # get the project's FileReports
 
-            if file_reports is None:
+            if file_reports == []:
                 continue  # skip if directory is empty
 
             # create the rows for the file reports FOR THIS PROJECT ONLY
@@ -105,6 +105,14 @@ def start_miner(
             project_row = create_row(report=project_report)
             project_row.file_reports.extend(file_report_rows)  # type: ignore
             project_report_rows.append(project_row)
+
+        if project_reports == []:
+            raise ValueError(
+                "The analyzer found no projects to analyze. "
+                "Please check your zipped file. "
+                "If configured, check your git email."
+                "The analyzer will not analyze Git projects you have not contributed to."
+            )
 
         # Update at END of all project analysis
         if progress_callback:
