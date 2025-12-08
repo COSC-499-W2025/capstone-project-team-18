@@ -22,6 +22,8 @@
 
 **[Week 13, Nov. 24-30](#week-13-nov-24-30)**
 
+**[Week 14, Dec. 1-7](#week-14-dec-1-7)**
+
 ---
 
 ## Week 3, Sept. 15-21
@@ -156,3 +158,17 @@ I completed PR #274 (233 add cli prompt for naming user reports and listing by t
 
 I reviewed numerous PRs this week including PR #272 (dynamically generate resume and portfolio header lengths) by Alex, PR #271 (Add prompt to cover user permissions for third-party Git features) by Jimi, PR #260 (216 b create cli menu option to delete a user report) by Erem, PR #254 (created function to get UserReport from database) by Alex, PR #273 (Rework Resume Class Structure, Refactor ResumeBuilder) by Sam, PR #264 (Project-Level Activity Type Contribution Attributes) by Sam. My feedback focused on code correctness, test coverage, and alignment with project goals.
 
+## Week 14, Dec. 1-7
+
+### Peer Eval
+![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week14_log.png)
+
+### Recap
+This week's focus was on finalizing critical bug fixes and enhancing the CLI user experience for milestone 1 delivery.
+
+I completed two PRs:
+- PR #306: Fixed duplicate portfolio titles when renaming to prevent crash. This resolves a critical bug where renaming to a duplicate title caused crashes. The fix selects the newest row when duplicates exist while maintaining uniqueness checks, closing issue #305.
+
+- PR #304: Added missing prompt for naming portfolio in CLI. This restores the CLI prompt for portfolio naming that was removed from Develop, improving user experience and closing issue #295.
+
+I reviewed 3 PRs this week including PR #308 (Added New Statistic Framework) by Sam, PR #303 (Bug Fix: #291 Back command works in Retrieve portfolio) by Erem, and PR #288 (Create Activity Type Contribution Resume Bullet Point) by Sam. My feedback focused on code correctness, test coverage, and alignment with Milestone 1 goals.
