@@ -5,11 +5,11 @@ from pathlib import Path
 import zipfile
 import pytest
 
-from src.classes.report.project_report import ProjectReport
-from src.classes.report.file_report import FileReport
+from src.classes.report import ProjectReport
 from src.classes.statistic import ProjectStatCollection
 from src.classes.analyzer import extract_file_reports
 from src.utils.project_discovery.project_discovery import ProjectFiles
+
 
 
 @pytest.fixture
@@ -471,7 +471,7 @@ def test_git_authorship_false_assumptions(git_dir):
 
 def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
     """Test that FileReport is None for files a user has not committed to in a group project.    """
-    from src.classes.report.file_report import FileReport
+    from classes.report import FileReport
 
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
     project_dir = Path(temp_dir) / "SelectiveProject"
@@ -533,6 +533,7 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
 
 def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path):
     """Test that 0% is returned when user has no contribution to any file"""
+    from classes.report import FileReport
 
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
     project_dir = Path(temp_dir) / "NoContributionProject"
@@ -580,6 +581,7 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
 
 def test_total_contribution_percentage_single_file_full_contribution(tmp_path: Path):
     """Test 100% contribution when user is sole contributor"""
+    from classes.report import FileReport
 
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
     project_dir = Path(temp_dir) / "SingleAuthorProject"
@@ -616,6 +618,7 @@ def test_total_contribution_percentage_single_file_full_contribution(tmp_path: P
 
 def test_total_contribution_percentage_three_way_split(tmp_path: Path):
     """Test contribution percentage with three equal contributors"""
+    from classes.report import FileReport
 
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
     project_dir = Path(temp_dir) / "ThreeWayProject"

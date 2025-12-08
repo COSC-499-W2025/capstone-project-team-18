@@ -1,9 +1,8 @@
-from src.classes.report.file_report import FileReport
-from src.classes.report.project_report import ProjectReport
-from src.classes.report.user_report import UserReport
+from src.classes.report import UserReport, ProjectReport, FileReport
 from src.classes.statistic import (
     StatisticIndex, Statistic, StatisticTemplate,
     UserStatCollection, WeightedSkills, ProjectStatCollection,
+    FileStatCollection,
     CodingLanguage
 )
 from datetime import date

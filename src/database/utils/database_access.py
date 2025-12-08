@@ -3,17 +3,14 @@ This file contains all functions that will be called when we
 want to access data from the database. In SQL, this would be
 queries like SELECT, etc.
 '''
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection, FileDomain, CodingLanguage, WeightedSkills
+from src.classes.report import FileReport, ProjectReport, UserReport
+from src.database.db import ProjectReportTable, UserReportTable, get_engine
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection, FileDomain, CodingLanguage, WeightedSkills
-from src.classes.report.file_report import FileReport
-from src.classes.report.project_report import ProjectReport
-from src.classes.report.user_report import UserReport
-from src.database.db import ProjectReportTable, UserReportTable, get_engine
 import logging
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

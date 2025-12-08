@@ -56,4 +56,3 @@ test_unzip_extract/*
 #database
 src/database/data.db
 src/database/preferences.json
-resume.tex
