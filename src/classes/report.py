@@ -175,7 +175,7 @@ class ProjectReport(BaseReport):
 
         project_lines = self._get_project_lines()
 
-        if self.project_repo:
+        if self.project_repo and self.email:
             self._total_contribution_percentage(project_lines)
 
         # Initialize the base class with the project statistics
