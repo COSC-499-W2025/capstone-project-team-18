@@ -3,7 +3,7 @@ This file contains all functions that will be called when we
 want to access data from the database. In SQL, this would be
 queries like SELECT, etc.
 '''
-from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection, FileDomain, CodingLanguage
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection, FileDomain, CodingLanguage, WeightedSkills
 from src.classes.report import FileReport, ProjectReport, UserReport
 from src.database.db import ProjectReportTable, UserReportTable, get_engine
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
@@ -30,7 +30,8 @@ def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
         if hasattr(row, column_name):
             value = getattr(row, column_name)
             if value is not None:
-                # Rebuild CodingLanguage enums for stored ratios
+
+                # Rebuild non-JSON serializable enums
                 if column_name == 'coding_language_ratio':
                     lang_ratios: dict[CodingLanguage, float] = {}
                     for key, val in value.items():
@@ -39,6 +40,22 @@ def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
                                 lang_ratios[lang] = val
                                 break
                     value = lang_ratios
+                elif column_name == 'activity_type_contributions':
+                    activity_contributions: dict[FileDomain, float] = {}
+                    for key, val in value.items():
+                        for domain in FileDomain:
+                            if domain.value.lower() == str(key).lower():
+                                activity_contributions[domain] = val
+                                break
+                    value = activity_contributions
+
+                elif column_name == 'project_skills_demonstrated' or column_name == 'project_frameworks':
+                    proj_skills: list[WeightedSkills] = []
+                    for skill in value:
+                        skill = WeightedSkills(
+                            skill['skill_name'], skill['weight'])
+                        proj_skills.append(skill)
+                    value = proj_skills
 
                 statistics.add(Statistic(stat_template.value, value))
 
@@ -171,6 +188,24 @@ def get_user_report(name: str, engine=None) -> UserReport:
                 if hasattr(result, column_name):
                     value = getattr(result, column_name)
                     if value is not None:
+
+                        if column_name == 'user_coding_language_ratio':
+                            lang_ratios: dict[CodingLanguage, float] = {}
+                            for key, val in value.items():
+                                for lang in CodingLanguage:
+                                    if lang.value[0].lower() == str(key).lower():
+                                        lang_ratios[lang] = val
+                                        break
+                            value = lang_ratios
+
+                        elif column_name == 'user_skills':
+                            proj_skills: list[WeightedSkills] = []
+                            for skill in value:
+                                skill = WeightedSkills(
+                                    skill['skill_name'], skill['weight'])
+                                proj_skills.append(skill)
+                            value = proj_skills
+
                         statistics.add(Statistic(stat_template.value, value))
 
             if result.title:
@@ -195,8 +230,9 @@ def get_user_report(name: str, engine=None) -> UserReport:
 
             # make the UserReport obj
             user_report = UserReport(
-                project_reports,
-                report_name=name
+                project_reports=project_reports,
+                report_name=name,
+                statistics=statistics
             )
 
             return user_report

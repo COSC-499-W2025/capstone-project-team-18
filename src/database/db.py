@@ -112,6 +112,7 @@ class ProjectReportTable(Base):
     )
 
     project_name = mapped_column(String)
+    project_path = mapped_column(String)
 
 
 @make_columns(UserStatCollection)
@@ -134,7 +135,6 @@ class UserReportTable(Base):
     - `id`: The table's PK
     '''
     __tablename__ = 'user_report'
-
 
     id = mapped_column(Integer, primary_key=True)
 

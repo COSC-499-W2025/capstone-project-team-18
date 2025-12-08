@@ -1,6 +1,7 @@
 """
 Reports hold statistics.
 """
+import os
 from typing import Any, Dict, Optional
 from pathlib import Path
 import tempfile
@@ -12,10 +13,15 @@ from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStat
 from git import NoSuchPathError, Repo
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
-from src.classes.resume.bullet_point_builder import BulletPointBuilder
-from src.classes.resume.resume import Resume, ResumeItem
+
+from git import Repo
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+
+from src.classes.statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
+from src.classes.resume.bullet_point_builder import BulletPointBuilder
+from src.classes.resume.resume import Resume, ResumeItem
+
 from src.utils.data_processing import normalize
 from src.classes.skills import SkillMapper
 
@@ -72,7 +78,7 @@ class FileReport(BaseReport):
                 - JavaScript statistics for appropriate JavaScript files
                 - Text-based statistics for appropriate text based files (i.e. css, html, xml, json, yml, yaml)
         """
-        from .analyzer import get_appropriate_analyzer
+        from src.classes.analyzer import get_appropriate_analyzer
         analyzer = get_appropriate_analyzer(path_to_top_level, relative_path)
         return analyzer.analyze()
 
@@ -175,44 +181,63 @@ class ProjectReport(BaseReport):
 
         if self.email:
             self._analyze_git_authorship()
-            if self.project_repo:
-                self._total_contribution_percentage()
+
+        project_lines = self._get_project_lines()
+
+        if self.project_repo and self.email:
+            self._total_contribution_percentage(project_lines)
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
 
-    def _total_contribution_percentage(self) -> None:
+    def _total_contribution_percentage(self, project_lines: float) -> None:
         # Iterate over fileReports to get total lines responsible over whole project
         total_contribution_lines = 0.0
 
-        # get total lines using project repo
-        total_lines = self._get_project_lines()
         for file in self.file_reports:
             file_commit_pct = file.get_value(
                 FileStatCollection.PERCENTAGE_LINES_COMMITTED.value)
             if file_commit_pct is not None:
                 total_contribution_lines += file_commit_pct / 100 * \
                     file.get_value(FileStatCollection.LINES_IN_FILE.value)
-        if total_lines > 0:
+        if project_lines > 0:
             self.project_statistics.add(Statistic(
-                ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, round((total_contribution_lines / total_lines) * 100, 2)))
+                ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, round((total_contribution_lines / project_lines) * 100, 2)))
         else:
             self.project_statistics.add(Statistic(
                 ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, 0.0))
 
-    def _get_project_lines(self) -> int:
+    def _get_project_lines(self) -> float:
+        '''
+        Calculate the total number of lines in a project.
+        If the project is a git repo, iterate through every
+        file in the repo and get the sum. Otherwise,
+        compute the sum of all `LINES_IN_FILE` stats in a
+        project's `self.file_reports[]`. Then, create a
+        `TOTAL_PROJECT_LINES` statistic with the sum and
+        return the value.
 
-        tracked_files = self.project_repo.git.ls_files().split("\n")
-        total = 0
-        for f in tracked_files:
-            try:
-                with open(os.path.join(self.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
-                    content = fp.read()
-                    count = len(content.split("\n"))
-                    total += count
-            except (FileNotFoundError, IsADirectoryError):
-                pass  # skip directories or removed files
+        :return float: Total number of lines in the project
+        '''
+        total = 0.0
+        if self.project_repo:
+            tracked_files = self.project_repo.git.ls_files().split("\n")
+            for f in tracked_files:
+                try:
+                    with open(os.path.join(self.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
+                        content = fp.read()
+                        count = len(content.split("\n"))
+                        total += count
+                except (FileNotFoundError, IsADirectoryError):
+                    pass  # skip directories or removed files
+        else:
+            for fr in self.file_reports:
+                val = fr.get_value(FileStatCollection.LINES_IN_FILE.value)
+                if val is not None:
+                    total += val
 
+        self.project_statistics.add(Statistic(
+            ProjectStatCollection.TOTAL_PROJECT_LINES.value, total))
         return total
 
     def _activity_type_contributions(self) -> None:
@@ -615,7 +640,7 @@ class UserReport(BaseReport):
     from many different ReportReports
     """
 
-    def __init__(self, project_reports: list[ProjectReport], report_name: str):
+    def __init__(self, project_reports: list[ProjectReport], report_name: str, statistics: Optional[StatisticIndex] = None):
         """
         Initialize UserReport with project reports to calculate user-level statistics.
 
@@ -626,7 +651,18 @@ class UserReport(BaseReport):
         Args:
             project_reports (list[ProjectReport]): List of ProjectReport objects containing project-level statistics
             report_name (str): By default, the name of the zipped directory. Can be overwritten by user input
+            statistics: Optional `StatisticIndex` when rebuilding `UserReport` from DB row
         """
+
+        self.report_name = report_name
+        self.project_reports = project_reports or []
+
+        # In this case, we are loading from the database and we are explicitly
+        # given statistics. We load those stats in, and move on
+        if statistics is not None:
+            self.user_stats = statistics
+            super().__init__(self.user_stats)
+            return
 
         # rank the project reports according to their weights
         ranked_project_reports = sorted(
@@ -635,8 +671,6 @@ class UserReport(BaseReport):
         self.resume_items = [report.generate_resume_item()
                              for report in ranked_project_reports]
 
-        self.project_reports = project_reports or []
-        self.report_name = report_name
         self.user_stats = StatisticIndex()  # list of user-level statistics
 
         # Function calls to generate statistics
