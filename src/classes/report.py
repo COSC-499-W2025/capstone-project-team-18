@@ -1018,6 +1018,18 @@ class UserReport(BaseReport):
             else:
                 lines.append(f"{title}: {value!r}")
 
+        # Add chronological projects]
+        projects_str = self.get_chronological_projects(as_string=True)
+        if projects_str:
+            lines.append("\nProjects in chronological order:")
+            lines.append(projects_str)
+
+        # Add chronological skills
+        skills_str = self.get_chronological_skills(as_string=True)
+        if skills_str:
+            lines.append("\nSkills in chronological order:")
+            lines.append(skills_str)
+
         return "\n".join(lines)
 
     @staticmethod
@@ -1035,7 +1047,7 @@ class UserReport(BaseReport):
         include_end_date: bool = False,
         newest_first: bool = False,
         numbered: bool = False,
-    ) -> list | str:
+    ) -> list[str] | str:
         """
         Return the user's projects ordered by start date.
         This implementation includes inclusion of start & end dates
@@ -1091,7 +1103,7 @@ class UserReport(BaseReport):
         self,
         as_string: bool = True,
         newest_first: bool = False,
-    ) -> list | str:
+    ) -> list[str] | str:
         """
         Produce a chronological list of skills exercised by the user across all projects.
 
