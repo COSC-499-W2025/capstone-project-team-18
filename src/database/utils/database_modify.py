@@ -4,8 +4,8 @@ want to modify or add data to the database. In SQL, this
 would be queries like INSERT, UPDATE, etc.
 '''
 
-from src.classes.report import FileReport, ProjectReport, UserReport
-from src.database.db import FileReportTable, ProjectReportTable, UserReportTable, __repr__
+from src.classes.report import FileReport, ProjectReport, UserReport, WeightedSkills
+from src.database.db import FileReportTable, ProjectReportTable, UserReportTable
 from enum import Enum
 
 from sqlalchemy.orm import Session
@@ -64,7 +64,7 @@ def create_row(report: FileReport | ProjectReport | UserReport):
 
         # stats that have a dict where the key is not a json serializable type
         not_json_serializable = {
-            "coding_language_ratio", "user_coding_language_ratio", "activity_type_contributions", "project_skills_demonstrated", "user_skills"}
+            "coding_language_ratio", "user_coding_language_ratio", "activity_type_contributions", "project_skills_demonstrated", "user_skills", "project_frameworks"}
 
         if isinstance(value, dict) and col_name in not_json_serializable:
             value = {lang.value[0]: ratio for lang, ratio in value.items()}

@@ -49,7 +49,7 @@ def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
                                 break
                     value = activity_contributions
 
-                elif column_name == 'project_skills_demonstrated':
+                elif column_name == 'project_skills_demonstrated' or column_name == 'project_frameworks':
                     proj_skills: list[WeightedSkills] = []
                     for skill in value:
                         skill = WeightedSkills(
