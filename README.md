@@ -7,10 +7,11 @@
     - [1.2 CLI Command Quick Reference](#cli-command-quick-reference)
     - [1.3 Workflow](#workflow)
     - [1.4 Testing](#testing)
+2. [Repository Branches](#branches)
 3. [Milestone 1 Documentation](#milestone-1-documentation)
-    - [2.1 Team Contract](#team-contract)
-    - [2.2 Diagrams](#diagrams)
-    - [2.3 Requirements Checklist](#requirements-checklist)
+    - [3.1 Team Contract](#team-contract--pdf-)
+    - [3.2 Diagrams](#diagrams)
+    - [3.3 Requirements Checklist](#requirements-checklist)
 
 # Project Artifact Miner: A CLI Tool
 
@@ -306,6 +307,17 @@ begin  exit   help      perms  portfolio_retrieve  resume_bullet_point
 
 To run all unit tests, simply enter `pytest`. To run a specific test file, enter `pytest tests/[test_file].py`
 
+# Repository Branches
+
+There are four main branches in this repository:
+
+[`main`](https://github.com/COSC-499-W2025/capstone-project-team-18/tree/main) - Contains a complete/working version of our app
+
+[`develop`](https://github.com/COSC-499-W2025/capstone-project-team-18/tree/develop) - Contains a work-in-progress version of our app. All branches to add, update, modify, etc. features in our app are branched off of `develop`.
+
+[`log`](https://github.com/COSC-499-W2025/capstone-project-team-18/tree/log) - Contains all weekly team and personal logs.
+
+[`doc` (Deprecated)](https://github.com/COSC-499-W2025/capstone-project-team-18/tree/doc) - Contains all documentation files for our app (e.g., DFDs).
 
 # Milestone 1 Documentation
 
