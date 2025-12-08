@@ -55,7 +55,6 @@ erDiagram
         int word_count
         int character_count
         int sentence_count
-        float ari_writing_score
         int number_of_functions
         int number_of_classes
         int number_of_interfaces
@@ -259,7 +258,7 @@ The SQLAlchemy equivalent of this is:
 ```Python
 with Session(engine) as session:
     result = session.execute(
-        select(FileReportTable).filter(FileReportTable.project_report_id == 1)
+        select(FileReportTable).where(FileReportTable.project_report_id == 1)
     )
     file_reports = result.scalars().all()
 ```

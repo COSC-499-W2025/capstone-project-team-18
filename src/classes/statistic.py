@@ -19,6 +19,9 @@ class WeightedSkills:
     skill_name: str
     weight: float
 
+    def __lt__(self, other: "WeightedSkills"):
+        return self.weight < other.weight
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "skill_name": self.skill_name,
@@ -50,6 +53,7 @@ class CodingLanguage(Enum):
     CSS = ("CSS", [".css", ".scss", ".sass", ".less"])
     SQL = ("SQL", [".sql", ".ddl", ".dml"])
     SHELL = ("Shell", [".sh", ".bash", ".zsh", ".fish"])
+    R = ("R", [".R", ".r"])
 
 # The following are StatisticTemplate classes. A StatisticTemplate is simply a
 # description of a data point. It has a name, description, expected value, and it is either
@@ -150,12 +154,6 @@ class FileStatCollection(Enum):
         expected_type=int,
     )
 
-    ARI_WRITING_SCORE = FileStatisticTemplate(
-        name="ARI_WRITING_SCORE",
-        description="automated readability index score",
-        expected_type=float,
-    )
-
     NUMBER_OF_FUNCTIONS = FileStatisticTemplate(
         name="NUMBER_OF_FUNCTIONS",
         description="number of functions in the file",
@@ -180,7 +178,7 @@ class FileStatCollection(Enum):
         expected_type=list,
     )
 
-    # percenatge is not greatest indicator as any minor change is associated with ownership
+    # percentage is not greatest indicator as any minor change is associated with ownership
     PERCENTAGE_LINES_COMMITTED = FileStatisticTemplate(
         name="PERCENTAGE_LINES_COMMITTED",
         description="percentage of lines attributed to individal in file",
@@ -249,10 +247,22 @@ class ProjectStatCollection(Enum):
         expected_type=dict[CodingLanguage, float]
     )
 
-    AVG_ARI_WRITING_SCORE = ProjectStatisticTemplate(
-        name="AVG_ARI_WRITING_SCORE",
-        description="The average ARI score of all FileReports",
+    TOTAL_PROJECT_LINES = ProjectStatisticTemplate(
+        name="TOTAL_PROJECT_LINES",
+        description="Total lines contained in a project",
         expected_type=float
+    )
+
+    ACTIVITY_TYPE_CONTRIBUTIONS = ProjectStatisticTemplate(
+        name="ACTIVITY_TYPE_CONTRIBUTIONS",
+        description="The user's contributions to each file domain",
+        expected_type=dict[FileDomain, float]
+    )
+
+    PROJECT_FRAMEWORKS = ProjectStatisticTemplate(
+        name="PROJECT_FRAMEWORKS",
+        description="These are the imported packages",
+        expected_type=list[WeightedSkills]
     )
 
 
@@ -274,15 +284,11 @@ class UserStatCollection(Enum):
         description="the skills this user has",
         expected_type=list[WeightedSkills],
     )
+
     USER_CODING_LANGUAGE_RATIO = UserStatisticTemplate(
         name="USER_CODING_LANGUAGE_RATIO",
         description="ratio, by lines of code, of coding languages in the user's projects",
         expected_type=dict[CodingLanguage, float]
-    )
-    USER_ARI_WRITING_SCORE = ProjectStatisticTemplate(
-        name="USER_ARI_WRITING_SCORE",
-        description="The average ARI score of all ProjectReports",
-        expected_type=float
     )
 
 

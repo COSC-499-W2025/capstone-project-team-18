@@ -1,13 +1,11 @@
 '''
 This file will store all of the config and logic that we will need to access and modify our database (`db.py`)
 '''
-from typing import List
-
 from sqlalchemy import ForeignKey, Table, Column, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, Session
 from enum import Enum
 from dataclasses import is_dataclass, asdict
-
+from typing import List
 
 from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, StatisticIndex, Statistic
 from .utils.init_columns import make_columns
@@ -37,7 +35,8 @@ association_table = Table(
     Base.metadata,
     Column("project_report_id", ForeignKey(
         "project_report.id"), primary_key=True),
-    Column("user_report_id", ForeignKey("user_report.id"), primary_key=True),
+    Column("user_report_id", ForeignKey(
+        "user_report.id"), primary_key=True),
 )
 
 
@@ -109,10 +108,11 @@ class ProjectReportTable(Base):
         "UserReportTable",
         secondary=association_table,
         back_populates="project_reports",
-        cascade="save-update, merge",
+        cascade="save-update, merge"
     )
 
     project_name = mapped_column(String)
+    project_path = mapped_column(String)
 
 
 @make_columns(UserStatCollection)
@@ -137,12 +137,16 @@ class UserReportTable(Base):
     __tablename__ = 'user_report'
 
     id = mapped_column(Integer, primary_key=True)
+
+    # name given by user, or name of zipped folder (default)
+    title = mapped_column(String)
+
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",
         secondary=association_table,
         back_populates="user_reports",
-        cascade="save-update, merge",
+        cascade="save-update, merge"
     )
 
 
