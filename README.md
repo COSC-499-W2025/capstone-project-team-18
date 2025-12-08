@@ -382,34 +382,39 @@ Because everyone is expected to put in an even amount of time and effort towards
 
 ##### Documenting the Issue
 
-If there is an issue with a team member that has only occurred once, unless it is serious, we do not feel the need to document it. In the event of a serious issue, documentation will occur depending on what the problem is. If it happened in the team group chat, it will be screenshotted. Otherwise, a description of the issue will be written down. Any necessary information that gives context or is relevant to the problem will be included.
+If there is an issue with a team member that has only occurred once, unless it is serious, we do not feel the need to document it. In the event of a serious issue, documentation will occur depending on what the problem is. If it happened in the team group chat, it will be screenshotted. Otherwise, anyone from the team will write a description of the issue, which will be written down and saved in a specific Discord channel. Specific information on when, what, and why it is an issue will be logged by a team member.
+
+The team will bring up this issue during the next all-team meeting. The group as a whole will decide the expected change and if this issue was severe enough to be shared with the teaching staff.
 
 ##### Who Will Document the Issue
 
-All other team members will be present to ensure that the issue is accurately and fairly documented.
+Any team member who has an issue may write in the Discord channel to document it. If the team member is uncomfortable writing in the group chat, they may bring it up during an all-team meeting, but after, it must be logged in that channel that an issue was mentioned.
 
 ##### The Expected Change
 
-We will discuss the issue with the member as a team, and what they can do moving forward to improve. This will include what we would like to see them change behavior-wise, and when we expect the change to occur.
+We will discuss the issue with the member as a team, and what they can do moving forward to improve. As a group, we stay committed to giving actionable, measurable changes. This will include specifically what we would like to see them change behavior-wise, and when we expect the change to occur. This will be logged under the same issue on the specific Discord channel.
 
 #### When an Issue Repeatedly Occurs
 
 ##### Documenting the Repeated Issue
 
-Again, documentation will occur depending on what the issue is. If it happened in the team group chat, it will be screenshotted. Otherwise, a description of the problem will be written down. Any necessary information that gives context or is relevant to the issue will be included. Additionally, we will document the previous conversation(s) that were had with the teammate, and what the outcome of the conversation(s) was.
+Again, the issue will be logged in the same Discord channel. If it happened in the team group chat, it will be screenshotted. Otherwise, a description of the problem will be written down. Any necessary information that gives context or is relevant to the issue will be included. Additionally, we will document the previous conversation(s) that were had with the teammate, and what the outcome of the conversation(s) was.
+
+In addition, it will be logged to the teaching staff directly through email and through the weekly team logs. This is not a point of no return, but we want to be clear to the teaching staff and to the people in question that this is becoming a serious matter, and they must change their behavior soon.
 
 ##### Who Will Document The Repeated Issue
 
-We will discuss the issue with the member as a team, and what they can do moving forward to improve. This will include what we would like to see them change behavior-wise, and when we expect the change to occur.
+Again, everyone has the right to document an issue. Again, this may begin with a message on the issues channel or by bringing the issue up during a team meeting to be later filed in the channel.
 
 ##### The Expected Change
 
 We will discuss the issue with the member as a team, why the previous changes did not work, why the problem may be occurring repeatedly, and what we think they can do moving forward to improve. This includes what we would like to see them change behavior-wise, and when we expect the change to occur.
 
+The person is expected to give a valid reason for why this issue is happening again and the steps they are taking to make sure that this issue does not keep repeating.
+
 ##### Executing the Firing Clause
 
-If a repeated issue is severe enough, the rest of the team may discuss executing the firing clause. In order to fire a teammate, all other teammates must unanimously agree to the firing.
-
+The firing clause is a severe right given to the team. Suppose a team member is not actively committing to their expected change and consistently having issues with the team. In that case, the group may discuss, in an all-team meeting, executing the firing clause. In order to fire a teammate, all other teammates must unanimously agree to the firing, and the person must have been given a warning that their actions may lead to the firing, except in severe circumstances.
 
 ### Member Signatures (Printed)
 
