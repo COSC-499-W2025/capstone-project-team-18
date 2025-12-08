@@ -4,7 +4,7 @@ want to modify or add data to the database. In SQL, this
 would be queries like INSERT, UPDATE, etc.
 '''
 
-from src.classes.report import FileReport, ProjectReport, UserReport, WeightedSkills
+from src.classes.report import FileReport, ProjectReport, UserReport
 from src.database.db import FileReportTable, ProjectReportTable, UserReportTable
 from enum import Enum
 
