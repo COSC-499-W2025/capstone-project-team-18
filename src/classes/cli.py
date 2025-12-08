@@ -357,7 +357,7 @@ class ArtifactMiner(cmd.Cmd):
             print(f"Current filepath: {current_path}")
 
         while True:
-            prompt = "Paste or type the full filepath to your zipped project folder: (or 'back'/'cancel' to return): "
+            prompt = "Paste or type the full filepath to your zipped project folder: (or 'back' to return to previous step /'cancel' to return to main menu): "
             answer = input(prompt).strip()
 
             # Handle exit/quit first
@@ -578,7 +578,7 @@ class ArtifactMiner(cmd.Cmd):
         # Get username with retry loop
         while True:
             name = input(
-                "Enter your name: (or 'back'/'cancel' to return): ").strip()
+                "Enter your name: (or 'back' to return to previous step /'cancel' to return to main menu): ").strip()
 
             # Check for cancel / back
             if name.lower() == 'cancel':
@@ -602,7 +602,7 @@ class ArtifactMiner(cmd.Cmd):
         # Get password with retry loop
         while True:
             password = input(
-                "Enter your password: (or 'back'/'cancel' to return): ").strip()
+                "Enter your password: (or 'back' to return to previous step /'cancel' to return to main menu): ").strip()
 
             # Check for back / cancel
             if password.lower() == 'cancel':
@@ -762,7 +762,7 @@ class ArtifactMiner(cmd.Cmd):
 
         while True:
             user_input = input(
-                "\nEnter your choice (1-2) or portfolio name (or 'back'/'cancel' to return): ").strip()
+                "\nEnter your choice (1-2) or portfolio name (or 'back' to return to previous step /'cancel' to return to main menu): ").strip()
 
             # Handle exit/quit FIRST
             if user_input.lower() in ['exit', 'quit']:
@@ -855,7 +855,7 @@ class ArtifactMiner(cmd.Cmd):
             print("  2. Enter portfolio name (or leave blank to use last analyzed)")
 
             user_input = input(
-                "\nEnter your choice (1-2), portfolio name, or leave blank for last analyzed (or 'back'/'cancel' to return): "
+                "\nEnter your choice (1-2), portfolio name, or leave blank for last analyzed (or 'back' to return to previous step /'cancel' to return to main menu): "
             ).strip()
 
             # Handle exit/quit
