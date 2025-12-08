@@ -26,7 +26,7 @@ def start_miner(
     zipped_file: str,
     email: Optional[str] = None,
     progress_callback: Optional[Callable[[str, int, int, str], None]] = None
-    ) -> None:
+) -> None:
     """
     This function defines the main application
     logic for the Artifact Miner. Currently,
@@ -37,14 +37,14 @@ def start_miner(
         - email: Email associated with git account
     """
 
-
-
     # Import inside function to avoid circular import
     from src.classes.cli import UserPreferences
 
     # Load preferences to get language filter
     prefs = UserPreferences()
     language_filter = prefs.get("languages_to_include", [])
+    start_date = prefs.get("file_start_time", '')
+    end_date = prefs.get('file_end_time', '')
 
     # =================== Unzip Stage ===================
 
@@ -78,10 +78,12 @@ def start_miner(
         for idx, project in enumerate(project_list):
             # Update at START of processing each project (idx is 0-based, so idx is the "current" count)
             if progress_callback:
-                progress_callback("analysis", idx, total_projects, project.name)
+                progress_callback(
+                    "analysis", idx, total_projects, project.name)
 
             file_reports = extract_file_reports(
-                project, email, language_filter)  # get the project's FileReports
+                # get the project's FileReports
+                project, email, language_filter, start_date, end_date)
 
             if file_reports is None:
                 continue  # skip if directory is empty
@@ -129,7 +131,6 @@ def start_miner(
         # =================== Analysis Complete ===================
         if progress_callback:
             progress_callback("complete", 1, 1, "")
-
 
     print("-------- Analysis Reports --------\n")
     resume = user_report.generate_resume(email)

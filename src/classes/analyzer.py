@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 def extract_file_reports(
     project_file: Optional[ProjectFiles],
     email: Optional[str] = None,
-    language_filter: Optional[list[str]] = None
+    language_filter: Optional[list[str]] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
 ) -> Optional[list[FileReport]]:
     """
     Method to extract individual fileReports within each project
@@ -42,16 +44,14 @@ def extract_file_reports(
     # list of reports for each file in an individual project to be returned
     reports = []
     for file in projectFiles:
-
-        if project_file.name == "EarthLingo":
-            pass
-
         analyzer = get_appropriate_analyzer(
             project_file.root_path,
             file,
             project_file.repo,
             email,
-            language_filter)
+            language_filter,
+            start_date,
+            end_date)
 
         if analyzer.should_inculde() is False:
             continue
@@ -96,7 +96,9 @@ class BaseFileAnalyzer:
                  relative_path: str,
                  repo: Optional[Repo] = None,
                  email: Optional[str] = None,
-                 language_filter: Optional[list[str]] = None
+                 language_filter: Optional[list[str]] = None,
+                 start_date: Optional[str] = None,
+                 end_date: Optional[str] = None
                  ):
 
         self.path_to_top_level_project = path_to_top_level_project
@@ -105,6 +107,8 @@ class BaseFileAnalyzer:
         self.repo = repo
         self.email = email
         self.language_filter = language_filter
+        self.start_date = start_date
+        self.end_date = end_date
         self.stats = StatisticIndex()
         self.blame_info = None
         self.is_git_tracked = self.file_in_git_repo()
@@ -147,6 +151,9 @@ class BaseFileAnalyzer:
             if not self._matches_language_filter():
                 return False
 
+        if not self._filter_dates():
+            return False
+
         if not self.is_git_tracked or not self.email or not self.repo:
             return True
 
@@ -162,6 +169,54 @@ class BaseFileAnalyzer:
             return True
 
         return False
+
+    def _filter_dates(self):
+        '''
+        Filters out files that are not within the user-provided
+        start and end date that is in `preferences.json`. This
+        comparison is done against `self.start_date` and `self.end_date`.
+
+        Returns `True` if the file is valid (within the daterange)
+        and `False` if it is not.
+        '''
+        file_start = None
+        file_end = None
+        if self.is_git_tracked:
+            # Get the creation date from the first commit and get the last
+            # modified date from the latest commit
+            try:
+                commits = list(self.repo.iter_commits(  # pyright: ignore[reportOptionalMemberAccess]
+                    paths=self.relative_path))
+            except Exception as e:
+                logger.debug(f"InvalidGitRepositoryError: {e}")
+                commits = []
+            if commits:
+                file_start = datetime.datetime.fromtimestamp(
+                    commits[-1].authored_date)  # add start date
+
+                file_end = datetime.datetime.fromtimestamp(
+                    commits[0].authored_date)  # add end date
+        else:
+            # get file's creation date and modified date
+            metadata = Path(self.filepath).stat()
+            # fallback to filesystem metadata
+            file_start = datetime.datetime.fromtimestamp(metadata.st_atime)
+            file_end = datetime.datetime.fromtimestamp(metadata.st_mtime)
+
+        validity = True  # file is valid by default
+        # convert to datetime obj
+        if self.start_date is not None and self.end_date is not None:
+            start = datetime.datetime.strptime(self.start_date, '%Y-%m-%d')
+            end = datetime.datetime.strptime(self.end_date, '%Y-%m-%d')
+        if file_start is not None:
+            # file is out of bound of user's preferences
+            if file_start < start or file_start > end:
+                validity = False
+
+        if file_end is not None:
+            if file_end > end or file_end < start:
+                validity = False
+        return validity
 
     def _matches_language_filter(self) -> bool:
         """
@@ -976,7 +1031,9 @@ def get_appropriate_analyzer(
     relative_path: str,
     repo: Optional[Repo] = None,
     email: Optional[str] = None,
-    language_filter: Optional[list[str]] = None
+    language_filter: Optional[list[str]] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
 ) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
@@ -989,44 +1046,44 @@ def get_appropriate_analyzer(
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:
-        return NaturalLanguageAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return NaturalLanguageAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
 
     # Python files
     if extension == '.py':
-        return PythonAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return PythonAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
     # Java files
     if extension == '.java':
-        return JavaAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return JavaAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
 
     # JavaScript files
     if extension in {'.js', '.jsx'}:
-        return JavaScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return JavaScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
     # C files
     if extension == '.c':
-        return CAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return CAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
 
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
-        return TypeScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return TypeScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
     # CSS files
     if extension == '.css':
-        return CSSAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return CSSAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
 
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
-        return HTMLAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return HTMLAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
     # PHP files
     if extension == '.php':
-        return PHPAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return PHPAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
 
     # Text-based files
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
-        return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
 
     for language in CodingLanguage:
         if extension in language.value[1]:
-            return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+            return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter, start_date, end_date)
 
     # Default to base analyzer
-    return BaseFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+    return BaseFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter,  start_date, end_date)
