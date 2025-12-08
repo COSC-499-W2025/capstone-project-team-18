@@ -12,6 +12,7 @@ def test_add_item():
     resume = Resume()
     item = ResumeItem(
         title="Software Engineer",
+        frameworks=[],
         bullet_points=["Developed features", "Fixed bugs"],
         start_date=date(2020, 1, 1),
         end_date=date(2021, 1, 1)
@@ -25,6 +26,7 @@ def test_generate_resume():
     resume = Resume()
     item = ResumeItem(
         title="Software Engineer",
+        frameworks=[],
         bullet_points=["Developed features", "Fixed bugs"],
         start_date=date(2020, 1, 1),
         end_date=date(2021, 1, 1)

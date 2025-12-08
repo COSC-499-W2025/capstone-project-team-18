@@ -19,6 +19,10 @@ class TextResumeRenderer(ResumeRender):
 
         for item in resume.items:
             to_return += f"{item.title} : {item.start_date.strftime("%B, %Y")} - {item.end_date.strftime("%B, %Y")}\n"
+
+            if len(item.frameworks) != 0:
+                to_return += f"Frameworks: {', '.join(skill.skill_name for skill in item.frameworks)}\n"
+
             for bullet in item.bullet_points:
                 to_return += f"   - {bullet}\n"
             if item is not resume.items[-1]:
@@ -135,9 +139,17 @@ class ResumeLatexRenderer(ResumeRender):
             title = latex_escape(item.title)
             date = f"{item.start_date.strftime("%B, %Y")} -- {item.end_date.strftime("%B, %Y")}"
 
+            # Only include frameworks if there is at least one
+            if len(item.frameworks) > 0:
+                frameworks = ", ".join(
+                    [latex_escape(f.skill_name) for f in item.frameworks])
+                title_tex = rf"\textbf{{{title}}} $|$ \emph{{{frameworks}}}"
+            else:
+                title_tex = rf"\textbf{{{title}}}"
+
             tex.append(
                 rf"\resumeProjectHeading"
-                rf"{{\textbf{{{title}}}}}"
+                rf"{{{title_tex}}}"
                 rf"{{{date}}}"
             )
 
