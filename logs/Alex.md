@@ -213,12 +213,23 @@ Here are the PRs that I reviewed this week:
 
 ### Peer Eval
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week13.png)
+![Peer Eval](/logs/log_images/personal_log_imgs/alex/week14.png)
 
 ### Recap
 
-This week, I worked on fixing bugs that were crucial to completing all of the requirements for Milestone 1. I also updated our app's README on the `main` branch, which included updating the app's documentation, writing the milestone 1 team contract, updating and adding the DFDs, updating and adding the app's system architecture, and adding the milestone 1 feature checklist. Additionally, I recorded our team's demo video for this milestone.
+This week, I worked on fixing bugs that were crucial to completing all of the requirements for Milestone 1. I also updated our app's README on the `main` branch, which included updating the app's documentation, writing the milestone 1 team contract, updating and adding the DFDs, updating and adding the app's system architecture, and adding the milestone 1 feature checklist. Additionally, I recorded our team's demo video for this milestone. Additionally, I began refactoring how we use the user's preferences when generating file reports, but I did not complete it feature so there is no PR for it yet.
 
 **Issues/PRs**
 
+[#285 - Update readme documentation for milestone 1](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/285): This PR has all changes to our `README.md` on the `main` brnach.
+
 [#302 - Write stats to tables](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/302): This PR made several important changes to reading and writing to/from our database. There were several statistics that were not being written to the database upon a new `ProjectReport` and/or `UserReport` being generated, and some statistics were not being included when retrieving a rèsumè bullet point (`ProjectReport`) or portfolio (`UserReport). The issue with retrieving data was in part due to the issue with writing data, but there were also issue with how we retrieved data which were solved by this PR.
+
+Here are the PRs I reviewed this week:
+- [#267: add tqdm progress bars for anaylsis, Erem](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/267)
+- [#290: Expand upon User Skills, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/290)
+- [#294: Removed Ari-Writing-Score User Skills, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/294)
+- [#304: Added missing promp for naming portfolio in CLI, Priyansh](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/304)
+- [#307: Empty Project Report Handling, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/307)
+- [#308: Added New Statistic Framework, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/308)
+- [#309: Put Chronological Skills and Projects in the Portfolio, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/309)
