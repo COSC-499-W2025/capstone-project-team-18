@@ -1,3 +1,25 @@
+# Week 14 11/30 - 127
+
+![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week14_log.png)
+
+This week was focused on wrapping and pulling things together. I had a couple PRs, where I added a statisitc for logging frameworks used in a coding project (#308), created a new bullet point for the resume based ona activity type contribution (#288), and hooked up the previous written chronological skills and projects to display on the portfilo (#309). I removed a statstic based on group discussion (#294) and added graceful error handling into the main application loop (#307).
+
+This compeleted the milestone of
+- Produce a chronological list of projects
+- Produce a chronological list of skills exercised
+
+And supported the milestone of:
+- Output all the key information for a project
+
+I also reviewed these PRs:
+- #261
+- #274
+- #290
+- #302
+- #300
+- #303
+- #306
+
 # Week 13 11/24 - 11/30
 
 ![Peer Eval SS](./log_images/personal_log_imgs/sam/sam_week13_log.png)
