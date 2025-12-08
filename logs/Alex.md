@@ -24,6 +24,8 @@
 
 **[Week 13, Nov. 24 – 29](#week-13-nov-24--nov-29)**
 
+**[Week 14, Nov. 30 – Dec. 07](#week-14-nov-30--dec-07)**
+
 ****
 
 ## Week 3, Sept. 15–21
@@ -206,3 +208,7 @@ Here are the PRs that I reviewed this week:
 - [#245: Aggregate `git blame` stats for project overview, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/245)
 - [#260: 216 b create cli menu option to delete a user report, Erem](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/260)
 - [#263: ProjectReport Clean up `__init__`, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/263)
+
+## Week 14, Nov. 30 – Dec. 07
+
+### Peer Eval
