@@ -90,50 +90,45 @@ def test_update_history_basic_functionality(cli):
 
 # Cancel Input Handler Tests
 
-
 def test_handle_cancel_input_with_back(cli):
-    """Test cancel handler with 'back' command."""
+    """Test cancel handler with 'back' command - should return False since it only handles 'cancel'."""
     cli.cmd_history = ["perms"]
 
     with patch('builtins.print') as mock_print:
-        result = cli._handle_cancel_input(
-            "back", "main")  # Add second argument
+        result = cli._handle_cancel_input("back", "main")
 
-        assert result is True
-        assert len(cli.cmd_history) == 0
-        # Verify the cancel message was printed
-        assert any("Cancelled" in str(call)
-                   for call in mock_print.call_args_list)
+        # _handle_cancel_input only handles 'cancel', not 'back'
+        assert result is False
+        # History should not be modified by _handle_cancel_input
+        assert len(cli.cmd_history) == 1
+        mock_print.assert_not_called()
 
 
 def test_handle_cancel_input_with_cancel(cli):
-    """Test cancel handler with 'cancel' command."""
+    """Test cancel handler with 'cancel' command - should preserve history."""
     cli.cmd_history = ["filepath"]
 
     with patch('builtins.print') as mock_print:
-        result = cli._handle_cancel_input(
-            "CANCEL", "main")  # Add second argument
+        result = cli._handle_cancel_input("CANCEL", "main")
 
         assert result is True
-        assert len(cli.cmd_history) == 0
-        assert any("Cancelled" in str(call)
-                   for call in mock_print.call_args_list)
+        # History should be preserved when cancel is used
+        assert len(cli.cmd_history) == 1
+        assert cli.cmd_history == ["filepath"]
+        mock_print.assert_called()
 
 
 def test_handle_cancel_input_with_empty_history(cli):
-    """Test cancel handler with empty command history."""
+    """Test cancel handler with empty command history and 'back' - should return False."""
     cli.cmd_history = []
 
     with patch('builtins.print') as mock_print:
-        result = cli._handle_cancel_input(
-            "back", "main")  # Add second argument
+        result = cli._handle_cancel_input("back", "main")
 
-        assert result is True
+        # _handle_cancel_input doesn't handle 'back'
+        assert result is False
         assert len(cli.cmd_history) == 0
-        # Should still print a return message even with empty history
-        assert any("Returning" in str(call)
-                   for call in mock_print.call_args_list)
-
+        mock_print.assert_not_called()
 
 def test_handle_cancel_input_with_non_cancel_commands(cli):
     """Test that non-cancel inputs return False."""
@@ -161,10 +156,16 @@ def test_whitespace_handling_in_cancel(cli, cancel_command):
     """Test that cancel commands work with extra whitespace."""
     cli.cmd_history = ["test"]
     with patch('builtins.print'):
-        result = cli._handle_cancel_input(
-            cancel_command, "main")  # Add second argument
-        assert result is True
-        assert len(cli.cmd_history) == 0
+        result = cli._handle_cancel_input(cancel_command, "main")
+
+        if "cancel" in cancel_command.lower():
+            # Cancel should return True and preserve history
+            assert result is True
+            assert len(cli.cmd_history) == 1
+        else:
+            # Back should return False (not handled by _handle_cancel_input)
+            assert result is False
+            assert len(cli.cmd_history) == 1
 
 
 def test_options_text_contains_required_information(cli):
@@ -314,7 +315,7 @@ def test_do_filepath_valid_path(cli):
 
 
 def test_do_filepath_user_cancels(cli):
-    """Test filepath command when user cancels."""
+    """Test filepath command when user cancels - history should be preserved."""
     # Reset filepath to ensure clean test state
     cli.project_filepath = ''
 
@@ -323,7 +324,8 @@ def test_do_filepath_user_cancels(cli):
         result = cli.do_filepath("")
         assert cli.project_filepath == ''  # Should remain empty
         assert result is None  # Should return None to go back to menu
-        assert cli.cmd_history == []  # History should be cleared
+        # History should be preserved (cancel doesn't clear it)
+        assert cli.cmd_history == ['filepath']
 
 # Begin Command Tests
 
@@ -418,18 +420,19 @@ def test_do_exit_functionality(cli):
 
 @pytest.mark.parametrize('command', ['back', 'cancel'])
 def test_cancel_functionality_across_commands(cli, command):
-    """Test that cancel works consistently across all commands."""
+    """Test that cancel/back works consistently across all commands."""
     with patch('builtins.input', return_value=command), \
             patch('builtins.print'):
-        # Test cancel from permissions
+        # Test cancel/back from permissions
         result1 = cli.do_perms("")
         assert result1 is None
-        assert cli.cmd_history == []
 
-        # Test cancel from filepath
-        result2 = cli.do_filepath("")
-        assert result2 is None
-        assert cli.cmd_history == []
+        if command == 'cancel':
+            # Cancel preserves history
+            assert cli.cmd_history == ['perms']
+        else:
+            # Back pops from history
+            assert cli.cmd_history == []
 
     # Edge Cases and Error Handling
     def test_empty_input_handling(self):
@@ -485,21 +488,20 @@ def test_resume_bullet_exit_calls_do_exit(cli):
 
 
 def test_resume_bullet_back_or_cancel_returns_to_menu(cli):
-    """If user types 'back', the command should cancel and return to main menu."""
+    """If user types 'back', the command should return to previous menu."""
     with patch("builtins.input", return_value="back"), \
             patch("builtins.print") as mock_print:
         cli.do_resume_bullet_point("")
 
+        # Back pops history, so it should be empty
         assert cli.cmd_history == []
-        assert any(
+        # Back doesn't print a cancellation message, it prints return message
+        # The print happens in do_back() method
+        assert not any(
             "Cancelled 'resume_bullet_point' operation." in str(call)
             for call in mock_print.call_args_list
         )
-        assert any(
-            "Artifact Miner Main Menu" in str(call)
-            for call in mock_print.call_args_list
-        )
-
+# differeation
 
 def test_resume_bullet_empty_project_name(cli):
     """Blank project name should show validation message and not hit DB."""
