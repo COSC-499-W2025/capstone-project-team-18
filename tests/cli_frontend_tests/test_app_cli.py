@@ -501,7 +501,7 @@ def test_resume_bullet_back_or_cancel_returns_to_menu(cli):
             "Cancelled 'resume_bullet_point' operation." in str(call)
             for call in mock_print.call_args_list
         )
-
+# differeation
 
 def test_resume_bullet_empty_project_name(cli):
     """Blank project name should show validation message and not hit DB."""
