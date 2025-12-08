@@ -494,6 +494,8 @@ class ArtifactMiner(cmd.Cmd):
             print("We ran into an error while proccessing: ")
             print(e)
 
+            return
+
         # Let the user rename the newly created portfolio if desired
         self._prompt_portfolio_name()
 
@@ -850,7 +852,8 @@ class ArtifactMiner(cmd.Cmd):
                 print("\n" + self.options)
 
                 # Ask if user wants to retrieve another
-                another = input("\nRetrieve another portfolio? (Y/N): ").strip().lower()
+                another = input(
+                    "\nRetrieve another portfolio? (Y/N): ").strip().lower()
                 if another == 'y':
                     continue  # Loop back to retrieve menu
                 else:
