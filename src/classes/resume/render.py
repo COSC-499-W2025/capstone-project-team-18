@@ -21,7 +21,7 @@ class TextResumeRenderer(ResumeRender):
             to_return += f"{item.title} : {item.start_date.strftime("%B, %Y")} - {item.end_date.strftime("%B, %Y")}\n"
 
             if len(item.frameworks) != 0:
-                to_return += f"Frameworks: {", ".join(skill.skill_name for skill in item.frameworks)}\n"
+                to_return += f"Frameworks: {', '.join(skill.skill_name for skill in item.frameworks)}\n"
 
             for bullet in item.bullet_points:
                 to_return += f"   - {bullet}\n"
