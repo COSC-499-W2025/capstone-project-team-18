@@ -4,10 +4,9 @@ import zipfile
 import pytest
 from git import Repo
 
-
-from src.utils.project_discovery.project_discovery import discover_projects, ProjectFiles  # type: ignore  # noqa: E402
-from src.classes.report import ProjectReport  # type: ignore  # noqa: E402
-from src.classes.statistic import ProjectStatCollection  # type: ignore  # noqa: E402
+from src.utils.project_discovery.project_discovery import discover_projects
+from src.classes.report.project_report import ProjectReport
+from src.classes.statistic import ProjectStatCollection
 
 
 @pytest.fixture

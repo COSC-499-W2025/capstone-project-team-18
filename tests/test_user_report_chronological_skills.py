@@ -1,7 +1,8 @@
 import pytest
 from datetime import date
 
-from src.classes.report import UserReport, ProjectReport
+from src.classes.report.project_report import ProjectReport
+from src.classes.report.user_report import UserReport
 from src.classes.statistic import (
     StatisticIndex,
     Statistic,

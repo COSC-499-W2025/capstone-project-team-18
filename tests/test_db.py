@@ -21,7 +21,9 @@ from src.database.db import (
 )
 from src.database.utils.database_modify import create_row
 from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
-from src.classes.report import FileReport, ProjectReport, UserReport
+from src.classes.report.file_report import FileReport
+from src.classes.report.project_report import ProjectReport
+from src.classes.report.user_report import UserReport
 
 
 def create_file_report(filename: str):

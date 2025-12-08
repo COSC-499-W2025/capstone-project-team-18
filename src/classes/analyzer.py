@@ -5,7 +5,7 @@ a file and generate a report with statistics.
 import os
 import time
 import re
-from .report import FileReport
+from src.classes.report.file_report import FileReport
 from .statistic import Statistic, StatisticIndex, FileStatCollection, FileDomain, CodingLanguage, FileStatisticTemplate
 import datetime
 from pathlib import Path

@@ -3,8 +3,10 @@ Tests the Resume class and its methods.
 """
 
 from src.classes.resume.resume import Resume, ResumeItem
-from src.classes.report import ProjectReport, UserReport
+from src.classes.report.project_report import ProjectReport
 from src.classes.statistic import StatisticIndex, Statistic, ProjectStatCollection
+from src.classes.report.project_report import ProjectReport
+from src.classes.report.user_report import UserReport
 from datetime import date
 
 
@@ -53,8 +55,6 @@ def test_projectreport_can_create_resume():
 
 
 def test_userreport_can_create_resume():
-    from src.classes.report import UserReport
-    from src.classes.statistic import StatisticIndex
 
     project_statistics = StatisticIndex([
         Statistic(ProjectStatCollection.PROJECT_START_DATE.value,

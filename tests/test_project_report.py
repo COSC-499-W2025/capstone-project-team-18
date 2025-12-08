@@ -1,7 +1,8 @@
 from pathlib import Path
 from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, CodingLanguage
 from src.classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
-from src.classes.report import ProjectReport, FileReport
+from src.classes.report.file_report import FileReport
+from src.classes.report.project_report import ProjectReport
 from datetime import datetime
 
 

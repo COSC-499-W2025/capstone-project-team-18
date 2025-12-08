@@ -4,8 +4,7 @@ resume items and portfolio
 '''
 from typing import Optional
 from src.classes.resume.resume import Resume
-from src.classes.report import UserReport
-
+from src.classes.report.user_report import UserReport
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

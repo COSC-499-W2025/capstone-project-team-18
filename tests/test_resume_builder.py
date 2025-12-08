@@ -7,7 +7,7 @@ from src.classes.statistic import (
     ProjectStatCollection,
     FileDomain
 )
-from src.classes.report import ProjectReport
+from src.classes.report.project_report import ProjectReport
 
 
 def test_activity_type_contribution_bp_expected():
