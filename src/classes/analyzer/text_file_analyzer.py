@@ -24,6 +24,7 @@ class TextFileAnalyzer(BaseFileAnalyzer):
 
     Statistics:
         - `LINES_IN_FILE`
+        - `PERCENTAGE_LINES_COMMITTED`
     """
 
     def _process(self) -> None:
