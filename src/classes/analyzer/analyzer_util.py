@@ -55,7 +55,7 @@ def extract_file_reports(
             email,
             language_filter)
 
-        if analyzer.should_inculde() is False:
+        if analyzer.should_include() is False:
             continue
 
         try:

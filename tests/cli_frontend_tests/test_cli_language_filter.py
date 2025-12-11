@@ -1,12 +1,8 @@
 """
 Tests for language filtering functionality
 """
-import pytest
-from pathlib import Path
 from src.classes.analyzer import get_appropriate_analyzer, extract_file_reports
 from src.utils.project_discovery.project_discovery import ProjectFiles
-from src.classes.statistic import CodingLanguage
-from git import Repo
 
 
 def test_language_filter_excludes_non_matching_files(tmp_path):
@@ -133,7 +129,7 @@ def test_should_include_respects_language_filter(tmp_path):
         None,
         ["Python"]
     )
-    assert analyzer.should_inculde() is True
+    assert analyzer.should_include() is True
 
     # Test with only JavaScript in filter - should exclude
     analyzer = get_appropriate_analyzer(
@@ -143,7 +139,7 @@ def test_should_include_respects_language_filter(tmp_path):
         None,
         ["Javascript"]
     )
-    assert analyzer.should_inculde() is False
+    assert analyzer.should_include() is False
 
 
 def test_language_filter_with_multiple_extensions(tmp_path):

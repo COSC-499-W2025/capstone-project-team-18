@@ -74,7 +74,7 @@ class BaseFileAnalyzer:
                 f"File not tracked by git or git error: {e}")
             return False
 
-    def should_inculde(self) -> bool:
+    def should_include(self) -> bool:
         """
         This is a lightweight check to see if the file should be
         included in analysis. By deafult, all files are included.

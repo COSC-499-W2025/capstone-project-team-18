@@ -2,19 +2,18 @@
 
 import os
 import tkinter as tk
-from tkinter import Menu, messagebox, PhotoImage
+from tkinter import Menu, PhotoImage
 
 from Classes.Frames.switchable_frame import SwitchableFrame
 
 from Classes.Util.server_req import ServerRequest
 from Classes.Util.global_state import GlobalState
-from .Util.file_domain import FileDomain
 
 
 class App(tk.Tk):
     """
     This App class defines the top level visuals for the UI.
-    This inculdes the header and the menu options.
+    This includes the header and the menu options.
 
     The App SHOULD NOT handle the logic of switching screens.
     That logic is handled in the App's display_frame and in the
