@@ -19,7 +19,7 @@ class CSSAnalyzer(CodeFileAnalyzer):
         - IMPORTED_PACKAGES    (@import targets)
 
     Note:
-        NUMBER_OF_FUNCTIONS counts top-level style rules and at-rules that have a block.
+        `NUMBER_OF_FUNCTIONS` counts top-level style rules and at-rules that have a block.
         Nested qualified rules inside at-rules (e.g., selectors within @media) are **not**
         counted separately.
     """

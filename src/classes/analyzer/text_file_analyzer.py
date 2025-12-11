@@ -12,19 +12,18 @@ logger = logging.getLogger(__name__)
 
 class TextFileAnalyzer(BaseFileAnalyzer):
     """
-    Analyzer for text-based files. Extends BaseFileAnalyzer.
+    Analyzer for text-based files. Extends `BaseFileAnalyzer`.
 
     This class will parse a file that contains text and log the
     raw line count, but more specific type of stats are given
-    to the subclasses which are: CodeFileAnalyzer and
-    NaturalLanguageAnalyzer.
+    to the subclasses which are: `CodeFileAnalyzer` and
+    `NaturalLanguageAnalyzer`.
 
     Attributes:
-        text_context : str The string representation of
-        the text in the file
+        text_context (str): The string representation of the text in the file
 
     Statistics:
-        - LINES_IN_FILE
+        - `LINES_IN_FILE`
     """
 
     def _process(self) -> None:

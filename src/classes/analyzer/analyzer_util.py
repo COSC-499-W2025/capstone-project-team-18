@@ -35,7 +35,7 @@ def extract_file_reports(
     language_filter: Optional[list[str]] = None
 ) -> list[FileReport]:
     """
-    Method to extract individual fileReports within each project
+    Method to extract individual `FileReports` within each project
     """
 
     if project_file is None:
@@ -76,7 +76,7 @@ def get_appropriate_analyzer(
 ) -> BaseFileAnalyzer:
     """
     Factory function to return the most appropriate analyzer for a given file.
-    This allows FileReport to automatically use the best analyzer.
+    This allows `FileReport` to automatically use the best analyzer.
     """
 
     file_path = Path(path_to_top_level_project + "/" + relative_path)

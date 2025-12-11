@@ -17,10 +17,10 @@ class BaseFileAnalyzer:
     file-level statistics.
 
     To analyze a specific file, extend this class and implement the
-    _process method. In this method, call the _process method of the
+    `_process` method. In this method, call the `_process` method of the
     superclass to collect basic statistics, then add any file-specific
-    statistics to the StatisticIndex (self.stats).
-    to the StatisticIndex (self.stats).
+    statistics to the `StatisticIndex` (`self.stats`).
+    to the `StatisticIndex` (`self.stats`).
 
     Attributes:
         filepath (str): The path to the file being analyzed.
@@ -150,7 +150,7 @@ class BaseFileAnalyzer:
 
         Likewise with any of the analyzers that extend this class,
         you can call this _process method and know that these basic
-        statistics will be collected in the self.stats StatisticIndex.
+        statistics will be collected in the self.stats `StatisticIndex`.
 
         """
 
@@ -202,7 +202,7 @@ class BaseFileAnalyzer:
 
     def analyze(self) -> FileReport:
         """
-        Analyze the file and return a FileReport with collected statistics.
+        Analyze the file and return a `FileReport` with collected statistics.
         """
         self._process()
 
