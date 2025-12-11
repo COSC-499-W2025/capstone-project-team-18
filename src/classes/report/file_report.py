@@ -10,8 +10,8 @@ from src.classes.statistic import StatisticIndex
 
 class FileReport(BaseReport):
     """
-    The FileReport class is the lowest level report. It is made
-    by file-type specific, analyzers.
+    The `FileReport` class is the lowest level report. It is made
+    by file-type-specific analyzers.
     """
 
     filepath: str
@@ -23,7 +23,7 @@ class FileReport(BaseReport):
     @classmethod
     def create_with_analysis(cls, path_to_top_level: str, relative_path: str) -> "FileReport":
         """
-        Create a FileReport with automatic file type detection and analysis.
+        Create a `FileReport` with automatic file type detection and analysis.
         This includes:
                 - Natural Language statistics for appropriate langauge based files
                 - Python statistics for appropriate Python files

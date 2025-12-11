@@ -20,11 +20,11 @@ from src.classes.skills import SkillMapper
 
 class ProjectReport(BaseReport):
     """
-    The ProjectReport class utilizes many FileReports to
-    create many Project Statistics about a single project.
+    The `ProjectReport` class utilizes many `FileReports` to
+    create project-level statistics about a single project.
 
     For example, maybe we sum up all the lines of written
-    in a FileReport to create a project level statistics
+    in a `FileReport` to create a project level statistics
     of "total lines written."
     """
 
@@ -75,7 +75,7 @@ class ProjectReport(BaseReport):
                  project_repo: Optional[Repo] = None
                  ):
         """
-        Initialize ProjectReport with file reports and optional Git analysis from zip file.
+        Initialize `ProjectReport` with file reports and optional Git analysis from zip file.
 
         Args:
             file_reports: List of FileReport objects to aggregate statistics from
@@ -86,7 +86,7 @@ class ProjectReport(BaseReport):
             user_email: Optional user email for Git authorship analysis
 
         NOTE: `statistics` should only be included when the `get_project_from_project_name()`
-        function is creating a ProjectReport object from an existing row in
+        function is creating a `ProjectReport` object from an existing row in
         the `project_report` table!
         """
         self.file_reports = file_reports or []
@@ -179,7 +179,7 @@ class ProjectReport(BaseReport):
         project out of all of their contributions.
 
         If the user's email is configured, it will
-        use PERCENTAGE_LINES_COMMITTED file stat.
+        use `PERCENTAGE_LINES_COMMITTED` file stat.
 
         Otherwise, it is assumed that they worked on
         all files and we will just use the distrubition
@@ -233,11 +233,11 @@ class ProjectReport(BaseReport):
         """
         Computes two project-level statistics:
 
-        1. PROJECT_SKILLS_DEMONSTRATED
+        1. `PROJECT_SKILLS_DEMONSTRATED`
         - High-level skills inferred from file paths & imported packages
         - Deduped so each file contributes at most once per skill
 
-        2. PROJECT_FRAMEWORKS
+        2. `PROJECT_FRAMEWORKS`
         - Raw counts of third-party frameworks/libraries (import frequency)
         """
 
@@ -302,7 +302,7 @@ class ProjectReport(BaseReport):
                     )
 
         def _add_weighted_stat(stat_key, counter: dict) -> None:
-            """Adds a weighted Statistic entry if the counter has values."""
+            """Adds a weighted `Statistic` entry if the counter has values."""
             if not counter:
                 return
 
@@ -328,11 +328,11 @@ class ProjectReport(BaseReport):
 
     def _determine_start_end_dates(self) -> None:
         """
-        Calculates a project start and end date based on
+        Calculates a project's start and end date based on
         the file reports available. Logs statistics to
-        self.project_statistics.
+        `self.project_statistics`.
 
-        Note here. Currently when we unzip with Linux's
+        Note: Currently when we unzip with Linux's
         "unzip" utility, it sets the date created to the
         current date, not the date in the zip file. The
         dates we need to analyze are the date modified
@@ -372,7 +372,7 @@ class ProjectReport(BaseReport):
 
     def generate_resume_item(self) -> ResumeItem:
         """
-        Generates a ResumeItem from the project report statistics.
+        Generates a `ResumeItem` from the project report statistics.
 
         Args:
             title: Title of the resume item
@@ -401,8 +401,8 @@ class ProjectReport(BaseReport):
 
     def _find_coding_languages_ratio(self) -> None:
         """
-        Creates the project level statistic of
-        CODING_LANGUAGE_RATIO.
+        Creates the project-level statistic of
+        `CODING_LANGUAGE_RATIO`.
         Uses file-level statistics for byte counts.
 
         Note: File filtering (venv, config files, etc.) is handled by project_discovery.py
@@ -492,15 +492,15 @@ class ProjectReport(BaseReport):
     def _analyze_git_authorship(self) -> None:
         """
         Analyzes Git commit history to determine authorship statistics.
-        This function uses self.email to calculate the user's commit percentage.
-        If self.email is not set, this function should not run as we don't have
+        This function uses `self.email` to calculate the user's commit percentage.
+        If `self.email` is not set, this function should not run as we don't have
         the consent of the user.
 
         Creates the following project level statistics:
-        - IS_GROUP_PROJECT: Boolean indicating if multiple authors contributed
-        - TOTAL_AUTHORS: Total number of unique authors
-        - AUTHORS_PER_FILE: Dictionary mapping file paths to number of unique authors
-        - USER_COMMIT_PERCENTAGE: Percentage of commits made by the user (if applicable)
+        - `IS_GROUP_PROJECT`: Boolean indicating if multiple authors contributed
+        - `TOTAL_AUTHORS`: Total number of unique authors
+        - `AUTHORS_PER_FILE`: Dictionary mapping file paths to number of unique authors
+        - `USER_COMMIT_PERCENTAGE`: Percentage of commits made by the user (if applicable)
 
         """
 

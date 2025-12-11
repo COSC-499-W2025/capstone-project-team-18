@@ -1,5 +1,5 @@
 """
-This file defines the BaseReport cslass.
+This file defines the BaseReport class.
 """
 
 from typing import Any
@@ -8,7 +8,7 @@ from src.classes.statistic import Statistic, StatisticTemplate, StatisticIndex
 
 class BaseReport:
     """
-    This is the BaseReport class. A report is a class that holds
+    This is the `BaseReport` class. A report is a class that holds
     statistics.
     """
 
@@ -23,8 +23,8 @@ class BaseReport:
 
     def get_value(self, template: StatisticTemplate) -> Any:
         """
-        Retrieves the value of a Statistic from the index by its template.
-        Returns None if not found.
+        Retrieves the value of a `Statistic` from the index by its template.
+        Returns `None` if not found.
         """
         return self.statistics.get_value(template)
 
