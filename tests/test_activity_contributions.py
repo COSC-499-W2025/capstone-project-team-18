@@ -71,7 +71,7 @@ def test_activity_contribution_from_git_project(project_realistic):
         user_email=my_email
     )
 
-    # Check to see that files are only inculded if the user themselves
+    # Check to see that files are only included if the user themselves
     # contributed and local
     assert frs is not None and len(frs) == 5
 
