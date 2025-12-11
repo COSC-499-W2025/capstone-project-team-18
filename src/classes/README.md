@@ -89,6 +89,6 @@ A UserReport will do the same thing as ProjectReport, but with many different Pr
 
 ## Analyzer
 
-See analyzer/README.md
+See [/analyzer/README.md](../classes/analyzer/README.md)
 
 
