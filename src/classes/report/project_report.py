@@ -30,42 +30,6 @@ class ProjectReport(BaseReport):
 
     bullet_builder = BulletPointBuilder()
 
-    def get_project_weight(self) -> float:
-        """
-        Ranks the project using a linear combination of lines of code, date range, and individual contribution.
-        Equal weightage is given to each factor. All factors are normalized to [0, 1] scale.
-        The returned value is the sum of the three normalized components, so the final score is in [0, 3].
-        """
-        # Lines normalization
-        total_lines = 0.0
-        if self.file_reports:
-            total_lines = sum(
-                report.get_value(FileStatCollection.LINES_IN_FILE.value) or 0.0
-                for report in self.file_reports
-            )
-        norm_lines = min(total_lines / 500.0, 1.0) if total_lines > 0 else 0.0
-
-        # Date range normalization (assume 1 year = 1.0 weight)
-        start_date = self.get_value(
-            ProjectStatCollection.PROJECT_START_DATE.value)
-        end_date = self.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-        norm_date = 0.0
-        if start_date and end_date:
-            if isinstance(start_date, (datetime, date)) and isinstance(end_date, (datetime, date)):
-                days = (end_date - start_date).days
-                norm_date = min(days / 365, 1.0) if days > 0 else 0.0
-
-        # Individual contribution normalization
-        contrib = self.get_value(
-            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
-        norm_contrib = 0.0
-        if isinstance(contrib, (int, float)):
-            norm_contrib = max(0.0, min(contrib / 100.0, 1.0))
-
-        # Final weight (sum of normalized components)
-        weight = norm_lines + norm_date + norm_contrib
-        return weight
-
     def __init__(self,
                  file_reports: Optional[list[FileReport]] = None,
                  project_path: Optional[str] = None,
@@ -121,6 +85,42 @@ class ProjectReport(BaseReport):
 
         # Initialize the base class with the project statistics
         super().__init__(self.project_statistics)
+
+    def get_project_weight(self) -> float:
+        """
+        Ranks the project using a linear combination of lines of code, date range, and individual contribution.
+        Equal weightage is given to each factor. All factors are normalized to [0, 1] scale.
+        The returned value is the sum of the three normalized components, so the final score is in [0, 3].
+        """
+        # Lines normalization
+        total_lines = 0.0
+        if self.file_reports:
+            total_lines = sum(
+                report.get_value(FileStatCollection.LINES_IN_FILE.value) or 0.0
+                for report in self.file_reports
+            )
+        norm_lines = min(total_lines / 500.0, 1.0) if total_lines > 0 else 0.0
+
+        # Date range normalization (assume 1 year = 1.0 weight)
+        start_date = self.get_value(
+            ProjectStatCollection.PROJECT_START_DATE.value)
+        end_date = self.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+        norm_date = 0.0
+        if start_date and end_date:
+            if isinstance(start_date, (datetime, date)) and isinstance(end_date, (datetime, date)):
+                days = (end_date - start_date).days
+                norm_date = min(days / 365, 1.0) if days > 0 else 0.0
+
+        # Individual contribution normalization
+        contrib = self.get_value(
+            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
+        norm_contrib = 0.0
+        if isinstance(contrib, (int, float)):
+            norm_contrib = max(0.0, min(contrib / 100.0, 1.0))
+
+        # Final weight (sum of normalized components)
+        weight = norm_lines + norm_date + norm_contrib
+        return weight
 
     def _total_contribution_percentage(self, project_lines: float) -> None:
         # Iterate over fileReports to get total lines responsible over whole project

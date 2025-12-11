@@ -16,7 +16,7 @@ class CodeFileAnalyzer(TextFileAnalyzer):
 
     Statistics:
         - TYPE_OF_FILE
-        - PERCENTAGE_LINES_COMMITTED
+        - CODING_LANGUAGE
     """
 
     def _process(self) -> None:

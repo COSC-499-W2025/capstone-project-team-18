@@ -65,13 +65,7 @@ class PHPAnalyzer(CodeFileAnalyzer):
         stats = [
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
                       function_count),
-            Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value,
-                      function_count),
             Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, class_count),
-            Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
-                      interface_count),
-            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
-                      imported_packages),
             Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value,
                       interface_count),
             Statistic(FileStatCollection.IMPORTED_PACKAGES.value,

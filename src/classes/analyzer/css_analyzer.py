@@ -129,8 +129,4 @@ class CSSAnalyzer(CodeFileAnalyzer):
                       len(class_tokens)),
             Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
                       imported_packages),
-            Statistic(FileStatCollection.NUMBER_OF_CLASSES.value,
-                      len(class_tokens)),
-            Statistic(FileStatCollection.IMPORTED_PACKAGES.value,
-                      imported_packages),
         ])

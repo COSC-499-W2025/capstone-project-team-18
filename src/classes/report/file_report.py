@@ -25,11 +25,10 @@ class FileReport(BaseReport):
         """
         Create a `FileReport` with automatic file type detection and analysis.
         This includes:
-                - Natural Language statistics for appropriate langauge based files
-                - Python statistics for appropriate Python files
-                - Java statistics for appropriate Java files
-                - JavaScript statistics for appropriate JavaScript files
-                - Text-based statistics for appropriate text based files (i.e. css, html, xml, json, yml, yaml)
+                - Base statistics (e.g., date created)
+                - Natural Language statistics for appropriate langauge based files (e.g., .docx, word count stat)
+                - Statistics applicable to all coding langauges (e.g., type of file)
+                - Statistics specific to a coding language (e.g., number of classes for a python file)
         """
         from src.classes.analyzer import get_appropriate_analyzer
         analyzer = get_appropriate_analyzer(path_to_top_level, relative_path)

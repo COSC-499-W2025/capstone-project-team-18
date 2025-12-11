@@ -17,6 +17,9 @@ class HTMLAnalyzer(CodeFileAnalyzer):
         - NUMBER_OF_FUNCTIONS  (count of <script> blocks, inline + external)
         - NUMBER_OF_CLASSES    (distinct class tokens across elements)
         - IMPORTED_PACKAGES    (external resources: <script src>, <link href>, <img src>)
+        - NUMBER_OF_FUNCTIONS
+        - NUMBER_OF_CLASSES
+        - IMPORTED_PACKAGES
     """
 
     def _process(self) -> None:
