@@ -2,12 +2,13 @@
 
 import os
 import tkinter as tk
-from tkinter import Menu, PhotoImage
+from tkinter import Menu, messagebox, PhotoImage
 
 from Classes.Frames.switchable_frame import SwitchableFrame
 
 from Classes.Util.server_req import ServerRequest
 from Classes.Util.global_state import GlobalState
+from .Util.file_domain import FileDomain
 
 
 class App(tk.Tk):
