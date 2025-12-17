@@ -60,6 +60,12 @@ classDiagram
         +CODING_LANGUAGE
     }
 
+    class SpecificCodeAnalyzer {
+        +NUMBER_OF_FUNCTIONS
+        +NUMBER_OF_CLASSES
+        +IMPORTED_PACKAGES
+    }
+
     %% =========================
     %% Language-Specific Analyzers
     %% =========================
@@ -120,13 +126,14 @@ classDiagram
     BaseFileAnalyzer <|-- TextFileAnalyzer
     TextFileAnalyzer <|-- NaturalLanguageAnalyzer
     TextFileAnalyzer <|-- CodeFileAnalyzer
+    CodeFileAnalyzer <|-- SpecificCodeAnalyzer
 
-    CodeFileAnalyzer <|-- PythonAnalyzer
-    CodeFileAnalyzer <|-- JavaAnalyzer
-    CodeFileAnalyzer <|-- JavaScriptAnalyzer
-    CodeFileAnalyzer <|-- CAnalyzer
-    CodeFileAnalyzer <|-- TypeScriptAnalyzer
-    CodeFileAnalyzer <|-- CSSAnalyzer
-    CodeFileAnalyzer <|-- HTMLAnalyzer
-    CodeFileAnalyzer <|-- PHPAnalyzer
+    SpecificCodeAnalyzer <|-- PythonAnalyzer
+    SpecificCodeAnalyzer <|-- JavaAnalyzer
+    SpecificCodeAnalyzer <|-- JavaScriptAnalyzer
+    SpecificCodeAnalyzer <|-- CAnalyzer
+    SpecificCodeAnalyzer <|-- TypeScriptAnalyzer
+    SpecificCodeAnalyzer <|-- CSSAnalyzer
+    SpecificCodeAnalyzer <|-- HTMLAnalyzer
+    SpecificCodeAnalyzer <|-- PHPAnalyzer
 ```
