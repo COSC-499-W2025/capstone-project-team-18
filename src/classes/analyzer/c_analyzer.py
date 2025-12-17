@@ -2,13 +2,13 @@ import re
 import logging
 
 from src.classes.statistic import Statistic, FileStatCollection
-from src.classes.analyzer.code_file_analyzer import CodeFileAnalyzer
+from src.classes.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class CAnalyzer(CodeFileAnalyzer):
+class CAnalyzer(SpecificCodeAnalyzer):
     """
     Analyzer for C source code files (.c).
 
@@ -18,8 +18,7 @@ class CAnalyzer(CodeFileAnalyzer):
         - IMPORTED_PACKAGES (used for #includes)
     """
 
-    def _process(self) -> None:
-        super()._process()
+    def _process_not_empty(self) -> None:
 
         # Function definitions (improved heuristic: match return type, name, params, and opening brace)
         function_count = len(re.findall(

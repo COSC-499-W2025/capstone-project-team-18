@@ -3,13 +3,13 @@ import tinycss2
 import logging
 
 from src.classes.statistic import Statistic, FileStatCollection
-from src.classes.analyzer.code_file_analyzer import CodeFileAnalyzer
+from src.classes.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class CSSAnalyzer(CodeFileAnalyzer):
+class CSSAnalyzer(SpecificCodeAnalyzer):
     """
     Analyzer for CSS source files (.css).
 
@@ -24,21 +24,7 @@ class CSSAnalyzer(CodeFileAnalyzer):
         counted separately.
     """
 
-    def _process(self) -> None:
-        super()._process()
-
-        # Empty file: emit zero/empty stats so keys always exist
-        if not self.text_content.strip():
-            logger.debug(
-                f"{self.__class__.__name__}: Empty file {self.filepath}")
-            logger.debug(
-                f"{self.__class__.__name__}: Empty file {self.filepath}")
-            self.stats.extend([
-                Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
-                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
-                Statistic(FileStatCollection.IMPORTED_PACKAGES.value, []),
-            ])
-            return
+    def _process_not_empty(self) -> None:
 
         if tinycss2 is not None:
             rules = tinycss2.parse_stylesheet(
