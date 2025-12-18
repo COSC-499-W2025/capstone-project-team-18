@@ -18,12 +18,14 @@ INSTANT_SUCCESS_FILES_AND_DIR = [
 
     # Directories that instantly qualify a directory as a project
     ".git",
+    "node_modules",
     "src",
     "app",
     ".github",
     ".vscode",
     ".venv",
-    "venv"
+    "venv",
+    ".idea",
 ]
 
 # Junk that should totally be disregarded. They should be neither
@@ -75,6 +77,7 @@ IGNORE_DIRS = [
     ".vscode",
     ".git",
     ".pytest_cache",
+    ".idea",
 
     # Virtual environment directories
     ".venv",
