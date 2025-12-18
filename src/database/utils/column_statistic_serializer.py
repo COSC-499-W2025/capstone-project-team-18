@@ -20,12 +20,16 @@ DATACLASS_REGISTRY = {
 }
 
 
-class SerializableJSON(TypeDecorator):
+class ColumnStatisticSerializer(TypeDecorator):
     """
     This is a custom SQLAlchemy column type that serializes and deserializes
-    our complex Python objects. If we are here, we know we need to serialize
+    our complex Statistic value objects. If we are here, we know we need to serialize
     or deserialize the value to/from a JSON-compatible format. Other primitive
     types (str, int, float, bool, None) are handled elsewhere.
+
+    For special enums and dataclasses, we store their class name metadata along with their value
+    so we can reconstruct them later during deserialization.
+
     """
 
     impl = JSON

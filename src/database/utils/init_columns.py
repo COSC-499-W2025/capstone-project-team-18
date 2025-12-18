@@ -17,7 +17,7 @@ from src.classes.statistic import (
     ProjectStatCollection,
     UserStatCollection
 )
-from src.database.utils.types import SerializableJSON
+from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
 
 # [type[src.classes.statistic.FileStatCollection], type[src.classes.statistic.ProjectStatCollection], type[src.classes.statistic.UserStatCollection]]
 StatCollectionType = t.Union[
@@ -37,9 +37,9 @@ def _sqlalchemy_type_for(expected_type: t.Any):
     - str -> String
     - datetime.date -> Date
     - float -> Float
-    - list[str], list[WeightedSkills], dict, CodingLanguage, set -> JSON
     - bool -> Boolean
-    - Fallback: JSON
+
+    - Fallback: ColumnStatisticSerializer
     """
 
     type_map = {
@@ -50,8 +50,8 @@ def _sqlalchemy_type_for(expected_type: t.Any):
         bool: Boolean,
     }
 
-    # E.g. return FileStatCollection.expected_type or JSON if not in found
-    return type_map.get(expected_type, SerializableJSON)
+    # E.g. return FileStatCollection.expected_type or ColumnStatisticSerializer if not in found
+    return type_map.get(expected_type, ColumnStatisticSerializer)
 
 
 def make_columns(stat_collection: StatCollectionType):
