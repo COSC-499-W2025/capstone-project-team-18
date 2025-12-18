@@ -50,6 +50,23 @@ IGNORE_FILES = JUNK_FILES + [
     "asgi.py",
     "settings.py",
     "urls.py",
+    ".gitignore",
+    ".eslintrc.json",
+    "next.config.mjs",
+    "tsconfig.json",
+    "package-lock.json",
+    "yarn.lock",
+    "vite.config.js",
+    "tailwind.config.js",
+    "vite.config.ts",
+    "tailwind.config.ts",
+    "postcss.config.js",
+    "settings.gradle",
+    "settings.gradle.kts",
+    "build.gradle",
+    "gardlew.bat",
+    ".env"
+
 ]
 
 IGNORE_DIRS = [
