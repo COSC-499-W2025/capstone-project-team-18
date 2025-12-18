@@ -34,6 +34,8 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         the test keyword
         """
 
+        # Looks for the keywords test, tests, spec, specs, testing in a filename
+        # either as a whole word or surrounded by non-word characters
         TEST_FILE_REGEX = re.compile(
             r"(?:^|[\W_])(test|tests|spec|specs|testing)(?:[\W_]|$)", re.IGNORECASE)
 
