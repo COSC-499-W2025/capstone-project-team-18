@@ -22,7 +22,6 @@ from src.database.utils.database_modify import rename_user_report
 from src.classes.statistic import (
     FileStatCollection,
     ProjectStatCollection,
-    FileDomain,
     CodingLanguage,
 )
 from src.classes.report import FileReport, ProjectReport, UserReport
@@ -270,7 +269,8 @@ def test_get_user_from_name_success(temp_db):
 
 
 def test_rename_user_report_success(temp_db):
-    ok, msg = rename_user_report("test_user_report", "renamed_portfolio", temp_db)
+    ok, msg = rename_user_report(
+        "test_user_report", "renamed_portfolio", temp_db)
     assert ok is True
     assert "renamed_portfolio" in msg
 
@@ -285,7 +285,8 @@ def test_rename_user_report_conflict(temp_db):
         session.add(UserReportTable(title="existing_portfolio"))
         session.commit()
 
-    ok, msg = rename_user_report("test_user_report", "existing_portfolio", temp_db)
+    ok, msg = rename_user_report(
+        "test_user_report", "existing_portfolio", temp_db)
     assert ok is False
     assert "already exists" in msg
 
@@ -299,7 +300,8 @@ def test_rename_user_report_handles_duplicates(temp_db):
         session.commit()
         duplicate_id = duplicate.id
 
-    ok, msg = rename_user_report("test_user_report", "renamed_portfolio_dupe", temp_db)
+    ok, msg = rename_user_report(
+        "test_user_report", "renamed_portfolio_dupe", temp_db)
     assert ok is True
     assert "renamed_portfolio_dupe" in msg
 
@@ -309,7 +311,8 @@ def test_rename_user_report_handles_duplicates(temp_db):
         assert renamed.title == "renamed_portfolio_dupe"
 
         originals = session.execute(
-            select(UserReportTable).where(UserReportTable.title == "test_user_report")
+            select(UserReportTable).where(
+                UserReportTable.title == "test_user_report")
         ).scalars().all()
         assert len(originals) == 1  # original remains
 
@@ -321,7 +324,8 @@ def test_project_report_from_row_rebuilds_coding_language_ratio(tmp_path):
     with Session(engine) as session:
         proj = ProjectReportTable(
             project_name="proj",
-            coding_language_ratio={"Python": 0.6, "Java": 0.4}
+            coding_language_ratio={
+                CodingLanguage.PYTHON: 0.6, CodingLanguage.JAVA: 0.4}
         )
         file_row = FileReportTable(
             filepath="a.py",
