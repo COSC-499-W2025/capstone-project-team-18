@@ -1,16 +1,13 @@
-from src.classes.report import UserReport, ProjectReport, FileReport
+from src.classes.report import UserReport, ProjectReport
 from src.classes.statistic import (
     StatisticIndex, Statistic, StatisticTemplate,
     UserStatCollection, WeightedSkills, ProjectStatCollection,
-    FileStatCollection,
     CodingLanguage
 )
 from datetime import date
 from datetime import datetime
 import unittest
-from unittest.mock import Mock, patch
-import sys
-import os
+from unittest.mock import Mock
 
 # Pytest-style tests for existing functionality
 

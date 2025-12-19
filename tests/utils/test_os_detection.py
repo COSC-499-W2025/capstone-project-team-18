@@ -1,5 +1,3 @@
-from utils.zipped_utils import get_os_name
-
 
 def test_host_os():
     import os as _os

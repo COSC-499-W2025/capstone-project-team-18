@@ -1,11 +1,10 @@
-import sys
 from pathlib import Path
 import zipfile
 import pytest
 from git import Repo
 
 
-from src.utils.project_discovery.project_discovery import discover_projects, ProjectFiles  # type: ignore  # noqa: E402
+from src.utils.project_discovery.project_discovery import discover_projects  # type: ignore  # noqa: E402
 from src.classes.report import ProjectReport  # type: ignore  # noqa: E402
 from src.classes.statistic import ProjectStatCollection  # type: ignore  # noqa: E402
 
@@ -166,7 +165,8 @@ def test_invalid_inputs(tmp_path: Path):
 
 def test_mac_zip_structure(tmp_path: Path):
     """Verifies handling of Mac-created zip files with parent folders and metadata."""
-    mac_zip_path = Path(__file__).parent / "resources" / "mac_projects.zip"
+    mac_zip_path = Path(__file__).parent.parent / \
+        "resources" / "mac_projects.zip"
     extract_dir = tmp_path / "mac_extracted"
     extract_dir.mkdir()
     import zipfile

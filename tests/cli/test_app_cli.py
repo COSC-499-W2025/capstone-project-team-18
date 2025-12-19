@@ -90,6 +90,7 @@ def test_update_history_basic_functionality(cli):
 
 # Cancel Input Handler Tests
 
+
 def test_handle_cancel_input_with_back(cli):
     """Test cancel handler with 'back' command - should return False since it only handles 'cancel'."""
     cli.cmd_history = ["perms"]
@@ -129,6 +130,7 @@ def test_handle_cancel_input_with_empty_history(cli):
         assert result is False
         assert len(cli.cmd_history) == 0
         mock_print.assert_not_called()
+
 
 def test_handle_cancel_input_with_non_cancel_commands(cli):
     """Test that non-cancel inputs return False."""
@@ -502,6 +504,7 @@ def test_resume_bullet_back_or_cancel_returns_to_menu(cli):
             for call in mock_print.call_args_list
         )
 # differeation
+
 
 def test_resume_bullet_empty_project_name(cli):
     """Blank project name should show validation message and not hit DB."""

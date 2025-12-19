@@ -3,10 +3,6 @@ Comprehensive tests for FileReport class in src/classes/report.py
 Tests the automatic file type detection and natural language statistics integration.
 """
 
-from src.classes.analyzer import (
-    BaseFileAnalyzer, TextFileAnalyzer, NaturalLanguageAnalyzer,
-    PythonAnalyzer, JavaAnalyzer, JavaScriptAnalyzer, get_appropriate_analyzer
-)
 from src.classes.statistic import (
     StatisticIndex, Statistic, FileStatCollection, FileDomain
 )
@@ -14,7 +10,6 @@ from src.classes.report import FileReport, BaseReport
 import sys
 import os
 from pathlib import Path
-from datetime import datetime
 import tempfile
 import pytest
 import shutil

@@ -4,20 +4,9 @@ from src.classes.analyzer import (
     PHPAnalyzer,
     get_appropriate_analyzer,
 )
-import sys
-from pathlib import Path
-import pytest
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = REPO_ROOT / "src"
-CLASSES_DIR = SRC_DIR / "classes"
-
-for p in (str(CLASSES_DIR), str(SRC_DIR)):
-    if p not in sys.path:
-        sys.path.insert(0, p)
-
 
 # ---------- CSS ----------
+
 
 def test_css_analyzer_rules_classes_imports(tmp_path):
     css_code = '''
