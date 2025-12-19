@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from src.classes.report.base_report import BaseReport
-from src.classes.report.project_report.project_report import ProjectReport
+from src.classes.report import ProjectReport
 from src.classes.statistic import StatisticIndex, ProjectStatCollection, UserStatCollection, WeightedSkills
 from src.classes.resume.resume import Resume
 
@@ -53,7 +53,7 @@ class UserReport(BaseReport):
 
         super().__init__(StatisticIndex())  # list of user-level statistics
 
-        from src.classes.report.user_report.user_statistics import UserStatisticReportBuilder
+        from src.classes.report.user.user_statistics import UserStatisticReportBuilder
 
         builder = UserStatisticReportBuilder()
         builder.build(self)

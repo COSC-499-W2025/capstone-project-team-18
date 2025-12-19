@@ -11,7 +11,7 @@ from src.classes.statistic import Statistic, UserStatCollection, WeightedSkills,
 
 if TYPE_CHECKING:
     # Import for type checking only to avoid circular imports at runtime
-    from src.classes.report.user_report import UserReport
+    from src.classes.report import UserReport
 
 
 class UserStatisticCalculation(StatisticCalculation):

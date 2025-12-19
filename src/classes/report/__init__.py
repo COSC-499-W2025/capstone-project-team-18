@@ -14,8 +14,8 @@ This makes things a little cleaner.
 
 from .base_report import BaseReport
 from .file_report import FileReport
-from .project_report.project_report import ProjectReport
-from .user_report.user_report import UserReport
+from .project.project_report import ProjectReport
+from .user.user_report import UserReport
 
 __all__ = [
     "BaseReport",

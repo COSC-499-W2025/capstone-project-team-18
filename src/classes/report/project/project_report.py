@@ -67,7 +67,7 @@ class ProjectReport(BaseReport):
 
         # Build statistics using the project statistic builder
         # Use a local import to avoid potential circular imports at module load time
-        from src.classes.report.project_report.project_statistics import ProjectStatisticReportBuilder
+        from src.classes.report.project.project_statistics import ProjectStatisticReportBuilder
 
         builder = ProjectStatisticReportBuilder()
         builder.build(self)

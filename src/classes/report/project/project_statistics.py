@@ -7,7 +7,7 @@ to create and compute various statistics related to projects.
 from typing import List
 import os
 from src.classes.statistic import Statistic, FileStatCollection, ProjectStatCollection, WeightedSkills
-from classes.report.project_report.project_report import ProjectReport
+from src.classes.report import ProjectReport
 from src.classes.report.statistic_builder import StatisticCalculation, StatisticReportBuilder
 from src.classes.skills import SkillMapper
 from datetime import datetime, timedelta, MINYEAR
