@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from src.classes.report.base_report import BaseReport
-from src.classes.report.project_report import ProjectReport
+from src.classes.report.project_report.project_report import ProjectReport
 from src.classes.statistic import Statistic, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
 from src.classes.resume.resume import Resume
 
