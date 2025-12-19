@@ -38,10 +38,16 @@ class StatisticReportBuilder(ABC, Generic[TReport]):
     Which aggregates various statistic calculations into a single list of statistics.
     """
 
-    @abstractmethod
-    def build(self, report: TReport) -> list[Statistic]:
-        """
-        Build and return the list of statistics for `report`.
-        """
-        raise NotImplementedError(
-            "Subclasses must implement the build method.")
+    def __init__(self) -> None:
+        self.calculators = []
+
+    def build(self, report) -> list[Statistic]:
+        stats: list[Statistic] = []
+
+        for calc in self.calculators:
+            new_stats = calc.calculate(report)
+            if new_stats:
+                report.statistics.extend(new_stats)
+                stats.extend(new_stats)
+
+        return stats

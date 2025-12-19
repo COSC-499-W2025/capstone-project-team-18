@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from datetime import datetime
 import pytest
 
-from classes.report import UserReport
+from src.classes.report import UserReport
 
 
 class _PRStub:
@@ -31,7 +31,7 @@ def patch_project_stat_collection(monkeypatch):
         PROJECT_START_DATE=SimpleNamespace(value="start"),
         PROJECT_END_DATE=SimpleNamespace(value="end"),
     )
-    import classes.report.user_report as _r
+    import src.classes.report.user_report.user_report as _r
     monkeypatch.setattr(_r, "ProjectStatCollection", simple)
     yield
 
