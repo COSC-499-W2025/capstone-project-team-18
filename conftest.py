@@ -9,6 +9,8 @@ import pytest
 from git import Repo
 import os
 from src.utils.project_discovery.project_discovery import ProjectFiles
+from src.classes.statistic import Statistic, StatisticIndex
+from src.classes.report import UserReport, ProjectReport
 import tempfile
 import shutil
 
@@ -113,6 +115,28 @@ def cleanup_tmp_files():
         except Exception:
             # Ignore cleanup errors so they do not fail the test session
             pass
+
+
+@pytest.fixture
+def user_report_from_stats():
+    """
+    Return a callable that builds a UserReport from a list of Statistics.
+    """
+    def _create(statistics: list[Statistic], report_name: str = "UserReportTest") -> UserReport:
+        return UserReport([], report_name, statistics=StatisticIndex(statistics))
+
+    return _create
+
+
+@pytest.fixture
+def project_report_from_stats():
+    """
+    Return a callable that builds a Project from a list of Statistics.
+    """
+    def _create(statistics: list[Statistic], project_name: str = "TESTING ONLY SHOULD SEE THIS IN PYTEST") -> ProjectReport:
+        return ProjectReport([], project_name=project_name, statistics=StatisticIndex(statistics))
+
+    return _create
 
 
 @pytest.fixture
