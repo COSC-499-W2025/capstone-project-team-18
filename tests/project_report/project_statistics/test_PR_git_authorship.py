@@ -2,10 +2,9 @@ import shutil
 import tempfile
 from git import Repo
 from pathlib import Path
-import zipfile
 import pytest
 
-from src.classes.report import ProjectReport, FileReport
+from src.classes.report import ProjectReport
 from src.classes.statistic import ProjectStatCollection
 from src.classes.analyzer import extract_file_reports
 from src.utils.project_discovery.project_discovery import ProjectFiles
