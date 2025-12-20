@@ -20,12 +20,16 @@ class UserStatisticCalculation(StatisticCalculation):
 
 
 class UserDates(UserStatisticCalculation):
-    """Calculate earliest user start and latest user end across projects."""
+    """
+    Calculate earliest user start and latest user end across projects.
+    """
 
     def calculate(self, report: "UserReport") -> List[Statistic]:
+        # Loop through and find the earliest start date and latest end date of all projects
         latest_date = datetime.now() + timedelta(days=1)
         earliest_date = datetime(MINYEAR, 1, 1, 0, 0, 0, 0)
 
+        # For checking that the time range is valid
         start_date = latest_date
         end_date = earliest_date
 
@@ -44,6 +48,7 @@ class UserDates(UserStatisticCalculation):
 
         to_return: List[Statistic] = []
 
+        # Make sure that the values were actually updated
         if start_date != latest_date:
             to_return.append(
                 Statistic(UserStatCollection.USER_START_DATE.value, start_date))
@@ -56,12 +61,22 @@ class UserDates(UserStatisticCalculation):
 
 
 class UserCodingLanguageRatio(UserStatisticCalculation):
-    """Aggregate project-level coding language ratios up to the user level."""
+    """
+    Calculates the ratio of all coding languages
+    present in the `ProjectReports` used to
+    create the `UserReport` for the
+    `USER_CODING_LANGUAGE_RATIO` statistic.
+
+    Simply aggregates the already-calculated project-level ratios.
+    No need to re-filter files since that's already done at project level.
+    """
 
     def calculate(self, report: "UserReport") -> List[Statistic]:
         lang_to_bytes = {}
 
         for proj_report in report.project_reports:
+
+            # Get the already-calculated coding language ratio from the project
             proj_lang_ratio = proj_report.get_value(
                 ProjectStatCollection.CODING_LANGUAGE_RATIO.value
             )
@@ -69,6 +84,8 @@ class UserCodingLanguageRatio(UserStatisticCalculation):
             if proj_lang_ratio is None:
                 continue
 
+            # Get the total byte count for this project to denormalize the ratios
+            # We need actual byte counts to properly aggregate across projects
             proj_total_bytes = 0
 
             # Skip if project was created via from_statistics (no file_reports)
@@ -83,11 +100,15 @@ class UserCodingLanguageRatio(UserStatisticCalculation):
                         file_size = 1
                     proj_total_bytes += file_size
 
+            # Convert ratios back to byte counts and aggregate
             for curr_lang, ratio in proj_lang_ratio.items():
                 if curr_lang is None:
                     continue
 
+                # Convert ratio back to bytes for this project
                 lang_bytes = ratio * proj_total_bytes
+
+                # Aggregate to user level
                 if curr_lang in lang_to_bytes:
                     lang_to_bytes[curr_lang] += lang_bytes
                 else:
@@ -101,13 +122,20 @@ class UserCodingLanguageRatio(UserStatisticCalculation):
 
         if total_bytes > 0:
             for lang, byte_count in lang_to_bytes.items():
+                # Round to 4 decimal places (0.01% precision)
                 lang_ratio[lang] = round(byte_count / total_bytes, 4)
 
         return [Statistic(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value, lang_ratio)]
 
 
 class UserWeightedSkills(UserStatisticCalculation):
-    """Aggregate project-level weighted skills into a user-level `USER_SKILLS` statistic."""
+    """
+    Calculates the user level stat of USER_SKILLS.
+
+    We do this by lopping through a project level skills.
+    The weight of a user skill, is the project level weight
+    multiplied by the projects weight score.
+    """
 
     def calculate(self, report: "UserReport") -> List[Statistic]:
         users_skills = {}
@@ -121,7 +149,10 @@ class UserWeightedSkills(UserStatisticCalculation):
                 continue
 
             for weighted_skill in project_weighted_skills:
+                # If already a user skill, get weight
                 prev_weight = users_skills.get(weighted_skill.skill_name, 0)
+
+                # Add the weight and skill name to user_skills
                 users_skills[weighted_skill.skill_name] = prev_weight + \
                     weighted_skill.weight * project.get_project_weight()
 
