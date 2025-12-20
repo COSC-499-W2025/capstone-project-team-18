@@ -200,12 +200,6 @@ class UserReport(BaseReport):
         except Exception:
             return []
 
-    @classmethod
-    def from_statistics(cls, statistics: StatisticIndex) -> "UserReport":
-        inst = cls.__new__(cls)
-        BaseReport.__init__(inst, statistics)
-        return inst
-
     @staticmethod
     def _fmt_mdy(d: datetime | date | None) -> str:
         if d is None:

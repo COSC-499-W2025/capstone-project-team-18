@@ -8,11 +8,9 @@ from src.classes.statistic import (
     WeightedSkills,
     CodingLanguage,
     Statistic,
-    StatisticIndex,
     ProjectStatCollection,
     FileDomain
 )
-from src.classes.report import ProjectReport
 
 
 def test_activity_type_contribution_bp_expected():
@@ -111,7 +109,7 @@ def test_weight_skills_bp_top_three():
     assert "CI/CD" not in bp
 
 
-def test_bullet_point_builder_aggregates_stats():
+def test_bullet_point_builder_aggregates_stats(project_report_from_stats):
     stats = [
         Statistic(
             ProjectStatCollection.CODING_LANGUAGE_RATIO.value,
@@ -129,8 +127,7 @@ def test_bullet_point_builder_aggregates_stats():
         Statistic(ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value, 40.0),
     ]
 
-    si = StatisticIndex(stats)
-    report = ProjectReport.from_statistics(si)
+    report = project_report_from_stats(stats)
 
     bp = BulletPointBuilder()
     bullets = bp.build(report)
@@ -145,12 +142,11 @@ def test_bullet_point_builder_aggregates_stats():
                or "accounted for 40%" in b.lower() for b in bullets)
 
 
-def test_bullet_point_builder_individual():
+def test_bullet_point_builder_individual(project_report_from_stats):
     stats = [
         Statistic(ProjectStatCollection.IS_GROUP_PROJECT.value, False),
     ]
-    si = StatisticIndex(stats)
-    report = ProjectReport.from_statistics(si)
+    report = project_report_from_stats(stats)
     bp = BulletPointBuilder()
     bullets = bp.build(report)
     assert any("individ" in b.lower() for b in bullets)

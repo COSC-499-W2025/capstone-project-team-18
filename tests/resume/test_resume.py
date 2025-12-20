@@ -3,8 +3,7 @@ Tests the Resume class and its methods.
 """
 
 from src.classes.resume.resume import Resume, ResumeItem
-from src.classes.report import ProjectReport, UserReport
-from src.classes.statistic import StatisticIndex, Statistic, ProjectStatCollection
+from src.classes.statistic import Statistic, ProjectStatCollection
 from datetime import date
 
 
@@ -42,28 +41,28 @@ def test_generate_resume():
     assert generated == expected_output
 
 
-def test_projectreport_can_create_resume():
+def test_projectreport_can_create_resume(project_report_from_stats):
 
-    statistics = StatisticIndex()
-    report = ProjectReport.from_statistics(statistics)
+    statistics = []
+    report = project_report_from_stats(statistics)
     resume_item = report.generate_resume_item()
     assert isinstance(resume_item, ResumeItem)
 
     assert resume_item.title == "TESTING ONLY SHOULD SEE THIS IN PYTEST"
 
 
-def test_userreport_can_create_resume():
+def test_userreport_can_create_resume(project_report_from_stats):
     from src.classes.report import UserReport
     from src.classes.statistic import StatisticIndex
 
-    project_statistics = StatisticIndex([
+    project_statistics = [
         Statistic(ProjectStatCollection.PROJECT_START_DATE.value,
                   date(2020, 1, 1)),
         Statistic(ProjectStatCollection.PROJECT_END_DATE.value, date(2021, 1, 1))
-    ])
+    ]
 
     user_report = UserReport(
-        [ProjectReport.from_statistics(project_statistics)],
+        [project_report_from_stats(project_statistics)],
         "UserReport1"
     )
 
