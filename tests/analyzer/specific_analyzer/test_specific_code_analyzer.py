@@ -2,7 +2,7 @@
 
 from src.classes.statistic import FileStatCollection
 from src.classes.analyzer import PythonAnalyzer, get_appropriate_analyzer
-from conftest import _create_temp_file
+from tests.conftest import _create_temp_file
 
 
 def test_process_not_empty_not_called_for_empty_file(tmp_path, monkeypatch):

@@ -81,7 +81,7 @@ def commit_as(repo: Repo, author_name: str, author_email: str,
 
 # --- Fixtures --
 # These are global objects that we can use in our test
-RESOURCE_DIR = Path(__file__).parent / "tests/resources"
+RESOURCE_DIR = Path(__file__).parent.parent / "tests/resources"
 
 
 @pytest.fixture(scope="session", autouse=True)

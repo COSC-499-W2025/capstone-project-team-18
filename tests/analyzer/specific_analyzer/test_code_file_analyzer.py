@@ -3,7 +3,7 @@ Tests for CodeFileAnalyzer (coding language detection and file domain).
 """
 from src.classes.analyzer import CodeFileAnalyzer
 from src.classes.statistic import FileStatCollection, CodingLanguage, FileDomain
-from conftest import _create_temp_file
+from tests.conftest import _create_temp_file
 
 
 def test_determines_correct_coding_language(tmp_path):

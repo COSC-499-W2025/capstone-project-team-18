@@ -4,7 +4,7 @@ Tests for NaturalLanguageAnalyzer.
 
 from src.classes.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
 from src.classes.statistic import FileStatCollection, FileDomain
-from conftest import _create_temp_file
+from tests.conftest import _create_temp_file
 
 
 def test_NaturalLanguageAnalyzer_core_stats(tmp_path):

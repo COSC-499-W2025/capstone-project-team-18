@@ -5,7 +5,7 @@ Tests for TextFileAnalyzer.
 from pathlib import Path
 from src.classes.analyzer import TextFileAnalyzer
 from src.classes.statistic import FileStatCollection
-from conftest import _create_temp_file
+from tests.conftest import _create_temp_file
 
 
 def test_text_file_reading_many_encodings(tmp_path: Path):

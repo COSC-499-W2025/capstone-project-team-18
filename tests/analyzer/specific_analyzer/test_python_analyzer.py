@@ -4,7 +4,7 @@ Tests for PythonAnalyzer.
 import shutil
 from src.classes.analyzer import PythonAnalyzer
 from src.classes.statistic import FileStatCollection, FileDomain
-from conftest import _create_temp_file
+from tests.conftest import _create_temp_file
 
 
 def test_PythonAnalyzer_core_stats(tmp_path):

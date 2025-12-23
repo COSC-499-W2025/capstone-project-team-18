@@ -9,7 +9,7 @@ from src.classes.statistic import (
 from src.classes.report import FileReport
 from src.classes.analyzer import get_appropriate_analyzer
 import pytest
-from conftest import _create_temp_file
+from tests.conftest import _create_temp_file
 
 
 @pytest.mark.parametrize("filepath,expected_filename", [

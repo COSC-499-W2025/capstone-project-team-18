@@ -3,7 +3,7 @@ Tests for JavaScriptAnalyzer.
 """
 from src.classes.analyzer import JavaScriptAnalyzer, get_appropriate_analyzer
 from src.classes.statistic import FileStatCollection, FileDomain
-from conftest import RESOURCE_DIR, _create_temp_file
+from tests.conftest import RESOURCE_DIR, _create_temp_file
 
 
 def test_JavaScriptAnalyzer(tmp_path):

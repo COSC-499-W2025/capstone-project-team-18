@@ -3,7 +3,7 @@ Tests for JavaAnalyzer.
 """
 from src.classes.analyzer import JavaAnalyzer
 from src.classes.statistic import FileStatCollection
-from conftest import RESOURCE_DIR
+from tests.conftest import RESOURCE_DIR
 
 
 def test_JavaAnalyzer(tmp_path):
