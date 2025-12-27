@@ -13,6 +13,8 @@ from src.classes.statistic import Statistic, StatisticIndex
 from src.classes.report import UserReport, ProjectReport
 import tempfile
 import shutil
+from sqlalchemy import create_engine
+from src.database.db import Base
 
 
 @pytest.fixture
@@ -69,6 +71,19 @@ def resource_dir():
     some static files that help with testing
     """
     return Path(__file__).parent.parent / "tests/resources"
+
+
+@pytest.fixture
+def blank_db():
+    """
+    This fixtures returns a in memory database which will be discarded
+    when the test is done.
+    """
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    yield engine
 
 
 def commit_as(repo: Repo, author_name: str, author_email: str,
