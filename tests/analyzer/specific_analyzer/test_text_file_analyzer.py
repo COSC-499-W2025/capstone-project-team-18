@@ -5,10 +5,9 @@ Tests for TextFileAnalyzer.
 from pathlib import Path
 from src.classes.analyzer import TextFileAnalyzer
 from src.classes.statistic import FileStatCollection
-from tests.conftest import _create_temp_file
 
 
-def test_text_file_reading_many_encodings(tmp_path: Path):
+def test_text_file_reading_many_encodings(tmp_path: Path, create_temp_file):
     encoding_types = ["utf-8", "latin-1", "iso-8859-1", "utf-16", "ascii"]
 
     content = (
@@ -17,7 +16,7 @@ def test_text_file_reading_many_encodings(tmp_path: Path):
     )
 
     for encoding in encoding_types:
-        file_path = _create_temp_file(
+        file_path = create_temp_file(
             f"test_text_file_reading_many_encodings_{encoding}.txt",
             content,
             tmp_path,
@@ -32,7 +31,7 @@ def test_text_file_reading_many_encodings(tmp_path: Path):
         )
 
 
-def test_count_lines(tmp_path: Path):
+def test_count_lines(tmp_path: Path, create_temp_file):
     content = (
         "Here is my file\n"
         "it has\n"
@@ -40,23 +39,23 @@ def test_count_lines(tmp_path: Path):
         "5 lines!\n"
     )
 
-    file_path = _create_temp_file("test_count_lines.txt", content, tmp_path)
+    file_path = create_temp_file("test_count_lines.txt", content, tmp_path)
     report = TextFileAnalyzer(file_path[0], file_path[1]).analyze()
 
     line_count = report.get_value(FileStatCollection.LINES_IN_FILE.value)
     assert line_count == 5
 
 
-def test_count_no_lines(tmp_path: Path):
-    file_path = _create_temp_file("test_count_no_lines.txt", "", tmp_path)
+def test_count_no_lines(tmp_path: Path, create_temp_file):
+    file_path = create_temp_file("test_count_no_lines.txt", "", tmp_path)
     report = TextFileAnalyzer(file_path[0], file_path[1]).analyze()
 
     line_count = report.get_value(FileStatCollection.LINES_IN_FILE.value)
     assert line_count == 1
 
 
-def test_many_lines(tmp_path: Path):
-    file_path = _create_temp_file(
+def test_many_lines(tmp_path: Path, create_temp_file):
+    file_path = create_temp_file(
         "test_count_no_lines.txt", "\n" * 999, tmp_path)
     report = TextFileAnalyzer(file_path[0], file_path[1]).analyze()
 

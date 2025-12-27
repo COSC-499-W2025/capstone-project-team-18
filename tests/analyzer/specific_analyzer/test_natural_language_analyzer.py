@@ -4,10 +4,9 @@ Tests for NaturalLanguageAnalyzer.
 
 from src.classes.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
 from src.classes.statistic import FileStatCollection, FileDomain
-from tests.conftest import _create_temp_file
 
 
-def test_NaturalLanguageAnalyzer_core_stats(tmp_path):
+def test_NaturalLanguageAnalyzer_core_stats(tmp_path, create_temp_file):
     content = (
         "# Welcome"
         "\n"
@@ -28,7 +27,7 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path):
         "   - 1 Fish 2 Fish\n"
     )
 
-    file_path = _create_temp_file(
+    file_path = create_temp_file(
         "test_NaturalLanguageAnalyzer_core_stats.md", content, tmp_path)
 
     report = NaturalLanguageAnalyzer(file_path[0], file_path[1]).analyze()
@@ -52,7 +51,7 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path):
     assert REAL_TYPE_OF_FILE == measured_type_of_file
 
 
-def test_create_with_analysis_natural_language_md(tmp_path):
+def test_create_with_analysis_natural_language_md(tmp_path, create_temp_file):
     """Test natural language analysis for Markdown files."""
     content = (
         "# Test Document\n\n"
@@ -63,7 +62,7 @@ def test_create_with_analysis_natural_language_md(tmp_path):
         "Another paragraph for testing purposes."
     )
 
-    file_path = _create_temp_file("test.md", content, tmp_path)
+    file_path = create_temp_file("test.md", content, tmp_path)
 
     analyzer = get_appropriate_analyzer(file_path[0], file_path[1])
     file_report = analyzer.analyze()
@@ -87,11 +86,11 @@ def test_create_with_analysis_natural_language_md(tmp_path):
         FileStatCollection.DATE_CREATED.value) is not None
 
 
-def test_natural_language_file_with_only_words(tmp_path):
+def test_natural_language_file_with_only_words(tmp_path, create_temp_file):
     """Test natural language analysis with words but no sentence punctuation."""
     content = "just some words without any punctuation marks"
 
-    file_path = _create_temp_file("words_only.md", content, tmp_path)
+    file_path = create_temp_file("words_only.md", content, tmp_path)
     analyzer = get_appropriate_analyzer(file_path[0], file_path[1])
     file_report = analyzer.analyze()
 
@@ -104,7 +103,7 @@ def test_natural_language_file_with_only_words(tmp_path):
     assert sentence_count == 0  # No punctuation
 
 
-def test_natural_language_statistics_comprehensive(tmp_path):
+def test_natural_language_statistics_comprehensive(tmp_path, create_temp_file):
     """Test comprehensive natural language statistics measurement."""
     content = (
         "This is a comprehensive test document. "
@@ -115,7 +114,7 @@ def test_natural_language_statistics_comprehensive(tmp_path):
         "The automated readability index should be calculated properly."
     )
 
-    file_path = _create_temp_file("comprehensive.md", content, tmp_path)
+    file_path = create_temp_file("comprehensive.md", content, tmp_path)
     analyzer = get_appropriate_analyzer(str(tmp_path), "comprehensive.md")
     file_report = analyzer.analyze()
 

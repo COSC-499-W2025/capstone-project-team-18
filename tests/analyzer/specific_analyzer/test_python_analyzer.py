@@ -4,7 +4,6 @@ Tests for PythonAnalyzer.
 import shutil
 from src.classes.analyzer import PythonAnalyzer
 from src.classes.statistic import FileStatCollection, FileDomain
-from tests.conftest import _create_temp_file
 
 
 def test_PythonAnalyzer_core_stats(tmp_path):
@@ -38,7 +37,7 @@ def test_PythonAnalyzer_core_stats(tmp_path):
     assert set(REAL_IMPORTS) == set(measured_imports)
 
 
-def test_PythonAnalyzer_no_functions_or_classes(tmp_path):
+def test_PythonAnalyzer_no_functions_or_classes(tmp_path, create_temp_file):
     content = (
         "# This is a simple python file\n"
         "import os\n"
@@ -47,7 +46,7 @@ def test_PythonAnalyzer_no_functions_or_classes(tmp_path):
         "print('Hello, World!')\n"
     )
 
-    file_path = _create_temp_file(
+    file_path = create_temp_file(
         "test_PythonAnalyzer_no_functions_or_classes.py", content, tmp_path)
 
     report = PythonAnalyzer(file_path[0], file_path[1]).analyze()
@@ -64,7 +63,7 @@ def test_PythonAnalyzer_no_functions_or_classes(tmp_path):
     assert set(imported_packages) == set(["os", "sys"])
 
 
-def test_create_with_analysis_python_file(tmp_path):
+def test_create_with_analysis_python_file(tmp_path, create_temp_file):
     """Test analysis for Python files."""
     content = (
         "import os\n"
@@ -81,7 +80,7 @@ def test_create_with_analysis_python_file(tmp_path):
         "    return x + y\n"
     )
 
-    file_path = _create_temp_file("example.py", content, tmp_path)
+    file_path = create_temp_file("example.py", content, tmp_path)
     file_report = PythonAnalyzer(file_path[0], file_path[1]).analyze()
 
     # Test Python-specific statistics

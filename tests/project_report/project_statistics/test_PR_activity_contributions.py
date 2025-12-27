@@ -3,10 +3,9 @@ from src.classes.report import ProjectReport
 from src.utils.project_discovery.project_discovery import ProjectFiles
 from src.classes.analyzer import extract_file_reports
 from src.classes.statistic import ProjectStatCollection, FileDomain
-from tests.conftest import _make_project_file
 
 
-def test_activity_contribution_from_non_tracked_project(tmp_path):
+def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_file):
     """
     Tests that in a normal project,
     we see normal activity contributions.
@@ -26,7 +25,7 @@ def test_activity_contribution_from_non_tracked_project(tmp_path):
         repo=None
     )
 
-    _make_project_file(pf)
+    make_project_file(pf)
 
     frs = extract_file_reports(pf)
 

@@ -3,12 +3,11 @@ Tests for JavaScriptAnalyzer.
 """
 from src.classes.analyzer import JavaScriptAnalyzer, get_appropriate_analyzer
 from src.classes.statistic import FileStatCollection, FileDomain
-from tests.conftest import RESOURCE_DIR, _create_temp_file
 
 
-def test_JavaScriptAnalyzer(tmp_path):
+def test_JavaScriptAnalyzer(tmp_path, resource_dir):
     report = JavaScriptAnalyzer(
-        str(RESOURCE_DIR), "example_javascript.js").analyze()
+        str(resource_dir), "example_javascript.js").analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)
@@ -24,7 +23,7 @@ def test_JavaScriptAnalyzer(tmp_path):
     assert "lodash" in imported_packages
 
 
-def test_create_with_analysis_javascript_file(tmp_path):
+def test_create_with_analysis_javascript_file(tmp_path, create_temp_file):
     """Test analysis for JavaScript files."""
     content = (
         "import React from 'react';\n"
@@ -41,7 +40,7 @@ def test_create_with_analysis_javascript_file(tmp_path):
         "};\n"
     )
 
-    file_path = _create_temp_file("example.js", content, tmp_path)
+    file_path = create_temp_file("example.js", content, tmp_path)
     analyzer = get_appropriate_analyzer(file_path[0], file_path[1])
     file_report = analyzer.analyze()
 

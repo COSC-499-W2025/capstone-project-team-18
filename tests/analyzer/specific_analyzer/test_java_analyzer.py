@@ -3,11 +3,10 @@ Tests for JavaAnalyzer.
 """
 from src.classes.analyzer import JavaAnalyzer
 from src.classes.statistic import FileStatCollection
-from tests.conftest import RESOURCE_DIR
 
 
-def test_JavaAnalyzer(tmp_path):
-    report = JavaAnalyzer(str(RESOURCE_DIR), "example_java.java").analyze()
+def test_JavaAnalyzer(tmp_path, resource_dir):
+    report = JavaAnalyzer(str(resource_dir), "example_java.java").analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)

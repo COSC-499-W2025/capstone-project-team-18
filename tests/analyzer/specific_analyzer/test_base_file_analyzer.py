@@ -9,7 +9,6 @@ from src.classes.analyzer import BaseFileAnalyzer, extract_file_reports, get_app
 from src.classes.statistic import FileStatCollection
 from src.utils.project_discovery.project_discovery import ProjectFiles
 from src.utils.zipped_utils import unzip_file
-from tests.conftest import _create_temp_file
 
 
 def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_text_file: list[str]):
@@ -43,11 +42,11 @@ def test_extract_file_reports_recieves_empty_project(tmp_path):
     assert listReport == []
 
 
-def test_extract_file_reports_returns_project(tmp_path):
+def test_extract_file_reports_returns_project(tmp_path, create_temp_file):
     files = ["t1est1.txt", "test2.txt", "test3.txt", "test4.txt", "test5.txt"]
 
     for filename in files:
-        _create_temp_file(filename, "Sample content", tmp_path)
+        create_temp_file(filename, "Sample content", tmp_path)
 
     project_file = ProjectFiles(
         name="TestProject",
@@ -75,12 +74,12 @@ def test_created_modifiyed_and_accessed_dates(tmp_path):
     assert date_created <= date_modified
 
 
-def test_extract_file_reports_recieves_project_with_subfolder(tmp_path):
-    _create_temp_file("a_1.txt", "File One", tmp_path)
-    _create_temp_file("a_2.txt", "File Two", tmp_path)
+def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, create_temp_file):
+    create_temp_file("a_1.txt", "File One", tmp_path)
+    create_temp_file("a_2.txt", "File Two", tmp_path)
     subfolder = tmp_path / "subfolder"
     subfolder.mkdir()
-    _create_temp_file("a_3.txt", "File Three", subfolder)
+    create_temp_file("a_3.txt", "File Three", subfolder)
 
     project_file = ProjectFiles(
         name="ProjectA",
@@ -96,11 +95,11 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path):
                                         for report in listReport)
 
 
-def test_create_with_analysis_unknown_file_type(tmp_path):
+def test_create_with_analysis_unknown_file_type(tmp_path, create_temp_file):
     """Test analysis for unknown file types falls back to base analyzer."""
     content = "Some content"
 
-    file_path = _create_temp_file("test.unknown", content, tmp_path)
+    file_path = create_temp_file("test.unknown", content, tmp_path)
     analyzer = get_appropriate_analyzer(str(tmp_path), "test.unknown")
     file_report = analyzer.analyze()
 
@@ -116,9 +115,9 @@ def test_create_with_analysis_unknown_file_type(tmp_path):
         FileStatCollection.NUMBER_OF_FUNCTIONS.value) is None
 
 
-def test_create_with_analysis_empty_file(tmp_path):
+def test_create_with_analysis_empty_file(tmp_path, create_temp_file):
     """Test analysis of empty files."""
-    file_path = _create_temp_file("empty.py", "", tmp_path)
+    file_path = create_temp_file("empty.py", "", tmp_path)
     analyzer = get_appropriate_analyzer(str(tmp_path), "empty.py")
     file_report = analyzer.analyze()
 
