@@ -51,7 +51,7 @@ def create_row(report: FileReport | ProjectReport | UserReport):
     return row
 
 
-def delete_user_report_and_related_data(report_id=None, title=None, zipped_filepath=None):
+def delete_user_report_and_related_data(report_id=None, title=None, zipped_filepath=None, engine=None):
     """
     Delete a user report and all related project and file reports by id, title, or zipped_filepath.
     Args:
@@ -59,7 +59,9 @@ def delete_user_report_and_related_data(report_id=None, title=None, zipped_filep
         title (str): Title of the user report to delete.
         zipped_filepath (str): Filepath to the zipped file to delete.
     """
-    engine = get_engine()
+    if engine is None:
+        engine = get_engine()
+
     try:
         with Session(engine) as session:
             query = session.query(UserReportTable)
