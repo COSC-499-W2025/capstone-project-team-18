@@ -1,6 +1,6 @@
 """
 This file contains the logic for generating project statistics.
-it utilizes the StatisticBuilder and StatisticCalculator classes
+it utilizes the StatisticBuilder and StatisticCalculation classes
 to create and compute various statistics related to projects.
 """
 

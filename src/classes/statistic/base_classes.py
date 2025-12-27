@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, get_origin
 from abc import ABC
 
 
@@ -29,12 +29,18 @@ class Statistic():
         self.statistic_template = stat_template
         expected_type = stat_template.expected_type
 
-        # Type validation: Note: this only will catch simple types: str, int, float
-        # It will not catch more complex things like list, dict etc
-        if isinstance(expected_type, type):
-            if not isinstance(value, expected_type):
+        # Type validation: Note: this only will catch surface level types: str, int, float, list, dict
+        # it will not go deeper then the top level type. For example, this will not catch the difference
+        # between a list[str] vs. list[int]
+
+        # Converts generics (e.g list[str]) to their top level type (list)
+        origin = get_origin(expected_type)
+        top_level_type = origin or expected_type
+
+        if isinstance(top_level_type, type):
+            if not isinstance(value, top_level_type):
                 raise TypeError(
-                    f"{self.statistic_template.name} must be {expected_type.__name__}, got {type(value).__name__}"
+                    f"{self.statistic_template.name} must be {top_level_type.__name__}, got {type(value).__name__}"
                 )
 
         self.value = value
