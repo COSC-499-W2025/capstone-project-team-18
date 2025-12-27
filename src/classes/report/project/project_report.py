@@ -95,10 +95,10 @@ class ProjectReport(BaseReport):
             ProjectStatCollection.PROJECT_START_DATE.value)
         end_date = self.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
         norm_date = 0.0
-        if start_date and end_date:
-            if isinstance(start_date, (datetime, date)) and isinstance(end_date, (datetime, date)):
-                days = (end_date - start_date).days
-                norm_date = min(days / 365, 1.0) if days > 0 else 0.0
+
+        if isinstance(start_date, (datetime, date)) and isinstance(end_date, (datetime, date)):
+            days = (end_date - start_date).days
+            norm_date = min(days / 365, 1.0) if days > 0 else 0.0
 
         # Individual contribution normalization
         contrib = self.get_value(
