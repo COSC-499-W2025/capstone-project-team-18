@@ -5,9 +5,29 @@ More detailed tests will be in their respective modules.
 
 import pytest
 from src.app import start_miner
+import pytest
+from sqlalchemy import create_engine
+
+from src.app import start_miner
+from src.database.db import Base
 
 
-def test_app_runs():
+@pytest.fixture(autouse=True, scope="function")
+def mock_engine(monkeypatch):
+    engine = create_engine("sqlite:///:memory:")
+
+    # Create schema
+    Base.metadata.create_all(engine)
+
+    def fake_get_engine():
+        return engine
+
+    monkeypatch.setattr("src.app.get_engine", fake_get_engine)
+
+    return engine
+
+
+def test_app_runs(mock_engine):
     """
     Test that the main app function runs without errors.
     """
