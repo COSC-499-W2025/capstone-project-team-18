@@ -1,23 +1,27 @@
+"""
+Tests the delete_user_report_and_related_data() function
+"""
+
 import pytest
 from sqlalchemy.orm import Session
 from src.database.db import UserReportTable, ProjectReportTable, FileReportTable
 from src.database.utils.database_modify import delete_user_report_and_related_data
 
 
-def test_delete_user_report_no_related_reports(temp_db):
-    with Session(temp_db) as session:
+def test_delete_user_report_no_related_reports(blank_db):
+    with Session(blank_db) as session:
         user_report = UserReportTable(title="Solo")
         session.add(user_report)
         session.commit()
         solo_id = user_report.id
     assert delete_user_report_and_related_data(
-        report_id=solo_id, engine=temp_db)
-    with Session(temp_db) as session:
+        report_id=solo_id, engine=blank_db)
+    with Session(blank_db) as session:
         assert session.get(UserReportTable, solo_id) is None
 
 
-def test_delete_user_report_multiple_users(temp_db):
-    with Session(temp_db) as session:
+def test_delete_user_report_multiple_users(blank_db):
+    with Session(blank_db) as session:
         pr = ProjectReportTable(project_name="MultiShared")
         u1 = UserReportTable(title="U1")
         u2 = UserReportTable(title="U2")
@@ -29,14 +33,15 @@ def test_delete_user_report_multiple_users(temp_db):
         session.commit()
         pr_id = pr.id
         u2_id = u2.id
-    assert delete_user_report_and_related_data(report_id=u2_id, engine=temp_db)
-    with Session(temp_db) as session:
+    assert delete_user_report_and_related_data(
+        report_id=u2_id, engine=blank_db)
+    with Session(blank_db) as session:
         assert session.get(ProjectReportTable, pr_id) is not None
         assert session.get(UserReportTable, u2_id) is None
 
 
-def test_delete_user_report_similar_values(temp_db):
-    with Session(temp_db) as session:
+def test_delete_user_report_similar_values(blank_db):
+    with Session(blank_db) as session:
         u1 = UserReportTable(title="SameTitle")
         u2 = UserReportTable(title="SameTitle")
         session.add_all([u1, u2])
@@ -45,8 +50,8 @@ def test_delete_user_report_similar_values(temp_db):
         u2_id = u2.id
     # Only the first match should be deleted by title
     assert delete_user_report_and_related_data(
-        title="SameTitle", engine=temp_db)
-    with Session(temp_db) as session:
+        title="SameTitle", engine=blank_db)
+    with Session(blank_db) as session:
         # One should remain
         remaining = session.query(UserReportTable).filter_by(
             title="SameTitle").all()
@@ -54,19 +59,20 @@ def test_delete_user_report_similar_values(temp_db):
         assert remaining[0].id == u2_id or remaining[0].id == u1_id
 
 
-def test_delete_user_report_empty_fields(temp_db):
-    with Session(temp_db) as session:
+def test_delete_user_report_empty_fields(blank_db):
+    with Session(blank_db) as session:
         u1 = UserReportTable(title=None)
         session.add(u1)
         session.commit()
         u1_id = u1.id
-    assert delete_user_report_and_related_data(report_id=u1_id, engine=temp_db)
-    with Session(temp_db) as session:
+    assert delete_user_report_and_related_data(
+        report_id=u1_id, engine=blank_db)
+    with Session(blank_db) as session:
         assert session.get(UserReportTable, u1_id) is None
 
 
-def test_shared_project_report_not_deleted(temp_db):
-    with Session(temp_db) as session:
+def test_shared_project_report_not_deleted(blank_db):
+    with Session(blank_db) as session:
         # Create two user reports sharing the same project report
         shared_project = ProjectReportTable(project_name="Shared Project")
         user1 = UserReportTable(title="User1")
@@ -79,15 +85,15 @@ def test_shared_project_report_not_deleted(temp_db):
         user1_id = user1.id
     # Delete user1
     assert delete_user_report_and_related_data(
-        report_id=user1_id, engine=temp_db)
+        report_id=user1_id, engine=blank_db)
     # Check shared project still exists
-    with Session(temp_db) as session:
+    with Session(blank_db) as session:
         assert session.get(ProjectReportTable, shared_id) is not None
         assert session.get(UserReportTable, user1_id) is None
 
 
-def test_delete_by_id(temp_db):
-    with Session(temp_db) as session:
+def test_delete_by_id(blank_db):
+    with Session(blank_db) as session:
         user_report = UserReportTable()
         user_report.title = "Test Report"
         project_report = ProjectReportTable(project_name="Test Project")
@@ -99,10 +105,10 @@ def test_delete_by_id(temp_db):
         user_report_id = user_report.id
         # Delete by id
         assert delete_user_report_and_related_data(
-            report_id=user_report_id, engine=temp_db)
+            report_id=user_report_id, engine=blank_db)
         session.commit()
 
-    with Session(temp_db) as session:
+    with Session(blank_db) as session:
         assert session.get(UserReportTable, user_report_id) is None
         assert session.query(ProjectReportTable).filter_by(
             project_name="Test Project").first() is None

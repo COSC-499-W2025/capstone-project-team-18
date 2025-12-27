@@ -1,8 +1,8 @@
-# python
 """
 Tests for ColumnStatisticSerializer to ensure non-primitive types (enums, dataclasses,
 nested structures, dict keys/values) serialize and deserialize correctly.
 """
+
 from typing import Dict, Any
 import pytest
 
