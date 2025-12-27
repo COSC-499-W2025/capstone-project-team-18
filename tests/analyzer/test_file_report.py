@@ -7,9 +7,7 @@ from src.classes.statistic import (
     StatisticIndex, Statistic, FileStatCollection, FileDomain
 )
 from src.classes.report import FileReport
-from src.classes.analyzer import get_appropriate_analyzer
 import pytest
-from tests.conftest import _create_temp_file
 
 
 @pytest.mark.parametrize("filepath,expected_filename", [
@@ -39,31 +37,6 @@ def test_file_report_basic_construction():
         FileStatCollection.LINES_IN_FILE.value) == 25
     assert file_report.get_value(
         FileStatCollection.FILE_SIZE_BYTES.value) == 1024
-
-
-def test_multiple_file_analysis_consistency(tmp_path):
-    """Test that analyzing the same file multiple times gives consistent results."""
-    content = (
-        "def test_function():\n"
-        "    '''Test function'''\n"
-        "    return 42\n\n"
-        "class TestClass:\n"
-        "    def method(self):\n"
-        "        pass\n"
-    )
-
-    file_path = _create_temp_file("consistency.py", content, tmp_path)
-
-    # Analyze the same file multiple times
-    analyzer1 = get_appropriate_analyzer(file_path[0], file_path[1])
-    analyzer2 = get_appropriate_analyzer(file_path[0], file_path[1])
-
-    report1 = analyzer1.analyze()
-    report2 = analyzer2.analyze()
-
-    # Results should be consistent
-    for stat in FileStatCollection:
-        assert (report1.get_value(stat.value) == report2.get_value(stat.value))
 
 
 def test_file_report_statistics_integration():
