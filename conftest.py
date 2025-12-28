@@ -70,7 +70,7 @@ def resource_dir():
     This fixture points the the resources folder where we have
     some static files that help with testing
     """
-    return Path(__file__).parent.parent / "tests/resources"
+    return Path(__file__).parent / "tests/resources"
 
 
 @pytest.fixture
