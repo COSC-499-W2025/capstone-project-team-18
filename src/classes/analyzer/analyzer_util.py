@@ -5,7 +5,6 @@ with the analyzer class structure.
 
 from git import Repo
 from pathlib import Path
-import logging
 from typing import Optional
 
 from src.classes.report.file_report import FileReport
@@ -23,14 +22,13 @@ from src.classes.analyzer.php_analyzer import PHPAnalyzer
 from src.classes.analyzer.python_analyzer import PythonAnalyzer
 from src.classes.analyzer.text_file_analyzer import TextFileAnalyzer
 from src.classes.analyzer.type_script_analyzer import TypeScriptAnalyzer
+from src.utils.log.logging import get_logger
 
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def extract_file_reports(
-    project_file: Optional[ProjectFiles],
+    project_file: ProjectFiles,
     email: Optional[str] = None,
     language_filter: Optional[list[str]] = None
 ) -> list[FileReport]:
@@ -39,7 +37,8 @@ def extract_file_reports(
     """
 
     if project_file is None:
-        return []
+        raise ValueError(
+            "Invalid state. extract_file_reports was given a None project_file")
 
     # Given a single project for a user and the project's structure return a list with each fileReport
     projectFiles = project_file.file_paths
@@ -56,6 +55,8 @@ def extract_file_reports(
             language_filter)
 
         if analyzer.should_include() is False:
+            logger.info("Skipping file %s in project %s",
+                        file, project_file.name)
             continue
 
         try:
