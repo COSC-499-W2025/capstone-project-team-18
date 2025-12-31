@@ -18,8 +18,9 @@ from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
 from src.classes.resume.render import ResumeLatexRenderer
 
-from src.database.db import get_engine, Base
+from src.database.base import get_engine, Base
 from src.database.utils.database_modify import create_row
+from src.database.utils.db_migrate import run_migrations
 
 
 def start_miner(
@@ -153,11 +154,15 @@ def start_miner(
     portfolio_CLI_stringify(user_report)
 
 
-if __name__ == '__main__':
-    from src.classes.cli import ArtifactMiner
+def main():
+    run_migrations()
 
+    from src.classes.cli import ArtifactMiner
     try:
         ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
-
     except KeyboardInterrupt:
         print("Exiting the program...")
+
+
+if __name__ == '__main__':
+    main()

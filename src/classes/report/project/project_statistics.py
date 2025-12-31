@@ -468,6 +468,7 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
             ProjectActivityTypeContributions(),
             ProjectAnalyzeGitAuthorship(),
             ProjectTotalContributionPercentage(),
+            ProjectTestStat(),
         ]
 
     def build(self, report: ProjectReport) -> List[Statistic]:
@@ -487,3 +488,10 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
                 stats.extend(new_stats)
 
         return stats
+
+
+class ProjectTestStat(ProjectStatisticCalculation):
+    def calculate(self, report: ProjectReport) -> list[Statistic]:
+        to_return = [
+            Statistic(ProjectStatCollection.PROJECT_TEST_STAT.value, "TEST VALUE")]
+        return to_return

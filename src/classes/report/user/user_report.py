@@ -14,6 +14,9 @@ from src.classes.report import ProjectReport
 from src.classes.statistic import StatisticIndex, ProjectStatCollection, UserStatCollection, WeightedSkills
 from src.classes.resume.resume import Resume
 
+from src.database.base import get_engine
+from src.database.models import UserReportTable
+
 
 class UserReport(BaseReport):
     """
@@ -86,9 +89,6 @@ class UserReport(BaseReport):
         Returns:
             tuple: (success: bool, message: str)
         """
-        from src.database.utils.database_modify import delete_user_report_and_related_data
-        from src.database.db import get_engine, UserReportTable
-
         engine = get_engine()
 
         try:
@@ -113,6 +113,7 @@ class UserReport(BaseReport):
                 project_count = len(user_report.project_reports)
 
             # Use database_modify function for deletion (outside the session)
+            from src.database.utils.database_modify import delete_user_report_and_related_data
             success = delete_user_report_and_related_data(title=title)
 
             if success:
@@ -137,8 +138,6 @@ class UserReport(BaseReport):
         Returns:
             tuple: (found: bool, info: dict with title and project_count)
         """
-        from src.database.db import get_engine, UserReportTable
-
         engine = get_engine()
 
         try:
@@ -176,8 +175,6 @@ class UserReport(BaseReport):
         Returns:
             list: List of dicts with portfolio info (title, project_count)
         """
-        from src.database.db import get_engine, UserReportTable
-
         engine = get_engine()
 
         try:

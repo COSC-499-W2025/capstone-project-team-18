@@ -29,8 +29,7 @@
                     "editor.defaultFormatter": "ms-python.autopep8",
                     "editor.formatOnSave": true,
                     "editor.codeActionsOnSave": {
-                        "source.organizeImports": "explicit",
-                        "source.unusedImports": "explicit"
+                        "source.organizeImports": "explicit"
                     }
                 }
             }
