@@ -127,7 +127,11 @@ class ColumnStatisticSerializer(TypeDecorator):
 
         if key.startswith("__enum__:"):
             _, cls_name, val_str = key.split(":", 2)
-            val = ast.literal_eval(val_str)
+
+            val = val_str
+            if not isinstance(val_str, str):
+                val = ast.literal_eval(val_str)
+
             cls = ENUM_REGISTRY[cls_name]
             return cls(val)
 
