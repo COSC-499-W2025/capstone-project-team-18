@@ -1,11 +1,7 @@
 import re
-import logging
 
 from src.classes.statistic import Statistic, FileStatCollection
 from src.classes.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 class CAnalyzer(SpecificCodeAnalyzer):

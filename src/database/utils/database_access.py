@@ -9,10 +9,9 @@ from src.database.db import ProjectReportTable, UserReportTable, get_engine
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from src.utils.log.logging import get_logger
 
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:

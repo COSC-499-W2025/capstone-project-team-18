@@ -1,12 +1,11 @@
 import re
 from pathlib import Path
-import logging
 
 from src.classes.statistic import Statistic, FileStatCollection, FileDomain, CodingLanguage
 from src.classes.analyzer.text_file_analyzer import TextFileAnalyzer
+from src.utils.log.logging import get_logger
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CodeFileAnalyzer(TextFileAnalyzer):

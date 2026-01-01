@@ -2,13 +2,11 @@
 This file contains functions to format and print the
 resume items and portfolio
 '''
-from typing import Optional
 from src.classes.resume.resume import Resume
 from src.classes.report import UserReport
+from src.utils.log.logging import get_logger
 
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def resume_CLI_stringify(resume: Resume):
