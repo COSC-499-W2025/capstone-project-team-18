@@ -129,8 +129,15 @@ class ColumnStatisticSerializer(TypeDecorator):
             _, cls_name, val_str = key.split(":", 2)
 
             val = val_str
-            if not isinstance(val_str, str):
+
+            try:
                 val = ast.literal_eval(val_str)
+            except ValueError:
+                # If we are here, then ast tried to evaluate a string
+                # which lead to a malformed string error. In this case
+                # we treat the value to just be the val_str. The cls(val)
+                # statement will error out if this was not the right choice
+                pass
 
             cls = ENUM_REGISTRY[cls_name]
             return cls(val)
