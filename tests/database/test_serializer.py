@@ -5,6 +5,7 @@ nested structures, dict keys/values) serialize and deserialize correctly.
 
 from typing import Dict, Any
 import pytest
+from datetime import date
 
 from src.classes.statistic.statistic_models import WeightedSkills, CodingLanguage, FileDomain
 from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
@@ -27,6 +28,58 @@ def test_dataclass_direct_serialize_deserialize(serializer: ColumnStatisticSeria
     recovered = serializer._deserialize(serialized)
     assert isinstance(recovered, WeightedSkills)
     assert recovered == ws
+
+
+@pytest.mark.parametrize(
+    "value, expected_type",
+    [
+        # --- dates ---
+        (date(2024, 1, 1), date),
+
+        # --- enums ---
+        (FileDomain.CODE, FileDomain),
+        (CodingLanguage.PYTHON, CodingLanguage),
+
+        # --- dataclass ---
+        (WeightedSkills("Python", 0.9), WeightedSkills),
+
+        # --- lists ---
+        (["python", "testing"], list),
+        ([WeightedSkills("Python", 0.9), WeightedSkills("SQL", 0.7)], list),
+
+        # --- dicts ---
+        ({"file1.py": 3, "file2.py": 2}, dict),
+        ({FileDomain.CODE: 0.4, FileDomain.TEST: 0.6}, dict),
+        ({CodingLanguage.PYTHON: 0.8, CodingLanguage.SQL: 0.2}, dict),
+    ],
+    ids=[
+        "date",
+        "file-domain-enum",
+        "coding-language-enum",
+        "weighted-skills",
+        "list-of-str",
+        "list-of-weighted-skills",
+        "plain-dict",
+        "dict-filedomain-float",
+        "dict-codinglanguage-float",
+    ],
+)
+def test_non_trivial_serialize_deserialize(
+    serializer: ColumnStatisticSerializer,
+    value,
+    expected_type,
+):
+    """
+    Try to serialize and then deserialize every non-trival
+    expected_type in the statistics. We use the parameters
+    described in the annonation to determine value and expected_type
+    """
+    serialized = serializer._serialize(value)
+
+    recovered = serializer._deserialize(serialized)
+
+    assert isinstance(recovered, expected_type)
+    assert recovered == value
 
 
 def test_enum_direct_serialize_deserialize(serializer: ColumnStatisticSerializer):
