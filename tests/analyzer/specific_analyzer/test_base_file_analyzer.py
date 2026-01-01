@@ -36,10 +36,8 @@ def test_base_file_analyzer_nonexistent_file_logs_and_returns_empty():
 
 
 def test_extract_file_reports_recieves_empty_project(tmp_path):
-    project_discovery = None
-
-    listReport = extract_file_reports(project_discovery)
-    assert listReport == []
+    with pytest.raises(ValueError):
+        listReport = extract_file_reports(None)
 
 
 def test_extract_file_reports_returns_project(tmp_path, create_temp_file):
