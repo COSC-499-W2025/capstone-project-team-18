@@ -20,6 +20,9 @@ def get_logger(name: str, level=logging.INFO):
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
+    # Prevent logs from going to the terminal
+    logger.propagate = False
+
     # Avoid adding multiple handlers if logger already has them
     if not logger.handlers:
 
