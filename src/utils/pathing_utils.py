@@ -1,5 +1,5 @@
 """
-Utility functions for handling zipped files.
+Utility functions for handling pathing, zipped files, etc.
 """
 
 import subprocess

@@ -1,10 +1,10 @@
 """
-Unit tests for unzip_file function in zipped_utils module.
+Unit tests for unzip_file function in pathing_utils module.
 """
 import zipfile
 import tarfile
 import py7zr
-from src.utils.zipped_utils import unzip_file
+from src.utils.pathing_utils import unzip_file
 
 
 def test_unzip_file_zip(tmp_path):

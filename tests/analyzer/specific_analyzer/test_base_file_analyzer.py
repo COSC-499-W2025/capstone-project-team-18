@@ -8,7 +8,7 @@ import pytest
 from src.classes.analyzer import BaseFileAnalyzer, extract_file_reports, get_appropriate_analyzer
 from src.classes.statistic import FileStatCollection
 from src.utils.project_discovery.project_discovery import ProjectFiles
-from src.utils.zipped_utils import unzip_file
+from src.utils.pathing_utils import unzip_file
 
 
 def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_text_file: list[str]):
