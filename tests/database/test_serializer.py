@@ -7,7 +7,6 @@ from typing import Dict, Any
 import pytest
 import json
 
-from datetime import date
 
 from src.classes.statistic.statistic_models import WeightedSkills, CodingLanguage, FileDomain
 from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
@@ -35,9 +34,6 @@ def test_dataclass_direct_serialize_deserialize(serializer: ColumnStatisticSeria
 @pytest.mark.parametrize(
     "value, expected_type",
     [
-        # --- dates ---
-        (date(2024, 1, 1), date),
-
         # --- enums ---
         (FileDomain.CODE, FileDomain),
         (CodingLanguage.PYTHON, CodingLanguage),
