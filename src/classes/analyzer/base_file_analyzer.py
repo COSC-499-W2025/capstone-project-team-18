@@ -5,7 +5,7 @@ import logging
 from git import GitCommandError, Repo
 
 from src.classes.report.file_report import FileReport
-from src.classes.statistic import Statistic, StatisticIndex, FileStatCollection, CodingLanguage
+from src.classes.statistic import Statistic, StatisticIndex, FileStatCollection, LANGUAGE_EXTENSIONS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -123,11 +123,9 @@ class BaseFileAnalyzer:
 
         # Check each language in the filter
         for lang_name in self.language_filter:
-            # Find matching CodingLanguage enum
-            for coding_lang in CodingLanguage:
-                # coding_lang.value is a tuple (name, [extensions])
-                if coding_lang.value[0].lower() == lang_name.lower():
-                    if file_ext in coding_lang.value[1]:
+            for coding_lang, extensions in LANGUAGE_EXTENSIONS.items():
+                if coding_lang.value.lower() == lang_name.lower():
+                    if file_ext in extensions:
                         return True
 
         return False
