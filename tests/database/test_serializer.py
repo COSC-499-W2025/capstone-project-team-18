@@ -5,6 +5,8 @@ nested structures, dict keys/values) serialize and deserialize correctly.
 
 from typing import Dict, Any
 import pytest
+import json
+
 from datetime import date
 
 from src.classes.statistic.statistic_models import WeightedSkills, CodingLanguage, FileDomain
@@ -76,7 +78,10 @@ def test_non_trivial_serialize_deserialize(
     """
     serialized = serializer._serialize(value)
 
-    recovered = serializer._deserialize(serialized)
+    json_serialize = json.dumps(serialized)
+    json_loaded_to_dict = json.loads(json_serialize)
+
+    recovered = serializer._deserialize(json_loaded_to_dict)
 
     assert isinstance(recovered, expected_type)
     assert recovered == value
