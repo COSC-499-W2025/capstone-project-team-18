@@ -127,7 +127,7 @@ class CodingLanguageBulletPoint(BulletPoint):
         # If only one language, return
         if len(lang_ratio) == 1:
             for lang in lang_ratio.keys():
-                name = lang.value[0]
+                name = lang.value
                 return [f"Project was coded using the {name} language"]
 
         # Multiple languages, get top and others
@@ -135,8 +135,8 @@ class CodingLanguageBulletPoint(BulletPoint):
         other_langs = [lang for lang in lang_ratio.keys()
                        if lang != top_lang]
 
-        top_name = top_lang.value[0]
-        other_names = [lang.value[0] for lang in other_langs]
+        top_name = top_lang.value
+        other_names = [lang.value for lang in other_langs]
 
         return [f"Implemented code mainly in {top_name} and also in {', '.join(other_names)}"]
 

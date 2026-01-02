@@ -3,6 +3,7 @@ This file contains custom classes and enumerations used for statistical analysis
 in the project.
 """
 
+from typing import Dict, List
 from enum import Enum
 from dataclasses import dataclass
 from typing import Any, Dict
@@ -35,20 +36,41 @@ class FileDomain(Enum):
 
 
 class CodingLanguage(Enum):
-    PYTHON = ("Python", [".py", ".pyw", ".pyx", ".pxd", ".pxi"])
-    JAVASCRIPT = ("Javascript", [".js", ".jsx", ".mjs"])
-    JAVA = ("Java", [".java", ".jar", ".class"])
-    CPP = ("C++", [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".h"])
-    C = ("C", [".c", ".h"])
-    CSHARP = ("C#", [".cs", ".csx"])
-    PHP = ("PHP", [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"])
-    RUBY = ("Ruby", [".rb", ".rbw", ".rake", ".gemspec"])
-    SWIFT = ("Swift", [".swift"])
-    GO = ("Go", [".go"])
-    RUST = ("Rust", [".rs", ".rlib"])
-    TYPESCRIPT = ("Typescript", [".ts", ".tsx"])
-    HTML = ("HTML", [".html", ".htm", ".xhtml"])
-    CSS = ("CSS", [".css", ".scss", ".sass", ".less"])
-    SQL = ("SQL", [".sql", ".ddl", ".dml"])
-    SHELL = ("Shell", [".sh", ".bash", ".zsh", ".fish"])
-    R = ("R", [".R", ".r"])
+    PYTHON = "Python"
+    JAVASCRIPT = "JavaScript"
+    JAVA = "Java"
+    CPP = "C++"
+    C = "C"
+    CSHARP = "C#"
+    PHP = "PHP"
+    RUBY = "Ruby"
+    SWIFT = "Swift"
+    GO = "Go"
+    RUST = "Rust"
+    TYPESCRIPT = "TypeScript"
+    HTML = "HTML"
+    CSS = "CSS"
+    SQL = "SQL"
+    SHELL = "Shell"
+    R = "R"
+
+
+LANGUAGE_EXTENSIONS: Dict[CodingLanguage, List[str]] = {
+    CodingLanguage.PYTHON: [".py", ".pyw", ".pyx", ".pxd", ".pxi"],
+    CodingLanguage.JAVASCRIPT: [".js", ".jsx", ".mjs"],
+    CodingLanguage.JAVA: [".java", ".jar", ".class"],
+    CodingLanguage.CPP: [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".h"],
+    CodingLanguage.C: [".c", ".h"],
+    CodingLanguage.CSHARP: [".cs", ".csx"],
+    CodingLanguage.PHP: [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"],
+    CodingLanguage.RUBY: [".rb", ".rbw", ".rake", ".gemspec"],
+    CodingLanguage.SWIFT: [".swift"],
+    CodingLanguage.GO: [".go"],
+    CodingLanguage.RUST: [".rs", ".rlib"],
+    CodingLanguage.TYPESCRIPT: [".ts", ".tsx"],
+    CodingLanguage.HTML: [".html", ".htm", ".xhtml"],
+    CodingLanguage.CSS: [".css", ".scss", ".sass", ".less"],
+    CodingLanguage.SQL: [".sql", ".ddl", ".dml"],
+    CodingLanguage.SHELL: [".sh", ".bash", ".zsh", ".fish"],
+    CodingLanguage.R: [".R", ".r"],
+}
