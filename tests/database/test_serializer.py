@@ -51,7 +51,6 @@ def test_dataclass_direct_serialize_deserialize(serializer: ColumnStatisticSeria
         ({CodingLanguage.PYTHON: 0.8, CodingLanguage.SQL: 0.2}, dict),
     ],
     ids=[
-        "date",
         "file-domain-enum",
         "coding-language-enum",
         "weighted-skills",
