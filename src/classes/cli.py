@@ -1,21 +1,22 @@
 """
 This file contains the command line interface (CLI) for the Artifact Miner application.
 """
-
 import cmd
 import re
 import os
-from src.app import start_miner
 import sys
 import json
-from tqdm import tqdm  # For CLI Progress Bar
 from pathlib import Path
-from datetime import datetime
 from typing import Dict, Any, List, Optional
-from src.app import start_miner
+from datetime import datetime
+
+from tqdm import tqdm  # For CLI Progress Bar
+
 from src.database.utils.database_modify import rename_user_report
 from src.database.utils.database_access import get_project_from_project_name
 from src.classes.resume.bullet_point_builder import BulletPointBuilder
+from src.classes.report import UserReport
+from src.app import start_miner
 
 
 def bullet_point_builder(project_report):
@@ -792,14 +793,13 @@ class ArtifactMiner(cmd.Cmd):
                 if not user_input:
                     print("No filepath in preferences. Please enter a portfolio name.")
                     continue
+
                 # Extract portfolio name from filepath
-                from pathlib import Path
                 user_input = Path(user_input).stem
                 print(f"Using portfolio from preferences: {user_input}")
             # Otherwise, user_input is the portfolio name
 
             # Get portfolio info before deleting
-            from src.classes.report import UserReport
             found, info = UserReport.get_portfolio_info(user_input)
 
             if not found:
@@ -969,8 +969,6 @@ class ArtifactMiner(cmd.Cmd):
         Returns:
             str: The title of selected portfolio, or None if cancelled
         """
-        from src.classes.report import UserReport
-
         portfolios = UserReport.list_all_portfolios()
 
         if not portfolios:

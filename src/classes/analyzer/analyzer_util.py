@@ -9,7 +9,7 @@ import logging
 from typing import Optional
 
 from src.classes.report.file_report import FileReport
-from src.classes.statistic import CodingLanguage
+from src.classes.statistic import LANGUAGE_EXTENSIONS
 from src.utils.project_discovery.project_discovery import ProjectFiles
 from src.classes.analyzer.base_file_analyzer import BaseFileAnalyzer
 from src.classes.analyzer.c_analyzer import CAnalyzer
@@ -82,13 +82,6 @@ def get_appropriate_analyzer(
     file_path = Path(path_to_top_level_project + "/" + relative_path)
     extension = file_path.suffix.lower()
 
-    if file_path.is_dir():
-        raise ValueError(
-            f"Cannot analyze a directory: {file_path}. Must be a file.")
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"File {file_path} does not exist.")
-
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:
@@ -127,8 +120,8 @@ def get_appropriate_analyzer(
     if extension in text_extensions:
         return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
-    for language in CodingLanguage:
-        if extension in language.value[1]:
+    for language, lang_extensions in LANGUAGE_EXTENSIONS.items():
+        if extension in lang_extensions:
             return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
 
     # Default to base analyzer
