@@ -26,9 +26,9 @@
 
 **[Week 14, Nov. 30 – Dec. 07](#week-14-nov-30--dec-07)**
 
-**[Winter Break Extra Work](#winter-break-extra-work)
+**[Winter Break Extra Work](#winter-break-extra-work)**
 
-**[Week 15, Jan. 05 – 11]()
+**[Week 15, Jan. 05 – 11]()**
 
 ****
 
