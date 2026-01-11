@@ -2,6 +2,8 @@
 
 ## Table of Contents
 
+### Term 1
+
 **[Week 3, Sept. 15–21](#week-3-sept-1521)**
 
 **[Week 4, Sept. 22–28](#week-4-sept-2228)**
@@ -28,7 +30,9 @@
 
 **[Winter Break Extra Work](#winter-break-extra-work)**
 
-**[Week 15, Jan. 05 – 11]()**
+### Term 2
+
+**[Week 1, Jan. 05 – 11](#week-1-jan-05--11)**
 
 ****
 
@@ -259,11 +263,11 @@ Over the break, I reviewed all of the PRs that Sam made for his refactoring chan
 I also spent a lot of time discussing and planning what we'd need to do for the next milestone. Additionally, we discussed and planned a feature that I was going to implement for the database, which is something that I worked on over break. I worked on implementing version control for our database via the [Alembic](https://alembic.sqlalchemy.org/en/latest/) library. The feature is almost complete, but there is no PR yet for it because I am waiting for Sam's refactoring PRs to be merged first.
 
 
-## Week 15, Jan. 05 – 11
+## Week 1, Jan. 05 – 11
 
 ### Peer Eval
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week14.png)
+![Peer Eval](/logs/log_images/personal_log_imgs/alex/t2-week1.png)
 
 ### Recap
 
