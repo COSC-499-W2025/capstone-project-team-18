@@ -1,5 +1,5 @@
 """
-This file acts as a central hub for everything repot.
+This file acts as a central hub for everything report.
 This makes it so we can just use
 
 `from src.classes.report import FileReport, ProjectReport`
