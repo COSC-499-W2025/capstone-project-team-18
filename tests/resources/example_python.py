@@ -14,7 +14,7 @@ from .Util.file_domain import FileDomain
 class App(tk.Tk):
     """
     This App class defines the top level visuals for the UI.
-    This inculdes the header and the menu options.
+    This includes the header and the menu options.
 
     The App SHOULD NOT handle the logic of switching screens.
     That logic is handled in the App's display_frame and in the

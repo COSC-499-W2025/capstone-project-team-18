@@ -20,7 +20,7 @@ class ProjectReport(Protocol):
     def get_value(self, template: StatisticTemplate) -> Any: ...
 
 
-class BulletRule(ABC):
+class BulletPoint(ABC):
     """Interface for all bullet rules."""
 
     @abstractmethod
@@ -29,12 +29,12 @@ class BulletRule(ABC):
         pass
 
 
-class FallBackRule(BulletRule):
+class FallBackRule(BulletPoint):
     def generate(self, report: ProjectReport) -> List[str]:
         return [f"I contributued and worked on the project {report.project_name}"]
 
 
-class ActivityTypeContributionRule(BulletRule):
+class ActivityTypeContributionBulletPoint(BulletPoint):
     def generate(self, report: ProjectReport) -> List[str]:
         """
         This function will log the activity type contribution
@@ -68,7 +68,7 @@ class ActivityTypeContributionRule(BulletRule):
         return [f"During the project, I split my contributions between following acitivity types: {", ".join(fd_str)}"]
 
 
-class WeightedSkillsRule(BulletRule):
+class WeightedSkillsBulletPoint(BulletPoint):
     def generate(self, report: ProjectReport) -> List[str]:
         """
         This function generates a bullet point
@@ -96,7 +96,7 @@ class WeightedSkillsRule(BulletRule):
         return [f"Utilized skills {', '.join([s.skill_name for s in top])}"]
 
 
-class CodingLanguageRule(BulletRule):
+class CodingLanguageBulletPoint(BulletPoint):
     def generate(self, report: ProjectReport) -> List[str]:
         """
         This function generates a bullet point
@@ -141,7 +141,7 @@ class CodingLanguageRule(BulletRule):
         return [f"Implemented code mainly in {top_name} and also in {', '.join(other_names)}"]
 
 
-class GroupProjectRule(BulletRule):
+class GroupProjectBulletPoint(BulletPoint):
     def generate(self, report: ProjectReport) -> List[str]:
         """
         Creates a bullet point describing if this project
@@ -174,7 +174,7 @@ class GroupProjectRule(BulletRule):
         return []
 
 
-class GitCommitPercentage(BulletRule):
+class GitCommitPercentageBulletPoint(BulletPoint):
     def generate(self, report: ProjectReport) -> List[str]:
 
         user_commit_pct = report.get_value(
@@ -197,15 +197,15 @@ class GitCommitPercentage(BulletRule):
 
 class BulletPointBuilder:
     def __init__(self):
-        self.rules: List[BulletRule] = [
-            CodingLanguageRule(),
-            WeightedSkillsRule(),
-            GroupProjectRule(),
-            GitCommitPercentage(),
-            ActivityTypeContributionRule()
+        self.rules: List[BulletPoint] = [
+            CodingLanguageBulletPoint(),
+            WeightedSkillsBulletPoint(),
+            GroupProjectBulletPoint(),
+            GitCommitPercentageBulletPoint(),
+            ActivityTypeContributionBulletPoint()
         ]
 
-        self.fallback: BulletRule = FallBackRule()
+        self.fallback: BulletPoint = FallBackRule()
 
     def build(self, report: ProjectReport) -> List[str]:
         bullet_points: List[str] = []

@@ -1,4 +1,9 @@
-from src.classes.resume.bullet_point_builder import BulletPointBuilder, CodingLanguageRule, WeightedSkillsRule, ActivityTypeContributionRule
+from src.classes.resume.bullet_point_builder import (
+    BulletPointBuilder,
+    ActivityTypeContributionBulletPoint,
+    CodingLanguageBulletPoint,
+    WeightedSkillsBulletPoint,
+)
 from src.classes.statistic import (
     WeightedSkills,
     CodingLanguage,
@@ -23,7 +28,8 @@ def test_activity_type_contribution_bp_expected():
     }
 
     report = type("Report", (), {"get_value": lambda self, key: ratio})()
-    bp = ActivityTypeContributionRule().generate(report)[0]  # type: ignore
+    bp = ActivityTypeContributionBulletPoint().generate(report)[
+        0]  # type: ignore
 
     assert f"12% on code, 28% on design, 30% on documentation, 30% on test" in bp
 
@@ -39,7 +45,7 @@ def test_activity_type_contribution_bp_one_leading():
     }
 
     report = type("Report", (), {"get_value": lambda self, key: ratio})()
-    bp = ActivityTypeContributionRule().generate(report)  # type: ignore
+    bp = ActivityTypeContributionBulletPoint().generate(report)  # type: ignore
 
     assert len(bp) == 0
 
@@ -56,7 +62,8 @@ def test_activity_type_contribution_bp_near_zero():
     }
 
     report = type("Report", (), {"get_value": lambda self, key: ratio})()
-    bp = ActivityTypeContributionRule().generate(report)[0]  # type: ignore
+    bp = ActivityTypeContributionBulletPoint().generate(report)[
+        0]  # type: ignore
 
     assert f"40% on code, 60% on test" in bp
     assert "design" not in bp
@@ -65,7 +72,7 @@ def test_activity_type_contribution_bp_near_zero():
 def test_coding_language_bp_multiple():
     ratio = {CodingLanguage.PYTHON: 0.6, CodingLanguage.JAVASCRIPT: 0.4}
     report = type("Report", (), {"get_value": lambda self, key: ratio})()
-    bp = CodingLanguageRule().generate(report)[0]  # type: ignore
+    bp = CodingLanguageBulletPoint().generate(report)[0]  # type: ignore
 
     assert "Python" in bp
     assert "Javascript" in bp or "JavaScript" in bp
@@ -75,15 +82,14 @@ def test_coding_language_bp_multiple():
 def test_coding_language_bp_single():
     ratio = {CodingLanguage.PYTHON: 1.0}
     report = type("Report", (), {"get_value": lambda self, key: ratio})()
-    bp = CodingLanguageRule().generate(report)[0]  # type: ignore
-
+    bp = CodingLanguageBulletPoint().generate(report)[0]  # type: ignore
     assert bp == "Project was coded using the Python language"
 
 
 def test_coding_language_bp_small_shares():
     ratio = {CodingLanguage.PYTHON: 0.05, CodingLanguage.JAVASCRIPT: 0.05}
     report = type("Report", (), {"get_value": lambda self, key: ratio})()
-    bp = CodingLanguageRule().generate(report)[0]  # type: ignore
+    bp = CodingLanguageBulletPoint().generate(report)[0]  # type: ignore
 
     assert "small amounts" in bp
 
@@ -96,7 +102,7 @@ def test_weight_skills_bp_top_three():
         WeightedSkills("CI/CD", 0.2),
     ]
     report = type("Report", (), {"get_value": lambda self, key: skills})()
-    bp = WeightedSkillsRule().generate(report)[0]  # type: ignore
+    bp = WeightedSkillsBulletPoint().generate(report)[0]  # type: ignore
 
     assert "Machine Learning" in bp
     assert "Python" in bp

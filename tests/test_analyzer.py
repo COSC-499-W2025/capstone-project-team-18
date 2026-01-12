@@ -7,7 +7,8 @@ from datetime import datetime
 import pytest
 import shutil
 from src.classes.analyzer import *
-from src.classes.statistic import FileStatCollection, CodingLanguage
+from src.classes.report import *
+from src.classes.statistic import FileStatCollection, CodingLanguage, FileDomain
 from src.utils.project_discovery.project_discovery import ProjectFiles
 from src.utils.zipped_utils import unzip_file
 from conftest import _create_temp_file, RESOURCE_DIR
@@ -30,8 +31,8 @@ def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_tex
 
     # Validate types and basic expectations
     assert isinstance(size, int) and size > 0
-    assert isinstance(created, datetime.datetime)
-    assert isinstance(modified, datetime.datetime)
+    assert isinstance(created, datetime)
+    assert isinstance(modified, datetime)
 
     # Size should match the actual file size
     assert size == Path(
