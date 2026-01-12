@@ -2,6 +2,8 @@
 
 ## Table of Contents
 
+### Term 1
+
 **[Week 3, Sept. 15–21](#week-3-sept-1521)**
 
 **[Week 4, Sept. 22–28](#week-4-sept-2228)**
@@ -25,6 +27,12 @@
 **[Week 13, Nov. 24 – 29](#week-13-nov-24--nov-29)**
 
 **[Week 14, Nov. 30 – Dec. 07](#week-14-nov-30--dec-07)**
+
+**[Winter Break Extra Work](#winter-break-extra-work)**
+
+### Term 2
+
+**[Week 1, Jan. 05 – 11](#week-1-jan-05--11)**
 
 ****
 
@@ -233,3 +241,34 @@ Here are the PRs I reviewed this week:
 - [#307: Empty Project Report Handling, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/307)
 - [#308: Added New Statistic Framework, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/308)
 - [#309: Put Chronological Skills and Projects in the Portfolio, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/309)
+
+## Winter Break Extra Work
+
+### Recap
+
+Over the break, I reviewed all of the PRs that Sam made for his refactoring changes. This includes the following PRs:
+
+[#321 Split `report.py` and `analyzer.py` into single files](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/321)
+
+[#327 Adding Empty File Check to Specific Code Analyzers](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/327)
+
+[#329 Logic for Serializing and Deserializing Statistic Values](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/329)
+
+[#330 Capsulate Project and User Report Statistic Logic Analysis](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/330)
+
+[#332 Refactor Test Directory](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/332)
+
+[#333 Log Everything](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/333)
+
+I also spent a lot of time discussing and planning what we'd need to do for the next milestone. Additionally, we discussed and planned a feature that I was going to implement for the database, which is something that I worked on over break. I worked on implementing version control for our database via the [Alembic](https://alembic.sqlalchemy.org/en/latest/) library. The feature is almost complete, but there is no PR yet for it because I am waiting for Sam's refactoring PRs to be merged first.
+
+
+## Week 1, Jan. 05 – 11
+
+### Peer Eval
+
+![Peer Eval](/logs/log_images/personal_log_imgs/alex/t2-week1.png)
+
+### Recap
+
+This week, I wrapped up the rest of the Alembic integration that I worked on over break. I still have not made a PR for the feature however because Sam's PRs have not been reviewed and merged yet. I also talked with the team about what our expectations are for the next milestone.
