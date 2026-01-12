@@ -2,13 +2,13 @@ import re
 import logging
 
 from src.classes.statistic import Statistic, FileStatCollection
-from src.classes.analyzer.code_file_analyzer import CodeFileAnalyzer
+from src.classes.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class JavaScriptAnalyzer(CodeFileAnalyzer):
+class JavaScriptAnalyzer(SpecificCodeAnalyzer):
     """
     Analyzer for JavaScript source code files (.js).
 
@@ -18,8 +18,7 @@ class JavaScriptAnalyzer(CodeFileAnalyzer):
         - IMPORTED_PACKAGES
     """
 
-    def _process(self) -> None:
-        super()._process()
+    def _process_not_empty(self) -> None:
 
         class_count = len(re.findall(r'\bclass\s+(\w+)', self.text_content))
 

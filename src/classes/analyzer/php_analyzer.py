@@ -2,13 +2,13 @@ import re
 import logging
 
 from src.classes.statistic import Statistic, FileStatCollection
-from src.classes.analyzer.code_file_analyzer import CodeFileAnalyzer
+from src.classes.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class PHPAnalyzer(CodeFileAnalyzer):
+class PHPAnalyzer(SpecificCodeAnalyzer):
     """
     Analyzer for PHP files (.php).
 
@@ -19,21 +19,7 @@ class PHPAnalyzer(CodeFileAnalyzer):
         - IMPORTED_PACKAGES  (use/import + include/require targets)
     """
 
-    def _process(self) -> None:
-        super()._process()
-
-        if not self.text_content.strip():
-            logging.debug(
-                f"{self.__class__.__name__}: Empty file {self.filepath}")
-            logging.debug(
-                f"{self.__class__.__name__}: Empty file {self.filepath}")
-            self.stats.extend([
-                Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, 0),
-                Statistic(FileStatCollection.NUMBER_OF_CLASSES.value, 0),
-                Statistic(FileStatCollection.NUMBER_OF_INTERFACES.value, 0),
-                Statistic(FileStatCollection.IMPORTED_PACKAGES.value, []),
-            ])
-            return
+    def _process_not_empty(self) -> None:
 
         func_def_names = set(re.findall(
             r'\bfunction\s+([a-zA-Z_]\w*)\s*\(', self.text_content))

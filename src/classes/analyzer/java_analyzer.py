@@ -2,13 +2,13 @@ import re
 import logging
 
 from src.classes.statistic import Statistic, FileStatCollection
-from src.classes.analyzer.code_file_analyzer import CodeFileAnalyzer
+from src.classes.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class JavaAnalyzer(CodeFileAnalyzer):
+class JavaAnalyzer(SpecificCodeAnalyzer):
     """
     Analyzer for Java source code files (.java).
 
@@ -18,8 +18,7 @@ class JavaAnalyzer(CodeFileAnalyzer):
         - IMPORTED_PACKAGES
     """
 
-    def _process(self) -> None:
-        super()._process()
+    def _process_not_empty(self) -> None:
 
         class_count = len(re.findall(
             r'\b(?:public|private|protected)?\s*(?:static)?\s*(?:final)?\s*class\s+(\w+)',

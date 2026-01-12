@@ -2,13 +2,13 @@ import re
 import logging
 
 from src.classes.statistic import Statistic, FileStatCollection
-from src.classes.analyzer.code_file_analyzer import CodeFileAnalyzer
+from src.classes.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class TypeScriptAnalyzer(CodeFileAnalyzer):
+class TypeScriptAnalyzer(SpecificCodeAnalyzer):
     """
     Analyzer for TypeScript source code files (.ts).
 
@@ -19,8 +19,7 @@ class TypeScriptAnalyzer(CodeFileAnalyzer):
         - IMPORTED_PACKAGES
     """
 
-    def _process(self) -> None:
-        super()._process()
+    def _process_not_empty(self) -> None:
 
         # Classes
         class_count = len(re.findall(r'\bclass\s+(\w+)', self.text_content))

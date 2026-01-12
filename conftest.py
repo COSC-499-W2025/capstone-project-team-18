@@ -4,47 +4,13 @@ starts running tests. It is used to
 make global changes to the testing environment.
 """
 
-import sys
 from pathlib import Path
 import pytest
 from git import Repo
 import os
-from src.utils.project_discovery.project_discovery import ProjectFiles, discover_projects
-
-"""
-When pytest runs, we consider capstone-project-team-18
-to be the root of the project for imports.
-
-However, when we run the application normally,
-the src/ directory is considered to be the root
-for imports.
-
-This makes us run in to error in a situation
-like this:
-
-- pytest imports ArtifactMiner with:
-    from src.classes.cli import ArtifactMiner
-
-- but ArtifactMiner tries to import start_miner with:
-    from app import start_miner
-
-Error can't find app!
-
-So here, we adjust sys.path to ensure that
-imports work correctly in both scenarios.
-"""
-# Repository root (this file is at the repo root)
-REPO_ROOT = Path(__file__).resolve().parent
-SRC_DIR = REPO_ROOT / "src"
-
-# Ensure the repository root is on sys.path so imports like `import src...`
-# resolve consistently when pytest runs from the project root.
-sys.path.insert(0, str(REPO_ROOT))
-
-# Also ensure the src/ directory itself is on sys.path. This helps in cases
-# where code or tests expect modules to be importable directly from src.
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+from src.utils.project_discovery.project_discovery import ProjectFiles
+import tempfile
+import shutil
 
 # --- Helper Functions --
 
@@ -114,6 +80,39 @@ def commit_as(repo: Repo, author_name: str, author_email: str,
 # --- Fixtures --
 # These are global objects that we can use in our test
 RESOURCE_DIR = Path(__file__).parent / "tests/resources"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_tmp_files():
+    """
+    Clean up leftover pytest tmp files in the system temp directory after the
+    test session finishes. Removes files and directories that begin with
+    'python-test-discovery-' or 'artifact_miner' or 'python-test-results-'.
+    """
+
+    # Run tests first
+    yield
+
+    tmp_dir = Path(tempfile.gettempdir())
+    patterns = ("python-test-discovery-",
+                "artifact_miner_", "python-test-results-")
+
+    for entry in list(tmp_dir.iterdir()):
+        try:
+            if any(entry.name.startswith(p) for p in patterns):
+                if entry.is_dir():
+                    shutil.rmtree(entry, ignore_errors=True)
+                else:
+                    try:
+                        entry.unlink()
+                    except Exception:
+                        try:
+                            os.remove(entry)
+                        except Exception:
+                            pass
+        except Exception:
+            # Ignore cleanup errors so they do not fail the test session
+            pass
 
 
 @pytest.fixture

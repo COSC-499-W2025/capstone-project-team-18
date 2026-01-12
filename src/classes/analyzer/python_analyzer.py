@@ -2,13 +2,13 @@ import logging
 import ast
 
 from src.classes.statistic import Statistic, FileStatCollection
-from src.classes.analyzer import CodeFileAnalyzer
+from src.classes.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class PythonAnalyzer(CodeFileAnalyzer):
+class PythonAnalyzer(SpecificCodeAnalyzer):
     """
     Analyzer for Python source code files (.py).
 
@@ -23,8 +23,7 @@ class PythonAnalyzer(CodeFileAnalyzer):
     # vs local imports. Maybe this needs to be done at the project
     # level though.
 
-    def _process(self) -> None:
-        super()._process()
+    def _process_not_empty(self) -> None:
 
         # We parse the Python code using the ast module to
         # extract statistics.
