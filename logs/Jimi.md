@@ -137,3 +137,13 @@ This week's goals as a team were to prepare for the upcoming Milestone 1 demo. T
 ### Recap
 
 This week's goals as a team were to prepare for the upcoming Milestone 1 deliverables. To do this we needed to ensure our CLI was complete and all requirements were met. To assist with that I worked on some bugfixes and added in a `UserSkills` class to map certain indicators to skills. This was completed in PR [#290](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/290. This additionally weighs them which will later be used in ranking each skill. I then worked on minor bug-fixes with iother's code such as formatting and preferences in the CLI. As for reviews and assisting the group, I reviewed mutliple PRs, including [#311](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/311), [#314](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/314), [#302](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/302), [#288](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/288), [#294](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/294) and [#285](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/285) .
+
+## Week 15, Jan. 5-11
+
+### Peer Eval
+
+![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week15_log.png)
+
+### Recap
+
+This week we met as a group to discuss all Milestone 1 requiremnets and ensure they were correctly met. Additionally I reviewed multiple PRs, including [#321](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/321) and [#327](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/327) which were refactoring changes made to simplify the project for future changes.
