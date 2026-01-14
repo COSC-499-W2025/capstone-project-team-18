@@ -3,6 +3,10 @@ Utility functions for handling zipped files.
 """
 
 import subprocess
+import tempfile
+import os
+import tempfile
+
 from src.utils.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -91,3 +95,51 @@ def unzip_file(zipped_file: str, extract_to: str) -> None:
             raise ValueError(f"Unsupported OS for .7z extraction: {os_name}")
     else:
         raise ValueError(f"Unsupported archive format: {zipped_file}")
+
+
+def unzip_file_bytes(
+    zipped_bytes: bytes,
+    zipped_format: str,
+    unzipped_dir: str
+) -> None:
+    """
+    Unzips zipped bytes in given format into the given directory.
+
+    :param zipped_bytes: The bytes of a zipped file
+    :type zipped_bytes: bytes
+    :param zipped_format: The format of the zipped file (.zip, .7z, .gz)
+    :type zipped_format: str
+    :param unzipped_dir: A filepath to the directory where the files should be unzipped
+    :type unzipped_dir: str
+    """
+
+    # Normalize format
+    if not zipped_format.startswith('.'):
+        logger.warning("unzip_file_bytes had to normalize the zipped_format")
+        zipped_format = f".{zipped_format}"
+
+    temp_file_path = None
+
+    try:
+        # Create temporary file with the byte
+        with tempfile.NamedTemporaryFile(delete=False, suffix=zipped_format) as tmp:
+            tmp.write(zipped_bytes)
+            tmp.flush()
+            temp_file_path = tmp.name
+
+        logger.info(
+            "Extracting archive bytes using temporary file: %s",
+            temp_file_path
+        )
+
+        unzip_file(temp_file_path, unzipped_dir)
+
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+            except OSError:
+                logger.warning(
+                    "Failed to remove temporary archive file: %s",
+                    temp_file_path
+                )
