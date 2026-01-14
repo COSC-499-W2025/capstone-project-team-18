@@ -4,7 +4,7 @@
 
 Over winter break, I refactor the codebase. It is (pretty much) all the same code. Mostly, things are just split into their own files. For example, instead of having one `analyzer.py` file, we have `base_file_analyzer.py`, `c_analyzer.py`, `php_analyzer.py`, etc. In this doc I described what changed and what things to keep in mind moving forward.
 
-### What is this special `__init__.py` \!?\!
+### What is this special `__init__.py` !?!
 
 Because we are splitting our one file into many, we risk our imports becoming very cumbersome. For example, if we wanted to import the classes `PythonAnalyzer` and `HTMLAnalyzer`, we would need to do
 
@@ -77,10 +77,10 @@ class UserDates(UserStatisticCalculation):
     Calculate earliest user start and latest user end across projects.
     """
 
-    def calculate(self, report: "UserReport") \-\> List\[Statistic\]:
+    def calculate(self, report: "UserReport") -> List[Statistic]:
         …
 
-        return \[Statistic(UserStatCollection.USER_START_DATE.value, start_date), Statistic(UserStatCollection.USER_END_DATE.value, end_date)\]
+        return [Statistic(UserStatCollection.USER_START_DATE.value, start_date), Statistic(UserStatCollection.USER_END_DATE.value, end_date)]
 ```
 
 Here, all the magic is done in the calculate function. It accepts a UserReport, and then will return a list of statistics about that report.
@@ -91,18 +91,18 @@ We have a bunch of these “UserStatisticCalculation” classes that will calcul
 class UserStatisticReportBuilder(StatisticReportBuilder):
     """Builds user-level statistics by running configured calculators."""
 
-    def __init__(self) \-\> None:
-        self.calculators: list\[UserStatisticCalculation\] \= \[
-            UserDates(), \# Here is our UserDates example from above
+    def __init__(self) -> None:
+        self.calculators: list[UserStatisticCalculation] = [
+            UserDates(), # Here is our UserDates example from above
             UserCodingLanguageRatio(),
             UserWeightedSkills(),
-        \]
+        ]
 
-    def build(self, report) \-\> list\[Statistic\]:
-        stats: list\[Statistic\] \= \[\]
+    def build(self, report) -> list[Statistic]:
+        stats: list[Statistic] = []
 
         for calc in self.calculators:
-            new_stats \= calc.calculate(report)
+            new_stats = calc.calculate(report)
             if new_stats:
                 report.statistics.extend(new_stats)
                 stats.extend(new_stats)
@@ -115,8 +115,8 @@ Now, UserReport can simply do the following and have all the statistics added:
 ```python
 class UserReport
 def __init__(...):
-		builder \= UserStatisticReportBuilder()
-builder.build(self)
+		builder = UserStatisticReportBuilder()
+		builder.build(self)
 ```
 
 #### Adding a New Statistic
