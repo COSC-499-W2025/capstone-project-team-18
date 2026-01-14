@@ -2,10 +2,10 @@
 Comprehensive tests for the CLI functionality in app.py.
 Tests user interaction flows, command handling, and navigation logic.
 """
-from src.app import start_miner
 import pytest
-from unittest.mock import patch, mock_open, call
-from src.classes.cli import ArtifactMiner, _is_valid_filepath_to_zip
+from unittest.mock import patch
+from src.classes.cli.cli import ArtifactMiner
+from src.utils.pathing_utils import is_valid_filepath_to_zip
 
 
 def test_is_valid_filepath_to_zip(tmp_path):
@@ -14,29 +14,29 @@ def test_is_valid_filepath_to_zip(tmp_path):
     """
     # Test case 3: Filepath does not exist
     non_existent_path = tmp_path / "non_existent.zip"
-    assert _is_valid_filepath_to_zip(str(non_existent_path)) == 3
+    assert is_valid_filepath_to_zip(str(non_existent_path)) == 3
 
     # Test case 1: Invalid filepath (not a file)
     dir_path = tmp_path / "a_directory"
     dir_path.mkdir()
-    assert _is_valid_filepath_to_zip(str(dir_path)) == 1
+    assert is_valid_filepath_to_zip(str(dir_path)) == 1
 
     # Test case 2: Filepath does not point to a zip file
     non_zip_file = tmp_path / "file.txt"
     non_zip_file.write_text("This is a test file.")
-    assert _is_valid_filepath_to_zip(str(non_zip_file)) == 2
+    assert is_valid_filepath_to_zip(str(non_zip_file)) == 2
 
     # Test case 0: Valid filepath to a zip file
     zip_file = tmp_path / "archive.zip"
     zip_file.write_text("This is a zip file content.")
-    assert _is_valid_filepath_to_zip(str(zip_file)) == 0
+    assert is_valid_filepath_to_zip(str(zip_file)) == 0
 
 
 @pytest.fixture
 def cli():
     """Fixture providing a CLI instance with suppressed initialization output."""
     with patch('builtins.print'), \
-            patch('src.classes.cli.UserPreferences') as mock_prefs_class:
+            patch('src.classes.cli.cli.UserPreferences') as mock_prefs_class:
 
         # Mock the UserPreferences instance and its methods
         mock_prefs = mock_prefs_class.return_value
@@ -216,7 +216,7 @@ def test_prompt_portfolio_name_invokes_rename(cli):
     """Ensure renaming is attempted when a new name is provided."""
     cli.project_filepath = "/tmp/example.zip"
     with patch('builtins.input', return_value='new-name'), \
-            patch('src.classes.cli.rename_user_report', return_value=(True, "ok")) as mock_rename, \
+            patch('src.classes.cli.cli.rename_user_report', return_value=(True, "ok")) as mock_rename, \
             patch('builtins.print'), \
             patch.object(cli.preferences, "update"):
         cli._prompt_portfolio_name()
@@ -227,7 +227,7 @@ def test_prompt_portfolio_name_noop_on_blank(cli):
     """Leaving the name blank should keep existing title and avoid renaming."""
     cli.project_filepath = "/tmp/example.zip"
     with patch('builtins.input', return_value=''), \
-            patch('src.classes.cli.rename_user_report') as mock_rename, \
+            patch('src.classes.cli.cli.rename_user_report') as mock_rename, \
             patch('builtins.print'), \
             patch.object(cli.preferences, "update"):
         cli._prompt_portfolio_name()
@@ -307,7 +307,7 @@ def test_do_filepath_valid_path(cli):
     test_path = '/path/to/project'
     with patch('builtins.input', return_value=test_path), \
             patch('builtins.print') as mock_print, \
-            patch('src.classes.cli._is_valid_filepath_to_zip', return_value=0):
+            patch('src.classes.cli.cli.is_valid_filepath_to_zip', return_value=0):
         cli.do_filepath("")
         assert cli.project_filepath == test_path
         assert cli.cmd_history[0] == "filepath"
@@ -340,7 +340,7 @@ def test_do_begin_without_consent(cli):
     cli.project_filepath = ''
 
     with patch('builtins.print') as mock_print, \
-            patch('src.classes.cli.start_miner') as mock_start:
+            patch('src.classes.cli.cli.start_miner_cli') as mock_start:
         cli.do_begin("")
         mock_print.assert_any_call(
             "\nError: Missing consent. Type perms or 1 to read user permission agreement."
@@ -510,7 +510,7 @@ def test_resume_bullet_empty_project_name(cli):
     """Blank project name should show validation message and not hit DB."""
     with patch("builtins.input", return_value=""), \
             patch("builtins.print") as mock_print, \
-            patch("src.classes.cli.get_project_from_project_name") as mock_get:
+            patch("src.classes.cli.cli.get_project_from_project_name") as mock_get:
         cli.do_resume_bullet_point("")
 
         mock_get.assert_not_called()
@@ -528,7 +528,7 @@ def test_resume_bullet_project_not_found(cli):
     """If the DB lookup fails, print 'not found' message and return."""
     with patch("builtins.input", return_value="missing-project"), \
             patch("builtins.print") as mock_print, \
-            patch("src.classes.cli.get_project_from_project_name", side_effect=Exception("not found")):
+            patch("src.classes.cli.cli.get_project_from_project_name", side_effect=Exception("not found")):
         cli.do_resume_bullet_point("")
 
         assert any(
@@ -550,8 +550,8 @@ def test_resume_bullet_success_path(cli):
     dummy_report = DummyProjectReport()
 
     with patch("builtins.input", return_value="my-project"), \
-            patch("src.classes.cli.get_project_from_project_name", return_value=dummy_report) as mock_get, \
-            patch("src.classes.cli.bullet_point_builder", return_value=["Bullet one", "Bullet two"]) as mock_builder, \
+            patch("src.classes.cli.cli.get_project_from_project_name", return_value=dummy_report) as mock_get, \
+            patch("src.classes.cli.cli.BulletPointBuilder.build", return_value=["Bullet one", "Bullet two"]) as mock_builder, \
             patch("builtins.print") as mock_print:
 
         cli.do_resume_bullet_point("")

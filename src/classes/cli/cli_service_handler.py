@@ -9,6 +9,7 @@ from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio
 from src.classes.resume.render import ResumeLatexRenderer
 from src.utils.log.logging import get_logger
 from src.services.mining_service import start_miner_service, MinerResults
+from src.classes.cli.user_preferences import UserPreferences
 
 logger = get_logger(__name__)
 
@@ -31,9 +32,6 @@ def start_miner_cli(
     :param progress_callback: Description
     :type progress_callback: Optional[Callable[[str, int, int, str], None]]
     """
-
-    # Import inside function to avoid circular import
-    from src.classes.cli import UserPreferences
 
     prefs = UserPreferences()
     zipped_file = Path(zipped_file_path)

@@ -3,7 +3,7 @@ The entry point for the ArtifactMiner program.
 """
 
 if __name__ == '__main__':
-    from src.classes.cli import ArtifactMiner
+    from src.classes.cli.cli import ArtifactMiner
 
     try:
         ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference

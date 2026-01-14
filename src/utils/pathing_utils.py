@@ -5,6 +5,7 @@ Utility functions for handling zipped files.
 import subprocess
 import tempfile
 import os
+import sys
 import tempfile
 
 from src.utils.log.logging import get_logger
@@ -143,3 +144,58 @@ def unzip_file_bytes(
                     "Failed to remove temporary archive file: %s",
                     temp_file_path
                 )
+
+
+def is_valid_filepath_to_zip(filepath: str) -> int:
+    """
+    Helper function to validate the provided filepath.
+    A valid filepath must exist and be a zipped file.
+
+    Int code returns:
+    0 - valid filepath to a zip file
+    1 - invalid filepath
+    2 - filepath does not point to a zip file
+    3 - filepath does not exist
+    """
+
+    if not os.path.exists(filepath):
+        return 3
+    if not os.path.isfile(filepath):
+        return 1
+    valid_exts = ('.zip', '.tar.gz', '.gz', '.7z')
+    if not any(filepath.endswith(ext) for ext in valid_exts):
+        return 2
+    return 0
+
+
+def normalize_path(user_path: str) -> str:
+    r"""
+    Normalize a user-provided file path so it works cross-platform.
+    - Expands ~ to home directory
+    - Converts backslashes and slashes for consistency
+    - Normalizes redundant separators and up-level references
+    - On Windows, maps Mac-style /Users/<username>/ paths to C:\\Users\\<username>\\
+    - On Mac, maps Windows-style C:\\Users\\<username>\\ paths to /Users/<username>/
+    """
+    if not user_path:
+        return user_path
+    # On Mac, map C:\Users\<username>\... or C:/Users/<username>/... to /Users/<username>/...
+    if sys.platform == 'darwin':
+        match = re.match(
+            r'^[cC]:[\\/]+Users[\\/]+([^\\/]+)[\\/]+(.+)', user_path)
+        if match:
+            username, rest = match.groups()
+            user_path = f"/Users/{username}/{rest}"
+    # Expand ~ to home directory
+    user_path = os.path.expanduser(user_path)
+    # On Windows, map /Users/<username>/... to C:\Users\<username>\...
+    if os.name == 'nt':
+        match = re.match(r'^/Users/([^/\\]+)/(.+)', user_path)
+        if match:
+            username, rest = match.groups()
+            user_path = f"C:\\Users\\{username}\\{rest}"
+    # Convert all slashes to OS separator
+    user_path = user_path.replace('\\', os.sep).replace('/', os.sep)
+    # Normalize path (removes redundant .., . etc.)
+    user_path = os.path.normpath(user_path)
+    return user_path
