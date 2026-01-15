@@ -39,9 +39,9 @@ class StatisticReportBuilder(ABC, Generic[TReport]):
     """
 
     def __init__(self) -> None:
-        self.calculators = []
+        self.calculators: list[StatisticCalculation[TReport]] = []
 
-    def build(self, report) -> list[Statistic]:
+    def build(self, report: TReport) -> list[Statistic]:
         stats: list[Statistic] = []
 
         for calc in self.calculators:
