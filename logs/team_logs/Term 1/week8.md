@@ -61,5 +61,5 @@ No in progress.
 
 ### Test Report
 
-![pyest week 8](../../../logs/log_images/team_log_imgs/Term_1_test_log_imgs/week8_pytest.png)
+![pyest week 8](../../../logs/log_images/team_log_imgs/Term_1_test_imgs/week8_pytest.png)
 

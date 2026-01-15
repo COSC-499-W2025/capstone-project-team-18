@@ -60,4 +60,4 @@ priyansh1913 -> Priyansh Mathur
 
 ### Test Report
 
-![test report](../../../logs/log_images/team_log_imgs/Term_1_test_log_imgs/week9_pytest.png)
+![test report](../../../logs/log_images/team_log_imgs/Term_1_test_imgs/week9_pytest.png)

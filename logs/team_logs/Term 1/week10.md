@@ -101,7 +101,7 @@ priyansh1913 -> Priyansh Mathur
 
 All 158 tests passing on the develop branch as of the latest merge, demonstrating robust code quality and comprehensive test coverage across all features.
 
-![Test Report](../../../logs/log_images/team_log_imgs/Term_1_test_log_imgs/week10_pytest.png)
+![Test Report](../../../logs/log_images/team_log_imgs/Term_1_test_imgs/week10_pytest.png)
 
 
 

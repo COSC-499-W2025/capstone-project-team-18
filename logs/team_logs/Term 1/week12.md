@@ -75,4 +75,4 @@ Additionally, we merged a working version of the app to the [`main`](https://git
 
 ### Test Report
 
-![pytest result](../../../logs/log_images/team_log_imgs/Term_1_test_log_imgs/week12_pytest.png)
+![pytest result](../../../logs/log_images/team_log_imgs/Term_1_test_imgs/week12_pytest.png)
