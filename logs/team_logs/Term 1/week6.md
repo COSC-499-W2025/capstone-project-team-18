@@ -8,7 +8,7 @@ This week the goal was to restructure our project with the finalized Milestone #
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week6.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/Term_1_burnupChart_imgs/burnup_week6.png)
 
 ## Details
 

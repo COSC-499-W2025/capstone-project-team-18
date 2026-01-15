@@ -50,7 +50,7 @@ Based on issues created and actively worked on during Week 10 (Nov 3-9):
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week10.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/Term_1_burnupChart_imgs/burnup_week10.png)
 
 ## Details
 
@@ -79,12 +79,11 @@ priyansh1913 -> Priyansh Mathur
 
 **Closed Issues:**
 
-![Closed Issue 1](../log_images/team_log_imgs/close_issue1.png)
-![Closed Issue 2](../log_images/team_log_imgs/close_issue2.png)
-![Closed Issue 3](../log_images/team_log_imgs/close_issue3.png)
-![Closed Issue 4](../log_images/team_log_imgs/close_issue4.png)
-![Closed Issue 5](../log_images/team_log_imgs/close_issue5.png)
-
+![Closed Issue 1](../../../logs/log_images/team_log_imgs/Term_1_closedIssues_imgs/close_issue1.png)
+![Closed Issue 2](../../../logs/log_images/team_log_imgs/Term_1_closedIssues_imgs/close_issue2.png)
+![Closed Issue 3](../../../logs/log_images/team_log_imgs/Term_1_closedIssues_imgs/close_issue3.png)
+![Closed Issue 4](../../../logs/log_images/team_log_imgs/Term_1_closedIssues_imgs/close_issue4.png)
+![Closed Issue 5](../../../logs/log_images/team_log_imgs/Term_1_closedIssues_imgs/close_issue5.png)
 
 ### In Progress Tasks
 
@@ -102,7 +101,7 @@ priyansh1913 -> Priyansh Mathur
 
 All 158 tests passing on the develop branch as of the latest merge, demonstrating robust code quality and comprehensive test coverage across all features.
 
-![Test Report](../log_images/team_log_imgs/tests_week10.png)
+![Test Report](../../../logs/log_images/team_log_imgs/Term_1_test_log_imgs/week10_pytest.png)
 
 
 

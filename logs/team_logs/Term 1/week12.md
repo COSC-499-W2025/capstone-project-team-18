@@ -19,7 +19,7 @@ This week, we focused on wrapping up final tasks and features, squashing bugs, a
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week12.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/Term_1_burnupChart_imgs/burnup_week12.png)
 
 ## Details
 
@@ -75,4 +75,4 @@ Additionally, we merged a working version of the app to the [`main`](https://git
 
 ### Test Report
 
-![pytest result](../log_images/team_log_imgs/tests_week12.png)
+![pytest result](../../../logs/log_images/team_log_imgs/Term_1_test_log_imgs/week12_pytest.png)

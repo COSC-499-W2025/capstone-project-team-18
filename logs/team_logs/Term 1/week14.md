@@ -8,7 +8,7 @@ This week focused on completing and stabilizing all remaining Milestone 1 requir
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week14.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/Term_1_burnupChart_imgs/burnup_week14.png)
 
 ## Details
 

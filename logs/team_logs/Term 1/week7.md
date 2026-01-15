@@ -8,7 +8,7 @@ This week we transitioned from planning to active development. The primary goal 
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week7.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/Term_1_burnupChart_imgs/burnup_week7.png)
 
 ## Details
 

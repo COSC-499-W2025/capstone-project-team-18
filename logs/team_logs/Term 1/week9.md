@@ -33,7 +33,7 @@
 
 ### Burnup Chart
 
-![burnup](../../../logs/log_images/team_log_imgs/burnup_week9.png)
+![burnup](../../../logs/log_images/team_log_imgs/Term_1_burnupChart_imgs/burnup_week9.png)
 
 ## Details
 
@@ -50,14 +50,14 @@ priyansh1913 -> Priyansh Mathur
 
 ### Completed Tasks
 
-![Completed Tasks](/logs/log_images/team_log_imgs/issues/completedIssuesFullView_week9.png)
-![Completed Tasks](/logs/log_images/team_log_imgs/issues/completedIssues_week9.png)
+![Completed Tasks](../../../logs/log_images/team_log_imgs/Term_1_closedIssues_imgs/completedIssuesFullView_week9.png)
+![Completed Tasks](../../../logs/log_images/team_log_imgs/Term_1_closedIssues_imgs/completedIssues_week9.png)
 
 ### In Progress Tasks
 
-![In Progress Tasks](/logs/log_images/team_log_imgs/issues/issuesInProgress_week9.png)
+![In Progress Tasks](../../../logs/log_images/team_log_imgs/Term_1_closedIssues_imgs/issuesInProgress_week9.png)
 
 
 ### Test Report
 
-![test report](/logs/log_images/test_log_imgs/week9.png)
+![test report](../../../logs/log_images/team_log_imgs/Term_1_test_log_imgs/week9_pytest.png)

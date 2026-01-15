@@ -9,7 +9,7 @@ The emphasis was on modularity, test reliability, performance safeguards, and ma
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../log_images/team_log_imgs/burnup_T2_week1.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/Term_2_burnupChart_imgs/burnup_week1.png)
 
 ## Details
 

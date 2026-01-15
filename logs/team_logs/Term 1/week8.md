@@ -22,7 +22,7 @@ Specifcally, we worked on the following Milestone #1 requirements with the follo
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week8.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/Term_1_burnupChart_imgs/burnup_week8.png)
 
 ## Details
 
@@ -61,5 +61,5 @@ No in progress.
 
 ### Test Report
 
-![pyest week 8](/logs/log_images/test_log_imgs/week8_pytest.png)
+![pyest week 8](../../../logs/log_images/team_log_imgs/Term_1_test_log_imgs/week8_pytest.png)
 
