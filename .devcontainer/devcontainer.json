@@ -24,6 +24,7 @@
                 "qwtel.sqlite-viewer"
             ],
             "settings": {
+                "python.analysis.autoSearchPaths": false,
                 "python.analysis.extraPaths": [
                     "${workspaceFolder}"
                 ],
