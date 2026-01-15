@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from src.classes.report import UserReport
 
 
-class UserStatisticCalculation(StatisticCalculation):
+class UserStatisticCalculation(StatisticCalculation[UserReport]):
     """Base for user-scoped statistic calculations."""
     pass
 
@@ -163,7 +163,7 @@ class UserWeightedSkills(UserStatisticCalculation):
         return [Statistic(UserStatCollection.USER_SKILLS.value, user_weighted_skills)]
 
 
-class UserStatisticReportBuilder(StatisticReportBuilder):
+class UserStatisticReportBuilder(StatisticReportBuilder[UserReport]):
     """Builds user-level statistics by running configured calculators."""
 
     def __init__(self) -> None:
