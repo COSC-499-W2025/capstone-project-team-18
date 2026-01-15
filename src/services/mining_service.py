@@ -10,10 +10,8 @@ from sqlalchemy.orm import Session
 
 from src.utils.pathing_utils import unzip_file_bytes
 from src.utils.project_discovery.project_discovery import discover_projects
-from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
-from src.classes.resume.render import ResumeLatexRenderer
 from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
 from src.utils.log.logging import get_logger
@@ -62,6 +60,8 @@ def start_miner_service(
     """
 
     logger.info("Starting analysis for the zipped file")
+
+    # TODO: Retrieve preferences from the database and validate parameters (like consent)
 
     # Unzip the file into temp directory
     unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
@@ -157,20 +157,5 @@ def start_miner_service(
         # =================== Analysis Complete ===================
         if progress_callback:
             progress_callback("complete", 1, 1, "")
-
-    print("-------- Analysis Reports --------\n")
-    resume = user_report.generate_resume(email)
-
-    # Download latex resume to file system
-    latex_str = resume.export(ResumeLatexRenderer())
-
-    with open("resume.tex", "w", encoding="utf-8") as f:
-        f.write(latex_str)
-
-    # Print the resume items
-    resume_CLI_stringify(resume)
-
-    # Print the portfolio item
-    portfolio_CLI_stringify(user_report)
 
     return MinerResults(user_report, True)
