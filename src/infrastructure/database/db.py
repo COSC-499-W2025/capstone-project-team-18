@@ -8,7 +8,7 @@ from typing import List
 from src.core.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
 from .utils.init_columns import make_columns
 
-DB_PATH = "sqlite:///src/database/data.db"
+DB_PATH = "sqlite:///src/infrastructure/database/data.db"
 
 
 class Base(DeclarativeBase):
