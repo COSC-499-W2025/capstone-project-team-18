@@ -24,6 +24,9 @@
                 "qwtel.sqlite-viewer"
             ],
             "settings": {
+                "python.analysis.extraPaths": [
+                    "${workspaceFolder}"
+                ],
                 "files.trimTrailingWhitespace": true,
                 "[python]": {
                     "editor.defaultFormatter": "ms-python.autopep8",
