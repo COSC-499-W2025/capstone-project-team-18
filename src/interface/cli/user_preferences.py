@@ -11,8 +11,7 @@ class UserPreferences:
     """Manages User Preferences with JSON storage in database folder"""
 
     def __init__(self, preferences_file: Optional[str] = None):
-        src_folder_path = Path(__file__).parent.parent
-        database_folder_path = src_folder_path / "database"
+        database_folder_path = Path(__file__).parent
         filename = preferences_file or "preferences.json"
         self.preferences_file = database_folder_path / filename
 
