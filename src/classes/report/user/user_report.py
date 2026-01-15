@@ -295,7 +295,7 @@ class UserReport(BaseReport):
                         lang_ratios.items(), key=lambda x: x[1], reverse=True)
                     parts: list[str] = []
                     for lang, ratio in langs_sorted:
-                        lang_name = lang.value[0]
+                        lang_name = lang.value
                         percent = f"{ratio * 100:.2f}%"
                         parts.append(f"{lang_name} ({percent})")
                 except Exception:
