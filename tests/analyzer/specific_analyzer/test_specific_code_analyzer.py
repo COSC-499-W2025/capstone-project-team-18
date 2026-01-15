@@ -1,7 +1,7 @@
 """Tests for the :class:`SpecificCodeAnalyzer` behavior."""
 
-from src.classes.statistic import FileStatCollection
-from src.classes.analyzer import PythonAnalyzer, get_appropriate_analyzer
+from src.core.statistic import FileStatCollection
+from src.core.analyzer import PythonAnalyzer, get_appropriate_analyzer
 
 
 def test_process_not_empty_not_called_for_empty_file(tmp_path, monkeypatch, create_temp_file):

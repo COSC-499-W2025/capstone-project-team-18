@@ -5,8 +5,8 @@ Tests for rename_user_report function
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from src.database.utils.database_access import get_user_report
-from src.database.utils.database_modify import rename_user_report
+from src.infrastructure.database.utils.database_access import get_user_report
+from src.infrastructure.database.utils.database_modify import rename_user_report
 
 
 def test_rename_user_report_success(temp_db):
@@ -20,7 +20,7 @@ def test_rename_user_report_success(temp_db):
 
 
 def test_rename_user_report_conflict(temp_db):
-    from src.database.db import UserReportTable
+    from src.infrastructure.database.db import UserReportTable
 
     with Session(temp_db) as session:
         session.add(UserReportTable(title="existing_portfolio"))
@@ -33,7 +33,7 @@ def test_rename_user_report_conflict(temp_db):
 
 
 def test_rename_user_report_handles_duplicates(temp_db):
-    from src.database.db import UserReportTable
+    from src.infrastructure.database.db import UserReportTable
 
     with Session(temp_db) as session:
         duplicate = UserReportTable(title="test_user_report")

@@ -2,9 +2,9 @@
 This file contains functions to format and print the
 resume items and portfolio
 '''
-from src.classes.resume.resume import Resume
-from src.classes.report import UserReport
-from src.utils.log.logging import get_logger
+from src.core.resume.resume import Resume
+from src.core.report import UserReport
+from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
 

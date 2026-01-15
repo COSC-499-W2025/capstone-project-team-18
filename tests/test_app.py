@@ -5,7 +5,7 @@ More detailed tests will be in their respective modules.
 
 import pytest
 
-from src.classes.cli.cli_service_handler import start_miner_cli
+from src.interface.cli.cli_service_handler import start_miner_cli
 from src.utils.errors import NoDiscoveredProjects
 
 

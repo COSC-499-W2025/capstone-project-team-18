@@ -1,11 +1,11 @@
-from src.classes.statistic import StatisticIndex, ProjectStatCollection
-from src.classes.report import ProjectReport, FileReport
+from src.core.statistic import StatisticIndex, ProjectStatCollection
+from src.core.report import ProjectReport, FileReport
 
 
 def test_weighted_skills_from_imported_packages():
     """Ensure weighted skills are aggregated from imported packages across files."""
     from pytest import approx
-    from src.classes.statistic import Statistic, StatisticIndex, FileStatCollection, ProjectStatCollection
+    from src.core.statistic import Statistic, StatisticIndex, FileStatCollection, ProjectStatCollection
 
     # file1 imports numpy and pandas, file2 imports numpy
     file1_stats = StatisticIndex([
@@ -36,7 +36,7 @@ def test_weighted_skills_from_imported_packages():
 def test_multiple_weighted_skills_from_imported_packages():
     """Ensure weighted skills are aggregated from imported packages across files."""
     from pytest import approx
-    from src.classes.statistic import Statistic, StatisticIndex, FileStatCollection, ProjectStatCollection
+    from src.core.statistic import Statistic, StatisticIndex, FileStatCollection, ProjectStatCollection
 
     # file1 imports numpy and pandas, file2 imports numpy
     file1_stats = StatisticIndex([

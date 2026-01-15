@@ -1,6 +1,7 @@
-from src.classes.analyzer import (
+from src.core.analyzer import (
     CSSAnalyzer,
 )
+
 
 def test_css_analyzer_rules_classes_imports(tmp_path):
     css_code = '''

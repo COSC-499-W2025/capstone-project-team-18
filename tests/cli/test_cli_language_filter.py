@@ -1,8 +1,8 @@
 """
 Tests for language filtering functionality
 """
-from src.classes.analyzer import get_appropriate_analyzer, extract_file_reports
-from src.utils.project_discovery.project_discovery import ProjectFiles
+from src.core.analyzer import get_appropriate_analyzer, extract_file_reports
+from src.core.project_discovery.project_discovery import ProjectFiles
 
 
 def test_language_filter_excludes_non_matching_files(tmp_path):

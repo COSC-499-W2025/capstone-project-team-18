@@ -6,8 +6,8 @@ import datetime
 
 import pytest
 
-from src.classes.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
-from src.classes.statistic import FileStatCollection
+from src.core.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
+from src.core.statistic import FileStatCollection
 
 
 def test_is_git_repo_true_and_false(tmp_path: Path):

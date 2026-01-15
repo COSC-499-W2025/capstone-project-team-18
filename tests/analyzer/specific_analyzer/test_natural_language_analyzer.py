@@ -2,8 +2,8 @@
 Tests for NaturalLanguageAnalyzer.
 """
 
-from src.classes.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
-from src.classes.statistic import FileStatCollection, FileDomain
+from src.core.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
+from src.core.statistic import FileStatCollection, FileDomain
 
 
 def test_NaturalLanguageAnalyzer_core_stats(tmp_path, create_temp_file):

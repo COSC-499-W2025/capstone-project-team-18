@@ -2,14 +2,14 @@
 Tests the create_row() function
 """
 
-from src.database.db import (
+from src.infrastructure.database.db import (
     FileReportTable,
     ProjectReportTable,
     UserReportTable,
 )
-from src.database.utils.database_modify import create_row
-from src.classes.report import ProjectReport, UserReport
-from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
+from src.infrastructure.database.utils.database_modify import create_row
+from src.core.report import ProjectReport, UserReport
+from src.core.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
 
 
 def test_create_row(fr1, fr2, fr3, fr4):

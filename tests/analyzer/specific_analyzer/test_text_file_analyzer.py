@@ -3,8 +3,8 @@ Tests for TextFileAnalyzer.
 """
 
 from pathlib import Path
-from src.classes.analyzer import TextFileAnalyzer
-from src.classes.statistic import FileStatCollection
+from src.core.analyzer import TextFileAnalyzer
+from src.core.statistic import FileStatCollection
 
 
 def test_text_file_reading_many_encodings(tmp_path: Path, create_temp_file):
