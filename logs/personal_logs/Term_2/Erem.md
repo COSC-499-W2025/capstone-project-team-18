@@ -2,7 +2,9 @@
 
 ## Table of Contents
 
-**[Week 1, Jan 05 - 11](#week-1-jan-05--jan-11)**
+**[Week 1, Jan 05 - 11](#week-1-jan-05---11)**
+
+---
 
 ## Week 1, Jan 05 - 11
 

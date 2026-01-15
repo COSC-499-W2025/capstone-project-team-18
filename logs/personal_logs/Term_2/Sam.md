@@ -1,3 +1,11 @@
+# Sam Sikora Personal Logs Term 2
+
+## Table of Contents
+
+**[Week 1, 01/05 - 01/11](#week-1-0105---0111--winter-break)**
+
+---
+
 # Week 1 01/05 - 01/11 + Winter Break
 
 ![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week1_log.png)
