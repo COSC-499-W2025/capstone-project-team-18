@@ -9,17 +9,17 @@ import tempfile
 from pathlib import Path
 
 from sqlalchemy.orm import Session
-
 from src.utils.zipped_utils import unzip_file
 from src.utils.project_discovery.project_discovery import discover_projects
 from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
-
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
 from src.classes.resume.render import ResumeLatexRenderer
-
 from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
+from src.utils.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def start_miner(
@@ -37,6 +37,8 @@ def start_miner(
         - email: Email associated with git account
     """
 
+    logger.info("Starting analysis for zipped file %s", zipped_file)
+
     # Import inside function to avoid circular import
     from src.classes.cli import UserPreferences
 
@@ -53,6 +55,8 @@ def start_miner(
     # =================== Discovery stage ===================
 
     project_list = discover_projects(unzipped_dir)
+
+    logger.debug(project_list)
 
     # Initialize progress bar with total project count
     if progress_callback:
@@ -81,6 +85,9 @@ def start_miner(
 
             file_reports = extract_file_reports(
                 project, email, language_filter)  # get the project's FileReports
+
+            logger.debug(
+                "File reports for project %s file_reports", project.name)
 
             if file_reports == []:
                 continue  # skip if directory is empty

@@ -58,3 +58,4 @@ src/database/data.db
 src/database/preferences.json
 
 resume.tex
+src/utils/log/app.log

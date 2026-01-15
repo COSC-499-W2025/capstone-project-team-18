@@ -3,6 +3,9 @@ Utility functions for handling zipped files.
 """
 
 import subprocess
+from src.utils.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_os_name() -> str:
@@ -41,6 +44,8 @@ def unzip_file(zipped_file: str, extract_to: str) -> None:
     import shutil
     import py7zr
     os_name = get_os_name()
+    logger.info("This system is %s", os_name)
+
     ext = os.path.splitext(zipped_file)[1].lower()
     # Combine .tar.gz and .gz handling since both use tar extraction
     if zipped_file.endswith('.tar.gz') or ext == '.gz':

@@ -1,14 +1,13 @@
 import datetime
 from pathlib import Path
 from typing import Optional
-import logging
 from git import GitCommandError, Repo
 
 from src.classes.report.file_report import FileReport
 from src.classes.statistic import Statistic, StatisticIndex, FileStatCollection, LANGUAGE_EXTENSIONS
+from src.utils.log.logging import get_logger
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class BaseFileAnalyzer:

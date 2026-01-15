@@ -1,11 +1,10 @@
 import re
-import logging
 
 from src.classes.statistic import Statistic, FileStatCollection, FileDomain
 from src.classes.analyzer.text_file_analyzer import TextFileAnalyzer
+from src.utils.log.logging import get_logger
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class NaturalLanguageAnalyzer(TextFileAnalyzer):

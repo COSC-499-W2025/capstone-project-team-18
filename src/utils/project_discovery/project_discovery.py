@@ -7,12 +7,12 @@ should be considered?
 import os
 from pathlib import Path
 from dataclasses import dataclass
-import logging
 from typing import Optional
 from git import Repo
 from .ignore_constants import *
+from src.utils.log.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -64,6 +64,7 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
         """
 
         if dir_is_project(dir_path):
+            logger.info("Directory %s is a project.", dir_path)
 
             file_paths = filter_files(dir_path)
 
@@ -82,6 +83,8 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
             ))
 
         else:
+            logger.info(
+                "Directory %s is NOT a project. Iterating through it's subfolders...", dir_path)
             # If the directory is not a project, it likely has projects in subdirectories
             # Check those and move on.
             for sub_dir in dir_path.iterdir():
