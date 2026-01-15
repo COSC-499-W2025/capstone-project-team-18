@@ -82,6 +82,13 @@ def get_appropriate_analyzer(
     file_path = Path(path_to_top_level_project + "/" + relative_path)
     extension = file_path.suffix.lower()
 
+    if file_path.is_dir():
+        raise ValueError(
+            f"Cannot analyze a directory: {file_path}. Must be a file.")
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"File {file_path} does not exist.")
+
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:

@@ -148,12 +148,3 @@ class ProjectReport(BaseReport):
             start_date=start_date,
             end_date=end_date
         )
-
-    @classmethod
-    def from_statistics(cls, statistics: StatisticIndex) -> "ProjectReport":
-        """Create a ProjectReport directly from a StatisticIndex for testing"""
-        inst = cls.__new__(cls)
-        BaseReport.__init__(inst, statistics)
-        inst.project_name = "TESTING ONLY SHOULD SEE THIS IN PYTEST"
-        inst.file_reports = []
-        return inst

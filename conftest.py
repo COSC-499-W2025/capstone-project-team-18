@@ -9,48 +9,81 @@ import pytest
 from git import Repo
 import os
 from src.utils.project_discovery.project_discovery import ProjectFiles
+from src.classes.statistic import Statistic, StatisticIndex
+from src.classes.report import UserReport, ProjectReport
 import tempfile
 import shutil
+from sqlalchemy import create_engine
+from src.database.db import Base
 
-# --- Helper Functions --
 
-
-def _create_temp_file(filename: str, content: str, path: Path, encoding: str = "utf-8") -> list[str]:
+@pytest.fixture
+def create_temp_file():
     """
-    Helper function to create a new file with
+    Returns a callable to create a new file with
     the provided name, in the provided path,
     with the provided content in the provided encoding.
     """
 
-    path_full = path / filename
+    def _create(filename: str, content: str, path: Path, encoding: str = "utf-8") -> list[str]:
 
-    # Make directory if not exits
-    path_full.parent.mkdir(parents=True, exist_ok=True)
+        path_full = path / filename
 
-    path_full.write_text(content, encoding=encoding)
+        # Make directory if not exits
+        path_full.parent.mkdir(parents=True, exist_ok=True)
 
-    return [str(path), filename]
+        path_full.write_text(content, encoding=encoding)
+
+        return [str(path), filename]
+
+    return _create
 
 
-def _make_project_file(project_file: ProjectFiles):
+@pytest.fixture
+def make_project_file(create_temp_file):
     """
-    Makes the specificed project file. With files
-    with one line in them.
+    Returns a callable that makes the given ProjectFile.
+    Every file in the project has one line in it.
 
     Only works for project_files without Repos.
     """
 
-    project_dir = Path(project_file.root_path)
+    def _create(project_file: ProjectFiles):
+        project_dir = Path(project_file.root_path)
 
-    if not project_file.name == project_dir.name:
-        raise ValueError(
-            "Miss configured project_file. root_path dir does not match ProjectFile name")
+        if not project_file.name == project_dir.name:
+            raise ValueError(
+                "Miss configured project_file. root_path dir does not match ProjectFile name")
 
-    project_dir.mkdir(parents=True, exist_ok=True)
+        project_dir.mkdir(parents=True, exist_ok=True)
 
-    for file in project_file.file_paths:
+        for file in project_file.file_paths:
 
-        _create_temp_file(file, "Junk Content", project_dir)
+            create_temp_file(file, "Junk Content", project_dir)
+
+    return _create
+
+
+@pytest.fixture
+def resource_dir():
+    """
+    This fixture points the the resources folder where we have
+    some static files that help with testing
+    """
+    return Path(__file__).parent / "tests/resources"
+
+
+@pytest.fixture
+def blank_db():
+    """
+    This fixtures returns a in memory database which will be discarded
+    when the test is done.
+    """
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    yield engine
 
 
 def commit_as(repo: Repo, author_name: str, author_email: str,
@@ -75,11 +108,6 @@ def commit_as(repo: Repo, author_name: str, author_email: str,
     relative_path = str(file_path.relative_to(project_dir))
     repo.index.add([relative_path])
     repo.index.commit(message)
-
-
-# --- Fixtures --
-# These are global objects that we can use in our test
-RESOURCE_DIR = Path(__file__).parent / "tests/resources"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -116,7 +144,29 @@ def cleanup_tmp_files():
 
 
 @pytest.fixture
-def temp_text_file(tmp_path: Path) -> list[str]:
+def user_report_from_stats():
+    """
+    Return a callable that builds a UserReport from a list of Statistics.
+    """
+    def _create(statistics: list[Statistic], report_name: str = "UserReportTest") -> UserReport:
+        return UserReport([], report_name, statistics=StatisticIndex(statistics))
+
+    return _create
+
+
+@pytest.fixture
+def project_report_from_stats():
+    """
+    Return a callable that builds a Project from a list of Statistics.
+    """
+    def _create(statistics: list[Statistic], project_name: str = "TESTING ONLY SHOULD SEE THIS IN PYTEST") -> ProjectReport:
+        return ProjectReport([], project_name=project_name, statistics=StatisticIndex(statistics))
+
+    return _create
+
+
+@pytest.fixture
+def temp_text_file(tmp_path: Path, create_temp_file) -> list[str]:
     """
     Creates a temporary text file.
 
@@ -124,7 +174,7 @@ def temp_text_file(tmp_path: Path) -> list[str]:
         list[str] : [tmp_path, "sample.txt"]
     """
 
-    return _create_temp_file("sample.txt", "Myles Jack wasn't down\n", tmp_path)
+    return create_temp_file("sample.txt", "Myles Jack wasn't down\n", tmp_path)
 
 
 @pytest.fixture
@@ -182,7 +232,7 @@ def project_shared_file(tmp_path: Path) -> ProjectFiles:
 
 
 @pytest.fixture
-def project_realistic(tmp_path: Path) -> ProjectFiles:
+def project_realistic(tmp_path: Path, create_temp_file) -> ProjectFiles:
     """
     Creates a realistic multi-folder git project with many files and
     multiple authors contributing across commits.
@@ -221,7 +271,7 @@ def project_realistic(tmp_path: Path) -> ProjectFiles:
         d.mkdir(parents=True, exist_ok=True)
 
     # Create untracked database file
-    _create_temp_file("db.db", "here is db stored", db_dir)
+    create_temp_file("db.db", "here is db stored", db_dir)
 
     # Initial commit by Alice
     commit_as(
