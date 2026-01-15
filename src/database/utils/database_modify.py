@@ -6,7 +6,6 @@ would be queries like INSERT, UPDATE, etc.
 
 from src.classes.report import FileReport, ProjectReport, UserReport
 from src.database.db import FileReportTable, ProjectReportTable, UserReportTable
-from enum import Enum
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -39,42 +38,16 @@ def create_row(report: FileReport | ProjectReport | UserReport):
     else:
         raise ValueError(f"Unknown report type: {type(report)}")
 
-    # report.statistics is a StatisticIndex and is iterable over Statistic
+    # We iterate through all the statistics in the report and set
+    # the corresponding column in the row to the statistic's value.
+    # Serialization is done with .types.py SerializableJSON type.
     for stat in report.statistics:
-        if stat is None:
-            continue  # column will be NULL if there is no statistic
-
         col_name = stat.get_template().name.lower()
         value = stat.value
 
-        # Short Explanation: We need to convert Enum values into primitive
-        # JSON-serializable forms
-
-        # Long Explanation: Some values that are stored in statistic templates can't
-        # be translated into JSON by SQLAlchemy for one reason or another.
-        # E.g. CODING_LANGUAGE_RATIO's expected_type stores a dict where the keys
-        # are CodingLangauge enums, and the values are the ratio (float). SQLAlchemy
-        # requires primitive types for JSON keys and can't automatically convert a
-        # CodingLanguage enum to a primitive type. So, we check for these enum and
-        # either convert them to a string (for something like FileDomain), or we get
-        # the first value of the CodingLanguage enum object (a string of the coding language)
-
-        if isinstance(value, Enum):
-            value = value.value  # e.g., FileDomain enums have a simple string .value
-
-        # stats that have a dict where the key is not a json serializable type
-        not_json_serializable = {
-            "coding_language_ratio", "user_coding_language_ratio", "activity_type_contributions", "project_skills_demonstrated", "user_skills", "project_frameworks"}
-
-        if isinstance(value, dict) and col_name in not_json_serializable:
-            value = {lang.value[0]: ratio for lang, ratio in value.items()}
-
-        if isinstance(value, list) and col_name in not_json_serializable:
-            value = [s.to_dict() for s in value]
-
-        # add the statistic to the row if column exists
         if hasattr(row, col_name):
             setattr(row, col_name, value)
+
     return row
 
 

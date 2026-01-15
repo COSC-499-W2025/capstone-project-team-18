@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 import logging
 
-from src.classes.statistic import Statistic, FileStatCollection, FileDomain, CodingLanguage
+from src.classes.statistic import Statistic, FileStatCollection, FileDomain, LANGUAGE_EXTENSIONS
 from src.classes.analyzer.text_file_analyzer import TextFileAnalyzer
 
 logging.basicConfig(level=logging.INFO)
@@ -64,7 +64,9 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         # Get suffix of file
         suffix = Path(self.filepath).suffix.lower()
 
-        for language in CodingLanguage:
-            # Each language.value is a tuple (name, extensions)
-            if suffix in language.value[1]:
-                return self.stats.add(Statistic(FileStatCollection.CODING_LANGUAGE.value, language))
+        for language, extensions in LANGUAGE_EXTENSIONS.items():
+            if suffix in (ext.lower() for ext in extensions):
+                return self.stats.add(
+                    Statistic(
+                        FileStatCollection.CODING_LANGUAGE.value, language)
+                )
