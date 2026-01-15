@@ -15,7 +15,7 @@ We worked on the following milestone goals this week:
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../log_images/team_log_imgs/burnup_week13.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week13.png)
 
 ## Details
 

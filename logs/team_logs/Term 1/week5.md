@@ -8,7 +8,7 @@ This week's goals were to complete the DFDs and continue fleshing out specific i
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../log_images/team_log_imgs/burnup_week5.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week5.png)
 
 ## Details
 

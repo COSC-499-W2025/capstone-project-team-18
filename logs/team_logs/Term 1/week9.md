@@ -33,7 +33,7 @@
 
 ### Burnup Chart
 
-![burnup](/logs/log_images/team_log_imgs/burnup_week9.png)
+![burnup](../../../logs/log_images/team_log_imgs/burnup_week9.png)
 
 ## Details
 

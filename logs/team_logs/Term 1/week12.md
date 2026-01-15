@@ -19,7 +19,7 @@ This week, we focused on wrapping up final tasks and features, squashing bugs, a
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../log_images/team_log_imgs/burnup_week12.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week12.png)
 
 ## Details
 

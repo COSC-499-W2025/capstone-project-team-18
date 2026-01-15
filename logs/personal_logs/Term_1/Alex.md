@@ -32,7 +32,7 @@
 
 ## Week 3, Sept. 15–21
 
-![Peer eval](./log_images/personal_log_imgs/alex/week3.png)
+![Peer eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week3.png)
 
 ### Recap
 This week's goal was to start laying the foundation for our project by discussing potential technologies/the tech stack we want to use, figuring out what each member's strong suit(s) are, and and overall plan of attack for year.
@@ -41,7 +41,7 @@ I personally worked on writing the nonfunctional requirements for our requiremen
 
 ## Week 4, Sept. 22–28
 
-![Peer Eval](./log_images/personal_log_imgs/alex/week4.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week4.png)
 
 ### Recap
 My goals for this week were to work with my team to create the system architecture, define specific features for the app, and brainstorm ideas for implementation and unique features that would make our app stand out.
@@ -50,14 +50,14 @@ I led our team's brainstorming session and later assigned each person in our tea
 
 ## Week 5, Sept. 29 – Oct. 05
 
-![Peer Eval](./log_images/personal_log_imgs/alex/week5.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week5.png)
 
 ### Recap
 My goals for this week were to support my teammates who were making the DFD and communicate feedback I got from other teams about our diagrams. Additionally, I completed the team log for this week.
 
 ## Week 6, Oct. 6-12
 
-![Peer Eval](./log_images/personal_log_imgs/alex/week6.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week6.png)
 
 ### Recap
 
@@ -65,7 +65,7 @@ With the requirements for Milestone #1 our project needed changes. Sam and I wor
 
 ## Week 7, Oct. 07–19
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week7.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week7.png)
 
 ### Recap
 
@@ -79,7 +79,7 @@ I met with my team and we planned expectations and tasks for the next coming wee
 
 ## Week 8, Oct. 20–26
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week8.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week8.png)
 
 ### Recap
 
@@ -92,7 +92,7 @@ I also reviewed Sam's PR ([#88](https://github.com/COSC-499-W2025/capstone-proje
 
 ## Week 9, Oct. 27 – Nov. 02
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week9.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week9.png)
 
 ### Recap
 
@@ -114,7 +114,7 @@ I also reviewed Erem's PR ([#131](https://github.com/COSC-499-W2025/capstone-pro
 
 ## Week 10, Nov. 03 – Nov. 09
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week10.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week10.png)
 
 ### Recap
 
@@ -149,7 +149,7 @@ Reading week; nothing to log.
 
 ### Peer Eval
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week12.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week12.png)
 
 
 ### Recap
@@ -185,7 +185,7 @@ Lastly, I reviewed the following PRs:
 
 ### Peer Eval
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week13.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week13.png)
 
 ### Recap
 
@@ -215,7 +215,7 @@ Here are the PRs that I reviewed this week:
 
 ### Peer Eval
 
-![Peer Eval](/logs/log_images/personal_log_imgs/alex/week14.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/alex/week14.png)
 
 ### Recap
 

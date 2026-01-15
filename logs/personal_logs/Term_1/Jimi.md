@@ -30,7 +30,7 @@
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week3_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week3_log.png)
 
 ### Recap
 
@@ -40,7 +40,7 @@ This week's goals were to finish the requirements and I was assigned to complete
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week4_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week4_log.png)
 
 ### Recap
 
@@ -50,7 +50,7 @@ This week's goals were to finish the project proposal, system architecture and d
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week5_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week5_log.png)
 
 ### Recap
 
@@ -60,7 +60,7 @@ This week's goals were to finish the DFD diagram and understand the data flow of
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week6_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week6_log.png)
 
 ### Recap
 
@@ -70,7 +70,7 @@ This week's goals were to rework our documentation to more closely be aligned wi
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week7_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week7_log.png)
 
 ### Recap
 
@@ -80,7 +80,7 @@ This week's goals were to flesh out classes for our code and create a baseline f
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week8_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week8_log.png)
 
 ### Recap
 
@@ -90,7 +90,7 @@ This week's goals were to create an end-to-end workflow for the artifact miner w
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week9_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week9_log.png)
 
 ### Recap
 
@@ -100,7 +100,7 @@ This week's goals were to expand on the end-to-end workflow for the artifact min
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week10_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week10_log.png)
 
 ### Recap
 
@@ -110,7 +110,7 @@ This week's goals as a team were to create more specifications within the projec
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week12_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week12_log.png)
 
 ### Recap
 
@@ -120,7 +120,7 @@ This week's goals as a team were to imporve upon the project demo we had created
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week13_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week13_log.png)
 
 ### Recap
 
@@ -130,7 +130,7 @@ This week's goals as a team were to prepare for the upcoming Milestone 1 demo. T
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/jimi/jimi_week14_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/jimi/jimi_week_14_log.png)
 
 ### Recap
 

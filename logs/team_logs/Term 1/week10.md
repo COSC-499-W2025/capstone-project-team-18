@@ -50,7 +50,7 @@ Based on issues created and actively worked on during Week 10 (Nov 3-9):
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../log_images/team_log_imgs/burnup_week10.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week10.png)
 
 ## Details
 

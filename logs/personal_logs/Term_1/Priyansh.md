@@ -29,7 +29,7 @@
 ## Week 3, Sept. 15-21
 
 ### Peer Eval
-![Peer eval](./log_images/personal_log_imgs/priyansh/priyansh_week3_log.png)
+![Peer eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week3_log.png)
 
 ### Recap
 This week's goal was to start laying the foundation for our project by discussing potential technologies/the tech stack we want to use, figuring out what each member's strong suits are, and building an overall plan for the year.
@@ -41,7 +41,7 @@ I personally helped by contributing to both the **functional** and **nonfunction
 ## Week 4, Sept. 22-28
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week4_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week4_log.png)
 
 ### Recap
 My goals for this week were to work on the **use cases**.
@@ -53,7 +53,7 @@ My contributions included drafting detailed descriptions of user interactions li
 ## Week 5, Sept. 29-Oct. 5
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week5_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week5_log.png)
 
 ### Recap
 This week’s goals were to begin visualizing the data flow of our system and produce the first draft of the Level 0 and Level 1 Data Flow Diagram.
@@ -64,7 +64,7 @@ After finishing the draft, I shared it with the group to gather their feedback. 
 ## Week 6, Oct. 6 - Oct.12
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week6_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week6_log.png)
 
 ### Recap
 This week's goals focused on aligning our project design with Milestone #1 requirements and contributing to documentation reviews.
@@ -78,7 +78,7 @@ Additionally, I reviewed and approved several pull requests to ensure quality an
 ## Week 7, Oct. 13-19
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week7_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week7_log.png)
 
 ### Recap
 
@@ -92,7 +92,7 @@ Additionally, I reviewed and approved PR #44 (Enhanced Documentation for Class S
 ## Week 8, Oct. 20-26
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week8_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week8_log.png)
 
 ### Recap
 
@@ -105,7 +105,7 @@ Additionally, I reviewed PR #87 GitHub Pytest Action by Sam, which adds CI/CD to
 ## Week 9, Oct. 27-Nov. 2
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week9_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week9_log.png)
 
 ### Recap
 This week, our team aimed to strengthen the platform’s core by expanding multi-language code analysis, improve reporting, enhancing resume file handling, and refining database flexibility.
@@ -119,7 +119,7 @@ Both PRs are foundational for expanding our platform's functionality and data ag
 ## Week 10, Nov. 3-9
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week10_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week10_log.png)
 
 ### Recap
 The team’s efforts this week focused on improving platform portability, database organization, and documentation completeness, setting a strong foundation for the next phase of development.
@@ -133,7 +133,7 @@ Additionally, I reviewed and approved three PRs: PR #167 (database documentation
 ## Week 12, Nov. 17-23
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week12_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week12_log.png)
 
 ### Recap
 This week's focus was on enhancing system reliability, database functionality, and project ranking capabilities to support more robust analysis and data management.
@@ -149,7 +149,7 @@ I reviewed numerous PRs this week including PR #179 (Chronological List of Proje
 ## Week 13, Nov. 24-30
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week13_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week13_log.png)
 
 ### Recap
 This week's focus was on enhancing user experience, database functionality, resume generation, and project analysis capabilities to support more robust portfolio management.
@@ -161,7 +161,7 @@ I reviewed numerous PRs this week including PR #272 (dynamically generate resume
 ## Week 14, Dec. 1-7
 
 ### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week14_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/priyansh/priyansh_week14_log.png)
 
 ### Recap
 This week's focus was on finalizing critical bug fixes and enhancing the CLI user experience for milestone 1 delivery.

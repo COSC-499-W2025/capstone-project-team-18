@@ -8,7 +8,7 @@ This week the goals were to complete the system architecture diagram, project pr
 
 ### Burnup Chart
 
-![Image of burnup chart for this week](../log_images/team_log_imgs/burnup_week4.png)
+![Image of burnup chart for this week](../../../logs/log_images/team_log_imgs/burnup_week4.png)
 
 ## Details
 

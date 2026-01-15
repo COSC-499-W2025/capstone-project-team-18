@@ -30,34 +30,34 @@
 ---
 
 ### Peer Eval
-![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week3_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week3_log.png)
 
 ### Recap
 For this week, the focus was on developing a high-level overview of our project and finalizing the requirements document. I contributed by helping to specify both the functional and non-functional requirements, making sure that new ideas were placed under the correct sections and that everything flowed clearly. I also worked on refining the wording so the document would read more professionally and consistently.
 
 ### Peer Eval
-![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week4_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week4_log.png)
 
 
 ### Recap
 This week I focused on reviewing and refining our system architecture. I compared our design with other teams, identified strengths and weaknesses, and contributed to improving the overall clarity. Additionally, I worked with my teammates in meetings to flesh out the proposal and architecture diagram, and helped brainstorm different approaches to make our project stand out.
 
 ### Peer Eval
-![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week5_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week5_log.png)
 
 
 ### Recap
 This week, I worked with Jimi to finalize our DFD and ensure the data flow accurately represented our system’s processes. He started the DFD and after feedback from the group and I refined both the Level 0 and Level 1 diagrams for clarity and consistency. I also contributed to general group discussions and adjustments to improve how our diagrams aligned with our system’s functionality.
 
 ### Peer Eval
-![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week6_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week6_log.png)
 
 
 ### Recap
 With the new requirements for Milestone #1, our team needed to adjust parts of our project design. I worked closely with Alex to update our Level 0 and Level 1 DFDs to reflect the new system structure that he and Sam developed. Throughout the process, I made edits to ensure the diagrams accurately represented the revised data flow and clarified a few points about how the new design would integrate with our existing components. I also participated in team discussions to review the updated architecture and confirm that everyone was aligned before submission.
 
 ### Peer Eval
-![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week7_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week7_log.png)
 
 
 ### Recap
@@ -73,7 +73,7 @@ I also reviewed PR's [37](https://github.com/COSC-499-W2025/capstone-project-tea
 
 ## Week 8, Oct. 20–26
 
-![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week8_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week8_log.png)
 
 ### Recap
 This week I focused on implementing core functionality for the ProjectReport class and addressing a CLI bug. My primary contribution was developing the project timeline calculation feature in the `ProjectReport.__init__` method, which aggregates file-level statistics to determine project start and end dates.
@@ -92,7 +92,7 @@ The implementation can be found in PR ([#98](https://github.com/COSC-499-W2025/c
 ## Week 9, Oct. 27–Nov. 2
 
 
-![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week9_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week9_log.png)
 
 ### Recap
 This week I implemented a comprehensive file analysis system for the `FileReport.create_with_analysis()` method that automatically detects file types and applies specialized analyzers. The system supports natural language files (.md, .txt, .rst) with word count, character count, sentence count, and ARI score statistics, as well as code files (.py, .js, .java) with function/class counting and import analysis.
@@ -109,7 +109,7 @@ This work addresses issues #112 (Add Natural Language Statistic to FileReportCla
 
 ### Peer Eval
 
-![Peer Eval SS](./log_images/personal_log_imgs/erem/erem_week10_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week10_log.png)
 
 ### Recap
 This week I implemented the foundational JSON preferences system for our CLI application, establishing persistent user data storage across sessions. I developed the complete UserPreferences class with core methods for loading, saving, updating, and retrieving user preferences, then integrated this system into existing CLI commands (do_perms, do_filepath, do_email, do_begin) to automatically persist user consent, project filepaths, and email configurations.
@@ -129,7 +129,7 @@ Building on that foundation, I successfully implemented and merged PR [#186](htt
 
 # Week 12, Nov 17-23
 
-![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week12_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week12_log.png)
 
 ### Recap
 This week I wrapped up the third and final stage of the CLI User Preferences system with PR [#223](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/223).  Users can now configure advanced analysis settings through the new (6) Configure preferences submenu and view all current configurations via (7) View current preferences, with the viewer providing direct navigation to preference configuration. **This delievers on Milestone 1 requirement 6: _Store user configurations for future use_**
@@ -140,7 +140,7 @@ For code reviews, I checked out Alex's database retrieval PR [#236](https://gith
 
 # Week 13, Nov 24-30
 
-![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week13_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week13_log.png)
 
 ### Recap
 This week I focused on enhancing the user experience and fixing critical bugs for Milestone 1. I implemented professional progress bars using `tqdm` in PR [#267](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/267), adding real-time visual feedback across the analysis pipeline (unzip, discovery, analysis, saving) with percentage updates and ETAs. I also added language filtering functionality in PR [#261](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/261), allowing users to filter analysis by specific programming languages through the preferences menu. My merged PR [#242](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/242) fixed a critical bug where coding language ratios weren't summing to 100%. I discovered the code was counting duplicate files and virtual environment pollution, so I implemented smart deduplication and comprehensive filtering to match GitHub's methodology. I completed PR [#260](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/260) adding a CLI menu option to delete portfolios from the database with proper cascading deletion and safety confirmations.
@@ -152,7 +152,7 @@ For code reviews, I evaluated Alex's project ranking PR [#265](https://github.co
 
 ### Peer Eval
 
-![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_week14_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week14_log.png)
 
 ### Recap
 This week I focused on fixing critical navigation bugs and completing features for Milestone 1. I resolved issue #291 in PR #303 where the back command in the retrieve portfolio submenu was incorrectly returning to main menu instead of the previous retrieval menu step. I then tackled the more complex issue #292 in PR #314, implementing distinct behaviors for back and cancel commands, cancel now returns to main menu while preserving history, allowing subsequent back commands to navigate through previous menus correctly. I also reopened and updated PR #260 to fix navigation issues in the delete portfolio feature.
