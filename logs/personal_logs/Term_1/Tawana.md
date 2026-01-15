@@ -1,14 +1,30 @@
-# T2 - Week 1 01/05 - 01/11
+# Tawana Ndlovu Personal Logs Term 1
 
-# Peer Evaluation!
-[Peer Eval THN](./log_images/personal_log_imgs/tawana/tawana_T2_week1_log.png)
+## Table of Contents
 
-# Recap on your week goals
-This week, our team met to regroup after the break and review the current state of Milestone 1. We walked through our progress together, identified gaps, and aligned on what still needed refinement. We also spoke directly with the TA to fine-tune Milestone 1 requirements, clarify expectations, and ensure our deliverables were aligned with the rubric.
+**[Week 3, 09/15 - 09/21](#week-3-sept-1521)**
 
-In addition to team coordination, I reviewed Sam’s PR `#332` (Refactor Test Directory). The changes significantly improved the organization, isolation, and maintainability of our test suite. 
+**[Week 4, 09/22 - 09/28](#week-4-sept-2228)**
 
-Overall, this week was centered on alignment, clarification, and quality assurance as we finalized Milestone 1 and prepared for the next phase of development.
+**[Week 5, 09/29 - 10/05](#week-5-sept-29-oct-5)**
+
+**[Week 6, 10/06 - 10/12](#week-6-oct-612)**
+
+**[Week 7, 10/13 - 10/19](#week-7-oct-1319)**
+
+**[Week 8, 10/20 - 10/26](#week-8-oct-2026)**
+
+**[Week 9, 10/27 - 11/02](#week-9-oct-27-nov-2)**
+
+**[Week 10, 11/03 - 11/09](#week-10-nov-39)**
+
+**[Week 12, 11/17 - 11/23](#week-12-nov-1723)**
+
+**[Week 13, 11/24 - 11/30](#week-13-nov-2430)**
+
+**[Week 14, 12/01 - 12/07](#week-14-dec-17)**
+
+---
 
 # Week 14 12/01 - 12/07
 

@@ -1,5 +1,5 @@
 
-# Erem Ozdemir Personal Log
+# Erem Ozdemir Personal Logs Term 1
 
 ## Table of Contents
 
@@ -27,9 +27,7 @@
 
 **[Week 14, Nov. 30 – Dec. 07](#week-14-nov-30--dec-07)**
 
-**[T2 Week 1, Jan 05 - 11](#t2-week-1-jan-05--jan-11)**
-
-
+---
 
 ### Peer Eval
 ![Peer Eval SS](./log_images/personal_log_imgs/Erem/erem_week3_log.png)
@@ -162,17 +160,3 @@ This week I focused on fixing critical navigation bugs and completing features f
 My merged PRs from earlier in the week include the tqdm progress bars implementation in PR #267 and language filtering functionality in PR #261.
 
 For code reviews, I evaluated Sam's chronological skills/projects PR #309, and his empty project handling PR #307, Priyansh's portfolio naming prompt PR #304, and Alex's README documentation update PR #285.
-
-
-## T2 Week 1, Jan 05 - 11
-
-### Peer Eval
-
-![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_t2_week1_log.png)
-
-### Recap
-After the break, we met as a team to get back on the same page after the end of Milestone 1. We went through what was finished and what still needed cleanup. I also talked with the TA to confirm the expectations and rubric details so we are not assuming anything.
-
-I also reviewed Sam’s PR #332 (Refactor Test Directory) as well. It improved how the tests are organized and makes the suite much easier to maintain as it grows.
-
-Overall, the week was mostly Milestone 1 cleanup plus making sure we understand the requirements.

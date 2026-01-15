@@ -1,4 +1,4 @@
-# Priyansh Mathur Personal Log
+# Priyansh Mathur Personal Logs Term 1
 
 ## Table of Contents
 
@@ -23,10 +23,6 @@
 **[Week 13, Nov. 24-30](#week-13-nov-24-30)**
 
 **[Week 14, Dec. 1-7](#week-14-dec-1-7)**
-
-### Term 2
-
-**[Week 1, Jan. 05-11](#week-1-jan-05-11)**
 
 ---
 
@@ -177,10 +173,3 @@ I completed two PRs:
 
 I reviewed 3 PRs this week including PR #308 (Added New Statistic Framework) by Sam, PR #303 (Bug Fix: #291 Back command works in Retrieve portfolio) by Erem, and PR #288 (Create Activity Type Contribution Resume Bullet Point) by Sam. My feedback focused on code correctness, test coverage, and alignment with Milestone 1 goals.
 
-## Week 1, Jan. 05-11
-
-### Peer Eval
-![Peer Eval](./log_images/personal_log_imgs/priyansh/priyansh_week1_term2_log.png)
-
-### Recap
-This week, our team reconvened after the break to reassess where we stood with Milestone 1. We discussed our individual progress, highlighted areas that needed improvement, and confirmed the remaining tasks required to complete the milestone. We have also started planning and discussing Milestone 2 requirments. Additionally I reviewed PR #341 Tawana Term 2 Week 1 Personal Log and PR #322 Refactor Test Directory by Sam
