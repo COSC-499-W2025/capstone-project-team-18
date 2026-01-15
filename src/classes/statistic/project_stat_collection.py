@@ -70,7 +70,7 @@ class ProjectStatCollection(Enum):
     TOTAL_PROJECT_LINES = ProjectStatisticTemplate(
         name="TOTAL_PROJECT_LINES",
         description="Total lines contained in a project",
-        expected_type=float
+        expected_type=int
     )
 
     ACTIVITY_TYPE_CONTRIBUTIONS = ProjectStatisticTemplate(
