@@ -14,6 +14,9 @@ from src.classes.report import ProjectReport
 from src.classes.statistic import StatisticIndex, ProjectStatCollection, UserStatCollection, WeightedSkills
 from src.classes.resume.resume import Resume
 
+from src.database.base import get_engine
+from src.database.models import UserReportTable
+
 
 class UserReport(BaseReport):
     """
@@ -87,7 +90,6 @@ class UserReport(BaseReport):
             tuple: (success: bool, message: str)
         """
         from src.database.utils.database_modify import delete_user_report_and_related_data
-        from src.database.db import get_engine, UserReportTable
 
         engine = get_engine()
 
@@ -137,7 +139,6 @@ class UserReport(BaseReport):
         Returns:
             tuple: (found: bool, info: dict with title and project_count)
         """
-        from src.database.db import get_engine, UserReportTable
 
         engine = get_engine()
 
@@ -176,7 +177,6 @@ class UserReport(BaseReport):
         Returns:
             list: List of dicts with portfolio info (title, project_count)
         """
-        from src.database.db import get_engine, UserReportTable
 
         engine = get_engine()
 

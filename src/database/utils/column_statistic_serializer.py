@@ -8,7 +8,6 @@ from enum import Enum
 from dataclasses import is_dataclass, asdict
 from typing import Any
 import ast
-import json
 from src.classes.statistic import FileDomain, CodingLanguage, WeightedSkills
 
 ENUM_REGISTRY = {
@@ -116,7 +115,7 @@ class ColumnStatisticSerializer(TypeDecorator):
         if isinstance(key, Enum):
             return f"__enum__:{key.__class__.__name__}:{key.value}"
         if is_dataclass(key) and not isinstance(key, type):
-            return f"__dataclass__:{key.__class__.__name__}:{json.dumps(asdict(key))}"
+            return f"__dataclass__:{key.__class__.__name__}:{asdict(key)}"
         return str(key)
 
     def _deserialize_dict_key(self, key: str) -> Any:
@@ -145,7 +144,7 @@ class ColumnStatisticSerializer(TypeDecorator):
 
         if key.startswith("__dataclass__:"):
             _, cls_name, val_str = key.split(":", 2)
-            val_dict = json.loads(val_str)
+            val_dict = ast.literal_eval(val_str)
             cls = DATACLASS_REGISTRY[cls_name]
             return cls(**val_dict)
         return key
