@@ -12,7 +12,7 @@
 
 ## Explanation
 
-**TLDR:** SQLAlchemy does not have built-in support for `ALTER TABLE` operations, which is where a migration library comes in handy. We use Alembic to specify modifications that we want to make to our exisitng database that allows us to retain its data (or update the data accordingly).
+**TLDR:** SQLAlchemy does not have built-in support for `ALTER TABLE` operations, which is where a migration library comes in handy. We use Alembic to specify modifications that we want to make to our existing database that allows us to retain its data (or update the data accordingly).
 
 Suppose that we have released a working state of our app for users to install via `pip`. They use it to analyze some of their projects, and generate a resume with it. A few months later, they come back and want to update their resume with some new projects that they have completed. In the meantime, we have updated our app with some changes that modify database functionality.
 
@@ -51,7 +51,7 @@ We can use Alembic to specify that we want to change the column's name and retai
 
 ## How Alembic Works
 
-Alembic allows us to implement version control into our database. This matters when there is a difference of time in the app's development and the user's runtime (i.e., development by us and use of the app from users is not occuring at the same time).
+Alembic allows us to implement version control into our database. This matters when there is a difference of time in the app's development and the user's runtime (i.e., development by us and use of the app from users is not occurring at the same time).
 
 Some terminology:
 - Revision: A file that is used to tell Alembic which changes are being made to the database, and how to apply them.
