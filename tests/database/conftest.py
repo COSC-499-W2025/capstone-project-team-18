@@ -17,7 +17,7 @@ import datetime
 from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
-from src.database.db import Base
+from src.database.base import Base
 from src.classes.report import FileReport, ProjectReport, UserReport
 from src.database.utils.database_modify import create_row
 

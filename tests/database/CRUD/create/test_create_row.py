@@ -2,11 +2,7 @@
 Tests the create_row() function
 """
 
-from src.database.db import (
-    FileReportTable,
-    ProjectReportTable,
-    UserReportTable,
-)
+from src.database.models import FileReportTable, ProjectReportTable, UserReportTable
 from src.database.utils.database_modify import create_row
 from src.classes.report import ProjectReport, UserReport
 from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
