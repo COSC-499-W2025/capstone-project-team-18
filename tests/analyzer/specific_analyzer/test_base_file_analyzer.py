@@ -60,7 +60,7 @@ def test_extract_file_reports_returns_project(tmp_path, create_temp_file):
 
 
 def test_created_modifiyed_and_accessed_dates(tmp_path):
-    unzip_file("tests/resources/mac_projects.zip", tmp_path)
+    unzip_file("tests/resources/mac_projects.zip", str(tmp_path))
 
     file_path = tmp_path / "Projects" / "ProjectA" / "a_1.txt"
 
@@ -69,6 +69,8 @@ def test_created_modifiyed_and_accessed_dates(tmp_path):
     date_modified = report.get_value(FileStatCollection.DATE_MODIFIED.value)
     date_created = report.get_value(FileStatCollection.DATE_CREATED.value)
 
+    assert date_modified == datetime(2025, 10, 20, 21, 38, 6)
+    assert date_created == datetime(2025, 10, 20, 21, 38, 6)
     assert date_created <= date_modified
 
 
