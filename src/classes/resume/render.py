@@ -124,7 +124,7 @@ class ResumeLatexRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         tex = [self.prefix, r"\begin{document}"]
         email = latex_escape(resume.email)
-        # github = latex_espape(resume.github)
+        github = latex_escape(resume.github)
 
         # Header
         tex.extend([
