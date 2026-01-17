@@ -5,8 +5,7 @@ would be queries like INSERT, UPDATE, etc.
 '''
 
 from src.classes.report import FileReport, ProjectReport, UserReport
-from src.database.db import FileReportTable, ProjectReportTable, UserReportTable, __repr__
-from enum import Enum
+from src.database.db import FileReportTable, ProjectReportTable, UserReportTable
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -29,6 +28,9 @@ def create_row(report: FileReport | ProjectReport | UserReport):
         row = ProjectReportTable()
         if report.project_name:
             row.project_name = report.project_name
+        if report.project_path:
+            row.project_path = report.project_path
+
     elif isinstance(report, UserReport):
         row = UserReportTable()
         if report.report_name:
@@ -36,52 +38,20 @@ def create_row(report: FileReport | ProjectReport | UserReport):
     else:
         raise ValueError(f"Unknown report type: {type(report)}")
 
-    # `report.statistics` is a StatisticIndex and is iterable over Statistic
+    # We iterate through all the statistics in the report and set
+    # the corresponding column in the row to the statistic's value.
+    # Serialization is done with .types.py SerializableJSON type.
     for stat in report.statistics:
-        if stat is None:
-            continue  # column will be NULL if there is no statistic
-
         col_name = stat.get_template().name.lower()
         value = stat.value
 
-        # Short Explanation
-        # ----------------------------------------------------------
-        # Convert Enum values into primitive JSON-serializable forms
-        # ----------------------------------------------------------
-
-        # Long Explanation
-        # ----------------------------------------------------------
-        # Some values that are stored in statistic templates can't
-        # be translated into JSON by SQLAlchemy for one reason or
-        # another. E.g. CODING_LANGUAGE_RATIO's expected_type stores
-        # a dict where the keys are CodingLangauge enums, and the
-        # values are the ratio (float). SQLAlchemy requires primitive
-        # types for JSON keys and can't automatically convert a
-        # CodingLanguage enum to a primitive type. So, we check for
-        # these enum and either convert them to a string (for
-        # something like FileDomain), or we get the first value of
-        # the CodingLanguage enum object (a string of the coding language)
-        # ----------------------------------------------------------
-        if isinstance(value, Enum):
-            value = value.value  # e.g., FileDomain enums have a simple string .value
-        if isinstance(value, dict):
-            if col_name == 'coding_language_ratio' or col_name == 'user_coding_language_ratio':
-                value = {lang.value[0]: ratio for lang, ratio in value.items()}
-            else:
-                continue
-        if isinstance(value, list):
-            if col_name == 'weighted_skills':
-                value = [s.to_dict() for s in value]
-            else:
-                continue
-
-        # add the statistic to the row if column exists
         if hasattr(row, col_name):
             setattr(row, col_name, value)
+
     return row
 
 
-def delete_user_report_and_related_data(report_id=None, title=None, zipped_filepath=None):
+def delete_user_report_and_related_data(report_id=None, title=None, zipped_filepath=None, engine=None):
     """
     Delete a user report and all related project and file reports by id, title, or zipped_filepath.
     Args:
@@ -89,7 +59,9 @@ def delete_user_report_and_related_data(report_id=None, title=None, zipped_filep
         title (str): Title of the user report to delete.
         zipped_filepath (str): Filepath to the zipped file to delete.
     """
-    engine = get_engine()
+    if engine is None:
+        engine = get_engine()
+
     try:
         with Session(engine) as session:
             query = session.query(UserReportTable)

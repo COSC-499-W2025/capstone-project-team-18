@@ -18,12 +18,14 @@ INSTANT_SUCCESS_FILES_AND_DIR = [
 
     # Directories that instantly qualify a directory as a project
     ".git",
+    "node_modules",
     "src",
     "app",
     ".github",
     ".vscode",
     ".venv",
-    "venv"
+    "venv",
+    ".idea",
 ]
 
 # Junk that should totally be disregarded. They should be neither
@@ -50,6 +52,23 @@ IGNORE_FILES = JUNK_FILES + [
     "asgi.py",
     "settings.py",
     "urls.py",
+    ".gitignore",
+    ".eslintrc.json",
+    "next.config.mjs",
+    "tsconfig.json",
+    "package-lock.json",
+    "yarn.lock",
+    "vite.config.js",
+    "tailwind.config.js",
+    "vite.config.ts",
+    "tailwind.config.ts",
+    "postcss.config.js",
+    "settings.gradle",
+    "settings.gradle.kts",
+    "build.gradle",
+    "gardlew.bat",
+    ".env"
+
 ]
 
 IGNORE_DIRS = [
@@ -58,6 +77,7 @@ IGNORE_DIRS = [
     ".vscode",
     ".git",
     ".pytest_cache",
+    ".idea",
 
     # Virtual environment directories
     ".venv",

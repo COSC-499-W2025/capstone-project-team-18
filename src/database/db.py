@@ -2,12 +2,10 @@
 This file will store all of the config and logic that we will need to access and modify our database (`db.py`)
 '''
 from sqlalchemy import ForeignKey, Table, Column, Integer, String, create_engine
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, Session
-from enum import Enum
-from dataclasses import is_dataclass, asdict
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 from typing import List
 
-from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection, StatisticIndex, Statistic
+from src.classes.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
 from .utils.init_columns import make_columns
 
 DB_PATH = "sqlite:///src/database/data.db"
@@ -112,6 +110,7 @@ class ProjectReportTable(Base):
     )
 
     project_name = mapped_column(String)
+    project_path = mapped_column(String)
 
 
 @make_columns(UserStatCollection)
@@ -134,7 +133,6 @@ class UserReportTable(Base):
     - `id`: The table's PK
     '''
     __tablename__ = 'user_report'
-
 
     id = mapped_column(Integer, primary_key=True)
 

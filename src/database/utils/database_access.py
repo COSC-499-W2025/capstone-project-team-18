@@ -3,16 +3,15 @@ This file contains all functions that will be called when we
 want to access data from the database. In SQL, this would be
 queries like SELECT, etc.
 '''
-from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection, FileDomain, CodingLanguage
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.classes.report import FileReport, ProjectReport, UserReport
 from src.database.db import ProjectReportTable, UserReportTable, get_engine
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from src.utils.log.logging import get_logger
 
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
@@ -29,17 +28,8 @@ def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
 
         if hasattr(row, column_name):
             value = getattr(row, column_name)
-            if value is not None:
-                # Rebuild CodingLanguage enums for stored ratios
-                if column_name == 'coding_language_ratio':
-                    lang_ratios: dict[CodingLanguage, float] = {}
-                    for key, val in value.items():
-                        for lang in CodingLanguage:
-                            if lang.value[0].lower() == str(key).lower():
-                                lang_ratios[lang] = val
-                                break
-                    value = lang_ratios
 
+            if value is not None:
                 statistics.add(Statistic(stat_template.value, value))
 
     name = row.project_name or "Unknown Project"
@@ -78,10 +68,10 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logging.error(f'Error: No project found with name "{proj_name}"')
+            logger.error(f'Error: No project found with name "{proj_name}"')
             raise
         except MultipleResultsFound:
-            logging.error(
+            logger.error(
                 f'Error: Multiple projects found with name "{proj_name}"')
             raise
 
@@ -113,24 +103,10 @@ def get_file_reports(report: ProjectReportTable, engine) -> list[FileReport]:
                 # get stat if col exists and has value
                 if hasattr(row, column_name):
                     value = getattr(row, column_name)
-                    try:
-                        if value is not None:
-                            # Some stats store non-primitive data types, but the db stores them
-                            # as primitives, so we need to convert them back.
-                            if column_name == "type_of_file":
-                                value = FileDomain(value)
-                            if column_name == "coding_language":
-                                # CodingLanguage stores tuples: e.g., ("Python", [".py", ...])
-                                # Find the enum member with matching value
-                                for lang in CodingLanguage:
-                                    if lang.value[0] == value[0]:  # type: ignore
-                                        value = lang
-                                        break
-                            statistics.add(
-                                Statistic(stat_template.value, value))
-                    except Exception as e:
-                        raise ValueError(
-                            f"Error: {e} when getting value in file_report for column {column_name}")
+
+                    if value is not None:
+                        statistics.add(
+                            Statistic(stat_template.value, value))
 
             file_report = FileReport(statistics, row.filepath)
             file_reports.append(file_report)
@@ -195,17 +171,18 @@ def get_user_report(name: str, engine=None) -> UserReport:
 
             # make the UserReport obj
             user_report = UserReport(
-                project_reports,
-                report_name=name
+                project_reports=project_reports,
+                report_name=name,
+                statistics=statistics
             )
 
             return user_report
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logging.error(f'Error: No user report found with name "{name}"')
+            logger.error(f'Error: No user report found with name "{name}"')
             raise
         except MultipleResultsFound:
-            logging.error(
+            logger.error(
                 f'Error: Multiple user reports found with name "{name}"')
             raise
