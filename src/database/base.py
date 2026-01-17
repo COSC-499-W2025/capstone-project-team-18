@@ -2,13 +2,11 @@
 This file initializes `Base`, a class that all of our models (tables)
 inherit and defines a function to use the database's `engine`.
 '''
-import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 
 # for DB migration via alembic
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 DB_PATH = "sqlite:///src/database/data.db"
 
 Base = declarative_base()
