@@ -9,13 +9,14 @@ from sqlalchemy import select
 
 from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.classes.report import FileReport, ProjectReport, UserReport
+
 from src.database.models import ProjectReportTable, UserReportTable
 from src.database.base import get_engine
 
+from src.utils.log.logging import get_logger
 
 import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
@@ -37,7 +38,7 @@ def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
                 statistics.add(Statistic(stat_template.value, value))
 
     name = row.project_name or "Unknown Project"
-
+    logger.info("Building ProjectReport obj for project with name %s", name)
     return ProjectReport(
         file_reports=get_file_reports(row, engine),
         project_name=name,
