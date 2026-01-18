@@ -11,6 +11,7 @@ def _readme_report(tmp_path, create_temp_file, monkeypatch, filename, content):
     def fake_extract(text, top_n):
         return ["REST API"] if "REST" in text else ["Key Phrase"]
 
+    # Stub model calls so tests are fast and do not download large models.
     monkeypatch.setattr(
         keyphrase_extraction, "_extract_with_keybert", fake_extract)
     monkeypatch.setattr(

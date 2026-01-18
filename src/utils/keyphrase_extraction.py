@@ -59,6 +59,7 @@ def extract_readme_keyphrases(text: str, top_n: int = _DEFAULT_TOP_N) -> list[st
         return []
 
     truncated = text[:_MAX_TEXT_CHARS]
+    # Cache by normalized text hash to avoid re-running KeyBERT on the same README.
     cache_key = _hash_text(truncated)
     cached = _CACHE.get(cache_key)
     if cached is not None:

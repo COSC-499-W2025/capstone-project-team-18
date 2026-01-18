@@ -1,5 +1,12 @@
 import os
 
+"""
+README insights:
+- Themes: extract topic terms from README text with BERTopic.
+- Tone: classify README tone with a zero-shot model (BART-MNLI).
+Models are loaded lazily to avoid startup cost and can be disabled with env flags.
+"""
+
 _TONE_LABELS = ["Professional", "Educational", "Experimental"]
 
 _ZSC_PIPELINE = None
@@ -11,6 +18,9 @@ _TOPIC_CACHE: dict[int, list[str]] = {}
 
 def _get_classifier():
     global _ZSC_PIPELINE, _ZSC_FAILED
+    """Return the cached zero-shot classifier (BART-MNLI).
+    Returns None if disabled by env or if initialization failed.
+    """
     if _ZSC_FAILED or os.environ.get("ARTIFACT_MINER_DISABLE_ZSC") == "1":
         return None
     if _ZSC_PIPELINE is None:
@@ -27,6 +37,9 @@ def _get_classifier():
 
 
 def _classify_labels(text: str, labels: list[str], threshold: float, max_labels: int) -> list[str]:
+    """Score the text against candidate labels and return the top matches.
+    Uses a threshold to filter weak labels.
+    """
     classifier = _get_classifier()
     if classifier is None:
         return []
@@ -39,6 +52,9 @@ def _classify_labels(text: str, labels: list[str], threshold: float, max_labels:
 
 def _get_topic_model():
     global _TOPIC_MODEL, _TOPIC_FAILED
+    """Return the cached BERTopic model used for topic terms.
+    Returns None if disabled by env or if initialization failed.
+    """
     if _TOPIC_FAILED or os.environ.get("ARTIFACT_MINER_DISABLE_BERTOPIC") == "1":
         return None
     if _TOPIC_MODEL is None:
@@ -54,6 +70,9 @@ def _get_topic_model():
 
 
 def _extract_topics(text: str, max_topics: int) -> list[str]:
+    """Extract top topic terms from BERTopic for a single README.
+    Uses an in-memory cache to avoid recomputing for the same text.
+    """
     model = _get_topic_model()
     if model is None:
         return []
@@ -74,6 +93,9 @@ def _extract_topics(text: str, max_topics: int) -> list[str]:
         return []
 
 def extract_readme_themes(text: str, max_themes: int = 5) -> list[str]:
+    """Return README theme terms inferred by BERTopic.
+    Returns an empty list if no topics can be inferred.
+    """
     if not text or not text.strip():
         return []
 
@@ -81,6 +103,9 @@ def extract_readme_themes(text: str, max_themes: int = 5) -> list[str]:
 
 
 def classify_readme_tone(text: str) -> str | None:
+    """Return the dominant tone label or None if unclassified.
+    Uses the same zero-shot classifier as theme detection.
+    """
     if not text or not text.strip():
         return None
 
