@@ -250,6 +250,77 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
         return to_return
 
 
+class ProjectReadmeInsights(ProjectStatisticCalculation):
+    """
+    Aggregates README key phrases, themes, and tone into project-level stats.
+    """
+
+    def _pick_majority(self, counts: dict[str, int]) -> str | None:
+        if not counts:
+            return None
+        ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
+            return None
+        return ranked[0][0]
+
+    def calculate(self, report: ProjectReport) -> list[Statistic]:
+        tags: list[str] = []
+        tag_seen: set[str] = set()
+        theme_counts: dict[str, int] = {}
+        tone_counts: dict[str, int] = {}
+
+        for file_report in report.file_reports:
+            keyphrases = file_report.get_value(
+                FileStatCollection.README_KEYPHRASES.value
+            )
+            if keyphrases:
+                for phrase in keyphrases:
+                    normalized = phrase.strip().lower()
+                    if not normalized or normalized in tag_seen:
+                        continue
+                    tag_seen.add(normalized)
+                    tags.append(phrase)
+
+            themes = file_report.get_value(
+                FileStatCollection.README_THEMES.value
+            )
+            if themes:
+                for theme in set(themes):
+                    theme_counts[theme] = theme_counts.get(theme, 0) + 1
+
+            tone = file_report.get_value(
+                FileStatCollection.README_TONE.value
+            )
+            if tone:
+                tone_counts[tone] = tone_counts.get(tone, 0) + 1
+
+        stats: list[Statistic] = []
+
+        if tags:
+            stats.append(
+                Statistic(ProjectStatCollection.PROJECT_TAGS.value, tags)
+            )
+
+        if theme_counts:
+            ranked_themes = sorted(
+                theme_counts.items(), key=lambda kv: (-kv[1], kv[0])
+            )
+            stats.append(
+                Statistic(
+                    ProjectStatCollection.PROJECT_THEMES.value,
+                    [name for name, _count in ranked_themes],
+                )
+            )
+
+        majority_tone = self._pick_majority(tone_counts)
+        if majority_tone:
+            stats.append(
+                Statistic(ProjectStatCollection.PROJECT_TONE.value, majority_tone)
+            )
+
+        return stats
+
+
 class ProjectActivityTypeContributions(ProjectStatisticCalculation):
     """
     This function will analyze the user's
@@ -465,6 +536,7 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
             ProjectDates(),
             CodingLanguageRatio(),
             ProjectWeightedSkills(),
+            ProjectReadmeInsights(),
             ProjectActivityTypeContributions(),
             ProjectAnalyzeGitAuthorship(),
             ProjectTotalContributionPercentage(),
