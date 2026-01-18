@@ -14,7 +14,7 @@ from src.classes.skills import SkillMapper
 from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
 from src.utils.log.logging import get_logger
-from src.ML.models.readme_analysis.readme_insights import extract_readme_themes_bulk
+from src.ML.models.readme_analysis import readme_insights
 from typing import Optional
 
 logger = get_logger(__name__)
@@ -316,7 +316,7 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
                     )
 
         if readme_texts:
-            themes_by_doc = extract_readme_themes_bulk(readme_texts)
+            themes_by_doc = readme_insights.extract_readme_themes_bulk(readme_texts)
             empty_theme_count = sum(1 for themes in themes_by_doc if not themes)
             if empty_theme_count:
                 logger.info(
