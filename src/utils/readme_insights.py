@@ -61,14 +61,17 @@ def _extract_topics(text: str, max_topics: int) -> list[str]:
     cached = _TOPIC_CACHE.get(cache_key)
     if cached is not None:
         return cached[:max_topics]
-    topics, _ = model.fit_transform([text])
-    topic_id = topics[0]
-    if topic_id == -1:
+    try:
+        topics, _ = model.fit_transform([text])
+        topic_id = topics[0]
+        if topic_id == -1:
+            return []
+        topic_terms = model.get_topic(topic_id) or []
+        labels = [term for term, _score in topic_terms][:max_topics]
+        _TOPIC_CACHE[cache_key] = labels
+        return labels
+    except Exception:
         return []
-    topic_terms = model.get_topic(topic_id) or []
-    labels = [term for term, _score in topic_terms][:max_topics]
-    _TOPIC_CACHE[cache_key] = labels
-    return labels
 
 def extract_readme_themes(text: str, max_themes: int = 5) -> list[str]:
     if not text or not text.strip():
