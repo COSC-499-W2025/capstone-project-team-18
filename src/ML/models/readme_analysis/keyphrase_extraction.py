@@ -2,12 +2,17 @@ import hashlib
 import os
 from typing import Iterable
 
+from keybert import KeyBERT
+from src.utils.log.logging import get_logger
+
 _CACHE: dict[str, list[str]] = {}
 _KEYBERT_MODEL = None
 _KEYBERT_FAILED = False
 
 _MAX_TEXT_CHARS = 20000
 _DEFAULT_TOP_N = 10
+
+logger = get_logger(__name__)
 
 
 def _hash_text(text: str) -> str:
@@ -35,9 +40,9 @@ def _dedupe_phrases(phrases: Iterable[str]) -> list[str]:
 def _extract_with_keybert(text: str, top_n: int) -> list[str]:
     global _KEYBERT_MODEL, _KEYBERT_FAILED
     if _KEYBERT_FAILED:
+        logger.info("Skipping KeyBERT extraction due to previous failure")
         return []
     try:
-        from keybert import KeyBERT
         model_name = os.environ.get(
             "ARTIFACT_MINER_KEYBERT_MODEL", "all-MiniLM-L6-v2")
         if _KEYBERT_MODEL is None:
@@ -50,12 +55,14 @@ def _extract_with_keybert(text: str, top_n: int) -> list[str]:
         )
         return [kw for kw, _score in keywords]
     except Exception:
+        logger.exception("KeyBERT extraction failed for model %s", model_name)
         _KEYBERT_FAILED = True
         return []
 
 
 def extract_readme_keyphrases(text: str, top_n: int = _DEFAULT_TOP_N) -> list[str]:
     if not text or not text.strip():
+        logger.info("Skipping README keyphrase extraction for empty text")
         return []
 
     truncated = text[:_MAX_TEXT_CHARS]

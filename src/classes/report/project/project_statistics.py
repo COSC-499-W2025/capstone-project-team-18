@@ -6,14 +6,18 @@ to create and compute various statistics related to projects.
 
 from typing import List
 import os
+from pathlib import Path
 from src.classes.statistic import Statistic, FileStatCollection, ProjectStatCollection, WeightedSkills
 from src.classes.report import ProjectReport
 from src.classes.report.statistic_builder import StatisticCalculation, StatisticReportBuilder
 from src.classes.skills import SkillMapper
 from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
+from src.utils.log.logging import get_logger
+from src.ML.models.readme_analysis.readme_insights import extract_readme_themes_bulk
 from typing import Optional
 
+logger = get_logger(__name__)
 
 class ProjectStatisticCalculation(StatisticCalculation[ProjectReport]):
     """Base for project-scoped statistic calculations."""
@@ -268,6 +272,7 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
         tag_seen: set[str] = set()
         theme_counts: dict[str, int] = {}
         tone_counts: dict[str, int] = {}
+        readme_texts: list[str] = []
 
         for file_report in report.file_reports:
             keyphrases = file_report.get_value(
@@ -281,18 +286,53 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
                     tag_seen.add(normalized)
                     tags.append(phrase)
 
-            themes = file_report.get_value(
-                FileStatCollection.README_THEMES.value
-            )
-            if themes:
-                for theme in set(themes):
-                    theme_counts[theme] = theme_counts.get(theme, 0) + 1
-
             tone = file_report.get_value(
                 FileStatCollection.README_TONE.value
             )
             if tone:
                 tone_counts[tone] = tone_counts.get(tone, 0) + 1
+
+            filename = Path(file_report.filepath).name.lower()
+            if filename.startswith("readme"):
+                try:
+                    readme_path = Path(file_report.filepath)
+                    if not readme_path.is_absolute():
+                        readme_path = Path(report.project_path) / readme_path
+                    if not readme_path.exists():
+                        logger.info(
+                            "README path not found for themes: %s", readme_path
+                        )
+                        continue
+                    readme_texts.append(
+                        readme_path.read_text(
+                            encoding="utf-8",
+                            errors="ignore",
+                        )
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to read README for themes: %s",
+                        file_report.filepath,
+                    )
+
+        if readme_texts:
+            themes_by_doc = extract_readme_themes_bulk(readme_texts)
+            empty_theme_count = sum(1 for themes in themes_by_doc if not themes)
+            if empty_theme_count:
+                logger.info(
+                    "README theme extraction returned no themes for %d/%d documents in %s",
+                    empty_theme_count,
+                    len(themes_by_doc),
+                    report.project_name,
+                )
+            for themes in themes_by_doc:
+                for theme in set(themes):
+                    theme_counts[theme] = theme_counts.get(theme, 0) + 1
+        else:
+            logger.info(
+                "No README files found for theme extraction in project %s",
+                report.project_name,
+            )
 
         stats: list[Statistic] = []
 

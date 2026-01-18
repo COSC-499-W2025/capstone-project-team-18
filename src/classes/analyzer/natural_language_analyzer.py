@@ -3,8 +3,8 @@ from pathlib import Path
 
 from src.classes.statistic import Statistic, FileStatCollection, FileDomain
 from src.classes.analyzer.text_file_analyzer import TextFileAnalyzer
-from src.utils.keyphrase_extraction import extract_readme_keyphrases
-from src.utils.readme_insights import extract_readme_themes, classify_readme_tone
+from src.ML.models.readme_analysis.keyphrase_extraction import extract_readme_keyphrases
+from src.ML.models.readme_analysis.readme_insights import classify_readme_tone
 from src.utils.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -55,16 +55,18 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
                               keyphrases)
                 )
 
-            themes = extract_readme_themes(self.text_content)
-            if themes:
-                stats.append(
-                    Statistic(FileStatCollection.README_THEMES.value, themes)
-                )
-
             tone = classify_readme_tone(self.text_content)
             if tone:
                 stats.append(
                     Statistic(FileStatCollection.README_TONE.value, tone)
+                )
+
+            if not keyphrases or not tone:
+                logger.info(
+                    "README insights for %s: keyphrases=%d tone=%s",
+                    self.relative_path,
+                    len(keyphrases),
+                    tone or "None",
                 )
 
         self.stats.extend(stats)
