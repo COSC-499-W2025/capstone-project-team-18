@@ -5,7 +5,7 @@ This file handles all logic for logging
 import logging
 from logging.handlers import RotatingFileHandler
 
-LOG_FILE = "src/utils/log/app.log"
+LOG_FILE = __file__
 
 
 def get_logger(name: str, level=logging.INFO):
