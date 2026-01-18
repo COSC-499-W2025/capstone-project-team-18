@@ -4,7 +4,7 @@ Tests for NaturalLanguageAnalyzer.
 
 from src.classes.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
 from src.classes.statistic import FileStatCollection, FileDomain
-from src.utils import keyphrase_extraction
+from src.utils import keyphrase_extraction, readme_insights
 
 
 def _readme_report(tmp_path, create_temp_file, monkeypatch, filename, content):
@@ -13,6 +13,10 @@ def _readme_report(tmp_path, create_temp_file, monkeypatch, filename, content):
 
     monkeypatch.setattr(
         keyphrase_extraction, "_extract_with_keybert", fake_extract)
+    monkeypatch.setattr(
+        readme_insights, "_extract_topics", lambda *_args, **_kwargs: ["API Development"])
+    monkeypatch.setattr(
+        readme_insights, "_classify_labels", lambda *_args, **_kwargs: ["Professional"])
     root, name = create_temp_file(filename, content, tmp_path)
     return NaturalLanguageAnalyzer(root, name).analyze()
 
@@ -154,5 +158,9 @@ def test_readme_keyphrase_extraction(tmp_path, create_temp_file, monkeypatch):
         "Includes OAuth authentication and Docker deployment.",
     )
     keyphrases = report.get_value(FileStatCollection.README_KEYPHRASES.value)
+    themes = report.get_value(FileStatCollection.README_THEMES.value)
+    tone = report.get_value(FileStatCollection.README_TONE.value)
     assert isinstance(keyphrases, list)
     assert len(keyphrases) > 0
+    assert themes == ["API Development"]
+    assert tone == "Professional"

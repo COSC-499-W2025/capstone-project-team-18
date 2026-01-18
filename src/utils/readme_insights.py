@@ -1,67 +1,85 @@
-import re
+import os
 
-_THEME_KEYWORDS: dict[str, set[str]] = {
-    "User Authentication": {"authentication", "auth", "login", "jwt", "oauth", "rbac", "session"},
-    "Real-Time Data Processing": {"real-time", "realtime", "streaming", "kafka", "websocket", "pub/sub",
-                                  "event-driven", "event streaming"},
-    "API Development": {"api", "rest", "graphql", "endpoint", "microservice"},
-    "Data Analytics": {"analytics", "dashboard", "visualization", "etl", "pipeline"},
-    "Machine Learning": {"machine learning", "ml", "model", "training", "inference", "classification"},
-}
+_TONE_LABELS = ["Professional", "Educational", "Experimental"]
 
-_TONE_KEYWORDS: dict[str, set[str]] = {
-    "Professional": {"production", "enterprise", "scalable", "performance", "security",
-                     "robust", "deployment", "maintainable"},
-    "Educational": {"tutorial", "learning", "course", "assignment", "homework", "lab",
-                    "example", "guide"},
-    "Experimental": {"prototype", "poc", "experiment", "research", "hack", "sandbox",
-                     "proof of concept"},
-}
+_ZSC_PIPELINE = None
+_ZSC_FAILED = False
+_TOPIC_MODEL = None
+_TOPIC_FAILED = False
+_TOPIC_CACHE: dict[int, list[str]] = {}
 
 
-def _score_keywords(text: str, keywords: set[str]) -> int:
-    hits = 0
-    for keyword in keywords:
-        escaped = re.escape(keyword)
-        if re.fullmatch(r"[a-z0-9]+", keyword) and len(keyword) <= 4:
-            pattern = rf"\b{escaped}\b"
-        else:
-            pattern = escaped
-        hits += len(re.findall(pattern, text))
-    return hits
+def _get_classifier():
+    global _ZSC_PIPELINE, _ZSC_FAILED
+    if _ZSC_FAILED or os.environ.get("ARTIFACT_MINER_DISABLE_ZSC") == "1":
+        return None
+    if _ZSC_PIPELINE is None:
+        try:
+            from transformers import pipeline
+            model_name = os.environ.get(
+                "ARTIFACT_MINER_ZSC_MODEL", "facebook/bart-large-mnli")
+            _ZSC_PIPELINE = pipeline(
+                "zero-shot-classification", model=model_name)
+        except Exception:
+            _ZSC_FAILED = True
+            return None
+    return _ZSC_PIPELINE
 
 
-def _ranked_labels(text: str, mapping: dict[str, set[str]]) -> list[tuple[str, int]]:
-    scores: dict[str, int] = {}
-    for label, keywords in mapping.items():
-        score = _score_keywords(text, keywords)
-        if score > 0:
-            scores[label] = score
-    return sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
+def _classify_labels(text: str, labels: list[str], threshold: float, max_labels: int) -> list[str]:
+    classifier = _get_classifier()
+    if classifier is None:
+        return []
+    result = classifier(text, labels, multi_label=True)
+    ranked = [
+        label for label, score in zip(result["labels"], result["scores"])
+        if score >= threshold
+    ]
+    return ranked[:max_labels]
 
+def _get_topic_model():
+    global _TOPIC_MODEL, _TOPIC_FAILED
+    if _TOPIC_FAILED or os.environ.get("ARTIFACT_MINER_DISABLE_BERTOPIC") == "1":
+        return None
+    if _TOPIC_MODEL is None:
+        try:
+            from bertopic import BERTopic
+            model_name = os.environ.get(
+                "ARTIFACT_MINER_TOPIC_MODEL", "all-MiniLM-L6-v2")
+            _TOPIC_MODEL = BERTopic(embedding_model=model_name, verbose=False)
+        except Exception:
+            _TOPIC_FAILED = True
+            return None
+    return _TOPIC_MODEL
+
+
+def _extract_topics(text: str, max_topics: int) -> list[str]:
+    model = _get_topic_model()
+    if model is None:
+        return []
+    cache_key = hash(text)
+    cached = _TOPIC_CACHE.get(cache_key)
+    if cached is not None:
+        return cached[:max_topics]
+    topics, _ = model.fit_transform([text])
+    topic_id = topics[0]
+    if topic_id == -1:
+        return []
+    topic_terms = model.get_topic(topic_id) or []
+    labels = [term for term, _score in topic_terms][:max_topics]
+    _TOPIC_CACHE[cache_key] = labels
+    return labels
 
 def extract_readme_themes(text: str, max_themes: int = 5) -> list[str]:
     if not text or not text.strip():
         return []
 
-    normalized = text.lower()
-    ranked = _ranked_labels(normalized, _THEME_KEYWORDS)
-    if not ranked:
-        return []
-
-    return [name for name, _score in ranked[:max_themes]]
+    return _extract_topics(text, max_themes)
 
 
 def classify_readme_tone(text: str) -> str | None:
     if not text or not text.strip():
         return None
 
-    normalized = text.lower()
-    ranked = _ranked_labels(normalized, _TONE_KEYWORDS)
-    if not ranked:
-        return None
-
-    if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
-        return None
-
-    return ranked[0][0]
+    labels = _classify_labels(text, _TONE_LABELS, threshold=0.35, max_labels=1)
+    return labels[0] if labels else None
