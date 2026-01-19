@@ -84,3 +84,21 @@ class ProjectStatCollection(Enum):
         description="These are the imported packages",
         expected_type=list[WeightedSkills]
     )
+
+    PROJECT_TAGS = ProjectStatisticTemplate(
+        name="PROJECT_TAGS",
+        description="key phrases extracted from README content across the project",
+        expected_type=list[str]
+    )
+
+    PROJECT_THEMES = ProjectStatisticTemplate(
+        name="PROJECT_THEMES",
+        description="themes inferred from README content across the project",
+        expected_type=list[str]
+    )
+
+    PROJECT_TONE = ProjectStatisticTemplate(
+        name="PROJECT_TONE",
+        description="dominant tone inferred from README content across the project",
+        expected_type=str
+    )

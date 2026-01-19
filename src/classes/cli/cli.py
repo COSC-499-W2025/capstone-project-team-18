@@ -9,7 +9,6 @@ from tqdm import tqdm
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-
 from src.classes.cli.cli_service_handler import start_miner_cli
 from src.database.utils.database_modify import rename_user_report
 from src.database.utils.database_access import get_project_from_project_name
