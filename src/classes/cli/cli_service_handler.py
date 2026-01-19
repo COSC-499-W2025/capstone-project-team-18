@@ -17,6 +17,7 @@ logger = get_logger(__name__)
 def start_miner_cli(
     zipped_file_path: str,
     email: Optional[str] = None,
+    github: Optional[str] = None,
     progress_callback: Optional[Callable[[str, int, int, str], None]] = None
 ) -> None:
     """
@@ -57,7 +58,7 @@ def start_miner_cli(
     user_report = miner_results.user_report
 
     print("-------- Analysis Reports --------\n")
-    resume = user_report.generate_resume(email)
+    resume = user_report.generate_resume(email, github)
 
     # Download latex resume to file system
     latex_str = resume.export(ResumeLatexRenderer())

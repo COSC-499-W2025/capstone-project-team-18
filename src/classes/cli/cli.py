@@ -306,7 +306,7 @@ class ArtifactMiner(cmd.Cmd):
 
         try:
             # Call start_miner with progress callback
-            start_miner_cli(self.project_filepath, self.user_email,
+            start_miner_cli(self.project_filepath, self.user_email, github=None,
                             progress_callback=progress_callback)
         except Exception as e:
             progress_callback("stop", 0, 0, "")
