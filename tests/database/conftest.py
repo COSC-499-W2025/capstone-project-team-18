@@ -10,16 +10,16 @@ Focus:
 - get_file_reports (indirect + direct error cases)
 """
 
-from src.classes.report import FileReport
-from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection
+from src.core.report import FileReport
+from src.core.statistic import StatisticIndex, Statistic, FileStatCollection
 import pytest
 import datetime
 from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
-from src.database.base import Base
-from src.classes.report import FileReport, ProjectReport, UserReport
-from src.database.utils.database_modify import create_row
+from src.infrastructure.database.base import Base
+from src.core.report import FileReport, ProjectReport, UserReport
+from src.infrastructure.database.utils.database_modify import create_row
 
 
 @pytest.fixture

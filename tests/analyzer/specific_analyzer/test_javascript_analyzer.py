@@ -1,8 +1,8 @@
 """
 Tests for JavaScriptAnalyzer.
 """
-from src.classes.analyzer import JavaScriptAnalyzer, get_appropriate_analyzer
-from src.classes.statistic import FileStatCollection, FileDomain
+from src.core.analyzer import JavaScriptAnalyzer, get_appropriate_analyzer
+from src.core.statistic import FileStatCollection, FileDomain
 
 
 def test_JavaScriptAnalyzer(tmp_path, resource_dir):

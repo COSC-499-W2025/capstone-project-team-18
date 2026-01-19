@@ -2,9 +2,9 @@
 Tests for NaturalLanguageAnalyzer.
 """
 
-from src.classes.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
-from src.classes.statistic import FileStatCollection, FileDomain
-from src.ML.models.readme_analysis import keyphrase_extraction, readme_insights
+from src.core.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
+from src.core.statistic import FileStatCollection, FileDomain
+from src.core.ML.models.readme_analysis import keyphrase_extraction, readme_insights
 
 
 def _readme_report(tmp_path, create_temp_file, monkeypatch, filename, content):

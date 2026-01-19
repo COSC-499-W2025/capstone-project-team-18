@@ -9,12 +9,12 @@ import time
 from sqlalchemy.orm import Session
 
 from src.utils.pathing_utils import unzip_file_bytes
-from src.utils.project_discovery.project_discovery import discover_projects
-from src.classes.analyzer import extract_file_reports
-from src.classes.report import ProjectReport, UserReport
-from src.database.base import get_engine, Base
-from src.database.utils.database_modify import create_row
-from src.utils.log.logging import get_logger
+from src.core.project_discovery.project_discovery import discover_projects
+from src.core.analyzer import extract_file_reports
+from src.core.report import ProjectReport, UserReport
+from src.infrastructure.database.base import get_engine, Base
+from src.infrastructure.database.utils.database_modify import create_row
+from src.infrastructure.log.logging import get_logger
 from src.utils.errors import NoDiscoveredProjects
 
 logger = get_logger(__name__)

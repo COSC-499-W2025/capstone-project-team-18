@@ -1,8 +1,8 @@
 """
 Tests for JavaAnalyzer.
 """
-from src.classes.analyzer import JavaAnalyzer
-from src.classes.statistic import FileStatCollection
+from src.core.analyzer import JavaAnalyzer
+from src.core.statistic import FileStatCollection
 
 
 def test_JavaAnalyzer(tmp_path, resource_dir):

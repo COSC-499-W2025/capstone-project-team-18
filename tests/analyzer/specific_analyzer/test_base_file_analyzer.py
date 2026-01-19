@@ -5,9 +5,9 @@ Tests for BaseFileAnalyzer and extract_file_reports.
 from pathlib import Path
 from datetime import datetime
 import pytest
-from src.classes.analyzer import BaseFileAnalyzer, extract_file_reports, get_appropriate_analyzer
-from src.classes.statistic import FileStatCollection
-from src.utils.project_discovery.project_discovery import ProjectFiles
+from src.core.analyzer import BaseFileAnalyzer, extract_file_reports, get_appropriate_analyzer
+from src.core.statistic import FileStatCollection
+from src.core.project_discovery.project_discovery import ProjectFiles
 from src.utils.pathing_utils import unzip_file
 
 

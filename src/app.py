@@ -2,13 +2,13 @@
 The entry point for the ArtifactMiner program.
 """
 
-from src.database.utils.db_migrate import run_migrations
+from src.infrastructure.database.utils.db_migrate import run_migrations
 
 
 def main():
     run_migrations()
 
-    from src.classes.cli.cli import ArtifactMiner
+    from src.interface.cli.cli import ArtifactMiner
     try:
         ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
 

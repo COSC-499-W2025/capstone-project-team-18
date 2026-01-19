@@ -1,7 +1,7 @@
 from datetime import date
 
-from src.classes.report import UserReport, ProjectReport
-from src.classes.statistic import (
+from src.core.report import UserReport, ProjectReport
+from src.core.statistic import (
     StatisticIndex,
     Statistic,
     ProjectStatCollection,

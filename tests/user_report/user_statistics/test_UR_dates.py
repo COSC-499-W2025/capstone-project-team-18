@@ -2,8 +2,8 @@
 Test the User Level statistic of USER_START_DATE and USER_END_DATE.
 """
 
-from src.classes.report import UserReport
-from src.classes.statistic import (
+from src.core.report import UserReport
+from src.core.statistic import (
     Statistic, UserStatCollection, ProjectStatCollection
 )
 from datetime import datetime

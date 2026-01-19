@@ -2,8 +2,8 @@
 Tests for PythonAnalyzer.
 """
 import shutil
-from src.classes.analyzer import PythonAnalyzer
-from src.classes.statistic import FileStatCollection, FileDomain
+from src.core.analyzer import PythonAnalyzer
+from src.core.statistic import FileStatCollection, FileDomain
 
 
 def test_PythonAnalyzer_core_stats(tmp_path):

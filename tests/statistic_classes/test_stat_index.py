@@ -3,7 +3,7 @@ This file will test the behavior of everything in the statistic.py class
 """
 from typing import List
 from datetime import date
-from src.classes.statistic import *
+from src.core.statistic import *
 import pytest
 
 

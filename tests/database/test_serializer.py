@@ -8,8 +8,8 @@ import pytest
 import json
 
 
-from src.classes.statistic.statistic_models import WeightedSkills, CodingLanguage, FileDomain
-from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
+from src.core.statistic.statistic_models import WeightedSkills, CodingLanguage, FileDomain
+from src.infrastructure.database.utils.column_statistic_serializer import ColumnStatisticSerializer
 
 
 @pytest.fixture

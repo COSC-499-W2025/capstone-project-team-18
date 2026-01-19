@@ -1,8 +1,8 @@
 """
 Tests for CodeFileAnalyzer (coding language detection and file domain).
 """
-from src.classes.analyzer import CodeFileAnalyzer
-from src.classes.statistic import FileStatCollection, CodingLanguage, FileDomain
+from src.core.analyzer import CodeFileAnalyzer
+from src.core.statistic import FileStatCollection, CodingLanguage, FileDomain
 
 
 def test_determines_correct_coding_language(tmp_path, create_temp_file):
