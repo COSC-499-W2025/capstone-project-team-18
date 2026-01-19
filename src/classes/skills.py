@@ -121,7 +121,7 @@ class SkillMapper:
             },
             file_extensions={
                 '.ipynb', '.rmd', '.csv', '.parquet', '.feather', '.arrow',
-                '.pbix', '.twb', '.twbx', '.xlsx', '.xlsm'
+                '.pbix', '.twb', '.twbx', '.xlsx', '.xlsm', ".r"
             },
             keywords={
                 'dataframe', 'visualization', 'analysis', 'dashboard',
