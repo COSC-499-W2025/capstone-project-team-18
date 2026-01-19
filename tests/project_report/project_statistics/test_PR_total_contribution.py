@@ -31,7 +31,12 @@ def test_verify_accurate_contribution_percentage(resource_dir, email, percentage
 
     project = discover_projects(unzipped_dir)[0]
 
-    file_reports = extract_file_reports(project, email, [])
+    file_reports = extract_file_reports(
+        project_file=project,
+        email=email,
+        github=None,
+        language_filter=None
+    )
 
     project_report = ProjectReport(
         project_name=project.name,
