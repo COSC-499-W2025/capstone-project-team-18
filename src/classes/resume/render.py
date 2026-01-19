@@ -66,6 +66,7 @@ class ResumeLatexRenderer(ResumeRender):
 \usepackage[usenames,dvipsnames]{color}
 \usepackage{verbatim}
 \usepackage{enumitem}
+\usepackage{fontawesome5}
 \usepackage[hidelinks]{hyperref}
 \usepackage{fancyhdr}
 \usepackage[english]{babel}
@@ -127,6 +128,19 @@ class ResumeLatexRenderer(ResumeRender):
         tex.extend([
             r"\begin{center}",
             rf"\textbf{{\Huge \scshape Your Name}}\\[2pt]",
+        ])
+
+        if resume.email:
+            email = latex_escape(resume.email)
+            tex.append(
+                rf"\href{{mailto:{email}}}{{\raisebox{{-0.2\height}}\faEnvelope\ \underline{email}}}}} ~")
+        if resume.github:
+            github = latex_escape(resume.github)
+            tex.append(
+                rf"\href{{{{https://github.com/{github}}}}}{{\raisebox{{-0.2\height}}\faGithub\ \underline{{github.com/{github}}}}}")
+
+        tex.extend([
+            r"\vspace{-8pt}"
             r"\end{center}",
             "",
         ])

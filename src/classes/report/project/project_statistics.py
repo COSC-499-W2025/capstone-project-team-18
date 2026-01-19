@@ -415,7 +415,7 @@ class ProjectActivityTypeContributions(ProjectStatisticCalculation):
 class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
     """
     Analyzes Git commit history to determine authorship statistics.
-    This function uses `self.email` to calculate the user's commit percentage.
+    This function uses `self.email` to calculate the user's commit percentage and the user's github account as a secondary check.
     If `self.email` is not set, this function should not run as we don't have
     the consent of the user.
 
@@ -455,6 +455,10 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
         if total_authors > 1 and report.email:
             user_commits = commit_count_by_author.get(
                 report.email, 0)
+            # additional check for commits formatted 1235<usernmae>@noreply.github.com
+            if report.github:
+                user_commits += [value for key, value in commit_count_by_author.items()
+                                 if report.github in key.lower()]
             if total_commits > 0:
                 user_commit_percentage = (
                     user_commits / total_commits) * 100

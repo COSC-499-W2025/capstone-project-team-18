@@ -31,6 +31,7 @@ class ProjectReport(BaseReport):
                  project_path: Optional[str] = None,
                  project_name: Optional[str] = None,
                  user_email: Optional[str] = None,
+                 user_github: Optional[str] = None,
                  statistics: Optional[StatisticIndex] = None,
                  project_repo: Optional[Repo] = None
                  ):
@@ -44,6 +45,7 @@ class ProjectReport(BaseReport):
             statistics: Optional StatisicIndex
             project_repo: Optional Repo object for Git analysis
             user_email: Optional user email for Git authorship analysis
+            user_github: Optional username for additonal Git authorship analysis
 
         NOTE: `statistics` should only be included when the `get_project_from_project_name()`
         function is creating a `ProjectReport` object from an existing row in
@@ -54,6 +56,7 @@ class ProjectReport(BaseReport):
         self.project_path = project_path or "Unknown Path"
         self.project_repo = project_repo
         self.email = user_email
+        self.github = user_github
         self.sub_dirs = self._get_sub_dirs()
 
         self.project_statistics = StatisticIndex()

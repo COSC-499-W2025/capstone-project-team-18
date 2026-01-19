@@ -31,6 +31,7 @@ def start_miner_service(
     zipped_format: str,
     user_report_title: str = f"UserReport{str(int(time.time()))}",
 
+    github: Optional[str] = None,
     email: Optional[str] = None,
     language_filter: Optional[list[str]] = None,
     progress_callback: Optional[Callable[[str, int, int, str], None]] = None,
@@ -98,7 +99,7 @@ def start_miner_service(
                     "analysis", idx, total_projects, project.name)
 
             file_reports = extract_file_reports(
-                project, email, language_filter)  # get the project's FileReports
+                project, email, github, language_filter)  # get the project's FileReports
 
             logger.debug(
                 "File reports for project %s file_reports", project.name)
@@ -118,7 +119,8 @@ def start_miner_service(
                 project_path=project.root_path,
                 project_repo=project.repo,
                 file_reports=file_reports,
-                user_email=email
+                user_email=email,
+                user_github=github
             )
             # store ProjectReports for UserReport
             project_reports.append(project_report)

@@ -3,9 +3,11 @@ This file handles all logic for logging
 """
 
 import logging
+from pathlib import Path
+
 from logging.handlers import RotatingFileHandler
 
-LOG_FILE = __file__
+LOG_FILE = Path(__file__).parent / "app.log"
 
 
 def get_logger(name: str, level=logging.INFO):

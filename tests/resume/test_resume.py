@@ -66,7 +66,7 @@ def test_userreport_can_create_resume(project_report_from_stats):
         "UserReport1"
     )
 
-    resume_item = user_report.generate_resume(None)
+    resume_item = user_report.generate_resume(None, None)
 
     assert isinstance(resume_item, Resume)
     assert len(resume_item.items) == 1
