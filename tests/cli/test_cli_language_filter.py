@@ -27,7 +27,7 @@ def test_language_filter_excludes_non_matching_files(tmp_path):
 
     # Test with Python-only filter
     language_filter = ["Python"]
-    file_reports = extract_file_reports(project, None, language_filter)
+    file_reports = extract_file_reports(project, None, None, language_filter)
 
     # Should only include Python file
     assert file_reports is not None
@@ -127,6 +127,7 @@ def test_should_include_respects_language_filter(tmp_path):
         "test.py",
         None,
         None,
+        None,
         ["Python"]
     )
     assert analyzer.should_include() is True
@@ -135,6 +136,7 @@ def test_should_include_respects_language_filter(tmp_path):
     analyzer = get_appropriate_analyzer(
         str(tmp_path),
         "test.py",
+        None,
         None,
         None,
         ["Javascript"]
