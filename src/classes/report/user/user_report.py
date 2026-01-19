@@ -11,7 +11,13 @@ from sqlalchemy import select
 
 from src.classes.report.base_report import BaseReport
 from src.classes.report import ProjectReport
-from src.classes.statistic import StatisticIndex, ProjectStatCollection, UserStatCollection, WeightedSkills
+from src.classes.statistic import (
+    StatisticIndex,
+    ProjectStatCollection,
+    UserStatCollection,
+    WeightedSkills,
+    StatisticTemplate,
+)
 from src.classes.resume.resume import Resume
 
 from src.database.base import get_engine
@@ -323,6 +329,22 @@ class UserReport(BaseReport):
             lines.append("\nSkills in chronological order:")
             lines.append(skills_str)
 
+        # Add project tags
+        tags_str = self.get_project_tags(as_string=True)
+        if tags_str:
+            lines.append("\nProject tags:")
+            lines.append(tags_str)
+
+        themes_str = self.get_project_themes(as_string=True)
+        if themes_str:
+            lines.append("\nProject themes:")
+            lines.append(themes_str)
+
+        tones_str = self.get_project_tones(as_string=True)
+        if tones_str:
+            lines.append("\nProject tone:")
+            lines.append(tones_str)
+
         return "\n".join(lines)
 
     @staticmethod
@@ -472,3 +494,57 @@ class UserReport(BaseReport):
             return "\n".join(lines)
 
         return lines
+
+    def _project_stat_lines(
+        self,
+        template: StatisticTemplate,
+        formatter,
+        as_string: bool,
+    ) -> list[str] | str:
+        if not getattr(self, "project_reports", None):
+            return "" if as_string else []
+
+        lines: list[str] = []
+        for pr in self.project_reports:
+            value = pr.get_value(template)
+            if not value:
+                continue
+            lines.append(f"{pr.project_name}: {formatter(value)}")
+
+        if not lines:
+            return "" if as_string else []
+
+        return "\n".join(lines) if as_string else lines
+
+    def get_project_tags(self, as_string: bool = True) -> list[str] | str:
+        """
+        Return a list of per-project tag lines:
+            "Project Name: tag1, tag2, tag3"
+        """
+        return self._project_stat_lines(
+            ProjectStatCollection.PROJECT_TAGS.value,
+            lambda tags: ", ".join(tags),
+            as_string,
+        )
+
+    def get_project_themes(self, as_string: bool = True) -> list[str] | str:
+        """
+        Return a list of per-project theme lines:
+            "Project Name: theme1, theme2"
+        """
+        return self._project_stat_lines(
+            ProjectStatCollection.PROJECT_THEMES.value,
+            lambda themes: ", ".join(themes),
+            as_string,
+        )
+
+    def get_project_tones(self, as_string: bool = True) -> list[str] | str:
+        """
+        Return a list of per-project tone lines:
+            "Project Name: Professional"
+        """
+        return self._project_stat_lines(
+            ProjectStatCollection.PROJECT_TONE.value,
+            lambda tone: tone,
+            as_string,
+        )

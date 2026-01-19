@@ -1,61 +1,73 @@
 """
-The entry point for the ArtifactMiner program.
+This file holds the main service, the miner.
 """
-from typing import Optional, Callable
-import tempfile
-from pathlib import Path
 
+from typing import Optional, Callable
+from dataclasses import dataclass
+import tempfile
+import time
 from sqlalchemy.orm import Session
 
-from src.utils.zipped_utils import unzip_file
+from src.utils.pathing_utils import unzip_file_bytes
 from src.utils.project_discovery.project_discovery import discover_projects
-from src.utils.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
-
 from src.classes.analyzer import extract_file_reports
 from src.classes.report import ProjectReport, UserReport
-from src.classes.resume.render import ResumeLatexRenderer
-
-from src.database.base import get_engine, Base
+from src.database.db import get_engine, Base
 from src.database.utils.database_modify import create_row
-from src.database.utils.db_migrate import run_migrations
-
 from src.utils.log.logging import get_logger
+from src.utils.errors import NoDiscoveredProjects
 
 logger = get_logger(__name__)
 
 
-def start_miner(
-    zipped_file: str,
+@dataclass
+class MinerResults():
+    user_report: UserReport
+    success: bool
+
+
+def start_miner_service(
+    zipped_bytes: bytes,
+    zipped_format: str,
+    user_report_title: str = f"UserReport{str(int(time.time()))}",
+
     email: Optional[str] = None,
-    progress_callback: Optional[Callable[[str, int, int, str], None]] = None
-) -> None:
+    language_filter: Optional[list[str]] = None,
+    progress_callback: Optional[Callable[[str, int, int, str], None]] = None,
+
+) -> MinerResults:
     """
-    This function defines the main application
-    logic for the Artifact Miner. Currently,
-    results are printed to the terminal
+    This is the defacto function to start the minering function
+    for the Artifact Miner. This function receives the bytes and file
+    format of the zipped file (.zip, .7z, etc). There is no output of this
+    function, but rather the miner results are written to the database for
+    later retrieval.
 
-    Args:
-        - zipped_file : The filepath to the zipped file.
-        - email: Email associated with git account
+    :param zipped_bytes: The bytes of a zipped file.
+    :type zipped_bytes: bytes
+    :param zipped_format: The file format of the file (".7z", ".zip", etc)
+    :type zipped_format: str
+    :param user_report_title: The user report name you would like to save in the database
+    :type user_report_title: str
+    :param email: The git email of the user
+    :type email: Optional[str]
+    :param language_filter: A list of strings of what file formats to ignore
+    :type language_filter: Optional[list[str]]
+    :param progress_callback: Used by the CLI to make a visual progress bar.
+    :type progress_callback: Optional[Callable[[str, int, int, str], None]]
+    :return: Returns a MinerResults object
+    :rtype: MinerResults
     """
 
-    logger.info("Starting analysis for zipped file %s", zipped_file)
+    logger.info("Starting analysis for the zipped file")
 
-    # Import inside function to avoid circular import
-    from src.classes.cli import UserPreferences
+    # TODO: Retrieve preferences from the database and validate parameters (like consent)
 
-    # Load preferences to get language filter
-    prefs = UserPreferences()
-    language_filter = prefs.get("languages_to_include", [])
-
-    # =================== Unzip Stage ===================
-
-    # Unzip the zipped file into temporary directory
+    # Unzip the file into temp directory
     unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
-    unzip_file(zipped_file, unzipped_dir)
+    unzip_file_bytes(zipped_bytes, zipped_format, unzipped_dir)
 
-    # =================== Discovery stage ===================
-
+    # Project Discovery
     project_list = discover_projects(unzipped_dir)
 
     logger.debug(project_list)
@@ -116,7 +128,7 @@ def start_miner(
             project_report_rows.append(project_row)
 
         if project_reports == []:
-            raise ValueError(
+            raise NoDiscoveredProjects(
                 "The analyzer found no projects to analyze. "
                 "Please check your zipped file. "
                 "If configured, check your git email."
@@ -132,8 +144,8 @@ def start_miner(
             progress_callback("saving", 1, 1, "")
 
         # make a UserReport with the ProjectReports
-        dir_name = Path(zipped_file).stem  # name of zipped dir
-        user_report = UserReport(project_reports, dir_name)
+        user_report = UserReport(project_reports, user_report_title)
+
         # create a user_report row and configure FK relations
         user_row = create_row(report=user_report)
         user_row.project_reports.extend(project_report_rows)  # type: ignore
@@ -146,32 +158,4 @@ def start_miner(
         if progress_callback:
             progress_callback("complete", 1, 1, "")
 
-    print("-------- Analysis Reports --------\n")
-    resume = user_report.generate_resume(email)
-
-    # Download latex resume to file system
-    latex_str = resume.export(ResumeLatexRenderer())
-
-    with open("resume.tex", "w", encoding="utf-8") as f:
-        f.write(latex_str)
-
-    # Print the resume items
-    resume_CLI_stringify(resume)
-
-    # Print the portfolio item
-    portfolio_CLI_stringify(user_report)
-
-
-def main():
-    run_migrations()
-
-    from src.classes.cli import ArtifactMiner
-    try:
-        ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
-
-    except KeyboardInterrupt:
-        print("Exiting the program...")
-
-
-if __name__ == '__main__':
-    main()
+    return MinerResults(user_report, True)

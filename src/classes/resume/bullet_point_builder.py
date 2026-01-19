@@ -93,7 +93,7 @@ class WeightedSkillsBulletPoint(BulletPoint):
 
         top = sorted_skills[:3]
 
-        return [f"Utilized skills {', '.join([s.skill_name for s in top])}"]
+        return [f"Utilized skills: {', '.join([s.skill_name for s in top])}"]
 
 
 class CodingLanguageBulletPoint(BulletPoint):
