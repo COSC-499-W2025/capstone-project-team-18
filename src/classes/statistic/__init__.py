@@ -6,6 +6,7 @@ from .statistic_models import (
     FileDomain,
     CodingLanguage,
     WeightedSkills,
+    LANGUAGE_EXTENSIONS
 )
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "StatisticTemplate",
     "FileDomain",
     "CodingLanguage",
-    "WeightedSkills"
+    "WeightedSkills",
+    "LANGUAGE_EXTENSIONS"
 ]

@@ -461,7 +461,7 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
     """Base builder for project reports."""
 
     def __init__(self) -> None:
-        self.calculators: list[ProjectStatisticCalculation] = [
+        self.calculators = [
             ProjectDates(),
             CodingLanguageRatio(),
             ProjectWeightedSkills(),

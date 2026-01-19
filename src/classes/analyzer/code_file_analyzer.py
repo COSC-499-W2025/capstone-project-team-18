@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from src.classes.statistic import Statistic, FileStatCollection, FileDomain, CodingLanguage
+from src.classes.statistic import Statistic, FileStatCollection, FileDomain, LANGUAGE_EXTENSIONS
 from src.classes.analyzer.text_file_analyzer import TextFileAnalyzer
 from src.utils.log.logging import get_logger
 
@@ -33,6 +33,8 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         the test keyword
         """
 
+        # Looks for the keywords test, tests, spec, specs, testing in a filename
+        # either as a whole word or surrounded by non-word characters
         TEST_FILE_REGEX = re.compile(
             r"(?:^|[\W_])(test|tests|spec|specs|testing)(?:[\W_]|$)", re.IGNORECASE)
 
@@ -61,7 +63,9 @@ class CodeFileAnalyzer(TextFileAnalyzer):
         # Get suffix of file
         suffix = Path(self.filepath).suffix.lower()
 
-        for language in CodingLanguage:
-            # Each language.value is a tuple (name, extensions)
-            if suffix in language.value[1]:
-                return self.stats.add(Statistic(FileStatCollection.CODING_LANGUAGE.value, language))
+        for language, extensions in LANGUAGE_EXTENSIONS.items():
+            if suffix in (ext.lower() for ext in extensions):
+                return self.stats.add(
+                    Statistic(
+                        FileStatCollection.CODING_LANGUAGE.value, language)
+                )
