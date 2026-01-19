@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from src.database.utils.database_access import get_user_report
 from src.database.utils.database_modify import rename_user_report
+from src.database.models import UserReportTable
 
 
 def test_rename_user_report_success(temp_db):
@@ -20,8 +21,6 @@ def test_rename_user_report_success(temp_db):
 
 
 def test_rename_user_report_conflict(temp_db):
-    from src.database.db import UserReportTable
-
     with Session(temp_db) as session:
         session.add(UserReportTable(title="existing_portfolio"))
         session.commit()
@@ -33,8 +32,6 @@ def test_rename_user_report_conflict(temp_db):
 
 
 def test_rename_user_report_handles_duplicates(temp_db):
-    from src.database.db import UserReportTable
-
     with Session(temp_db) as session:
         duplicate = UserReportTable(title="test_user_report")
         session.add(duplicate)
