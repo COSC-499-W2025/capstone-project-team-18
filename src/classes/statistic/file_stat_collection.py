@@ -73,6 +73,24 @@ class FileStatCollection(Enum):
         expected_type=int,
     )
 
+    README_KEYPHRASES = FileStatisticTemplate(
+        name="README_KEYPHRASES",
+        description="key phrases extracted from README content",
+        expected_type=list[str],
+    )
+
+    README_THEMES = FileStatisticTemplate(
+        name="README_THEMES",
+        description="themes inferred from README content",
+        expected_type=list[str],
+    )
+
+    README_TONE = FileStatisticTemplate(
+        name="README_TONE",
+        description="tone inferred from README content",
+        expected_type=str,
+    )
+
     NUMBER_OF_FUNCTIONS = FileStatisticTemplate(
         name="NUMBER_OF_FUNCTIONS",
         description="number of functions in the file",

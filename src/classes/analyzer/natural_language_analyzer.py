@@ -1,7 +1,10 @@
 import re
+from pathlib import Path
 
 from src.classes.statistic import Statistic, FileStatCollection, FileDomain
 from src.classes.analyzer.text_file_analyzer import TextFileAnalyzer
+from src.ML.models.readme_analysis.keyphrase_extraction import extract_readme_keyphrases
+from src.ML.models.readme_analysis.readme_insights import classify_readme_tone
 from src.utils.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -42,5 +45,28 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
             Statistic(FileStatCollection.SENTENCE_COUNT.value,
                       sentence_count)
         ]
+
+        filename = Path(self.filepath).name.lower()
+        if filename.startswith("readme"):
+            keyphrases = extract_readme_keyphrases(self.text_content)
+            if keyphrases:
+                stats.append(
+                    Statistic(FileStatCollection.README_KEYPHRASES.value,
+                              keyphrases)
+                )
+
+            tone = classify_readme_tone(self.text_content)
+            if tone:
+                stats.append(
+                    Statistic(FileStatCollection.README_TONE.value, tone)
+                )
+
+            if not keyphrases or not tone:
+                logger.info(
+                    "README insights for %s: keyphrases=%d tone=%s",
+                    self.relative_path,
+                    len(keyphrases),
+                    tone or "None",
+                )
 
         self.stats.extend(stats)
