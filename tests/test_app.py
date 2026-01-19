@@ -4,10 +4,9 @@ More detailed tests will be in their respective modules.
 """
 
 import pytest
-from src.app import start_miner
-import pytest
 
-from src.app import start_miner
+from src.classes.cli.cli_service_handler import start_miner_cli
+from src.utils.errors import NoDiscoveredProjects
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -20,7 +19,8 @@ def mock_engine(monkeypatch, blank_db):
     def fake_get_engine():
         return blank_db
 
-    monkeypatch.setattr("src.app.get_engine", fake_get_engine)
+    monkeypatch.setattr(
+        "src.services.mining_service.get_engine", fake_get_engine)
 
 
 def test_app_runs(mock_engine):
@@ -32,7 +32,7 @@ def test_app_runs(mock_engine):
     sample_email = "bob@example.com"
 
     try:
-        start_miner(sample_zipped_file, sample_email)
+        start_miner_cli(sample_zipped_file, sample_email)
     except Exception as e:
         pytest.fail(f"start_miner raised an exception: {e}")
 
@@ -46,8 +46,8 @@ def test_app_runs_empty_zip():
     sample_zipped_file = "./tests/resources/empty_project.zip"
     sample_email = "bob@example.com"
 
-    with pytest.raises(ValueError):
-        start_miner(sample_zipped_file, sample_email)
+    with pytest.raises(NoDiscoveredProjects):
+        start_miner_cli(sample_zipped_file, sample_email)
 
 
 def test_app_runs_git_repo_wrong_email():
@@ -60,5 +60,5 @@ def test_app_runs_git_repo_wrong_email():
     sample_zipped_file = "./tests/resources/sample_git_project_one_author.zip"
     sample_email = "spencer@example.com"
 
-    with pytest.raises(ValueError):
-        start_miner(sample_zipped_file, sample_email)
+    with pytest.raises(NoDiscoveredProjects):
+        start_miner_cli(sample_zipped_file, sample_email)

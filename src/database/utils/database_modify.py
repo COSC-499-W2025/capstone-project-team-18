@@ -3,13 +3,14 @@ This file contains all functions that will be called when we
 want to modify or add data to the database. In SQL, this
 would be queries like INSERT, UPDATE, etc.
 '''
-
-from src.classes.report import FileReport, ProjectReport, UserReport
-from src.database.db import FileReportTable, ProjectReportTable, UserReportTable
-
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from src.database.db import get_engine
+
+from src.classes.report.file_report import FileReport
+from src.classes.report.project.project_report import ProjectReport
+from src.classes.report.user.user_report import UserReport
+from src.database.base import get_engine
+from src.database.models import FileReportTable, ProjectReportTable, UserReportTable
 
 
 def create_row(report: FileReport | ProjectReport | UserReport):
@@ -21,6 +22,7 @@ def create_row(report: FileReport | ProjectReport | UserReport):
     table (i.e., a new `FileReportTable` object) is
     returned) if a `FileReport` object is passed in.
     '''
+
     if isinstance(report, FileReport):
         row = FileReportTable()
         row.filepath = report.filepath
@@ -111,6 +113,7 @@ def rename_user_report(current_title: str, new_title: str, engine=None) -> tuple
     Returns:
         tuple[bool, str]: Success flag and status message.
     """
+
     if engine is None:
         engine = get_engine()
 

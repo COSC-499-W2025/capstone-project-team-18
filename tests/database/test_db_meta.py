@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 
-from src.database.db import (
+from src.database.models import (
     FileReportTable,
     ProjectReportTable,
 )

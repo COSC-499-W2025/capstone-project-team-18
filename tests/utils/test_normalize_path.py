@@ -1,6 +1,5 @@
 import os
-import pytest
-from src.classes.cli import normalize_path
+from src.classes.cli.cli import normalize_path
 
 
 def test_normalize_path_windows_to_unix():
@@ -66,12 +65,14 @@ def test_path_with_trailing_slash():
     expected = os.path.normpath(os.path.expanduser("C:/Users/TestUser/"))
     assert normalize_path(input_path) == expected
 
+
 def test_windows_path_on_mac():
     # Simulate a Windows path entered on Mac
     import sys
     if sys.platform == 'darwin':
         input_path = r"C:\\Users\\TestUser\\Desktop\\project.zip"
-        expected = os.path.normpath(os.path.expanduser("/Users/TestUser/Desktop/project.zip"))
+        expected = os.path.normpath(os.path.expanduser(
+            "/Users/TestUser/Desktop/project.zip"))
         assert normalize_path(input_path) == expected
         # Also test with forward slashes
         input_path2 = "C:/Users/TestUser/Desktop/project.zip"
@@ -79,5 +80,6 @@ def test_windows_path_on_mac():
     else:
         # On non-Mac platforms, normalization should use OS separator
         input_path = r"C:\\Users\\TestUser\\Desktop\\project.zip"
-        expected = os.path.normpath(os.path.expanduser(input_path.replace('\\', os.sep).replace('/', os.sep)))
+        expected = os.path.normpath(os.path.expanduser(
+            input_path.replace('\\', os.sep).replace('/', os.sep)))
         assert normalize_path(input_path) == expected

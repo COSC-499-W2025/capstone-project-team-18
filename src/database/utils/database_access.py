@@ -3,14 +3,19 @@ This file contains all functions that will be called when we
 want to access data from the database. In SQL, this would be
 queries like SELECT, etc.
 '''
-from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
-from src.classes.report import FileReport, ProjectReport, UserReport
-from src.database.db import ProjectReportTable, UserReportTable, get_engine
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+
+from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
+from src.classes.report import FileReport, ProjectReport, UserReport
+
+from src.database.models import ProjectReportTable, UserReportTable
+from src.database.base import get_engine
+
 from src.utils.log.logging import get_logger
 
+import logging
 logger = get_logger(__name__)
 
 
@@ -33,7 +38,7 @@ def _project_report_from_row(row: ProjectReportTable, engine) -> ProjectReport:
                 statistics.add(Statistic(stat_template.value, value))
 
     name = row.project_name or "Unknown Project"
-
+    logger.info("Building ProjectReport obj for project with name %s", name)
     return ProjectReport(
         file_reports=get_file_reports(row, engine),
         project_name=name,
@@ -68,10 +73,10 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logger.error(f'Error: No project found with name "{proj_name}"')
+            logging.error(f'Error: No project found with name "{proj_name}"')
             raise
         except MultipleResultsFound:
-            logger.error(
+            logging.error(
                 f'Error: Multiple projects found with name "{proj_name}"')
             raise
 
@@ -180,9 +185,9 @@ def get_user_report(name: str, engine=None) -> UserReport:
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logger.error(f'Error: No user report found with name "{name}"')
+            logging.error(f'Error: No user report found with name "{name}"')
             raise
         except MultipleResultsFound:
-            logger.error(
+            logging.error(
                 f'Error: Multiple user reports found with name "{name}"')
             raise
