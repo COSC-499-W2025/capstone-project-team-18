@@ -8,7 +8,7 @@ import pytest
 from src.classes.analyzer import BaseFileAnalyzer, extract_file_reports, get_appropriate_analyzer
 from src.classes.statistic import FileStatCollection
 from src.utils.project_discovery.project_discovery import ProjectFiles
-from src.utils.zipped_utils import unzip_file
+from src.utils.pathing_utils import unzip_file
 
 
 def test_base_file_analyzer_process_returns_file_report_with_core_stats(temp_text_file: list[str]):
@@ -60,7 +60,7 @@ def test_extract_file_reports_returns_project(tmp_path, create_temp_file):
 
 
 def test_created_modifiyed_and_accessed_dates(tmp_path):
-    unzip_file("tests/resources/mac_projects.zip", tmp_path)
+    unzip_file("tests/resources/mac_projects.zip", str(tmp_path))
 
     file_path = tmp_path / "Projects" / "ProjectA" / "a_1.txt"
 
@@ -69,6 +69,8 @@ def test_created_modifiyed_and_accessed_dates(tmp_path):
     date_modified = report.get_value(FileStatCollection.DATE_MODIFIED.value)
     date_created = report.get_value(FileStatCollection.DATE_CREATED.value)
 
+    assert date_modified == datetime(2025, 10, 20, 21, 38, 6)
+    assert date_created == datetime(2025, 10, 20, 21, 38, 6)
     assert date_created <= date_modified
 
 
