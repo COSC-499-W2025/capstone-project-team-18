@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
 from src.utils.log.logging import get_logger
 from src.ML.models.readme_analysis import readme_insights
+from src.utils.project_discovery.ignore_constants import *
 from typing import Optional
 
 logger = get_logger(__name__)
@@ -514,13 +515,14 @@ class ProjectTotalContributionPercentage(ProjectStatisticCalculation):
         if report.project_repo:
             tracked_files = report.project_repo.git.ls_files().split("\n")
             for f in tracked_files:
-                try:
-                    with open(os.path.join(report.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
-                        content = fp.read()
-                        count = len(content.split("\n"))
-                        total += count
-                except (FileNotFoundError, IsADirectoryError):
-                    pass  # skip directories or removed files
+                if f not in IGNORE_FILES:
+                    try:
+                        with open(os.path.join(report.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
+                            content = fp.read()
+                            count = len(content.split("\n"))
+                            total += count
+                    except (FileNotFoundError, IsADirectoryError):
+                        pass  # skip directories or removed files
         else:
             for fr in report.file_reports:
                 val = fr.get_value(FileStatCollection.LINES_IN_FILE.value)

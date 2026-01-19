@@ -13,7 +13,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from src.app import start_miner
-from sqlalchemy import select, delete
 from src.database.utils.database_modify import rename_user_report
 from src.database.utils.database_access import get_project_from_project_name
 from src.classes.resume.bullet_point_builder import BulletPointBuilder
@@ -347,7 +346,7 @@ class ArtifactMiner(cmd.Cmd):
     def do_filepath(self, arg):
         '''User specifies the project's filepath'''
 
-         # Only update history if NOT coming from back command
+        # Only update history if NOT coming from back command
         if arg != "from_back":
             self.update_history(self.cmd_history, "filepath")
 
