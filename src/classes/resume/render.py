@@ -123,15 +123,23 @@ class ResumeLatexRenderer(ResumeRender):
 
     def render(self, resume: Resume) -> str:
         tex = [self.prefix, r"\begin{document}"]
-        email = latex_escape(resume.email)
-        github = latex_escape(resume.github)
 
         # Header
         tex.extend([
             r"\begin{center}",
             rf"\textbf{{\Huge \scshape Your Name}}\\[2pt]",
-            rf"\href{{mailto:{email}}}{{\raisebox{{-0.2\height}}\faEnvelope\ \underline{email}}}}} ~",
-            rf"\href{{{{https://github.com/{github}}}}}{{\raisebox{{-0.2\height}}\faGithub\ \underline{{github.com/{github}}}}}",
+        ])
+
+        if resume.email:
+            email = latex_escape(resume.email)
+            tex.append(
+                rf"\href{{mailto:{email}}}{{\raisebox{{-0.2\height}}\faEnvelope\ \underline{email}}}}} ~")
+        if resume.github:
+            github = latex_escape(resume.github)
+            tex.append(
+                rf"\href{{{{https://github.com/{github}}}}}{{\raisebox{{-0.2\height}}\faGithub\ \underline{{github.com/{github}}}}}")
+
+        tex.extend([
             r"\vspace{-8pt}"
             r"\end{center}",
             "",
