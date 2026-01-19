@@ -1,6 +1,6 @@
 """
 Routers allows us to organize our endpoints by domain.
-Each router groups related enpoints together and can be
+Each router groups related endpoints together and can be
 mounted onto the actual FastAPI app.
 
 The routers are re-exported here to provide a clean and consistent import
