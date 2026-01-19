@@ -29,6 +29,7 @@ class BaseFileAnalyzer:
         repo (Optional[Repo]): The Git repository object if the file
             is part of a Git repository.
         email (Optional[str]): The email of the user analyzing the file.
+        github (Optional[str]): The username of the user analyzing the file.
 
     Statistics:
         - DATE_CREATED
@@ -41,6 +42,7 @@ class BaseFileAnalyzer:
                  relative_path: str,
                  repo: Optional[Repo] = None,
                  email: Optional[str] = None,
+                 github: Optional[str] = None,
                  language_filter: Optional[list[str]] = None
                  ):
 
@@ -49,6 +51,7 @@ class BaseFileAnalyzer:
         self.filepath = f"{path_to_top_level_project}/{relative_path}"
         self.repo = repo
         self.email = email
+        self.github = github
         self.language_filter = language_filter
         self.stats = StatisticIndex()
         self.blame_info = None

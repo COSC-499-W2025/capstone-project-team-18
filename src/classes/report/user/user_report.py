@@ -58,7 +58,7 @@ class UserReport(BaseReport):
         builder = UserStatisticReportBuilder()
         builder.build(self)
 
-    def generate_resume(self, email: Optional[str]) -> Resume:
+    def generate_resume(self, email: Optional[str], github: Optional[str]) -> Resume:
         """
         Generates a Resume object based on the ResumeItem
         that are generated from the ProjectReports. As well
@@ -68,7 +68,7 @@ class UserReport(BaseReport):
         weighted_skills = self.statistics.get_value(
             UserStatCollection.USER_SKILLS.value)
 
-        resume = Resume(email, weighted_skills)
+        resume = Resume(email, github, weighted_skills)
 
         for item in self.resume_items:
             resume.add_item(item)

@@ -30,6 +30,7 @@ logger = get_logger(__name__)
 def extract_file_reports(
     project_file: ProjectFiles,
     email: Optional[str] = None,
+    github: Optional[str] = None,
     language_filter: Optional[list[str]] = None
 ) -> list[FileReport]:
     """
@@ -52,6 +53,7 @@ def extract_file_reports(
             file,
             project_file.repo,
             email,
+            github,
             language_filter)
 
         if analyzer.should_include() is False:
@@ -73,6 +75,7 @@ def get_appropriate_analyzer(
     relative_path: str,
     repo: Optional[Repo] = None,
     email: Optional[str] = None,
+    github: Optional[str] = None,
     language_filter: Optional[list[str]] = None
 ) -> BaseFileAnalyzer:
     """
@@ -93,44 +96,44 @@ def get_appropriate_analyzer(
     # Natural language files
     natural_language_extensions = {'.md', '.txt', '.rst', '.doc', '.docx'}
     if extension in natural_language_extensions:
-        return NaturalLanguageAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return NaturalLanguageAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
 
     # Python files
     if extension == '.py':
-        return PythonAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return PythonAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
     # Java files
     if extension == '.java':
-        return JavaAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return JavaAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
 
     # JavaScript files
     if extension in {'.js', '.jsx'}:
-        return JavaScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return JavaScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
     # C files
     if extension == '.c':
-        return CAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return CAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
 
     # TypeScript files
     if extension in {'.ts', '.tsx'}:
-        return TypeScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return TypeScriptAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
     # CSS files
     if extension == '.css':
-        return CSSAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return CSSAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
 
     # HTML or HTM files
     if extension in {'.html', '.htm'}:
-        return HTMLAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return HTMLAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
     # PHP files
     if extension == '.php':
-        return PHPAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return PHPAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
 
     # Text-based files
     text_extensions = {'.xml', '.json', '.yml', '.yaml'}
     if extension in text_extensions:
-        return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+        return TextFileAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
 
     for language, lang_extensions in LANGUAGE_EXTENSIONS.items():
         if extension in lang_extensions:
-            return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+            return CodeFileAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)
 
     # Default to base analyzer
-    return BaseFileAnalyzer(path_to_top_level_project, relative_path, repo, email, language_filter)
+    return BaseFileAnalyzer(path_to_top_level_project, relative_path, repo, email, github, language_filter)

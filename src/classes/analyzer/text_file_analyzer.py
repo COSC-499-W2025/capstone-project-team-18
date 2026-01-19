@@ -52,7 +52,7 @@ class TextFileAnalyzer(BaseFileAnalyzer):
     def _get_file_commit_percentage(self) -> None:
         """
         Calculate the percentage of lines in the file
-        that were authored by the user with the given email.
+        that were authored by the user with the given email or associated GitHub account.
         """
 
         # If the file is not tracked by git or email is None, return None
@@ -69,9 +69,9 @@ class TextFileAnalyzer(BaseFileAnalyzer):
             line_count = 0
             for commit, lines in blame_info:
                 line_count += len(lines)
-                if commit.author.email == self.email:
+                # check if github account has been set and use as additional check
+                if commit.author.email == self.email or (self.github and self.github in commit.author.email):
                     commit_count += len(lines)
-
             if line_count == 0:
                 file_percent = 0.0
             else:

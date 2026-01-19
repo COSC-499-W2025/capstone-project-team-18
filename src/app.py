@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 def start_miner(
     zipped_file: str,
     email: Optional[str] = None,
+    github: Optional[str] = None,
     progress_callback: Optional[Callable[[str, int, int, str], None]] = None
 ) -> None:
     """
@@ -35,6 +36,7 @@ def start_miner(
     Args:
         - zipped_file : The filepath to the zipped file.
         - email: Email associated with git account
+        - github: Username associated with git account (secondary check for commits)
     """
 
     logger.info("Starting analysis for zipped file %s", zipped_file)
@@ -104,7 +106,8 @@ def start_miner(
                 project_path=project.root_path,
                 project_repo=project.repo,
                 file_reports=file_reports,
-                user_email=email
+                user_email=email,
+                user_github=github
             )
             # store ProjectReports for UserReport
             project_reports.append(project_report)
@@ -145,7 +148,7 @@ def start_miner(
             progress_callback("complete", 1, 1, "")
 
     print("-------- Analysis Reports --------\n")
-    resume = user_report.generate_resume(email)
+    resume = user_report.generate_resume(email, github)
 
     # Download latex resume to file system
     latex_str = resume.export(ResumeLatexRenderer())
