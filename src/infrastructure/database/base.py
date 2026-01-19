@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 
 # for DB migration via alembic
-DB_PATH = "sqlite:///src/database/data.db"
+DB_PATH = "sqlite:///src/infrastructure/database/data.db"
 
 Base = declarative_base()
 
