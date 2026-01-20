@@ -9,8 +9,10 @@ from sqlalchemy import select
 
 from src.core.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.core.report import FileReport, ProjectReport, UserReport
-from src.infrastructure.database.models import ProjectReportTable, UserReportTable
-from src.infrastructure.database.base import get_engine
+
+from src.database.models import ProjectReportTable, UserReportTable
+from src.database.base import get_engine
+
 from src.infrastructure.log.logging import get_logger
 from src.services.preferences.preference_service import UserConfig
 

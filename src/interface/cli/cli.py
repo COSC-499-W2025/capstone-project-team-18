@@ -10,8 +10,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from src.interface.cli.cli_service_handler import start_miner_cli
-from src.infrastructure.database.utils.database_modify import rename_user_report
-from src.infrastructure.database.utils.database_access import get_project_from_project_name
+from src.database.utils.database_modify import rename_user_report
+from src.database.utils.database_access import get_project_from_project_name
 from src.core.resume.bullet_point_builder import BulletPointBuilder
 from src.utils.pathing_utils import is_valid_filepath_to_zip, normalize_path
 from src.interface.cli.user_preferences import UserPreferences
@@ -738,7 +738,7 @@ class ArtifactMiner(cmd.Cmd):
                     print(f"Using last analyzed portfolio: {portfolio_name}")
 
             try:
-                from src.infrastructure.database.utils.database_access import get_user_report
+                from src.database.utils.database_access import get_user_report
                 from src.interface.cli.print_resume_and_portfolio import portfolio_CLI_stringify
                 report = get_user_report(portfolio_name)
                 portfolio_CLI_stringify(report)

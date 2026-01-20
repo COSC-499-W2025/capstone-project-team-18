@@ -2,8 +2,8 @@
 Tests the create_row() function
 """
 
-from src.infrastructure.database.models import FileReportTable, ProjectReportTable, UserReportTable
-from src.infrastructure.database.utils.database_modify import create_row
+from src.database.models import FileReportTable, ProjectReportTable, UserReportTable
+from src.database.utils.database_modify import create_row
 from src.core.report import ProjectReport, UserReport
 from src.core.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
 

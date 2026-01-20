@@ -19,7 +19,7 @@ from src.core.statistic import (
     UserStatCollection
 )
 from src.core.resume.resume import Resume
-from src.infrastructure.database.utils.column_statistic_serializer import ColumnStatisticSerializer
+from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
 
 # [type[src.core.statistic.FileStatCollection], type[src.core.statistic.ProjectStatCollection], type[src.core.statistic.UserStatCollection]]
 CollectionType = t.Union[
