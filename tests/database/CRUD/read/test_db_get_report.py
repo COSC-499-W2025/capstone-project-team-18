@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
-from src.infrastructure.database.utils.database_access import get_project_from_project_name, get_user_report
-from src.infrastructure.database.utils.database_modify import create_row
+from src.database.utils.database_access import get_project_from_project_name, get_user_report
+from src.database.utils.database_modify import create_row
 from src.core.statistic import (
     FileStatCollection,
 )
