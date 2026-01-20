@@ -1,10 +1,10 @@
-from src.classes.resume.bullet_point_builder import (
+from src.core.resume.bullet_point_builder import (
     BulletPointBuilder,
     ActivityTypeContributionBulletPoint,
     CodingLanguageBulletPoint,
     WeightedSkillsBulletPoint,
 )
-from src.classes.statistic import (
+from src.core.statistic import (
     WeightedSkills,
     CodingLanguage,
     Statistic,

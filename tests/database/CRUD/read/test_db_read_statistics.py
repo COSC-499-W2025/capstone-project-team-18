@@ -7,13 +7,13 @@ import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from src.database.models import ProjectReportTable, FileReportTable
-from src.database.utils.database_access import _project_report_from_row
-from src.classes.statistic import (
+from src.infrastructure.database.models import ProjectReportTable, FileReportTable
+from src.infrastructure.database.utils.database_access import _project_report_from_row
+from src.core.statistic import (
     ProjectStatCollection,
     CodingLanguage,
 )
-from src.classes.statistic import ProjectStatCollection
+from src.core.statistic import ProjectStatCollection
 
 
 def test_project_report_from_row_rebuilds_coding_language_ratio(blank_db):

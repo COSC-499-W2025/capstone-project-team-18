@@ -1,5 +1,5 @@
-from src.classes.report import UserReport
-from src.classes.statistic import (
+from src.core.report import UserReport
+from src.core.statistic import (
     Statistic, UserStatCollection, WeightedSkills, ProjectStatCollection
 )
 from unittest.mock import Mock

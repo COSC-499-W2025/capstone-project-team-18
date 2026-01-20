@@ -1,5 +1,5 @@
 import os
-from src.classes.cli.cli import normalize_path
+from src.interface.cli.cli import normalize_path
 
 
 def test_normalize_path_windows_to_unix():

@@ -1,5 +1,5 @@
-from src.classes.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection
-from src.classes.report import ProjectReport, FileReport
+from src.core.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection
+from src.core.report import ProjectReport, FileReport
 from datetime import datetime
 
 

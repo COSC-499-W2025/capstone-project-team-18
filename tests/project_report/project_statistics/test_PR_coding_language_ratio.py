@@ -1,7 +1,7 @@
 from pathlib import Path
-from src.classes.statistic import ProjectStatCollection, CodingLanguage
-from src.classes.analyzer import get_appropriate_analyzer
-from src.classes.report import ProjectReport
+from src.core.statistic import ProjectStatCollection, CodingLanguage
+from src.core.analyzer import get_appropriate_analyzer
+from src.core.report import ProjectReport
 
 
 def test_coding_ratio_in_normal_project(tmp_path):

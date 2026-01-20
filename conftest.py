@@ -8,13 +8,13 @@ from pathlib import Path
 import pytest
 from git import Repo
 import os
-from src.utils.project_discovery.project_discovery import ProjectFiles
-from src.classes.statistic import Statistic, StatisticIndex
-from src.classes.report import UserReport, ProjectReport
+from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.statistic import Statistic, StatisticIndex
+from src.core.report import UserReport, ProjectReport
 import tempfile
 import shutil
 from sqlalchemy import create_engine
-from src.database.base import Base
+from src.infrastructure.database.base import Base
 
 
 @pytest.fixture

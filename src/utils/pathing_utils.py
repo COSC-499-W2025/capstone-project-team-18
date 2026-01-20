@@ -11,7 +11,7 @@ import zipfile
 import py7zr
 import tempfile
 
-from src.utils.log.logging import get_logger
+from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
 

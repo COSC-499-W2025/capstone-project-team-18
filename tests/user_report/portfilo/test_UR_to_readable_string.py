@@ -1,4 +1,4 @@
-from src.classes.statistic import (
+from src.core.statistic import (
     StatisticIndex, Statistic, StatisticTemplate,
     UserStatCollection, CodingLanguage
 )

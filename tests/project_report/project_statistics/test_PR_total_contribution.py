@@ -3,10 +3,10 @@ import tempfile
 import pytest
 
 from src.utils.pathing_utils import unzip_file
-from src.classes.analyzer import extract_file_reports
-from src.utils.project_discovery.project_discovery import discover_projects
-from src.classes.statistic import ProjectStatCollection
-from src.classes.report import ProjectReport
+from src.core.analyzer import extract_file_reports
+from src.core.project_discovery.project_discovery import discover_projects
+from src.core.statistic import ProjectStatCollection
+from src.core.report import ProjectReport
 
 
 @pytest.mark.parametrize(
@@ -31,7 +31,12 @@ def test_verify_accurate_contribution_percentage(resource_dir, email, percentage
 
     project = discover_projects(unzipped_dir)[0]
 
-    file_reports = extract_file_reports(project, email, [])
+    file_reports = extract_file_reports(
+        project_file=project,
+        email=email,
+        github=None,
+        language_filter=None
+    )
 
     project_report = ProjectReport(
         project_name=project.name,

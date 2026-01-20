@@ -9,7 +9,7 @@ for p in (str(CLASSES_DIR), str(SRC_DIR)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from src.classes.analyzer import CAnalyzer, TypeScriptAnalyzer  # type: ignore  # noqa: E402
+from src.core.analyzer import CAnalyzer, TypeScriptAnalyzer  # type: ignore  # noqa: E402
 
 
 def test_c_analyzer_functions_structs_typedefs_includes(tmp_path):

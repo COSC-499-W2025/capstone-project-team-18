@@ -4,10 +4,10 @@ from git import Repo
 from pathlib import Path
 import pytest
 
-from src.classes.report import ProjectReport
-from src.classes.statistic import ProjectStatCollection
-from src.classes.analyzer import extract_file_reports
-from src.utils.project_discovery.project_discovery import ProjectFiles
+from src.core.report import ProjectReport
+from src.core.statistic import ProjectStatCollection
+from src.core.analyzer import extract_file_reports
+from src.core.project_discovery.project_discovery import ProjectFiles
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from src.classes.report import UserReport
-from src.classes.statistic import Statistic, ProjectStatCollection
+from src.core.report import UserReport
+from src.core.statistic import Statistic, ProjectStatCollection
 
 
 def make_date(y, m, d):

@@ -1,8 +1,8 @@
 from pytest import approx
-from src.classes.report import ProjectReport
-from src.utils.project_discovery.project_discovery import ProjectFiles
-from src.classes.analyzer import extract_file_reports
-from src.classes.statistic import ProjectStatCollection, FileDomain
+from src.core.report import ProjectReport
+from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.analyzer import extract_file_reports
+from src.core.statistic import ProjectStatCollection, FileDomain
 
 
 def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_file):

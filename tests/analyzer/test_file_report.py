@@ -3,10 +3,10 @@ Tests for the file report module. Any analyzer specific tests should be placed i
 their respective test files.
 """
 
-from src.classes.statistic import (
+from src.core.statistic import (
     StatisticIndex, Statistic, FileStatCollection, FileDomain
 )
-from src.classes.report import FileReport
+from src.core.report import FileReport
 import pytest
 
 

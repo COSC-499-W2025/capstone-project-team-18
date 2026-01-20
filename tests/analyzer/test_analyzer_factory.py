@@ -1,4 +1,4 @@
-from src.classes.analyzer import (
+from src.core.analyzer import (
     CSSAnalyzer,
     HTMLAnalyzer,
     PHPAnalyzer,
