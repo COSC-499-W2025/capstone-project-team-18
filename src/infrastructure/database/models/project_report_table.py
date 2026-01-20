@@ -14,7 +14,8 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from src.infrastructure.database.base import Base
 from src.infrastructure.database.utils.init_columns import make_columns
-from src.infrastructure.database.models.association_table import association_table
+from src.infrastructure.database.models.proj_user_assoc import proj_user_assoc_table
+from src.infrastructure.database.models.file_report_table import FileReportTable
 
 from src.core.statistic import ProjectStatCollection
 
@@ -43,7 +44,7 @@ class ProjectReportTable(Base):
     # Many-to-many with UserReport via association table
     user_reports = relationship(
         "UserReportTable",
-        secondary=association_table,
+        secondary=proj_user_assoc_table,
         back_populates="project_reports",
         cascade="save-update, merge"
     )

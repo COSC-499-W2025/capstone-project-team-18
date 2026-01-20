@@ -1,7 +1,7 @@
 '''
 This table is **INCOMPLETE**. The table will store generated user reports, which are made using
 one or more project reports. It has a bi-directional many-to-many relationship with the
-`project_report` table. We use `association_table` to store FK references to both the `user_report`
+`project_report` table. We use `proj_user_assoc_table` to store FK references to both the `user_report`
 table *and* the `project_report` table to track which project reports are used to make which user
 reports.
 
@@ -14,7 +14,7 @@ from sqlalchemy.orm import relationship, mapped_column
 from src.core.statistic import UserStatCollection
 
 from src.infrastructure.database.utils.init_columns import make_columns
-from src.infrastructure.database.models.association_table import association_table
+from src.infrastructure.database.models.proj_user_assoc import proj_user_assoc_table
 from src.infrastructure.database.base import Base
 
 
@@ -38,7 +38,7 @@ class UserReportTable(Base):
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",
-        secondary=association_table,
+        secondary=proj_user_assoc_table,
         back_populates="user_reports",
         cascade="save-update, merge"
     )
