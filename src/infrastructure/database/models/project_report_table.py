@@ -14,8 +14,8 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from src.infrastructure.database.base import Base
 from src.infrastructure.database.utils.init_columns import make_columns
-from src.infrastructure.database.models.proj_user_assoc import proj_user_assoc_table
-from src.infrastructure.database.models.file_report_table import FileReportTable
+from src.infrastructure.database.models.proj_user_assoc_table import proj_user_assoc_table
+from src.infrastructure.database.models.resume_proj_assoc_table import resume_proj_assoc_table
 
 from src.core.statistic import ProjectStatCollection
 
@@ -34,6 +34,8 @@ class ProjectReportTable(Base):
     __tablename__ = 'project_report'
 
     id: Mapped[int] = mapped_column(primary_key=True)  # PK
+    project_name = mapped_column(String)
+    project_path = mapped_column(String)
 
     file_reports: Mapped[List["FileReportTable"]] = relationship(
         back_populates="project_report",
@@ -49,5 +51,10 @@ class ProjectReportTable(Base):
         cascade="save-update, merge"
     )
 
-    project_name = mapped_column(String)
-    project_path = mapped_column(String)
+    # Many-to-many with Resume via association table
+    resumes = relationship(
+        "ResumeTable",
+        secondary=resume_proj_assoc_table,
+        back_populates="project_reports",
+        cascade="save-update, merge"
+    )

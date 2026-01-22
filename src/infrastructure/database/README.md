@@ -8,7 +8,7 @@
     - [3.1 - file_report](#file_report)
     - [3.2 - project_report](#project_report)
     - [3.3 - user_report](#user_report)
-    - [3.4 - proj_user_assoc_table](#proj_user_assoc_table)
+    - [3.4 - proj_user_assoc](#proj_user_assoc)
 4. [SQLAlchemy and Object-Relational Mapping (ORM)](#sqlalchemy-and-object-relational-mapping-orm)
     - [4.1 - Creating Tables](#creating-tables)
     - [4.2 - Adding Rows to a Table](#adding-rows-to-a-table)
@@ -30,7 +30,7 @@
 ## What Data Are We Storing?
 
 The database consists of the following tables:
-1. **proj_user_assoc_table**: Tracks the bi-directional many-to-many relationship between the *project_report* and *user_report* tables (i.e., track which project reports are used to make which user reports).
+1. **proj_user_assoc**: Tracks the bi-directional many-to-many relationship between the *project_report* and *user_report* tables (i.e., track which project reports are used to make which user reports).
 2. **file_report**: Stores all `FileReport` objects that are generated. Each row represents a single `FileReport` that is generated for a given file.
 3. **project_report**: Stores all `ProjectReport` objects. Each row represents a `ProjectReport` that is generated for a given project using one or more `FileReports`.
 4. **user_report**: Stores all user reports. Each row represents a `UserReport` object that is generated using one or more `ProjectReports`.
@@ -80,15 +80,15 @@ erDiagram
         JSON user_skills
     }
 
-    proj_user_assoc_table {
+    proj_user_assoc {
         int project_report_id FK
         int user_report_id FK
     }
 
     %% Relationships
     FILE_REPORT }o--|| PROJECT_REPORT : "belongs to"
-    proj_user_assoc_table }o--|| PROJECT_REPORT : "project"
-    proj_user_assoc_table }o--|| USER_REPORT : "user"
+    proj_user_assoc }o--|| PROJECT_REPORT : "project"
+    proj_user_assoc }o--|| USER_REPORT : "user"
 ```
 
 ## Example Rows
@@ -125,7 +125,7 @@ erDiagram
 | 2   | 2024-06-19 13:04:46.782516 | 2025-09-18 00:10:32.587164 | ["Python", "Typescript", "Node", "Flask"] | other statistics... |
 | ... | ...                        | ...                        | ...                                       | ...                 |
 
-### proj_user_assoc_table
+### proj_user_assoc
 
 | project_report_id | user_report_id |
 | ----------------- | -------------- |
@@ -440,7 +440,7 @@ with Session(engine) as session:
     session.commit()
 ```
 
-For the FK relation between `ProjectReportTable` and `UserReportTable`, our cascade behavior is defined as `cascade="save-update, merge"`. This cascade behavior has more to do with handling session management rather than what to do on deletions because a project report can exist without a user report and vice-versa. Additionally, because we have `secondary=proj_user_assoc_table` in the relationship configuration, SQLAlchemy will automatically update the `proj_user_assoc_table` with the FK references for us.
+For the FK relation between `ProjectReportTable` and `UserReportTable`, our cascade behavior is defined as `cascade="save-update, merge"`. This cascade behavior has more to do with handling session management rather than what to do on deletions because a project report can exist without a user report and vice-versa. Additionally, because we have `secondary=proj_user_assoc` in the relationship configuration, SQLAlchemy will automatically update the `proj_user_assoc` with the FK references for us.
 
 ### End Result
 

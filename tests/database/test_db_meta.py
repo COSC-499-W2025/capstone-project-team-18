@@ -17,7 +17,7 @@ def test_tables_exist(temp_db):
     inspector = inspect(temp_db)
     tables = set(inspector.get_table_names())
     assert {"file_report", "project_report",
-            "user_report", "proj_user_assoc_table"} <= tables
+            "user_report", "proj_user_assoc"} <= tables
 
 
 def test_sample_data_inserted(temp_db):

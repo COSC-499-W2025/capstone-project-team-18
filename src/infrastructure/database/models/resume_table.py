@@ -8,18 +8,17 @@ reports.
 Key Columns:
 - `id`: The table's PK
 '''
-from sqlalchemy import Integer, String
-from sqlalchemy.orm import relationship, mapped_column
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from src.core.statistic import UserStatCollection
+from src.core.resume.resume import Resume
 
 from src.infrastructure.database.utils.init_columns import make_columns
-from src.infrastructure.database.models.proj_user_assoc_table import proj_user_assoc_table
+from src.infrastructure.database.models.resume_proj_assoc_table import resume_proj_assoc_table
 from src.infrastructure.database.base import Base
 
 
-@make_columns(UserStatCollection)
-class UserReportTable(Base):
+@make_columns(Resume)
+class ResumeTable(Base):
     '''
     Example rows:
     | id  | user_start_date            | user_end_date              | user_skills                               | other columns...    |
@@ -28,17 +27,14 @@ class UserReportTable(Base):
     | 2   | 2024-06-19 13:04:46.782516 | 2025-09-18 00:10:32.587164 | ["Python", "Typescript", "Node", "Flask"] | other statistics... |
     | ... | ...                        | ...                        | ...                                       | ...                 |
     '''
-    __tablename__ = 'user_report'
+    __tablename__ = 'resume'
 
-    id = mapped_column(Integer, primary_key=True)
-
-    # name given by user, or name of zipped folder (default)
-    title = mapped_column(String)
+    id: Mapped[int] = mapped_column(primary_key=True)  # PK
 
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",
-        secondary=proj_user_assoc_table,
-        back_populates="user_reports",
+        secondary=resume_proj_assoc_table,
+        back_populates="resumes",
         cascade="save-update, merge"
     )
