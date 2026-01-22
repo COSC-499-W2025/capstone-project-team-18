@@ -2,11 +2,9 @@
 This file holds the main service, the miner.
 """
 
-from typing import Optional, Callable
-from dataclasses import dataclass
 import tempfile
-import time
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from src.utils.pathing_utils import unzip_file_bytes
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
@@ -15,15 +13,28 @@ from src.core.report import ProjectReport
 from src.infrastructure.database.base import Base, get_engine
 from src.infrastructure.database.utils.database_modify import create_row
 from src.infrastructure.log.logging import get_logger
-from src.infrastructure.database.utils.database_access import get_user_config
 from src.services.preferences.preference_service import UserConfig
-from src.utils.errors import NoDiscoveredProjects, MissingStartMinerConsent
+from src.utils.errors import (
+    NoDiscoveredProjects,
+    MissingStartMinerConsent,
+    NoRevelantFiles,
+    ErrorCode,
+    ArtifactMinerException
+)
 
 logger = get_logger(__name__)
 
 
-@dataclass
-class MinerResults():
+class ProjectError(BaseModel):
+    """Represents a single project-level error"""
+    project_name: str
+    error_code: str
+    error_message: str
+
+
+class MinerResults(BaseModel):
+    """Results from the mining operation"""
+    project_errors: list[ProjectError]
     success: bool
 
 
@@ -83,6 +94,8 @@ def _analyze_project_files(
 
     if file_reports == []:
         logger.warning(f"{project_layout.name} had no FileReports")
+        raise NoRevelantFiles(
+            "f{project_layout.name} had no revelent files to analyze")
 
     return ProjectReport(
         project_name=project_layout.name,
@@ -129,48 +142,38 @@ def _save_project_report_to_db(project_report: list[ProjectReport]) -> None:
 def start_miner_service(
     zipped_bytes: bytes,
     zipped_format: str,
-    user_report_title: str = f"UserReport{str(int(time.time()))}",
-
-    github: Optional[str] = None,
-    email: Optional[str] = None,
-    language_filter: Optional[list[str]] = None,
-    progress_callback: Optional[Callable[[str, int, int, str], None]] = None,
-
+    user_config: UserConfig
 ) -> MinerResults:
     """
-    This is the defacto function to start the minering function
+    This is the defacto function to start the miner function
     for the Artifact Miner. This function receives the bytes and file
-    format of the zipped file (.zip, .7z, etc). There is no output of this
-    function, but rather the miner results are written to the database for
-    later retrieval.
+    format of the zipped file (.zip, .7z, etc). Discovered projects are
+    analyzed individually, and errors are caught per-project to allow
+    processing to continue. ProjectReports and their corrsponding FileReports
+    are written to the local database.
+
+    Per-project errors are NOT raised but collected in MinerResults.project_errors:
+        - NO_RELEVANT_FILES: Project has no analyzable files
+        - NO_DISCOVERED_PROJECTS: No projects found in discovery (caught per-project)
+        - ANALYSIS_FAILED: Analysis operation failed
+        - UNKNOWN_ERROR: Unexpected exception during analysis
 
     :param zipped_bytes: The bytes of a zipped file.
     :type zipped_bytes: bytes
     :param zipped_format: The file format of the file (".7z", ".zip", etc)
     :type zipped_format: str
-    :param user_report_title: The user report name you would like to save in the database
-    :type user_report_title: str
-    :param email: The git email of the user
-    :type email: Optional[str]
-    :param language_filter: A list of strings of what file formats to ignore
-    :type language_filter: Optional[list[str]]
-    :param progress_callback: Used by the CLI to make a visual progress bar.
-    :type progress_callback: Optional[Callable[[str, int, int, str], None]]
-    :return: Returns a MinerResults object
+    :param user_config: The user's configuration
+    :type user_config: UserConfig
+
+    :return: Returns a MinerResults object containing analyzed projects and per-project errors
     :rtype: MinerResults
+
+    :raises MissingStartMinerConsent: If user consent is not provided
+    :raises NoDiscoveredProjects: If no projects are found in the zipped file
+
     """
 
     logger.info("Starting analysis for the zipped file")
-
-    user_config = get_user_config()
-
-    if user_config is None:
-        user_config = UserConfig(
-            consent=True,
-            github=github,
-            email=email,
-            language_filter=language_filter
-        )
 
     if not user_config.consent:
         raise MissingStartMinerConsent()
@@ -178,17 +181,37 @@ def start_miner_service(
     projects_discovered = _discover_projects_from_file(
         zipped_bytes, zipped_format)
 
-    project_reports = [_analyze_project_files(
-        layout, user_config) for layout in projects_discovered]
-
-    if project_reports == []:
+    if len(projects_discovered) == 0:
         raise NoDiscoveredProjects(
-            "The analyzer found no projects to analyze. "
-            "Please check your zipped file. "
-            "If configured, check your git email."
-            "The analyzer will not analyze Git projects you have not contributed to."
-        )
+            "The analyzer found no projects to analyze.")
+
+    # For every discovered project, try to analyze the project
+    # If an error occurs, catch it for that project to be returned
+    # and move on
+    project_reports = []
+    project_errors = []
+
+    for layout in projects_discovered:
+        try:
+            report = _analyze_project_files(layout, user_config)
+            project_reports.append(report)
+        except ArtifactMinerException as e:
+            logger.error(f"Error analyzing project {layout.name}: {e}")
+            project_errors.append(ProjectError(
+                project_name=layout.name,
+                error_code=e.error_code.value,
+                error_message=str(e)
+            ))
+        except Exception as e:
+            logger.error(
+                f"Unexpected error analyzing project {layout.name}: {e}")
+            project_errors.append(ProjectError(
+                project_name=layout.name,
+                error_code=ErrorCode.UNKNOWN_ERROR.value,
+                error_message=str(e)
+            ))
 
     _save_project_report_to_db(project_reports)
 
-    return MinerResults(True)
+    success = len(project_errors) == 0
+    return MinerResults(project_errors=project_errors, success=success)

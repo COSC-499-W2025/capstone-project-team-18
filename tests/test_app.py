@@ -6,7 +6,9 @@ More detailed tests will be in their respective modules.
 import pytest
 
 from src.interface.cli.cli_service_handler import start_miner_cli
-from src.utils.errors import NoDiscoveredProjects
+from src.core.report import ProjectReport
+from src.utils.errors import NoDiscoveredProjects, ErrorCode
+from src.infrastructure.database.utils.database_access import get_project_from_project_name
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -22,6 +24,8 @@ def mock_engine(monkeypatch, blank_db):
     monkeypatch.setattr(
         "src.services.mining_service.get_engine", fake_get_engine)
 
+    yield blank_db
+
 
 def test_app_runs(mock_engine):
     """
@@ -31,10 +35,17 @@ def test_app_runs(mock_engine):
     sample_zipped_file = "./tests/resources/mac_projects.zip"
     sample_email = "bob@example.com"
 
-    try:
-        start_miner_cli(sample_zipped_file, sample_email)
-    except Exception as e:
-        pytest.fail(f"start_miner raised an exception: {e}")
+    start_miner_cli(sample_zipped_file, sample_email)
+
+    project_a = get_project_from_project_name(
+        "ProjectA", engine=mock_engine)
+    project_b = get_project_from_project_name(
+        "ProjectB", engine=mock_engine)
+
+    assert project_a is not None
+    assert project_b is not None
+    assert isinstance(project_a, ProjectReport)
+    assert isinstance(project_b, ProjectReport)
 
 
 def test_app_runs_empty_zip():
@@ -60,5 +71,8 @@ def test_app_runs_git_repo_wrong_email():
     sample_zipped_file = "./tests/resources/sample_git_project_one_author.zip"
     sample_email = "spencer@example.com"
 
-    with pytest.raises(NoDiscoveredProjects):
-        start_miner_cli(sample_zipped_file, sample_email)
+    miner_results = start_miner_cli(sample_zipped_file, sample_email)
+
+    assert miner_results.success == False
+    assert len(miner_results.project_errors) != 0
+    assert miner_results.project_errors[0].error_code == ErrorCode.NO_RELEVANT_FILES.value
