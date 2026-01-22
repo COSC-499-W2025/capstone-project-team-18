@@ -7,7 +7,7 @@ from datetime import datetime
 import pytest
 from src.core.analyzer import BaseFileAnalyzer, extract_file_reports, get_appropriate_analyzer
 from src.core.statistic import FileStatCollection
-from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.project_discovery.project_discovery import ProjectLayout
 from src.utils.pathing_utils import unzip_file
 
 
@@ -46,7 +46,7 @@ def test_extract_file_reports_returns_project(tmp_path, create_temp_file):
     for filename in files:
         create_temp_file(filename, "Sample content", tmp_path)
 
-    project_file = ProjectFiles(
+    project_file = ProjectLayout(
         name="TestProject",
         root_path=str(tmp_path),
         file_paths=files,
@@ -81,7 +81,7 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, create_t
     subfolder.mkdir()
     create_temp_file("a_3.txt", "File Three", subfolder)
 
-    project_file = ProjectFiles(
+    project_file = ProjectLayout(
         name="ProjectA",
         root_path=str(tmp_path),
         file_paths=["a_1.txt", "a_2.txt", "subfolder/a_3.txt"],

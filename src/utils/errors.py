@@ -11,3 +11,18 @@ class NoDiscoveredProjects(Exception):
     projects were found.
     """
     pass
+
+
+class ConsentError(Exception):
+    """
+    Errors to do with consent.
+    """
+    pass
+
+
+class MissingStartMinerConsent(Exception):
+    """
+    A user has not consented to start
+    the miner function.
+    """
+    pass

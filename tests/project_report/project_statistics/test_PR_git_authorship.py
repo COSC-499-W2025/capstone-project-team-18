@@ -7,7 +7,7 @@ import pytest
 from src.core.report import ProjectReport
 from src.core.statistic import ProjectStatCollection
 from src.core.analyzer import extract_file_reports
-from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.project_discovery.project_discovery import ProjectLayout
 
 
 @pytest.fixture
@@ -506,7 +506,7 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
     repo.index.add(["fileC.py"])
     repo.index.commit("Charlie modifies fileC")
 
-    project_files = ProjectFiles(
+    project_files = ProjectLayout(
         name="SelectiveProject",
         root_path=str(project_dir),
         file_paths=["fileA.py", "fileB.py", "fileC.py"],
@@ -552,7 +552,7 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
     repo.index.add(["fileB.py"])
     repo.index.commit("Bob creates fileB")
 
-    project_files = ProjectFiles(
+    project_files = ProjectLayout(
         name="NoContributionProject",
         root_path=str(project_dir),
         file_paths=["fileA.py", "fileB.py"],
@@ -590,7 +590,7 @@ def test_total_contribution_percentage_single_file_full_contribution(tmp_path: P
     repo.index.add(["main.py"])
     repo.index.commit("Alice creates main")
 
-    project_files = ProjectFiles(
+    project_files = ProjectLayout(
         name="SingleAuthorProject",
         root_path=str(project_dir),
         file_paths=["main.py"],
@@ -632,7 +632,7 @@ def test_total_contribution_percentage_three_way_split(tmp_path: Path):
         repo.index.add([filename])
         repo.index.commit(f"{author} creates {filename}")
 
-    project_files = ProjectFiles(
+    project_files = ProjectLayout(
         name="ThreeWayProject",
         root_path=str(project_dir),
         file_paths=["fileA.py", "fileB.py", "fileC.py"],

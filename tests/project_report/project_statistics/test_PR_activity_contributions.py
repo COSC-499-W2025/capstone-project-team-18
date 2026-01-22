@@ -1,17 +1,17 @@
 from pytest import approx
 from src.core.report import ProjectReport
-from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.analyzer import extract_file_reports
 from src.core.statistic import ProjectStatCollection, FileDomain
 
 
-def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_file):
+def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_layout):
     """
     Tests that in a normal project,
     we see normal activity contributions.
     """
 
-    pf = ProjectFiles(
+    pf = ProjectLayout(
         name="act_contrb",
         root_path=f"{tmp_path}/act_contrb",
         file_paths=[
@@ -25,7 +25,7 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_f
         repo=None
     )
 
-    make_project_file(pf)
+    make_project_layout(pf)
 
     frs = extract_file_reports(pf)
 
