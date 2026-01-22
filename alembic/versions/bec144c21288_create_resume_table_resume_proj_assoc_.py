@@ -1,7 +1,7 @@
 """create resume table & resume_proj_assoc
 
 Revision ID: bec144c21288
-Revises: 841e8be99ec3
+Revises: 841e8be99ec3 (Rename association_table to proj_user_assoc)
 Create Date: 2026-01-22 00:10:53.634111
 Related Issue: https://github.com/COSC-499-W2025/capstone-project-team-18/issues/361
 Description: Define the ORM for two new tables: Resume and resume_proj_assoc

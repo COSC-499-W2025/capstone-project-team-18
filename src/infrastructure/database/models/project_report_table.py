@@ -36,6 +36,7 @@ class ProjectReportTable(Base):
     id: Mapped[int] = mapped_column(primary_key=True)  # PK
     project_name = mapped_column(String)
     project_path = mapped_column(String)
+    thumbnail = mapped_column(String)  # path to local copy
 
     file_reports: Mapped[List["FileReportTable"]] = relationship(
         back_populates="project_report",
