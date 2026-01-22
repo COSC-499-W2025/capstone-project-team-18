@@ -16,7 +16,7 @@ from sqlalchemy import ForeignKey, Table, Column
 from src.database.base import Base
 
 proj_user_assoc_table = Table(
-    "proj_user_assoc_table",
+    "proj_user_assoc",
     Base.metadata,
     Column("project_report_id", ForeignKey(
         "project_report.id"), primary_key=True),
