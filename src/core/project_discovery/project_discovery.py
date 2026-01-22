@@ -16,14 +16,14 @@ logger = get_logger(__name__)
 
 
 @dataclass
-class ProjectFiles:
+class ProjectLayout:
     name: str  # Name of the project (name of the top level directory)
     root_path: str  # The absolute path to the top-level directory
     file_paths: list[str]  # File paths relative to the root_path
     repo: Optional[Repo]  # The git repository object if applicable
 
 
-def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
+def discover_projects(unzipped_dir: str) -> list[ProjectLayout]:
     """
     Given the path to the directory where the zip file was extracted,
     discover the projects and their files.
@@ -41,7 +41,7 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
         - unzipped_dir : str The path to the directory where the zip file was extracted
 
     Returns:
-        - list[ProjectFiles] A list of ProjectFiles dataclasses representing the discovered projects.
+        - list[ProjectLayout] A list of ProjectLayout dataclasses representing the discovered projects.
 
     Raises:
         - FileNotFoundError: If the unzipped directory does not exist.
@@ -75,7 +75,7 @@ def discover_projects(unzipped_dir: str) -> list[ProjectFiles]:
             except Exception as e:
                 logger.debug(f"No git repository found in {dir_path}: {e}")
 
-            projects.append(ProjectFiles(
+            projects.append(ProjectLayout(
                 name=dir_path.name,
                 root_path=str(dir_path),
                 file_paths=file_paths,

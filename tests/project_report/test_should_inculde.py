@@ -5,10 +5,10 @@ in the Analyzer class
 
 from src.core.analyzer import get_appropriate_analyzer
 from pathlib import Path
-from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.project_discovery.project_discovery import ProjectLayout
 
 
-def test_should_include_file_not_in_git_repo(project_no_git_dir: ProjectFiles):
+def test_should_include_file_not_in_git_repo(project_no_git_dir: ProjectLayout):
     """
     Tests to see that a file in a non-git project
     should be included
