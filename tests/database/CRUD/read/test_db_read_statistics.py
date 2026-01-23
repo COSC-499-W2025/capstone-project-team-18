@@ -7,8 +7,8 @@ import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from src.infrastructure.database.models import ProjectReportTable, FileReportTable
-from src.infrastructure.database.utils.database_access import _project_report_from_row
+from src.database.models import ProjectReportTable, FileReportTable
+from src.database.utils.database_access import _project_report_from_row
 from src.core.statistic import (
     ProjectStatCollection,
     CodingLanguage,

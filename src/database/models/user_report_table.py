@@ -13,9 +13,9 @@ from sqlalchemy.orm import relationship, mapped_column
 
 from src.core.statistic import UserStatCollection
 
-from src.infrastructure.database.utils.init_columns import make_columns
-from src.infrastructure.database.models.association_table import association_table
-from src.infrastructure.database.base import Base
+from src.database.utils.init_columns import make_columns
+from src.database.models.association_table import association_table
+from src.database.base import Base
 
 
 @make_columns(UserStatCollection)

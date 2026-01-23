@@ -17,9 +17,9 @@ import datetime
 from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
-from src.infrastructure.database.base import Base
+from src.database.base import Base
 from src.core.report import FileReport, ProjectReport, UserReport
-from src.infrastructure.database.utils.database_modify import create_row
+from src.database.utils.database_modify import create_row
 
 
 @pytest.fixture

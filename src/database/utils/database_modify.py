@@ -9,8 +9,8 @@ from sqlalchemy import select
 from src.core.report.file_report import FileReport
 from src.core.report.project.project_report import ProjectReport
 from src.core.report.user.user_report import UserReport
-from src.infrastructure.database.base import get_engine
-from src.infrastructure.database.models import FileReportTable, ProjectReportTable, UserReportTable
+from src.database.base import get_engine
+from src.database.models import FileReportTable, ProjectReportTable, UserReportTable
 
 
 def create_row(report: FileReport | ProjectReport | UserReport):
