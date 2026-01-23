@@ -2,11 +2,11 @@
 This file makes importing the ORM classes for our tables much
 easier. Instead of
 
-from src.infrastructure.database.models.file_report_table import FileReportTable
+from src.database.models.file_report_table import FileReportTable
 
 We can instead import the table with
 
-from src.infrastructure.database.models import FileReportTable
+from src.database.models import FileReportTable
 """
 
 from .file_report_table import FileReportTable

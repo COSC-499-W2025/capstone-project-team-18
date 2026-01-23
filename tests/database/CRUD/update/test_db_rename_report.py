@@ -5,9 +5,9 @@ Tests for rename_user_report function
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from src.infrastructure.database.utils.database_access import get_user_report
-from src.infrastructure.database.utils.database_modify import rename_user_report
-from src.infrastructure.database.models import UserReportTable
+from src.database.utils.database_access import get_user_report
+from src.database.utils.database_modify import rename_user_report
+from src.database.models import UserReportTable
 
 
 def test_rename_user_report_success(temp_db):
