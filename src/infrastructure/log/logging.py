@@ -40,3 +40,17 @@ def get_logger(name: str, level=logging.INFO):
         logger.addHandler(fh)
 
     return logger
+
+
+def clear_logs() -> None:
+    """Remove existing log files (base and rotated) to start fresh."""
+    try:
+        if LOG_FILE.exists():
+            LOG_FILE.unlink()
+        for idx in range(1, 5):
+            rotated = LOG_FILE.with_suffix(LOG_FILE.suffix + f".{idx}")
+            if rotated.exists():
+                rotated.unlink()
+    except OSError:
+        # Best-effort cleanup; logging will still work if deletion fails.
+        pass

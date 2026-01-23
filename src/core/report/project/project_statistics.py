@@ -265,8 +265,6 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
         if not counts:
             return None
         ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-        if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
-            return None
         return ranked[0][0]
 
     def calculate(self, report: ProjectReport) -> list[Statistic]:

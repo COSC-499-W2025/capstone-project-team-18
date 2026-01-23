@@ -240,6 +240,13 @@ class UserReport(BaseReport):
         s = raw.replace("_", " ").replace("-", " ").strip().lower().title()
         return s
 
+    @staticmethod
+    def _format_limited_list(items: list[str], max_items: int) -> str:
+        """Format a list with a max length."""
+        if max_items <= 0:
+            return ""
+        return ", ".join(items[:max_items])
+
     def to_user_readable_string(self) -> str:
         """
         For every statistic in self.statistics, return a human-readable line.
@@ -523,7 +530,7 @@ class UserReport(BaseReport):
         """
         return self._project_stat_lines(
             ProjectStatCollection.PROJECT_TAGS.value,
-            lambda tags: ", ".join(tags),
+            lambda tags: self._format_limited_list(tags, 8),
             as_string,
         )
 
@@ -534,7 +541,7 @@ class UserReport(BaseReport):
         """
         return self._project_stat_lines(
             ProjectStatCollection.PROJECT_THEMES.value,
-            lambda themes: ", ".join(themes),
+            lambda themes: self._format_limited_list(themes, 6),
             as_string,
         )
 

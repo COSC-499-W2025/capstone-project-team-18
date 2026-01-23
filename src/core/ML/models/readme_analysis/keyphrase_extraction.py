@@ -16,11 +16,13 @@ logger = get_logger(__name__)
 
 
 def _hash_text(text: str) -> str:
+    """Normalize and hash text for cache keys."""
     normalized = " ".join(text.split())
     return hashlib.sha256(normalized.encode("utf-8", errors="ignore")).hexdigest()
 
 
 def _dedupe_phrases(phrases: Iterable[str]) -> list[str]:
+    """Clean, de-dupe, and filter noisy phrases (URLs, stopwords, numbers)."""
     seen: set[str] = set()
     deduped: list[str] = []
     for phrase in phrases:
@@ -28,6 +30,13 @@ def _dedupe_phrases(phrases: Iterable[str]) -> list[str]:
         if not cleaned:
             continue
         if cleaned.isdigit():
+            continue
+        lowered = cleaned.lower()
+        if lowered.startswith(("http://", "https://")):
+            continue
+        if "http" in lowered or "www." in lowered:
+            continue
+        if lowered in {"http", "https", "www", "com", "org", "net", "io", "edu", "github"}:
             continue
         key = cleaned.lower()
         if key in seen:
@@ -38,7 +47,13 @@ def _dedupe_phrases(phrases: Iterable[str]) -> list[str]:
 
 
 def _extract_with_keybert(text: str, top_n: int) -> list[str]:
+    """Run KeyBERT extraction with lazy model init and env-based disabling."""
     global _KEYBERT_MODEL, _KEYBERT_FAILED
+    if os.environ.get("ARTIFACT_MINER_DISABLE_ML") == "1" or os.environ.get(
+        "ARTIFACT_MINER_DISABLE_KEYBERT"
+    ) == "1":
+        logger.info("KeyBERT extraction disabled via env flag")
+        return []
     if _KEYBERT_FAILED:
         logger.info("Skipping KeyBERT extraction due to previous failure")
         return []
@@ -61,6 +76,7 @@ def _extract_with_keybert(text: str, top_n: int) -> list[str]:
 
 
 def extract_readme_keyphrases(text: str, top_n: int = _DEFAULT_TOP_N) -> list[str]:
+    """Extract and cache README keyphrases, truncating long inputs."""
     if not text or not text.strip():
         logger.info("Skipping README keyphrase extraction for empty text")
         return []

@@ -3,9 +3,11 @@ The entry point for the ArtifactMiner program.
 """
 
 from src.infrastructure.database.utils.db_migrate import run_migrations
+from src.infrastructure.log.logging import clear_logs
 
 
 def main():
+    clear_logs()
     run_migrations()
 
     from src.interface.cli.cli import ArtifactMiner
