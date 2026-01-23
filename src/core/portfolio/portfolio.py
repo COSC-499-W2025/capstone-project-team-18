@@ -2,52 +2,45 @@
 Defines the Portfolio object.
 """
 from datetime import datetime
-from abc import ABC, abstractmethod
-from src.core.report import UserReport
+from typing import Optional
+from src.core.portfolio.sections.portfolio_section import PortfolioSection
 
 
-class PortfolioSection(ABC):
-    """
-    A portfolio is made of sections. This class is a section
-    for a portfolio.
-    """
-    key: str            # stable DB key
-    title: str          # human-facing title
-    order: int = 0      # default ordering
-
-    @abstractmethod
-    def build(self, report: "UserReport") -> dict:
-        """
-        Returns a serializable structure:
-        {
-            "key": str,
-            "title": str,
-            "content": Any
-        }
-        """
-        raise NotImplementedError
-
-
-class PortfolioMetadata():
-    creation_date: datetime
+class PortfolioMetadata:
+    creation_time: datetime
     last_updated_at: datetime
+    project_ids_include: list[int]
+
+    def __init__(self,
+                 project_ids: list[int],
+                 creation_date: Optional[datetime] = None,
+                 last_updated_at: Optional[datetime] = None,
+                 ):
+
+        self.creation_time = creation_date or datetime.now()
+        self.last_updated_at = last_updated_at or datetime.now()
 
 
-class Portfolio():
+class Portfolio:
+    """
+    This is the master class for the portfolio object. It
+    only holds user ready content (text, image, etc). It does
+    not hold user statistics.
+    """
+
     metadata: PortfolioMetadata
+    sections: list[PortfolioSection]
 
-    def __init__(self, sections: list[dict]):
-        self.sections = sections
+    def __init__(self, sections: Optional[list[PortfolioSection]] = None, metadata: Optional[PortfolioMetadata] = None):
+        self.sections = sections or []
+        self.metadata = metadata or PortfolioMetadata([])
+        pass
 
-    def to_dict(self) -> dict:
-        return {"sections": self.sections}
-
-    @DeprecationWarning
-    def to_user_string(self) -> str:
-        lines = []
+    def render(self) -> str:
+        """Render the entire portfolio as a string by rendering each section."""
+        lines = [
+            f"Portfolio (created {self.metadata.creation_time:%Y-%m-%d})\n"]
         for section in self.sections:
-            lines.append(section["title"])
-            lines.append("-" * len(section["title"]))
-            lines.extend(section["content"])
-            lines.append("")
+            lines.append(f"## {section.title}\n")
+            lines.append(section.render())
         return "\n".join(lines)
