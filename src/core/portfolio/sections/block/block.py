@@ -1,14 +1,16 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, TypeVar, Generic
 from datetime import datetime
 from .block_content import BlockContent
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
 
+T = TypeVar("T", bound=BlockContent)
+
 
 @dataclass
-class BlockMetadata:
+class BlockMetadata(Generic[T]):
     """
     Metadata about the content. Includes vars needed
     for version control and merge handling (i.e what
@@ -20,10 +22,10 @@ class BlockMetadata:
 
     # Version Control and Merge Handling
     in_conflict: bool = False
-    conflict_content: Optional[BlockContent] = None
+    conflict_content: Optional[T] = None
 
 
-class Block:
+class Block(Generic[T]):
     """
     A block in the portfolio. Contains both a user-generated
     and a system-generated content, along with metadata.
@@ -32,25 +34,22 @@ class Block:
 
     tag: str  # A unquie key to identify the block in the PortfolioSection
     generated_by: str  # Section title
-    current_content: BlockContent
+    current_content: T
     metadata: BlockMetadata
 
-    def __init__(self, block_key: str, content: BlockContent, from_system=True):
+    def __init__(self, block_key: str):
         self.block_key = block_key
-        self.metadata = BlockMetadata()
-        self.update_current_content(content, from_system)
+        self.metadata = BlockMetadata[T]()
 
     def is_in_conflict(self):
         return self.metadata.in_conflict
 
-    def update_current_content(self, new_content: BlockContent, system_created: bool):
+    def update_current_content(self, new_content: T, system_created: bool):
         """
         Set what content this block contains to the new content. This is a destructive
         function as it does not check to see if there are merge conflicts, will
         resolve any pending conflicts and writes directly to the block.
         """
-        if self.metadata.in_conflict:
-            raise ValueError("Can not update content as Block is in conflict")
 
         self.current_content = new_content
 
@@ -76,20 +75,18 @@ class Block:
         logger.info(f"User updated block content with {kwargs}")
         self.update_current_content(self.current_content, system_created=False)
 
-    def system_upload(self, content: BlockContent):
+    def system_upload(self, content: T):
         """
         This function should only be called by the portfolio generation
         system.
         """
 
-        # Are we in conflict right now?
+        # Would uploading this system data overwrite user changes?
         is_conflict = self.metadata.in_conflict or (
             self.metadata.last_user_edit_at is not None
             and self.metadata.last_generated_at is not None
-            and (
-                self.metadata.last_user_edit_at > self.metadata.last_generated_at
-                or self.current_content.render() != content.render()  # Compare actual content
-            )
+            and self.metadata.last_user_edit_at > self.metadata.last_generated_at
+            and self.current_content.render() != content.render()
         )
 
         if not is_conflict:
@@ -105,6 +102,9 @@ class Block:
         Conflict is resolved by the user accepting the systems,
         conflict content
         """
+        if not self.is_in_conflict():
+            raise ValueError("Invalid state, not in error")
+
         if self.metadata.conflict_content is None:
             raise ValueError(
                 "Invalid state! Trying to accept conflicting content, "
@@ -113,14 +113,20 @@ class Block:
 
         self.update_current_content(self.metadata.conflict_content, True)
         self.conflict_resolve()
+
         logger.info("Conflict resolved: user accepted system content.")
 
     def resolve_conflict_update_current(self, **kwargs):
         """
         Resolve conflict by updating the current content.
         """
+
+        if not self.is_in_conflict():
+            raise ValueError("Invalid state, not in error")
+
         self.user_updates(**kwargs)
         self.conflict_resolve()
+
         logger.info(
             f"Conflict resolved by user updating content with {kwargs}")
 

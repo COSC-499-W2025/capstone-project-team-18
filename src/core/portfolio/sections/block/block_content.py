@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, TypeVar, Generic, List
+
+
+T = TypeVar("T", bound="BlockContent")
+RawValue = TypeVar("RawValue")
 
 
 class BlockContentType(str, Enum):
@@ -14,7 +18,7 @@ class BlockContentType(str, Enum):
     TEXT_LIST = "TextList"
 
 
-class BlockContent(ABC):
+class BlockContent(ABC, Generic[RawValue]):
     """
     The base class for content to be displayed in the portfolio.
     """
@@ -32,9 +36,14 @@ class BlockContent(ABC):
         """
         pass
 
+    @abstractmethod
+    def raw_value(self) -> RawValue:
+        """Return the "raw" Python type representing the content."""
+        pass
+
 
 @dataclass
-class TextBlock(BlockContent):
+class TextBlock(BlockContent[str]):
     text: str
     content_type: BlockContentType = BlockContentType.TEXT
 
@@ -45,6 +54,9 @@ class TextBlock(BlockContent):
         if "text" in kwargs:
             self.text = kwargs["text"]
             return
+
+    def raw_value(self) -> str:
+        return self.text
 
     @classmethod
     def expected_update_fields(cls) -> dict[str, Any]:
@@ -57,7 +69,7 @@ class TextBlock(BlockContent):
 
 
 @dataclass
-class TextListBlock(BlockContent):
+class TextListBlock(BlockContent[List[str]]):
 
     items: list[str]
     content_type: BlockContentType = BlockContentType.TEXT_LIST
@@ -76,6 +88,9 @@ class TextListBlock(BlockContent):
                 self.items[index] = value
         if "remove" in kwargs:  # remove a single item
             self.items = [i for i in self.items if i != kwargs["remove"]]
+
+    def raw_value(self) -> List[str]:
+        return self.items
 
     @classmethod
     def expected_update_fields(cls) -> dict[str, Any]:
