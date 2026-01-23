@@ -11,7 +11,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-from src.infrastructure.database.utils.column_statistic_serializer import ColumnStatisticSerializer
+from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
 
 # revision identifiers, used by Alembic.
 revision: str = '3275deff618c'
