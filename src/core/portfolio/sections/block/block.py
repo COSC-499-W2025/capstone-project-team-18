@@ -34,12 +34,17 @@ class Block(Generic[T]):
 
     tag: str  # A unquie key to identify the block in the PortfolioSection
     generated_by: str  # Section title
-    current_content: T
+    current_content: T | None
     metadata: BlockMetadata
 
-    def __init__(self, block_key: str):
-        self.block_key = block_key
+    def __init__(self, tag: str, initial_content: T | None = None, system_created: bool = True):
+        self.tag = tag
+        self.current_content: T | None = None
         self.metadata = BlockMetadata[T]()
+
+        if initial_content:
+            self.update_current_content(
+                initial_content, system_created=system_created)
 
     def is_in_conflict(self):
         return self.metadata.in_conflict
@@ -71,6 +76,9 @@ class Block(Generic[T]):
                 "User updating content while in conflict; resolving conflict.")
             self.conflict_resolve()
 
+        if self.current_content is None:
+            raise ValueError("Cannot update a block with no current_content")
+
         self.current_content.update(**kwargs)
         logger.info(f"User updated block content with {kwargs}")
         self.update_current_content(self.current_content, system_created=False)
@@ -86,7 +94,7 @@ class Block(Generic[T]):
             self.metadata.last_user_edit_at is not None
             and self.metadata.last_generated_at is not None
             and self.metadata.last_user_edit_at > self.metadata.last_generated_at
-            and self.current_content.render() != content.render()
+            and (self.current_content is None or self.current_content.render() != content.render())
         )
 
         if not is_conflict:

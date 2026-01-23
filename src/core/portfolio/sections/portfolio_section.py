@@ -14,7 +14,7 @@ class PortfolioSection:
 
     id: str
     title: str
-    blocks: list[Block]
+    block_order: list[str]
     blocks_by_tag: dict[str, Block]
     order: int = 0
 
@@ -26,8 +26,11 @@ class PortfolioSection:
 
     def add_block(self, block: Block):
         """
-        Add a new block to the section. The block must have a unique tag.
+        Adds a block to the section. For add_block, the order is perserved, meaning
+        that the first add_block() with add to the top of the section, and a second
+        call add_block() will be under it.
         """
+
         if block.tag in self.blocks_by_tag:
             raise ValueError(
                 f"Block tag '{block.tag}' already exists in section '{self.title}'")
@@ -39,8 +42,9 @@ class PortfolioSection:
 
     def remove_block(self, tag: str):
         """
-        Remove a block by its tag.
+        Remove a block in the section by tag. Order of other blocks are perserved.
         """
+
         if tag in self.blocks_by_tag:
             del self.blocks_by_tag[tag]
             self.block_order.remove(tag)
@@ -51,7 +55,7 @@ class PortfolioSection:
 
     def edit_block(self, tag: str, **kwargs):
         """
-        Edit the content of a block via its tag. Pass kwargs to the Block's user_updates().
+        Edit the content of a block via its tag. Passes kwargs to the Block's user_updates().
         """
 
         block = self.blocks_by_tag.get(tag)
@@ -67,45 +71,17 @@ class PortfolioSection:
     def render(self) -> str:
         """Render all content items in this section."""
 
-        if not self.blocks:
-            return ""
-        return "\n\n".join(block.current_content.render() for block in self.blocks)
+        return "\n\n".join(
+            self.blocks_by_tag[tag].current_content.render()  # type: ignore
+            for tag in self.block_order
+            if self.blocks_by_tag[tag].current_content is not None
+        )
 
-    def add_content(self, block: Block):
-        """Add a new block to the section."""
-        self.blocks.append(block)
-        logger.info(
-            f"Added new block to section '{self.title}' (id={self.id})")
-
-    def remove_content(self, index: int):
-        """Remove a block by index."""
-        if 0 <= index < len(self.blocks):
-            removed = self.blocks.pop(index)
-            logger.info(
-                f"Removed block at index {index} from section '{self.title}' (id={self.id})")
-        else:
-            logger.warning(
-                f"Tried to remove invalid index {index} from section '{self.title}'")
-
-    def edit_content(self, index: int, **kwargs):
-        """
-        Edit the content of a block at a given index.
-        kwargs are passed to Block.user_updates().
-        """
-        if 0 <= index < len(self.blocks):
-            block = self.blocks[index]
-            block.user_updates(**kwargs)
-            logger.info(
-                f"Edited block at index {index} in section '{self.title}' (id={self.id}) with {kwargs}")
-        else:
-            logger.warning(
-                f"Tried to edit invalid index {index} in section '{self.title}'")
-
-    def indexs_of_blocks_in_conflict(self) -> list[int]:
+    def tags_of_blocks_in_conflict(self) -> list[str]:
         """
         Return a list of indices for all blocks in this section that are currently in conflict.
         """
-        return [i for i, block in enumerate(self.blocks) if block.metadata.in_conflict]
+        return [tag for tag in self.block_order if self.blocks_by_tag[tag].is_in_conflict()]
 
 
 def merge_section(existing: PortfolioSection, generated: PortfolioSection):

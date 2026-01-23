@@ -20,6 +20,7 @@ def test_system_upload_overwrites_previous_system_content():
     block.system_upload(TextBlock("A"))
     block.system_upload(TextBlock("B"))
 
+    assert block.current_content is not None
     assert block.current_content.text == "B"
     assert block.is_in_conflict() is False
 
@@ -34,6 +35,7 @@ def test_system_creates_text_block():
     block = Block[TextBlock]("test_key")
     block.system_upload(TextBlock(content))
 
+    assert block.current_content is not None
     assert block.current_content.text == content
     assert block.is_in_conflict() is False
 
@@ -51,6 +53,7 @@ def test_text_block_update():
     block.system_upload(TextBlock(content))
     block.user_updates(text=update_content)
 
+    assert block.current_content is not None
     assert block.current_content.text == update_content
     assert block.metadata.last_user_edit_at is not None
     assert datetime.now() - block.metadata.last_user_edit_at < timedelta(seconds=3)
@@ -60,5 +63,5 @@ def test_text_block_update():
 def test_user_update_without_system_content_raises():
     block = Block[TextBlock]("test_key")
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         block.user_updates(text="hello")
