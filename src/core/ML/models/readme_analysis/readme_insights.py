@@ -3,6 +3,7 @@ import hashlib
 from typing import Iterable
 
 from src.infrastructure.log.logging import get_logger
+from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
 
 """
 README insights:
@@ -27,12 +28,6 @@ _TOPIC_CORPUS_CACHE: dict[int, list[list[str]]] = {}
 _MIN_DOCS_FOR_BERTOPIC = 4
 _MIN_TOTAL_CHARS_FOR_BERTOPIC = 800
 
-_URL_STOPWORDS = {
-    "http", "https", "www", "com", "org", "net", "io", "edu", "github",
-    "gitlab", "bitbucket", "doi", "arxiv", "pdf", "html",
-}
-
-
 def _clean_theme_terms(terms: list[str]) -> list[str]:
     """Filter URL-like and low-signal tokens from theme terms."""
     cleaned: list[str] = []
@@ -46,7 +41,7 @@ def _clean_theme_terms(terms: list[str]) -> list[str]:
             continue
         if "http" in lowered or "www." in lowered:
             continue
-        if lowered in _URL_STOPWORDS:
+        if lowered in URL_STOPWORDS:
             continue
         cleaned.append(term)
     return cleaned

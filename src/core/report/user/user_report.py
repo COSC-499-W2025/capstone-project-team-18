@@ -242,10 +242,11 @@ class UserReport(BaseReport):
 
     @staticmethod
     def _format_limited_list(items: list[str], max_items: int) -> str:
-        """Format a list with a max length."""
+        """Format a list with a max length, sorted for deterministic output."""
         if max_items <= 0:
             return ""
-        return ", ".join(items[:max_items])
+        sorted_items = sorted(items, key=lambda s: s.lower())
+        return ", ".join(sorted_items[:max_items])
 
     def to_user_readable_string(self) -> str:
         """

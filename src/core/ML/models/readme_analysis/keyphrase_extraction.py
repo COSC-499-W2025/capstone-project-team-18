@@ -4,6 +4,7 @@ from typing import Iterable
 
 from keybert import KeyBERT
 from src.infrastructure.log.logging import get_logger
+from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
 
 _CACHE: dict[str, list[str]] = {}
 _KEYBERT_MODEL = None
@@ -36,7 +37,7 @@ def _dedupe_phrases(phrases: Iterable[str]) -> list[str]:
             continue
         if "http" in lowered or "www." in lowered:
             continue
-        if lowered in {"http", "https", "www", "com", "org", "net", "io", "edu", "github"}:
+        if lowered in URL_STOPWORDS:
             continue
         key = cleaned.lower()
         if key in seen:
