@@ -17,7 +17,7 @@ from src.core.statistic import (
     ProjectStatCollection,
     UserStatCollection
 )
-from src.infrastructure.database.utils.column_statistic_serializer import ColumnStatisticSerializer
+from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
 
 # [type[src.core.statistic.FileStatCollection], type[src.core.statistic.ProjectStatCollection], type[src.core.statistic.UserStatCollection]]
 StatCollectionType = t.Union[

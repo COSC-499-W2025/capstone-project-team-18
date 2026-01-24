@@ -4,8 +4,8 @@ Tests the delete_user_report_and_related_data() function
 
 import pytest
 from sqlalchemy.orm import Session
-from src.infrastructure.database.models import FileReportTable, ProjectReportTable, UserReportTable
-from src.infrastructure.database.utils.database_modify import delete_user_report_and_related_data
+from src.database.models import FileReportTable, ProjectReportTable, UserReportTable
+from src.database.utils.database_modify import delete_user_report_and_related_data
 
 
 def test_delete_user_report_no_related_reports(blank_db):

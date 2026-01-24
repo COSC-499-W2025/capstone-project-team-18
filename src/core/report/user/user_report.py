@@ -20,8 +20,8 @@ from src.core.statistic import (
 )
 from src.core.resume.resume import Resume
 
-from src.infrastructure.database.base import get_engine
-from src.infrastructure.database.models import UserReportTable
+from src.database.base import get_engine
+from src.database.models import UserReportTable
 
 
 class UserReport(BaseReport):
@@ -95,7 +95,7 @@ class UserReport(BaseReport):
         Returns:
             tuple: (success: bool, message: str)
         """
-        from src.infrastructure.database.utils.database_modify import delete_user_report_and_related_data
+        from src.database.utils.database_modify import delete_user_report_and_related_data
 
         engine = get_engine()
 
