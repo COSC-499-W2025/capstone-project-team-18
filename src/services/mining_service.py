@@ -99,7 +99,7 @@ def _analyze_project_files(
 
     return ProjectReport(
         project_name=project_layout.name,
-        project_path=project_layout.root_path,
+        project_path=str(project_layout.root_path),
         project_repo=project_layout.repo,
         file_reports=file_reports,
         user_email=user_config.email,

@@ -1,6 +1,7 @@
 """
 Tests for language filtering functionality
 """
+from pathlib import Path
 from src.core.analyzer import get_appropriate_analyzer, extract_file_reports
 from src.core.project_discovery.project_discovery import ProjectLayout
 
@@ -50,8 +51,8 @@ def test_language_filter_includes_matching_files(tmp_path):
     # Create ProjectLayout with RELATIVE paths
     project = ProjectLayout(
         name="test_project",
-        root_path=str(tmp_path),
-        file_paths=["script.py", "app.js", "style.css"],
+        root_path=tmp_path,
+        file_paths=[Path("script.py"), Path("app.js"), Path("style.css")],
         repo=None
     )
 
@@ -80,8 +81,8 @@ def test_language_filter_empty_allows_all(tmp_path):
     # Create ProjectLayout with RELATIVE paths
     project = ProjectLayout(
         name="test_project",
-        root_path=str(tmp_path),
-        file_paths=["test.py", "test.js"],
+        root_path=tmp_path,
+        file_paths=[Path("test.py"), Path("test.js")],
         repo=None
     )
 

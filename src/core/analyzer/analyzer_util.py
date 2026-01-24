@@ -49,8 +49,8 @@ def extract_file_reports(
     for file in project_files:
 
         analyzer = get_appropriate_analyzer(
-            project_file.root_path,
-            file,
+            str(project_file.root_path),
+            str(file),
             project_file.repo,
             email,
             github,
