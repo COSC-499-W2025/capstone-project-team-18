@@ -14,7 +14,7 @@ from src.core.report import UserReport, ProjectReport
 import tempfile
 import shutil
 from sqlalchemy import create_engine
-from src.infrastructure.database.base import Base
+from src.database.base import Base
 
 
 @pytest.fixture

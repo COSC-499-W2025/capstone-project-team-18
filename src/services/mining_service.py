@@ -9,9 +9,9 @@ from pydantic import BaseModel
 from src.utils.pathing_utils import unzip_file_bytes
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
 from src.core.analyzer import extract_file_reports
-from src.core.report import ProjectReport
-from src.infrastructure.database.base import Base, get_engine
-from src.infrastructure.database.utils.database_modify import create_row
+from src.core.report import ProjectReport, UserReport
+from src.database.base import get_engine, Base
+from src.database.utils.database_modify import create_row
 from src.infrastructure.log.logging import get_logger
 from src.services.preferences.preference_service import UserConfig
 from src.utils.errors import (

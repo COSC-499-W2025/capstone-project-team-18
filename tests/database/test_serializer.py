@@ -9,7 +9,7 @@ import json
 
 
 from src.core.statistic.statistic_models import WeightedSkills, CodingLanguage, FileDomain
-from src.infrastructure.database.utils.column_statistic_serializer import ColumnStatisticSerializer
+from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
 
 
 @pytest.fixture
