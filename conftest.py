@@ -49,7 +49,7 @@ def make_project_layout(create_temp_file):
     """
 
     def _create(project_file: ProjectLayout):
-        project_dir = Path(project_file.root_path)
+        project_dir = project_file.root_path
 
         if not project_file.name == project_dir.name:
             raise ValueError(
@@ -225,8 +225,8 @@ def project_shared_file(tmp_path: Path) -> ProjectLayout:
 
     return ProjectLayout(
         name="SharedFile",
-        root_path=str(project_dir),
-        file_paths=[filename],
+        root_path=project_dir,
+        file_paths=[Path(filename)],
         repo=repo
     )
 
@@ -348,15 +348,15 @@ def project_realistic(tmp_path: Path, create_temp_file) -> ProjectLayout:
 
     return ProjectLayout(
         name="RealisticProject",
-        root_path=str(project_dir),
+        root_path=project_dir,
         file_paths=[
-            "app/main.py",
-            "app/utils/helpers.py",
-            "tests/test_main.py",
-            "db/schema.sql",
-            "db/db.db",
-            "scripts/bootstrap.sh",
-            "docs/README.md",
+            Path("app/main.py"),
+            Path("app/utils/helpers.py"),
+            Path("tests/test_main.py"),
+            Path("db/schema.sql"),
+            Path("db/db.db"),
+            Path("scripts/bootstrap.sh"),
+            Path("docs/README.md"),
         ],
         repo=repo
     )
@@ -378,7 +378,7 @@ def project_no_git_dir(tmp_path: Path) -> ProjectLayout:
 
     return ProjectLayout(
         name="NoGitProject",
-        root_path=str(project_dir),
-        file_paths=["main.py", "utils.py"],
+        root_path=project_dir,
+        file_paths=[Path("main.py"), Path("utils.py")],
         repo=None
     )

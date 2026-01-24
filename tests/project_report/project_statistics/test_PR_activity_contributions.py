@@ -1,3 +1,4 @@
+from pathlib import Path
 from pytest import approx
 from src.core.report import ProjectReport
 from src.core.project_discovery.project_discovery import ProjectLayout
@@ -13,14 +14,14 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_l
 
     pf = ProjectLayout(
         name="act_contrb",
-        root_path=f"{tmp_path}/act_contrb",
+        root_path=Path(f"{tmp_path}/act_contrb"),
         file_paths=[
-            "tests/my_1test.py",
-            "test/my_2test.py",
-            "README.md",
-            "code1.py",
-            "code2.py",
-            "code3.py"
+            Path("tests/my_1test.py"),
+            Path("test/my_2test.py"),
+            Path("README.md"),
+            Path("code1.py"),
+            Path("code2.py"),
+            Path("code3.py")
         ],
         repo=None
     )
@@ -31,14 +32,14 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_l
 
     pr_email = ProjectReport(
         file_reports=frs,
-        project_path=pf.root_path,
+        project_path=str(pf.root_path),
         project_name=pf.name,
         user_email="bob@example.com"
     )
 
     pr_no_email = ProjectReport(
         file_reports=frs,
-        project_path=pf.root_path,
+        project_path=str(pf.root_path),
         project_name=pf.name,
         user_email=None
     )
@@ -64,7 +65,7 @@ def test_activity_contribution_from_git_project(project_realistic):
 
     pr = ProjectReport(
         file_reports=frs,
-        project_path=project_realistic.root_path,
+        project_path=str(project_realistic.root_path),
         project_name=project_realistic.name,
         project_repo=project_realistic.repo,
         user_email=my_email

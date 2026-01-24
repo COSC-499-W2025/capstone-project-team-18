@@ -195,4 +195,4 @@ def get_user_report(name: str, engine=None) -> UserReport:
 def get_user_config() -> UserConfig:
     # TODO: Flesh this out when the UserConfig
     # is in the database
-    return None
+    raise NotImplementedError()

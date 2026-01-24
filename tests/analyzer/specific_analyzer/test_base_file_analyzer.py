@@ -48,8 +48,8 @@ def test_extract_file_reports_returns_project(tmp_path, create_temp_file):
 
     project_file = ProjectLayout(
         name="TestProject",
-        root_path=str(tmp_path),
-        file_paths=files,
+        root_path=tmp_path,
+        file_paths=[Path(f) for f in files],
         repo=None
     )
 
@@ -83,8 +83,9 @@ def test_extract_file_reports_recieves_project_with_subfolder(tmp_path, create_t
 
     project_file = ProjectLayout(
         name="ProjectA",
-        root_path=str(tmp_path),
-        file_paths=["a_1.txt", "a_2.txt", "subfolder/a_3.txt"],
+        root_path=tmp_path,
+        file_paths=[Path("a_1.txt"), Path("a_2.txt"),
+                    Path("subfolder/a_3.txt")],
         repo=None
     )
 
