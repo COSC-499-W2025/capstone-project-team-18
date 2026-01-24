@@ -15,6 +15,9 @@ from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis import readme_insights
+from src.core.ML.models.contribution_analysis.CommitClassifier import CommitClassifier
+from src.core.ML.models.contribution_analysis.PatternDetector import PatternDetector
+from src.core.ML.models.contribution_analysis.RoleAnalyzer import RoleAnalyzer
 from src.core.project_discovery.ignore_constants import *
 from typing import Optional
 
@@ -435,67 +438,127 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
         if not report.email or not report.project_repo:
             return []
 
-        repo = report.project_repo
+        commit_count_by_author = self._get_commits_by_author(
+            repo = report.project_repo
+        )
 
-        # Check if repository has any commits
-        try:
-            commit_count_by_author = {}
-            for commit in repo.iter_commits():
-                author_email = commit.author.email
-                commit_count_by_author[author_email] = commit_count_by_author.get(
-                    author_email, 0) + 1
-        except ValueError:
-            # Empty repository with no commits
-            return []
+       # BUG FIX: Initialize as list, not int
+        user_commits = [value for key, value in commit_count_by_author.items()
+                       if key == report.email]
 
-        all_authors = set([author for author in commit_count_by_author.keys(
-        ) if not author.endswith('@users.noreply.github.com')])
-
-        total_authors = len(all_authors)
         total_commits = sum(commit_count_by_author.values())
 
-        # Calculate user's commit percentage if project has multiple authors
-        user_commit_percentage = None
-        if total_authors > 1 and report.email:
-            user_commits = commit_count_by_author.get(
-                report.email, 0)
-            # additional check for commits formatted 1235<usernmae>@noreply.github.com
-            if report.github:
-                user_commits += [value for key, value in commit_count_by_author.items()
-                                 if report.github in key.lower()]
-            if total_commits > 0:
-                user_commit_percentage = (
-                    user_commits / total_commits) * 100
+        if total_commits == 0:
+            return []
 
-        authors_per_file = {}
-        for item in repo.tree().traverse():
-            if item.type == 'blob':
-                try:
-                    file_authors = {
-                        c.author.email for c in repo.iter_commits(paths=item.path)}
-                    authors_per_file[item.path] = len(file_authors)
-                except Exception:
-                    continue
+        # Calculate user's commit percentage
+        user_commit_count = sum(user_commits) if user_commits else 0
+        user_commit_percentage = (user_commit_count / total_commits) * 100
 
-        stats = [
+        # Determine if it's a group project
+        num_authors = len(commit_count_by_author)
+        is_group_project = num_authors > 1
+
+        return [
             Statistic(
-                ProjectStatCollection.IS_GROUP_PROJECT.value, total_authors > 1),
+                ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
+                user_commit_percentage,
+            ),
             Statistic(
-                ProjectStatCollection.TOTAL_AUTHORS.value, total_authors),
+                ProjectStatCollection.IS_GROUP_PROJECT.value,
+                is_group_project,
+            ),
             Statistic(
-                ProjectStatCollection.AUTHORS_PER_FILE.value, authors_per_file)
+                ProjectStatCollection.TOTAL_AUTHORS.value,
+                num_authors,
+            ),
         ]
 
-        # Add user commit percentage if applicable
-        if user_commit_percentage is not None:
-            stats.append(
-                Statistic(
-                    ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
-                    round(user_commit_percentage, 2)
+    def _get_commits_by_author(self, repo) -> dict[str, int]:
+        """Returns a dictionary mapping author emails to commit counts."""
+        commit_count_by_author: dict[str, int] = {}
+        for commit in repo.iter_commits():
+            if hasattr(commit, "author") and hasattr(commit.author, "email"):
+                email = commit.author.email
+                commit_count_by_author[email] = (
+                    commit_count_by_author.get(email, 0) + 1
                 )
+        return commit_count_by_author
+
+
+class ProjectContributionPatterns(ProjectStatisticCalculation):
+    """
+    Analyze commit patterns (types, work cadence, collaboration role) for the user.
+    Produces:
+      - COMMIT_TYPE_DISTRIBUTION   (dict[str, float])
+      - WORK_PATTERN               (str)
+      - COLLABORATION_ROLE         (str)
+      - ACTIVITY_METRICS           (dict[str, float])
+      - ROLE_DESCRIPTION           (str)
+    """
+
+    def calculate(self, report: ProjectReport) -> list[Statistic]:
+        logger.info(f"ProjectContributionPatterns.calculate called for {report.project_name}")
+
+        if not report.project_repo or not report.email:
+            logger.info("Skipping contribution pattern analysis: no repo or email")
+            return []
+
+        try:
+            user_commits = [
+                c for c in report.project_repo.iter_commits()
+                if getattr(c, "author", None) and getattr(c.author, "email", None) == report.email
+            ]
+
+            if not user_commits:
+                logger.info(f"No commits found for {report.email} in {report.project_name}")
+                return []
+
+            commit_messages = [c.message for c in user_commits]
+            commit_dates = [datetime.fromtimestamp(c.authored_date) for c in user_commits]
+
+            # Classify commit types
+            classifier = CommitClassifier()
+            commit_counts = classifier.classify_commits(commit_messages)
+            commit_pct = classifier.get_commit_distribution(commit_messages)
+
+            # Detect work patterns
+            pattern_detector = PatternDetector()
+            work_pattern = pattern_detector.detect_pattern(commit_dates)
+            activity_metrics = pattern_detector.get_activity_metrics(commit_dates)
+
+            # Analyze collaboration role
+            role_analyzer = RoleAnalyzer()
+            user_commit_pct = report.get_value(ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
+            total_authors = report.get_value(ProjectStatCollection.TOTAL_AUTHORS.value) or 1
+            is_group = report.get_value(ProjectStatCollection.IS_GROUP_PROJECT.value) or False
+
+            role = role_analyzer.infer_role(
+                user_commit_pct,
+                total_authors,
+                commit_counts,
+                is_group
+            )
+            role_description = role_analyzer.generate_role_description(
+                role,
+                commit_counts,
+                user_commit_pct
             )
 
-        return stats
+            logger.info(f"Contribution pattern analysis completed for {report.project_name}: "
+                       f"role={role.value}, pattern={work_pattern.value}")
+
+            stats = [
+                Statistic(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value, commit_pct),
+                Statistic(ProjectStatCollection.WORK_PATTERN.value, work_pattern.value),
+                Statistic(ProjectStatCollection.COLLABORATION_ROLE.value, role.value),
+                Statistic(ProjectStatCollection.ACTIVITY_METRICS.value, activity_metrics),
+                Statistic(ProjectStatCollection.ROLE_DESCRIPTION.value, role_description),
+            ]
+            return stats
+        except Exception as e:
+            logger.error(f"Contribution pattern analysis failed for {report.project_name}: {e}", exc_info=True)
+            return []
 
 
 class ProjectTotalContributionPercentage(ProjectStatisticCalculation):
@@ -590,7 +653,10 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
             ProjectActivityTypeContributions(),
             ProjectAnalyzeGitAuthorship(),
             ProjectTotalContributionPercentage(),
+            ProjectContributionPatterns(),
         ]
+        logger.info(f"ProjectStatisticReportBuilder initialized with {len(self.calculators)} calculators")
+        logger.info(f"Calculators: {[type(c).__name__ for c in self.calculators]}")
 
     def build(self, report: ProjectReport) -> List[Statistic]:
         """

@@ -102,3 +102,33 @@ class ProjectStatCollection(Enum):
         description="dominant tone inferred from README content across the project",
         expected_type=str
     )
+
+    COMMIT_TYPE_DISTRIBUTION = ProjectStatisticTemplate(
+        name="COMMIT_TYPE_DISTRIBUTION",
+        description="Distribution of commit types (feature, bugfix, etc.) as percentages",
+        expected_type=dict  # Dict[str, float]
+    )
+
+    WORK_PATTERN = ProjectStatisticTemplate(
+        name="WORK_PATTERN",
+        description="Detected work pattern (consistent, sprint-based, burst, sporadic)",
+        expected_type=str
+    )
+
+    COLLABORATION_ROLE = ProjectStatisticTemplate(
+        name="COLLABORATION_ROLE",
+        description="Inferred collaboration role in the project",
+        expected_type=str
+    )
+
+    ACTIVITY_METRICS = ProjectStatisticTemplate(
+        name="ACTIVITY_METRICS",
+        description="Various activity metrics (commits per week, consistency, etc.)",
+        expected_type=dict
+    )
+
+    ROLE_DESCRIPTION = ProjectStatisticTemplate(
+        name="ROLE_DESCRIPTION",
+        description="Human-readable description of user's role for resume",
+        expected_type=str
+    )

@@ -194,6 +194,37 @@ class GitCommitPercentageBulletPoint(BulletPoint):
 
         return to_return
 
+class ContributionPatternBulletPoint(BulletPoint):
+    """Create bullets from contribution-pattern statistics."""
+    def generate(self, report: ProjectReport) -> List[str]:
+        bullets: List[str] = []
+
+        role_desc = report.get_value(ProjectStatCollection.ROLE_DESCRIPTION.value)
+        if role_desc:
+            bullets.append(role_desc)
+
+        work_pattern = report.get_value(ProjectStatCollection.WORK_PATTERN.value)
+        activity = report.get_value(ProjectStatCollection.ACTIVITY_METRICS.value) or {}
+        commits_per_week = activity.get("avg_commits_per_week")
+        if work_pattern and commits_per_week is not None:
+            bullets.append(
+                f"Maintained a {str(work_pattern).replace('_', ' ')} cadence with {commits_per_week:.1f} commits/week"
+            )
+        elif work_pattern:
+            bullets.append(f"Work pattern: {str(work_pattern).replace('_', ' ')}")
+
+        commit_dist = report.get_value(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
+        if commit_dist:
+            top = sorted(commit_dist.items(), key=lambda kv: kv[1], reverse=True)
+            if top:
+                primary = f"{top[0][0]} ({top[0][1]:.0f}%)"
+                if len(top) > 1 and top[1][1] > 0:
+                    secondary = f"{top[1][0]} ({top[1][1]:.0f}%)"
+                    bullets.append(f"Primary contribution focus: {primary}; Secondary: {secondary}")
+                else:
+                    bullets.append(f"Primary contribution focus: {primary}")
+
+        return bullets
 
 class BulletPointBuilder:
     def __init__(self):
@@ -202,7 +233,8 @@ class BulletPointBuilder:
             WeightedSkillsBulletPoint(),
             GroupProjectBulletPoint(),
             GitCommitPercentageBulletPoint(),
-            ActivityTypeContributionBulletPoint()
+            ActivityTypeContributionBulletPoint(),
+            ContributionPatternBulletPoint(),
         ]
 
         self.fallback: BulletPoint = FallBackRule()

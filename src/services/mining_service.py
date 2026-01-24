@@ -117,10 +117,10 @@ def start_miner_service(
             project_report = ProjectReport(
                 project_name=project.name,
                 project_path=project.root_path,
-                project_repo=project.repo,
+                project_repo=project.repo if hasattr(project, 'repo') else None,
                 file_reports=file_reports,
                 user_email=email,
-                user_github=github
+                user_github=github,
             )
             # store ProjectReports for UserReport
             project_reports.append(project_report)
