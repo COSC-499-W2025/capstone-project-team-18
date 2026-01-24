@@ -8,7 +8,7 @@ import pytest
 from src.interface.cli.cli_service_handler import start_miner_cli
 from src.core.report import ProjectReport
 from src.utils.errors import NoDiscoveredProjects, ErrorCode
-from src.infrastructure.database.utils.database_access import get_project_from_project_name
+from src.database.utils.database_access import get_project_from_project_name
 
 
 @pytest.fixture(autouse=True, scope="function")
