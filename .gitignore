@@ -58,7 +58,7 @@ src/database/data.db
 src/database/preferences.json
 
 resume.tex
-rc/infrastructure/log/*.log
 src/classes/database/preferences.json
 src/interface/cli/preferences.json
 .gitignore
+src/infrastructure/log/*.log
