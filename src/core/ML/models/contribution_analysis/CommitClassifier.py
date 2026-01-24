@@ -1,154 +1,169 @@
-"""
-Classifies commit messages into categories using keyword matching and ML patterns.
-"""
+import os
+from transformers import pipeline
+from src.infrastructure.log.logging import get_logger
 
-import re
-from typing import Dict, List, Tuple
-from enum import Enum
-from collections import Counter
+logger = get_logger(__name__)
+
+_CLASSIFIER_PIPELINE = None
+_CLASSIFIER_FAILED = False
+
+# Commit type labels for zero-shot classification
+_COMMIT_LABELS = [
+    "feature implementation",
+    "bug fix",
+    "code refactoring",
+    "documentation",
+    "testing",
+    "chore and maintenance",
+    "performance optimization",
+    "configuration"
+]
+
+_LABEL_MAP = {
+    "feature implementation": "feature",
+    "bug fix": "bugfix",
+    "code refactoring": "refactor",
+    "documentation": "docs",
+    "testing": "test",
+    "chore and maintenance": "chore",
+    "performance optimization": "performance",
+    "configuration": "config"
+}
 
 
-class CommitType(Enum):
-    """Types of commits based on their purpose."""
-    FEATURE = "feature"
-    BUGFIX = "bugfix"
-    REFACTOR = "refactor"
-    DOCUMENTATION = "documentation"
-    TESTING = "testing"
-    BUILD = "build"
-    CHORE = "chore"
-    PERFORMANCE = "performance"
-    SECURITY = "security"
-    UNKNOWN = "unknown"
+def _get_commit_classifier():
+    """Return cached zero-shot classifier for commit messages."""
+    global _CLASSIFIER_PIPELINE, _CLASSIFIER_FAILED
+
+    if os.environ.get("ARTIFACT_MINER_DISABLE_COMMIT_CLASSIFIER") == "1":
+        logger.info("Commit classifier disabled via env variable")
+        return None
+
+    if _CLASSIFIER_FAILED:
+        logger.info("Commit classifier unavailable due to previous failure")
+        return None
+
+    if _CLASSIFIER_PIPELINE is None:
+        try:
+            model_name = os.environ.get(
+                "ARTIFACT_MINER_COMMIT_CLASSIFIER_MODEL",
+                "facebook/bart-large-mnli"
+            )
+            _CLASSIFIER_PIPELINE = pipeline(
+                "zero-shot-classification",
+                model=model_name
+            )
+            logger.info(f"Loaded commit classifier: {model_name}")
+        except Exception:
+            logger.exception("Failed to initialize commit classifier")
+            _CLASSIFIER_FAILED = True
+            return None
+
+    return _CLASSIFIER_PIPELINE
 
 
 class CommitClassifier:
-    """
-    Classifies commit messages into categories.
+    """ML-based commit message classifier using zero-shot learning."""
 
-    Uses keyword-based classification with support for conventional commit format.
-    """
+    def __init__(self):
+        self.model = _get_commit_classifier()
 
-    # Keyword patterns for each commit type
-    PATTERNS = {
-        CommitType.FEATURE: [
-            r'\b(feat|feature|add|implement|new)\b',
-            r'\b(create|introduce|initial)\b'
-        ],
-        CommitType.BUGFIX: [
-            r'\b(fix|bug|bugfix|patch|resolve|correct)\b',
-            r'\b(issue|error|crash|problem)\b'
-        ],
-        CommitType.REFACTOR: [
-            r'\b(refactor|restructure|reorganize|cleanup|clean up)\b',
-            r'\b(improve|optimize|simplify|rewrite)\b'
-        ],
-        CommitType.DOCUMENTATION: [
-            r'\b(doc|docs|documentation|readme|comment)\b',
-            r'\b(guide|tutorial|manual)\b'
-        ],
-        CommitType.TESTING: [
-            r'\b(test|tests|testing|spec|specs)\b',
-            r'\b(coverage|unittest|integration)\b'
-        ],
-        CommitType.BUILD: [
-            r'\b(build|ci|cd|deploy|release)\b',
-            r'\b(package|dependency|dependencies)\b'
-        ],
-        CommitType.CHORE: [
-            r'\b(chore|maintenance|update|upgrade)\b',
-            r'\b(version|merge|config)\b'
-        ],
-        CommitType.PERFORMANCE: [
-            r'\b(perf|performance|speed|optimize|optimization)\b',
-            r'\b(faster|efficient|cache)\b'
-        ],
-        CommitType.SECURITY: [
-            r'\b(security|secure|vulnerability|cve)\b',
-            r'\b(auth|authentication|permission)\b'
-        ]
-    }
+    def classify_commits(self, messages: list[str]) -> dict[str, int]:
+        """Classify commit messages and return counts by type."""
+        if self.model is None:
+            logger.warning("Commit classifier unavailable, using fallback")
+            return self._fallback_classify(messages)
 
-    def classify_commit(self, message: str) -> CommitType:
-        """
-        Classify a single commit message.
+        counts = {
+            "feature": 0,
+            "bugfix": 0,
+            "refactor": 0,
+            "docs": 0,
+            "test": 0,
+            "chore": 0,
+            "performance": 0,
+            "config": 0,
+            "unknown": 0
+        }
 
-        Args:
-            message: The commit message to classify
+        for msg in messages:
+            if not msg or not msg.strip():
+                counts["unknown"] += 1
+                continue
 
-        Returns:
-            CommitType: The classified type
-        """
-        message_lower = message.lower()
+            try:
+                # Use first line of commit message
+                first_line = msg.split('\n')[0].strip()[:256]  # Truncate for model
 
-        # Check conventional commit format first (e.g., "feat:", "fix:")
-        conventional_match = re.match(r'^(\w+):', message_lower)
-        if conventional_match:
-            prefix = conventional_match.group(1)
-            if prefix in ['feat', 'feature']:
-                return CommitType.FEATURE
-            elif prefix in ['fix', 'bugfix']:
-                return CommitType.BUGFIX
-            elif prefix in ['refactor', 'refact']:
-                return CommitType.REFACTOR
-            elif prefix in ['docs', 'doc']:
-                return CommitType.DOCUMENTATION
-            elif prefix in ['test', 'tests']:
-                return CommitType.TESTING
-            elif prefix in ['build', 'ci', 'cd']:
-                return CommitType.BUILD
-            elif prefix == 'perf':
-                return CommitType.PERFORMANCE
-            elif prefix in ['security', 'sec']:
-                return CommitType.SECURITY
-            elif prefix == 'chore':
-                return CommitType.CHORE
+                result = self.model(
+                    first_line,
+                    _COMMIT_LABELS,
+                    multi_label=False
+                )
 
-        # Score each type based on keyword matches
-        scores = {}
-        for commit_type, patterns in self.PATTERNS.items():
-            score = 0
-            for pattern in patterns:
-                matches = len(re.findall(pattern, message_lower, re.IGNORECASE))
-                score += matches
-            if score > 0:
-                scores[commit_type] = score
+                # Map label to category
+                top_label = result["labels"][0]
+                top_score = result["scores"][0]
 
-        # Return the type with highest score, or UNKNOWN if no matches
-        if scores:
-            return max(scores, key=scores.get)
-        return CommitType.UNKNOWN
+                if top_score < 0.3:  # Low confidence threshold
+                    counts["unknown"] += 1
+                else:
+                    category = _LABEL_MAP.get(top_label, "unknown")
+                    counts[category] += 1
 
-    def classify_commits(self, messages: List[str]) -> Dict[CommitType, int]:
-        """
-        Classify multiple commit messages and return distribution.
+            except Exception as e:
+                logger.warning(f"Failed to classify commit: {e}")
+                counts["unknown"] += 1
 
-        Args:
-            messages: List of commit messages
+        return counts
 
-        Returns:
-            Dictionary mapping CommitType to count
-        """
-        classifications = [self.classify_commit(msg) for msg in messages]
-        return dict(Counter(classifications))
+    def _fallback_classify(self, messages: list[str]) -> dict[str, int]:
+        """Fallback rule-based classification when ML model unavailable."""
+        counts = {
+            "feature": 0,
+            "bugfix": 0,
+            "refactor": 0,
+            "docs": 0,
+            "test": 0,
+            "chore": 0,
+            "performance": 0,
+            "config": 0,
+            "unknown": 0
+        }
 
-    def get_commit_distribution(self, messages: List[str]) -> Dict[str, float]:
-        """
-        Get normalized distribution of commit types as percentages.
+        for msg in messages:
+            lower = msg.lower()
+            if any(w in lower for w in ["feat", "add", "implement", "create"]):
+                counts["feature"] += 1
+            elif any(w in lower for w in ["fix", "bug", "issue", "resolve"]):
+                counts["bugfix"] += 1
+            elif any(w in lower for w in ["refactor", "clean", "restructure"]):
+                counts["refactor"] += 1
+            elif any(w in lower for w in ["doc", "readme", "comment"]):
+                counts["docs"] += 1
+            elif any(w in lower for w in ["test", "spec", "coverage"]):
+                counts["test"] += 1
+            elif any(w in lower for w in ["perf", "optimize", "speed"]):
+                counts["performance"] += 1
+            elif any(w in lower for w in ["config", "setup", "setting"]):
+                counts["config"] += 1
+            elif any(w in lower for w in ["chore", "update", "bump", "merge"]):
+                counts["chore"] += 1
+            else:
+                counts["unknown"] += 1
 
-        Args:
-            messages: List of commit messages
+        return counts
 
-        Returns:
-            Dictionary mapping commit type name to percentage
-        """
-        if not messages:
+    def get_commit_distribution(self, messages: list[str]) -> dict[str, float]:
+        """Return percentage distribution of commit types."""
+        counts = self.classify_commits(messages)
+        total = sum(counts.values())
+
+        if total == 0:
             return {}
 
-        counts = self.classify_commits(messages)
-        total = len(messages)
-
         return {
-            commit_type.value: (count / total) * 100
-            for commit_type, count in counts.items()
+            key: (count / total) * 100
+            for key, count in counts.items()
+            if count > 0
         }

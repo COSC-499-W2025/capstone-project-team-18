@@ -1,4 +1,4 @@
-from .CommitClassifier import CommitClassifier, CommitType
+from .CommitClassifier import CommitClassifier
 from .PatternDetector import PatternDetector, WorkPattern
 from .RoleAnalyzer import RoleAnalyzer, CollaborationRole
 

@@ -1,115 +1,159 @@
-"""
-Analyzes collaboration dynamics to infer user roles.
-"""
-
-from typing import List, Dict, Optional
+import os
 from enum import Enum
-from .CommitClassifier import CommitType
+from transformers import pipeline
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
+
+_ROLE_CLASSIFIER = None
+_ROLE_CLASSIFIER_FAILED = False
+
+_ROLE_LABELS = [
+    "project leader and coordinator",
+    "core contributor and maintainer",
+    "specialist and expert",
+    "occasional contributor",
+    "solo developer"
+]
+
+_LABEL_MAP = {
+    "project leader and coordinator": "leader",
+    "core contributor and maintainer": "core_contributor",
+    "specialist and expert": "specialist",
+    "occasional contributor": "occasional",
+    "solo developer": "solo"
+}
 
 
 class CollaborationRole(Enum):
-    """Roles in a collaborative project."""
     LEADER = "leader"
     CORE_CONTRIBUTOR = "core_contributor"
-    CONTRIBUTOR = "contributor"
-    REVIEWER = "reviewer"
+    SPECIALIST = "specialist"
     OCCASIONAL = "occasional"
-    UNKNOWN = "unknown"
+    SOLO = "solo"
+
+
+def _get_role_classifier():
+    """Return cached zero-shot classifier for role inference."""
+    global _ROLE_CLASSIFIER, _ROLE_CLASSIFIER_FAILED
+
+    if os.environ.get("ARTIFACT_MINER_DISABLE_ROLE_CLASSIFIER") == "1":
+        logger.info("Role classifier disabled via env variable")
+        return None
+
+    if _ROLE_CLASSIFIER_FAILED:
+        logger.info("Role classifier unavailable due to previous failure")
+        return None
+
+    if _ROLE_CLASSIFIER is None:
+        try:
+            model_name = os.environ.get(
+                "ARTIFACT_MINER_ROLE_CLASSIFIER_MODEL",
+                "facebook/bart-large-mnli"
+            )
+            _ROLE_CLASSIFIER = pipeline(
+                "zero-shot-classification",
+                model=model_name
+            )
+            logger.info(f"Loaded role classifier: {model_name}")
+        except Exception:
+            logger.exception("Failed to initialize role classifier")
+            _ROLE_CLASSIFIER_FAILED = True
+            return None
+
+    return _ROLE_CLASSIFIER
 
 
 class RoleAnalyzer:
-    """
-    Infers collaboration roles based on commit patterns and project statistics.
-    """
+    """ML-based collaboration role analyzer using zero-shot classification."""
+
+    def __init__(self):
+        self.model = _get_role_classifier()
 
     def infer_role(
         self,
-        user_commit_percentage: Optional[float],
+        user_commit_pct: float | None,
         total_authors: int,
-        commit_distribution: Dict[CommitType, int],
-        is_group_project: bool
+        commit_counts: dict[str, int],
+        is_group: bool
     ) -> CollaborationRole:
-        """
-        Infer the user's role in the project.
+        """Infer collaboration role using ML classification."""
 
-        Args:
-            user_commit_percentage: Percentage of commits by user (0-100)
-            total_authors: Total number of authors in project
-            commit_distribution: Distribution of commit types
-            is_group_project: Whether this is a group project
+        # Handle solo projects
+        if not is_group or total_authors == 1:
+            return CollaborationRole.SOLO
 
-        Returns:
-            CollaborationRole: The inferred role
-        """
-        if not is_group_project or total_authors <= 1:
-            # Solo project
-            return CollaborationRole.LEADER
-
-        if user_commit_percentage is None:
-            return CollaborationRole.UNKNOWN
-
-        total_commits = sum(commit_distribution.values())
-
-        # Calculate diversity score (how many different types of commits)
-        commit_types_used = len([c for c in commit_distribution.values() if c > 0])
-
-        # Role inference logic
-        # Leader: high commit percentage, diverse contributions
-        if user_commit_percentage >= 40 and commit_types_used >= 3:
-            return CollaborationRole.LEADER
-
-        # Core contributor: significant commits, diverse work
-        if user_commit_percentage >= 20 and commit_types_used >= 2:
-            return CollaborationRole.CORE_CONTRIBUTOR
-
-        # Reviewer: lower commits but presence across codebase
-        # (This is a heuristic; we'd need PR data for true reviewer role)
-        if 10 <= user_commit_percentage < 20:
-            return CollaborationRole.REVIEWER
-
-        # Contributor: moderate involvement
-        if 5 <= user_commit_percentage < 20:
-            return CollaborationRole.CONTRIBUTOR
-
-        # Occasional: minimal involvement
-        if user_commit_percentage < 5:
+        if user_commit_pct is None:
             return CollaborationRole.OCCASIONAL
 
-        return CollaborationRole.CONTRIBUTOR
+        # Build a descriptive text for the classifier
+        total_commits = sum(commit_counts.values())
+        top_type = max(commit_counts.items(), key=lambda x: x[1])[0] if commit_counts else "unknown"
+
+        description = (
+            f"Made {user_commit_pct:.1f}% of commits in a team of {total_authors}. "
+            f"Total {total_commits} commits, primarily {top_type} work."
+        )
+
+        if self.model is None:
+            logger.warning("Role classifier unavailable, using fallback")
+            return self._fallback_role(user_commit_pct, total_authors, is_group)
+
+        try:
+            result = self.model(
+                description,
+                _ROLE_LABELS,
+                multi_label=False
+            )
+
+            top_label = result["labels"][0]
+            top_score = result["scores"][0]
+
+            if top_score < 0.3:
+                return self._fallback_role(user_commit_pct, total_authors, is_group)
+
+            role_str = _LABEL_MAP.get(top_label, "occasional")
+            return CollaborationRole(role_str)
+
+        except Exception as e:
+            logger.warning(f"Failed to classify role with ML: {e}")
+            return self._fallback_role(user_commit_pct, total_authors, is_group)
+
+    def _fallback_role(
+        self,
+        user_commit_pct: float,
+        total_authors: int,
+        is_group: bool
+    ) -> CollaborationRole:
+        """Fallback rule-based role inference."""
+        if not is_group:
+            return CollaborationRole.SOLO
+
+        if user_commit_pct >= 50:
+            return CollaborationRole.LEADER
+        elif user_commit_pct >= 25:
+            return CollaborationRole.CORE_CONTRIBUTOR
+        elif user_commit_pct >= 10:
+            return CollaborationRole.SPECIALIST
+        else:
+            return CollaborationRole.OCCASIONAL
 
     def generate_role_description(
         self,
         role: CollaborationRole,
-        commit_distribution: Dict[CommitType, int],
-        user_commit_percentage: Optional[float]
+        commit_counts: dict[str, int],
+        user_commit_pct: float | None
     ) -> str:
-        """
-        Generate a human-readable description of the role.
+        """Generate readable role description."""
+        total_commits = sum(commit_counts.values())
 
-        Args:
-            role: The inferred role
-            commit_distribution: Distribution of commit types
-            user_commit_percentage: User's commit percentage
-
-        Returns:
-            Description string suitable for resume
-        """
-        total_commits = sum(commit_distribution.values())
-
-        # Find dominant commit types (top 2)
-        sorted_types = sorted(
-            commit_distribution.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
-        top_types = [t[0].value for t in sorted_types[:2] if t[1] > 0]
-
-        descriptions = {
-            CollaborationRole.LEADER: f"Led project development with {user_commit_percentage:.0f}% of commits, focusing on {', '.join(top_types)}",
-            CollaborationRole.CORE_CONTRIBUTOR: f"Core contributor responsible for {user_commit_percentage:.0f}% of commits, primarily {', '.join(top_types)}",
-            CollaborationRole.CONTRIBUTOR: f"Contributed {user_commit_percentage:.0f}% of commits, focusing on {', '.join(top_types)}",
-            CollaborationRole.REVIEWER: f"Reviewed and contributed {user_commit_percentage:.0f}% of commits across the codebase",
-            CollaborationRole.OCCASIONAL: f"Contributed {total_commits} commits to the project",
-        }
-
-        return descriptions.get(role, f"Contributed to the project with {total_commits} commits")
+        if role == CollaborationRole.SOLO:
+            return f"Sole developer with {total_commits} commits"
+        elif role == CollaborationRole.LEADER:
+            return f"Led project with {user_commit_pct:.1f}% of commits ({total_commits} total)"
+        elif role == CollaborationRole.CORE_CONTRIBUTOR:
+            return f"Core contributor with {user_commit_pct:.1f}% of commits ({total_commits} total)"
+        elif role == CollaborationRole.SPECIALIST:
+            return f"Specialized contributor with {total_commits} commits"
+        else:
+            return f"Contributed {total_commits} commits to the project"

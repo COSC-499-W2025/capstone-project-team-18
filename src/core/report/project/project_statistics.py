@@ -15,9 +15,13 @@ from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis import readme_insights
-from src.core.ML.models.contribution_analysis.CommitClassifier import CommitClassifier
-from src.core.ML.models.contribution_analysis.PatternDetector import PatternDetector
-from src.core.ML.models.contribution_analysis.RoleAnalyzer import RoleAnalyzer
+from src.core.ML.models.contribution_analysis import (
+    CommitClassifier,
+    PatternDetector,
+    WorkPattern,
+    RoleAnalyzer,
+    CollaborationRole
+)
 from src.core.project_discovery.ignore_constants import *
 from typing import Optional
 
@@ -517,17 +521,17 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
             commit_messages = [c.message for c in user_commits]
             commit_dates = [datetime.fromtimestamp(c.authored_date) for c in user_commits]
 
-            # Classify commit types
+            # ML-based commit classification using zero-shot learning
             classifier = CommitClassifier()
             commit_counts = classifier.classify_commits(commit_messages)
             commit_pct = classifier.get_commit_distribution(commit_messages)
 
-            # Detect work patterns
+            # ML-based pattern detection using DBSCAN clustering
             pattern_detector = PatternDetector()
             work_pattern = pattern_detector.detect_pattern(commit_dates)
             activity_metrics = pattern_detector.get_activity_metrics(commit_dates)
 
-            # Analyze collaboration role
+            # ML-based role inference using zero-shot classification
             role_analyzer = RoleAnalyzer()
             user_commit_pct = report.get_value(ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
             total_authors = report.get_value(ProjectStatCollection.TOTAL_AUTHORS.value) or 1
@@ -545,7 +549,7 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                 user_commit_pct
             )
 
-            logger.info(f"Contribution pattern analysis completed for {report.project_name}: "
+            logger.info(f"ML contribution pattern analysis completed for {report.project_name}: "
                        f"role={role.value}, pattern={work_pattern.value}")
 
             stats = [
@@ -557,7 +561,7 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
             ]
             return stats
         except Exception as e:
-            logger.error(f"Contribution pattern analysis failed for {report.project_name}: {e}", exc_info=True)
+            logger.error(f"ML contribution pattern analysis failed for {report.project_name}: {e}", exc_info=True)
             return []
 
 

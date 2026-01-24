@@ -1,159 +1,138 @@
-"""
-Detects work patterns from commit history over time.
-"""
-
-from typing import List, Dict, Tuple
+import os
 from datetime import datetime, timedelta
 from enum import Enum
-import statistics
+import numpy as np
+from sklearn.cluster import DBSCAN
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
+
+_PATTERN_DETECTOR_DISABLED = False
 
 
 class WorkPattern(Enum):
-    """Types of work patterns based on commit frequency."""
     CONSISTENT = "consistent"
-    SPRINT_BASED = "sprint_based"
     BURST = "burst"
+    SPRINT_BASED = "sprint_based"
     SPORADIC = "sporadic"
-    UNKNOWN = "unknown"
 
 
 class PatternDetector:
-    """
-    Analyzes commit timestamps to detect work patterns.
-    """
+    """ML-based work pattern detector using temporal clustering."""
 
-    def __init__(self, sprint_window_days: int = 14):
-        """
-        Initialize pattern detector.
+    def __init__(self):
+        self.disabled = os.environ.get("ARTIFACT_MINER_DISABLE_PATTERN_DETECTOR") == "1"
+        if self.disabled:
+            logger.info("Pattern detector disabled via env variable")
 
-        Args:
-            sprint_window_days: Number of days to consider a sprint window
-        """
-        self.sprint_window_days = sprint_window_days
-
-    def detect_pattern(self, commit_dates: List[datetime]) -> WorkPattern:
-        """
-        Detect the work pattern from commit dates.
-
-        Args:
-            commit_dates: List of commit timestamps
-
-        Returns:
-            WorkPattern: The detected pattern
-        """
-        if not commit_dates or len(commit_dates) < 3:
-            return WorkPattern.UNKNOWN
-
-        # Sort dates
-        sorted_dates = sorted(commit_dates)
-
-        # Calculate intervals between commits (in days)
-        intervals = []
-        for i in range(1, len(sorted_dates)):
-            delta = (sorted_dates[i] - sorted_dates[i-1]).days
-            intervals.append(delta)
-
-        if not intervals:
-            return WorkPattern.UNKNOWN
-
-        # Calculate statistics
-        avg_interval = statistics.mean(intervals)
-        std_interval = statistics.stdev(intervals) if len(intervals) > 1 else 0
-        max_interval = max(intervals)
-
-        # Coefficient of variation
-        cv = (std_interval / avg_interval) if avg_interval > 0 else 0
-
-        # Pattern detection logic
-        # Consistent: low variation, regular intervals
-        if cv < 0.5 and avg_interval < 7:
-            return WorkPattern.CONSISTENT
-
-        # Sprint-based: clusters of activity with gaps
-        if self._has_sprint_pattern(sorted_dates):
-            return WorkPattern.SPRINT_BASED
-
-        # Burst: many commits in short period then long gap
-        if max_interval > 30 and cv > 1.5:
-            return WorkPattern.BURST
-
-        # Sporadic: irregular intervals
-        if cv > 1.0:
+    def detect_pattern(self, commit_dates: list[datetime]) -> WorkPattern:
+        """Detect work pattern using DBSCAN clustering on commit timestamps."""
+        if self.disabled or not commit_dates:
             return WorkPattern.SPORADIC
 
-        return WorkPattern.CONSISTENT
+        if len(commit_dates) < 3:
+            return WorkPattern.SPORADIC
 
-    def _has_sprint_pattern(self, sorted_dates: List[datetime]) -> bool:
-        """
-        Check if commits follow a sprint-based pattern.
+        try:
+            # Convert to timestamps (seconds since epoch)
+            timestamps = np.array([dt.timestamp() for dt in commit_dates]).reshape(-1, 1)
 
-        Args:
-            sorted_dates: Sorted list of commit dates
+            # Normalize to days
+            timestamps_days = timestamps / (24 * 3600)
 
-        Returns:
-            bool: True if sprint pattern detected
-        """
-        if len(sorted_dates) < 5:
-            return False
+            # DBSCAN clustering: find dense commit periods
+            # eps=7 days, min_samples=2 commits
+            db = DBSCAN(eps=7, min_samples=2).fit(timestamps_days)
+            labels = db.labels_
 
-        # Group commits into time windows
-        windows = []
-        current_window = [sorted_dates[0]]
+            n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+            n_noise = list(labels).count(-1)
 
-        for i in range(1, len(sorted_dates)):
-            delta = (sorted_dates[i] - current_window[0]).days
-            if delta <= self.sprint_window_days:
-                current_window.append(sorted_dates[i])
+            # Calculate time span
+            time_span = (max(commit_dates) - min(commit_dates)).days
+
+            # Pattern detection logic based on clustering results
+            if n_clusters == 0:
+                # All noise ie very sporadic
+                return WorkPattern.SPORADIC
+
+            elif n_clusters == 1 and n_noise == 0:
+                # Single dense cluster
+                if time_span < 7:
+                    return WorkPattern.BURST
+                else:
+                    return WorkPattern.CONSISTENT
+
+            elif n_clusters > 1:
+                # Multiple clusters
+                # Check if sprint-like
+                cluster_sizes = [list(labels).count(i) for i in range(n_clusters)]
+                avg_cluster_size = np.mean(cluster_sizes)
+
+                if avg_cluster_size >= 3 and time_span > 14:
+                    return WorkPattern.SPRINT_BASED
+                else:
+                    return WorkPattern.BURST
+
             else:
-                if len(current_window) >= 3:
-                    windows.append(current_window)
-                current_window = [sorted_dates[i]]
+                # Mix of clusters and noise
+                if n_noise / len(labels) > 0.5:
+                    return WorkPattern.SPORADIC
+                else:
+                    return WorkPattern.BURST
 
-        if len(current_window) >= 3:
-            windows.append(current_window)
+        except Exception as e:
+            logger.warning(f"Failed to detect pattern with ML, using fallback: {e}")
+            return self._fallback_pattern(commit_dates)
 
-        # Sprint pattern: at least 2 windows with gaps between them
-        return len(windows) >= 2
-
-    def get_activity_metrics(self, commit_dates: List[datetime]) -> Dict[str, float]:
-        """
-        Calculate various activity metrics.
-
-        Args:
-            commit_dates: List of commit timestamps
-
-        Returns:
-            Dictionary of metrics
-        """
-        if not commit_dates:
-            return {}
+    def _fallback_pattern(self, commit_dates: list[datetime]) -> WorkPattern:
+        """Fallback rule-based pattern detection."""
+        if len(commit_dates) < 2:
+            return WorkPattern.SPORADIC
 
         sorted_dates = sorted(commit_dates)
+        gaps = [(sorted_dates[i+1] - sorted_dates[i]).days
+                for i in range(len(sorted_dates) - 1)]
 
-        # Calculate intervals
-        intervals = []
-        for i in range(1, len(sorted_dates)):
-            delta = (sorted_dates[i] - sorted_dates[i-1]).days
-            intervals.append(delta)
+        avg_gap = np.mean(gaps)
+        std_gap = np.std(gaps)
 
-        metrics = {
-            'total_commits': len(commit_dates),
-            'avg_commits_per_week': 0.0,
-            'longest_gap_days': 0,
-            'consistency_score': 0.0
+        if std_gap < 3 and avg_gap < 7:
+            return WorkPattern.CONSISTENT
+        elif std_gap > 10 or avg_gap > 14:
+            return WorkPattern.SPORADIC
+        elif max(gaps) > 21:
+            return WorkPattern.SPRINT_BASED
+        else:
+            return WorkPattern.BURST
+
+    def get_activity_metrics(self, commit_dates: list[datetime]) -> dict[str, float]:
+        """Calculate activity metrics from commit dates."""
+        if not commit_dates or len(commit_dates) < 2:
+            return {
+                "avg_commits_per_week": 0.0,
+                "consistency_score": 0.0
+            }
+
+        sorted_dates = sorted(commit_dates)
+        time_span = (sorted_dates[-1] - sorted_dates[0]).days
+        weeks = max(time_span / 7, 1)
+
+        avg_commits_per_week = len(commit_dates) / weeks
+
+        # Consistency score based on variance in commit gaps
+        gaps = [(sorted_dates[i+1] - sorted_dates[i]).days
+                for i in range(len(sorted_dates) - 1)]
+
+        if len(gaps) > 1:
+            std_gap = np.std(gaps)
+            # Lower std = higher consistency
+            # (inverted and normalized)
+            consistency_score = max(0, 1 - (std_gap / 30))
+        else:
+            consistency_score = 1.0
+
+        return {
+            "avg_commits_per_week": round(avg_commits_per_week, 1),
+            "consistency_score": round(consistency_score, 2)
         }
-
-        if len(sorted_dates) >= 2:
-            total_days = (sorted_dates[-1] - sorted_dates[0]).days
-            if total_days > 0:
-                metrics['avg_commits_per_week'] = (len(commit_dates) / total_days) * 7
-
-        if intervals:
-            metrics['longest_gap_days'] = max(intervals)
-            # Consistency score: inverse of coefficient of variation (0-1 scale)
-            avg = statistics.mean(intervals)
-            std = statistics.stdev(intervals) if len(intervals) > 1 else 0
-            cv = (std / avg) if avg > 0 else 0
-            metrics['consistency_score'] = max(0, 1 - min(cv, 1))
-
-        return metrics
