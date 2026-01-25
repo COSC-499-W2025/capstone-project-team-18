@@ -6,6 +6,8 @@
 
 **[Week 2, Jan. 12-18](#week-2-jan-12-18)**
 
+**[Week 3, Jan. 19-25](#week-3-jan-19-25)**
+
 ---
 
 ## Week 1, Jan. 05-11
@@ -48,3 +50,27 @@ I reviewed two critical PRs this week:
 #### Goals for Next Week
 - Continue work on Milestone 2 features, involving additional ML support and analysis
 - Support the team with any Milestone 1 deliverables and documentation
+
+## Week 3, Jan. 19-25
+
+### Peer Eval
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/priyansh/priyansh_week3_term2_log.png)
+
+### Recap
+This Week the team focused on buliding a base template for the frontend UI, creating meaningful API which will service the backend to the frontend, improved ML analysis on README files and contribution analysis on ProjectReport, and Alembic DB related fixes.
+
+#### Coding Tasks
+I completed [PR #380 - Improve README insights stability and CLI output formatting and adding docstrings](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/380), which closes [Issue #379](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/379).
+
+This PR adds a safer README insights flow so themes/tone don’t disappear when BERTopic fails, filters URL/noise terms, and trims long tag/theme lists for readability. It also silences ML/log spam in the CLI and clears old logs on startup. This fixes the issue where some projects showed no themes/tone and where CLI output was overly noisy.
+
+#### Reviewing Tasks
+1. [PR #377 - Alembic hotfix, created initial revision file for the database](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/377) by Alex
+
+2. [PR #381 - ML-based contribution pattern analysis for commit classification, work patterns, and collaboration roles ](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/381) by Erem
+
+My feedback focused on code correctness, test coverage, and edge case handling.
+
+#### Goals for Next Week
+- Understanding how ML Analysis can be further implemented in our system
+- Buliding Frontend UI
