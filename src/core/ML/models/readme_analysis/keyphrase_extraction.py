@@ -1,10 +1,12 @@
 import hashlib
 import os
 from typing import Iterable
+import re
 
 from keybert import KeyBERT
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 
 _CACHE: dict[str, list[str]] = {}
 _KEYBERT_MODEL = None
@@ -33,11 +35,10 @@ def _dedupe_phrases(phrases: Iterable[str]) -> list[str]:
         if cleaned.isdigit():
             continue
         lowered = cleaned.lower()
-        if lowered.startswith(("http://", "https://")):
-            continue
-        if "http" in lowered or "www." in lowered:
-            continue
         if lowered in URL_STOPWORDS:
+            continue
+        tokens = [t for t in re.split(r"[^a-z0-9]+", lowered) if t]
+        if any(token in URL_STOPWORDS for token in tokens):
             continue
         key = cleaned.lower()
         if key in seen:
@@ -50,10 +51,10 @@ def _dedupe_phrases(phrases: Iterable[str]) -> list[str]:
 def _extract_with_keybert(text: str, top_n: int) -> list[str]:
     """Run KeyBERT extraction with lazy model init and env-based disabling."""
     global _KEYBERT_MODEL, _KEYBERT_FAILED
-    if os.environ.get("ARTIFACT_MINER_DISABLE_ML") == "1" or os.environ.get(
-        "ARTIFACT_MINER_DISABLE_KEYBERT"
-    ) == "1":
-        logger.info("KeyBERT extraction disabled via env flag")
+    if not ml_extraction_allowed():
+        return []
+    if os.environ.get("ARTIFACT_MINER_DISABLE_KEYBERT") == "1":
+        logger.info("KeyBERT extraction disabled via ARTIFACT_MINER_DISABLE_KEYBERT")
         return []
     if _KEYBERT_FAILED:
         logger.info("Skipping KeyBERT extraction due to previous failure")

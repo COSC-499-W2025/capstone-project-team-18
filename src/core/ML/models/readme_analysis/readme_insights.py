@@ -1,15 +1,18 @@
 import os
 import hashlib
+import re
 from typing import Iterable
 
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 
 """
 README insights:
 - Themes: extract topic terms from README text with BERTopic.
 - Tone: classify README tone with a zero-shot model (BART-MNLI).
-Models are loaded lazily to avoid startup cost and can be disabled with env flags.
+Models are loaded lazily to avoid startup cost. Preferences consent is the
+primary gate; env flags provide explicit overrides.
 """
 
 logger = get_logger(__name__)
@@ -37,11 +40,10 @@ def _clean_theme_terms(terms: list[str]) -> list[str]:
             continue
         if lowered.isdigit():
             continue
-        if lowered.startswith(("http://", "https://")):
-            continue
-        if "http" in lowered or "www." in lowered:
-            continue
         if lowered in URL_STOPWORDS:
+            continue
+        tokens = [t for t in re.split(r"[^a-z0-9]+", lowered) if t]
+        if any(token in URL_STOPWORDS for token in tokens):
             continue
         cleaned.append(term)
     return cleaned
@@ -50,8 +52,7 @@ def _clean_theme_terms(terms: list[str]) -> list[str]:
 def _get_classifier():
     global _ZSC_PIPELINE, _ZSC_FAILED
     """Return the cached zero-shot classifier, or None if unavailable/disabled."""
-    if os.environ.get("ARTIFACT_MINER_DISABLE_ML") == "1":
-        logger.info("Zero-shot classifier disabled via ARTIFACT_MINER_DISABLE_ML")
+    if not ml_extraction_allowed():
         return None
     if os.environ.get("ARTIFACT_MINER_DISABLE_ZSC") == "1":
         logger.info("Zero-shot classifier disabled via ARTIFACT_MINER_DISABLE_ZSC")
@@ -88,8 +89,7 @@ def _classify_labels(text: str, labels: list[str], threshold: float, max_labels:
 def _get_topic_model():
     global _TOPIC_MODEL, _TOPIC_FAILED
     """Return the cached BERTopic model, or None if unavailable/disabled."""
-    if os.environ.get("ARTIFACT_MINER_DISABLE_ML") == "1":
-        logger.info("BERTopic disabled via ARTIFACT_MINER_DISABLE_ML")
+    if not ml_extraction_allowed():
         return None
     if os.environ.get("ARTIFACT_MINER_DISABLE_BERTOPIC") == "1":
         logger.info("BERTopic disabled via ARTIFACT_MINER_DISABLE_BERTOPIC")

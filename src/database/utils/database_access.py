@@ -14,8 +14,6 @@ from src.database.models import ProjectReportTable, UserReportTable
 from src.database.base import get_engine
 
 from src.infrastructure.log.logging import get_logger
-
-import logging
 logger = get_logger(__name__)
 
 
@@ -73,11 +71,10 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logging.error(f'Error: No project found with name "{proj_name}"')
+            logger.exception('Error: No project found with name "%s"', proj_name)
             raise
         except MultipleResultsFound:
-            logging.error(
-                f'Error: Multiple projects found with name "{proj_name}"')
+            logger.exception('Error: Multiple projects found with name "%s"', proj_name)
             raise
 
 
@@ -185,9 +182,8 @@ def get_user_report(name: str, engine=None) -> UserReport:
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logging.error(f'Error: No user report found with name "{name}"')
+            logger.exception('Error: No user report found with name "%s"', name)
             raise
         except MultipleResultsFound:
-            logging.error(
-                f'Error: Multiple user reports found with name "{name}"')
+            logger.exception('Error: Multiple user reports found with name "%s"', name)
             raise
