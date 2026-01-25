@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from git import Repo
 import os
-from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.statistic import Statistic, StatisticIndex
 from src.core.report import UserReport, ProjectReport
 import tempfile
@@ -40,16 +40,16 @@ def create_temp_file():
 
 
 @pytest.fixture
-def make_project_file(create_temp_file):
+def make_project_layout(create_temp_file):
     """
-    Returns a callable that makes the given ProjectFile.
+    Returns a callable that makes the given ProjectLayout.
     Every file in the project has one line in it.
 
     Only works for project_files without Repos.
     """
 
-    def _create(project_file: ProjectFiles):
-        project_dir = Path(project_file.root_path)
+    def _create(project_file: ProjectLayout):
+        project_dir = project_file.root_path
 
         if not project_file.name == project_dir.name:
             raise ValueError(
@@ -178,7 +178,7 @@ def temp_text_file(tmp_path: Path, create_temp_file) -> list[str]:
 
 
 @pytest.fixture
-def project_shared_file(tmp_path: Path) -> ProjectFiles:
+def project_shared_file(tmp_path: Path) -> ProjectLayout:
     """
     Creates a project called "SharedFile" that has one file
     "shared.py" that was modified by three authors.
@@ -223,16 +223,16 @@ def project_shared_file(tmp_path: Path) -> ProjectFiles:
         project_dir=project_dir
     )
 
-    return ProjectFiles(
+    return ProjectLayout(
         name="SharedFile",
-        root_path=str(project_dir),
-        file_paths=[filename],
+        root_path=project_dir,
+        file_paths=[Path(filename)],
         repo=repo
     )
 
 
 @pytest.fixture
-def project_realistic(tmp_path: Path, create_temp_file) -> ProjectFiles:
+def project_realistic(tmp_path: Path, create_temp_file) -> ProjectLayout:
     """
     Creates a realistic multi-folder git project with many files and
     multiple authors contributing across commits.
@@ -252,7 +252,7 @@ def project_realistic(tmp_path: Path, create_temp_file) -> ProjectFiles:
             README.md
 
     Returns:
-        ProjectFiles: The project description for the created repo.
+        ProjectLayout: The project description for the created repo.
     """
 
     project_dir = tmp_path / "RealisticProject"
@@ -346,24 +346,24 @@ def project_realistic(tmp_path: Path, create_temp_file) -> ProjectFiles:
         project_dir
     )
 
-    return ProjectFiles(
+    return ProjectLayout(
         name="RealisticProject",
-        root_path=str(project_dir),
+        root_path=project_dir,
         file_paths=[
-            "app/main.py",
-            "app/utils/helpers.py",
-            "tests/test_main.py",
-            "db/schema.sql",
-            "db/db.db",
-            "scripts/bootstrap.sh",
-            "docs/README.md",
+            Path("app/main.py"),
+            Path("app/utils/helpers.py"),
+            Path("tests/test_main.py"),
+            Path("db/schema.sql"),
+            Path("db/db.db"),
+            Path("scripts/bootstrap.sh"),
+            Path("docs/README.md"),
         ],
         repo=repo
     )
 
 
 @pytest.fixture
-def project_no_git_dir(tmp_path: Path) -> ProjectFiles:
+def project_no_git_dir(tmp_path: Path) -> ProjectLayout:
     """
     Creates a not git project with two python files.
 
@@ -376,9 +376,9 @@ def project_no_git_dir(tmp_path: Path) -> ProjectFiles:
     (project_dir / "main.py").write_text("print('No git')")
     (project_dir / "utils.py").write_text("# Utils")
 
-    return ProjectFiles(
+    return ProjectLayout(
         name="NoGitProject",
-        root_path=str(project_dir),
-        file_paths=["main.py", "utils.py"],
+        root_path=project_dir,
+        file_paths=[Path("main.py"), Path("utils.py")],
         repo=None
     )

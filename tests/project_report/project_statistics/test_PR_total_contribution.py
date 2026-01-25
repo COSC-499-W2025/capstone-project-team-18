@@ -40,7 +40,7 @@ def test_verify_accurate_contribution_percentage(resource_dir, email, percentage
 
     project_report = ProjectReport(
         project_name=project.name,
-        project_path=project.root_path,
+        project_path=str(project.root_path),
         project_repo=project.repo,
         file_reports=file_reports,
         user_email=email

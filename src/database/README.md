@@ -373,7 +373,7 @@ Two things to note about `session.commit()`:
 
 Now that we have an understanding of what SQLAlchemy is, why we are using it, how our database if configured, and how we access and modify its data, let's take a look at how this is tied in with our app's analysis and report generation.
 
-In `src/app.py` the `start_miner()` function is called to begin the analysis process. First, we get `project_list`, which is a list of `ProjectFile` objects (for $n$ projects, there are $n$ `ProjectFiles` in the list).
+In `src/app.py` the `start_miner()` function is called to begin the analysis process. First, we get `project_list`, which is a list of `ProjectFile` objects (for $n$ projects, there are $n$ `ProjectLayout` in the list).
 
 We iterate through `project_list`, and for each `ProjectFile`, we get:
 - `file_reports`: A list of all `FileReport` objects for a given project
