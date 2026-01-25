@@ -84,8 +84,8 @@ def test_discover_multiple_projects(multi_project_zip: Path, tmp_path: Path):
         return []
 
     # Verify nested paths are preserved correctly
-    assert "src/utils/helper.py" in get_files("Assignment2")
-    assert "src/models/user.py" in get_files("FinalProject")
+    assert Path("src/utils/helper.py") in get_files("Assignment2")
+    assert Path("src/models/user.py") in get_files("FinalProject")
 
     # Verify file counts per project
     assert len(get_files("Assignment1")) == 2
@@ -105,12 +105,13 @@ def test_discover_git_projects(git_dir: Path):
     # Verify file counts
     for p in result:
         if p.name == "SoloProject":
-            assert len(p.file_paths) == 1 and "solo_work.py" in p.file_paths
+            assert len(p.file_paths) == 1 and Path(
+                "solo_work.py") in p.file_paths
             assert p.repo is not None
         elif p.name == "TeamProject":
             assert len(p.file_paths) == 2
-            assert "feature1.py" in p.file_paths
-            assert "feature2.py" in p.file_paths
+            assert Path("feature1.py") in p.file_paths
+            assert Path("feature2.py") in p.file_paths
             assert p.repo is not None
 
 
@@ -173,7 +174,7 @@ def test_mac_zip_structure(tmp_path: Path):
     with zipfile.ZipFile(mac_zip_path, 'r') as zf:
         zf.extractall(extract_dir)
     result = discover_projects(str(extract_dir))
-    project_names = {p.name for p in result}
+    project_names = {str(p.name) for p in result}
     # Should skip parent "Projects" folder and __MACOSX metadata
     assert "Projects" not in project_names
     assert "__MACOSX" not in project_names
@@ -184,8 +185,9 @@ def test_mac_zip_structure(tmp_path: Path):
     def get_files(name):
         for p in result:
             if p.name == name:
-                return p.file_paths
+                return [str(f) for f in p.file_paths]
         return []
+
     # Verify ProjectA files (should filter out .DS_Store)
     assert "a_1.txt" in get_files("ProjectA")
     assert "a_2.txt" in get_files("ProjectA")

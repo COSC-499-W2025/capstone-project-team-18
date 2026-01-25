@@ -14,6 +14,8 @@ from src.database.models import ProjectReportTable, UserReportTable
 from src.database.base import get_engine
 
 from src.infrastructure.log.logging import get_logger
+from src.services.preferences.preference_service import UserConfig
+
 logger = get_logger(__name__)
 
 
@@ -187,3 +189,9 @@ def get_user_report(name: str, engine=None) -> UserReport:
         except MultipleResultsFound:
             logger.exception('Error: Multiple user reports found with name "%s"', name)
             raise
+
+
+def get_user_config() -> UserConfig:
+    # TODO: Flesh this out when the UserConfig
+    # is in the database
+    raise NotImplementedError()

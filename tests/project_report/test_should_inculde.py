@@ -4,11 +4,10 @@ in the Analyzer class
 """
 
 from src.core.analyzer import get_appropriate_analyzer
-from pathlib import Path
-from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.project_discovery.project_discovery import ProjectLayout
 
 
-def test_should_include_file_not_in_git_repo(project_no_git_dir: ProjectFiles):
+def test_should_include_file_not_in_git_repo(project_no_git_dir: ProjectLayout):
     """
     Tests to see that a file in a non-git project
     should be included
@@ -18,8 +17,8 @@ def test_should_include_file_not_in_git_repo(project_no_git_dir: ProjectFiles):
 
     for file in files:
         analyzer = get_appropriate_analyzer(
-            path_to_top_level_project=project_no_git_dir.root_path,
-            relative_path=file,
+            path_to_top_level_project=str(project_no_git_dir.root_path),
+            relative_path=str(file),
             repo=project_no_git_dir.repo,
             email="example@gmail.com"
         )
@@ -35,12 +34,12 @@ def test_should_include_file_not_tracked_by_git(project_shared_file):
     not_tracked_file = "not_tracked.py"
 
     # Make file in project
-    project_dir = Path(project_shared_file.root_path)
+    project_dir = project_shared_file.root_path
     project_dir.joinpath(not_tracked_file).write_text(
         "# this file is untracked\n")
 
     analyzer = get_appropriate_analyzer(
-        path_to_top_level_project=project_shared_file.root_path,
+        path_to_top_level_project=str(project_shared_file.root_path),
         relative_path=not_tracked_file,
         repo=project_shared_file.repo,
         email="example@gmail.com",
@@ -58,8 +57,8 @@ def test_should_not_include_file_not_commited_by_user(project_shared_file):
     """
 
     analyzer = get_appropriate_analyzer(
-        path_to_top_level_project=project_shared_file.root_path,
-        relative_path=project_shared_file.file_paths[0],
+        path_to_top_level_project=str(project_shared_file.root_path),
+        relative_path=str(project_shared_file.file_paths[0]),
         repo=project_shared_file.repo,
         email="temp@example.com",
     )
@@ -75,8 +74,8 @@ def test_should_include_file_commited_by_user(project_shared_file):
     """
 
     analyzer = get_appropriate_analyzer(
-        path_to_top_level_project=project_shared_file.root_path,
-        relative_path=project_shared_file.file_paths[0],
+        path_to_top_level_project=str(project_shared_file.root_path),
+        relative_path=str(project_shared_file.file_paths[0]),
         repo=project_shared_file.repo,
         email="alice@example.com",
     )
@@ -92,8 +91,8 @@ def test_should_include_file_if_email_not_configured(project_shared_file):
     """
 
     analyzer = get_appropriate_analyzer(
-        path_to_top_level_project=project_shared_file.root_path,
-        relative_path=project_shared_file.file_paths[0],
+        path_to_top_level_project=str(project_shared_file.root_path),
+        relative_path=str(project_shared_file.file_paths[0]),
         repo=project_shared_file.repo,
         email=None,
     )
