@@ -19,14 +19,18 @@ class UserDateSectionBuilder(PortfolioSectionBuilder):
         blocks = []
 
         start_date = report.get_value(UserStatCollection.USER_START_DATE.value)
-        text = f"You started your first project on {report._fmt_mdy(start_date)}!"
-        s_block = Block("start_date", TextBlock(text=text))
-        blocks.append(s_block)
+
+        if start_date is not None:
+            text = f"You started your first project on {report._fmt_mdy(start_date)}!"
+            s_block = Block("start_date", TextBlock(text=text))
+            blocks.append(s_block)
 
         end_date = report.get_value(UserStatCollection.USER_END_DATE.value)
-        text = f"Your latest contribution was on {report._fmt_mdy(end_date)}."
-        e_block = Block("end_date", TextBlock(text=text))
-        blocks.append(e_block)
+
+        if end_date is not None:
+            text = f"Your latest contribution was on {report._fmt_mdy(end_date)}."
+            e_block = Block("end_date", TextBlock(text=text))
+            blocks.append(e_block)
 
         return blocks
 
@@ -124,6 +128,9 @@ class UserCodingLanguageRatioSectionBuilder(PortfolioSectionBuilder):
 
         coding_lang_ratio = report.get_value(
             UserStatCollection.USER_CODING_LANGUAGE_RATIO.value)
+
+        if coding_lang_ratio is None:
+            return []
 
         langs_sorted = sorted(coding_lang_ratio.items(),
                               key=lambda x: x[1], reverse=True)

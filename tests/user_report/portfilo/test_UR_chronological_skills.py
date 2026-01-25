@@ -1,6 +1,7 @@
 from datetime import date
 
 from src.core.report import UserReport, ProjectReport
+from src.core.portfolio.builder.concrete_builders import UserSkillsSectionBuilder
 from src.core.statistic import (
     StatisticIndex,
     Statistic,
@@ -59,8 +60,9 @@ def test_chronological_skills_basic_ordering(project_report_from_stats):
                          "Python"], project_report_from_stats)
 
     user = UserReport([proj1, proj2, proj3], "UserReport1")
+    builder = UserSkillsSectionBuilder()
 
-    lines = user.get_chronological_skills(as_string=False)
+    lines = builder.get_chronological_skills(user)
 
     assert lines == [
         "Python — First exercised Jun 01, 2022",
@@ -71,7 +73,7 @@ def test_chronological_skills_basic_ordering(project_report_from_stats):
 
 def test_chronological_skills_newest_first(project_report_from_stats):
     """
-    newest_first=True should reverse the chronological ordering.
+    Reversed chronological ordering should show newest skills first.
     """
     proj1 = make_project(date(2023, 1, 1), [
                          "Python"], project_report_from_stats)
@@ -79,10 +81,12 @@ def test_chronological_skills_newest_first(project_report_from_stats):
                          "React"], project_report_from_stats)
 
     user = UserReport([proj1, proj2], "UserReport2")
+    builder = UserSkillsSectionBuilder()
 
-    lines = user.get_chronological_skills(as_string=False, newest_first=True)
+    lines = builder.get_chronological_skills(user)
+    reversed_lines = list(reversed(lines))
 
-    assert lines == [
+    assert reversed_lines == [
         "React — First exercised Jan 01, 2024",
         "Python — First exercised Jan 01, 2023",
     ]
@@ -98,8 +102,9 @@ def test_chronological_skills_undated_skills_go_last(project_report_from_stats):
         date(2024, 1, 1), ["React"], project_report_from_stats)
 
     user = UserReport([proj_undated, proj_dated], "UserReport3")
+    builder = UserSkillsSectionBuilder()
 
-    lines = user.get_chronological_skills(as_string=False)
+    lines = builder.get_chronological_skills(user)
 
     assert lines[0] == "React — First exercised Jan 01, 2024"
     assert "Python — First exercised on an unknown date" in lines
@@ -107,22 +112,23 @@ def test_chronological_skills_undated_skills_go_last(project_report_from_stats):
 
 def test_chronological_skills_no_projects():
     """
-    If there are no projects, an empty string or empty list should be returned.
+    If there are no projects, an empty list should be returned.
     """
     user = UserReport([], "")
+    builder = UserSkillsSectionBuilder()
 
-    assert user.get_chronological_skills(as_string=True) == ""
-    assert user.get_chronological_skills(as_string=False) == []
+    assert builder.get_chronological_skills(user) == []
 
 
-def test_chronological_skills_string_output_format(project_report_from_stats):
+def test_chronological_skills_list_output_format(project_report_from_stats):
     """
-    Ensure as_string=True returns a newline-separated string.
+    Ensure the builder returns a list of formatted skill strings.
     """
     proj = make_project(date(2023, 5, 10), [
                         "Python"], project_report_from_stats)
     user = UserReport([proj], "UserReport4")
+    builder = UserSkillsSectionBuilder()
 
-    result = user.get_chronological_skills(as_string=True)
+    result = builder.get_chronological_skills(user)
 
-    assert result == "Python — First exercised May 10, 2023"
+    assert result == ["Python — First exercised May 10, 2023"]

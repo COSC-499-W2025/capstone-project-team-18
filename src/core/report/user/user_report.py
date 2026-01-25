@@ -15,7 +15,6 @@ from src.core.statistic import (
     StatisticIndex,
     ProjectStatCollection,
     UserStatCollection,
-    WeightedSkills,
     StatisticTemplate,
 )
 from src.core.resume.resume import Resume
@@ -246,32 +245,27 @@ class UserReport(BaseReport):
         This delegates to concrete builders for flexible, modular portfolio generation.
         """
         from src.core.portfolio.builder.concrete_builders import (
-            UserStartDateSectionBuilder,
-            UserEndDateSectionBuilder,
             UserSkillsSectionBuilder,
             UserCodingLanguageRatioSectionBuilder,
             UserGenericStatisticsSectionBuilder,
             ChronologicalProjectsSectionBuilder,
-            ChronologicalSkillsSectionBuilder,
             ProjectTagsSectionBuilder,
             ProjectThemesSectionBuilder,
             ProjectTonesSectionBuilder,
         )
         from src.core.portfolio.builder.build_system import PortfolioBuilder
-        
+
         # Create portfolio builder with all section builders
         builder = PortfolioBuilder()
-        builder.register_section_builder(UserStartDateSectionBuilder())
-        builder.register_section_builder(UserEndDateSectionBuilder())
         builder.register_section_builder(UserSkillsSectionBuilder())
-        builder.register_section_builder(UserCodingLanguageRatioSectionBuilder())
+        builder.register_section_builder(
+            UserCodingLanguageRatioSectionBuilder())
         builder.register_section_builder(UserGenericStatisticsSectionBuilder())
         builder.register_section_builder(ChronologicalProjectsSectionBuilder())
-        builder.register_section_builder(ChronologicalSkillsSectionBuilder())
         builder.register_section_builder(ProjectTagsSectionBuilder())
         builder.register_section_builder(ProjectThemesSectionBuilder())
         builder.register_section_builder(ProjectTonesSectionBuilder())
-        
+
         # Build and render portfolio
         portfolio = builder.build(self)
         return portfolio.render()
