@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 
 from src.core.report import UserReport, ProjectReport
 from src.core.portfolio.builder.concrete_builders import UserSkillsSectionBuilder
@@ -10,7 +10,7 @@ from src.core.statistic import (
 )
 
 
-def make_project(start_date: date | None, skill_names: list[str], project_report_from_stats=None) -> ProjectReport:
+def make_project(start_date: datetime | None, skill_names: list[str], project_report_from_stats=None) -> ProjectReport:
     """
     Helper to build a ProjectReport with a PROJECT_START_DATE and
     PROJECT_SKILLS_DEMONSTRATED statistic.
@@ -52,11 +52,11 @@ def test_chronological_skills_basic_ordering(project_report_from_stats):
     Skills should be ordered by the earliest project start date
     in which they appear.
     """
-    proj1 = make_project(date(2023, 1, 1), [
+    proj1 = make_project(datetime(2023, 1, 1), [
                          "Python", "React"], project_report_from_stats)
-    proj2 = make_project(date(2024, 1, 1), [
+    proj2 = make_project(datetime(2024, 1, 1), [
                          "Docker"], project_report_from_stats)
-    proj3 = make_project(date(2022, 6, 1), [
+    proj3 = make_project(datetime(2022, 6, 1), [
                          "Python"], project_report_from_stats)
 
     user = UserReport([proj1, proj2, proj3], "UserReport1")
@@ -75,9 +75,9 @@ def test_chronological_skills_newest_first(project_report_from_stats):
     """
     Reversed chronological ordering should show newest skills first.
     """
-    proj1 = make_project(date(2023, 1, 1), [
+    proj1 = make_project(datetime(2023, 1, 1), [
                          "Python"], project_report_from_stats)
-    proj2 = make_project(date(2024, 1, 1), [
+    proj2 = make_project(datetime(2024, 1, 1), [
                          "React"], project_report_from_stats)
 
     user = UserReport([proj1, proj2], "UserReport2")
@@ -99,7 +99,7 @@ def test_chronological_skills_undated_skills_go_last(project_report_from_stats):
     """
     proj_undated = make_project(None, ["Python"], project_report_from_stats)
     proj_dated = make_project(
-        date(2024, 1, 1), ["React"], project_report_from_stats)
+        datetime(2024, 1, 1), ["React"], project_report_from_stats)
 
     user = UserReport([proj_undated, proj_dated], "UserReport3")
     builder = UserSkillsSectionBuilder()
@@ -124,7 +124,7 @@ def test_chronological_skills_list_output_format(project_report_from_stats):
     """
     Ensure the builder returns a list of formatted skill strings.
     """
-    proj = make_project(date(2023, 5, 10), [
+    proj = make_project(datetime(2023, 5, 10), [
                         "Python"], project_report_from_stats)
     user = UserReport([proj], "UserReport4")
     builder = UserSkillsSectionBuilder()

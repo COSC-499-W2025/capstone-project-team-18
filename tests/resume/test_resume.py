@@ -5,6 +5,8 @@ Tests the Resume class and its methods.
 from src.core.resume.resume import Resume, ResumeItem
 from src.core.statistic import Statistic, ProjectStatCollection
 from datetime import date
+from src.core.report import UserReport
+from datetime import datetime
 
 
 def test_add_item():
@@ -52,13 +54,12 @@ def test_projectreport_can_create_resume(project_report_from_stats):
 
 
 def test_userreport_can_create_resume(project_report_from_stats):
-    from src.core.report import UserReport
-    from src.core.statistic import StatisticIndex
 
     project_statistics = [
         Statistic(ProjectStatCollection.PROJECT_START_DATE.value,
-                  date(2020, 1, 1)),
-        Statistic(ProjectStatCollection.PROJECT_END_DATE.value, date(2021, 1, 1))
+                  datetime(2020, 1, 1)),
+        Statistic(ProjectStatCollection.PROJECT_END_DATE.value,
+                  datetime(2021, 1, 1))
     ]
 
     user_report = UserReport(
@@ -71,5 +72,5 @@ def test_userreport_can_create_resume(project_report_from_stats):
     assert isinstance(resume_item, Resume)
     assert len(resume_item.items) == 1
     assert resume_item.items[0].title == "TESTING ONLY SHOULD SEE THIS IN PYTEST"
-    assert resume_item.items[0].start_date == date(2020, 1, 1)
-    assert resume_item.items[0].end_date == date(2021, 1, 1)
+    assert resume_item.items[0].start_date == datetime(2020, 1, 1)
+    assert resume_item.items[0].end_date == datetime(2021, 1, 1)

@@ -26,8 +26,8 @@ class UserDates(UserStatisticCalculation):
 
     def calculate(self, report: "UserReport") -> List[Statistic]:
         # Loop through and find the earliest start date and latest end date of all projects
-        latest_date = datetime.min.date()
-        earliest_date = datetime.max.date()
+        latest_date = datetime.max
+        earliest_date = datetime.min
 
         # For checking that the time range is valid
         start_date = latest_date
