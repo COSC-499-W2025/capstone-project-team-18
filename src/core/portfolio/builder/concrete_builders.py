@@ -4,6 +4,7 @@ from src.core.report import UserReport
 from src.core.portfolio.sections.block.block import Block
 from src.core.portfolio.sections.block.block_content import TextListBlock, TextBlock
 from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
+from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
 
 
@@ -21,14 +22,14 @@ class UserDateSectionBuilder(PortfolioSectionBuilder):
         start_date = report.get_value(UserStatCollection.USER_START_DATE.value)
 
         if start_date is not None:
-            text = f"You started your first project on {report._fmt_mdy(start_date)}!"
+            text = f"You started your first project on {fmt_mdy(start_date)}!"
             s_block = Block("start_date", TextBlock(text=text))
             blocks.append(s_block)
 
         end_date = report.get_value(UserStatCollection.USER_END_DATE.value)
 
         if end_date is not None:
-            text = f"Your latest contribution was on {report._fmt_mdy(end_date)}."
+            text = f"Your latest contribution was on {fmt_mdy(end_date)}."
             e_block = Block("end_date", TextBlock(text=text))
             blocks.append(e_block)
 
@@ -111,7 +112,7 @@ class UserSkillsSectionBuilder(PortfolioSectionBuilder):
 
         # Format lines
         lines = [
-            f"{name} — First exercised {user_report._fmt_mdy_short(dt) if dt else 'on an unknown date'}"
+            f"{name} — First exercised {fmt_mdy_short(dt) if dt else 'on an unknown date'}"
             for name, dt in sorted_skills
         ]
 
@@ -170,7 +171,8 @@ class UserGenericStatisticsSectionBuilder(PortfolioSectionBuilder):
                 continue
 
             value = stat.value
-            title = report._title_from_name(name)
+            title = name.replace("_", " ").replace(
+                "-", " ").strip().lower().title()
 
             should_try_date = (
                 template.expected_type in (datetime, type(None))
@@ -181,7 +183,7 @@ class UserGenericStatisticsSectionBuilder(PortfolioSectionBuilder):
                 value) if should_try_date else None
 
             if maybe_dt:
-                lines.append(f"{title}: {report._fmt_mdy(maybe_dt)}")
+                lines.append(f"{title}: {fmt_mdy(maybe_dt)}")
             else:
                 lines.append(f"{title}: {value!r}")
 
@@ -225,12 +227,12 @@ class ChronologicalProjectsSectionBuilder(PortfolioSectionBuilder):
             )
 
             if start_dt:
-                formatted = f"{title} - Started {user_report._fmt_mdy_short(start_dt)}"
+                formatted = f"{title} - Started {fmt_mdy_short(start_dt)}"
             else:
                 formatted = f"{title} - Start date unknown"
 
             if end_dt:
-                formatted += f" (Ended {user_report._fmt_mdy_short(end_dt)})"
+                formatted += f" (Ended {fmt_mdy_short(end_dt)})"
             else:
                 formatted += " (End date unknown)"
 
