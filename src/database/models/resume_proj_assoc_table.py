@@ -13,7 +13,7 @@ Example Rows:
 '''
 
 from sqlalchemy import ForeignKey, Table, Column
-from src.infrastructure.database.base import Base
+from src.database.base import Base
 
 resume_proj_assoc_table = Table(
     "resume_proj_assoc",

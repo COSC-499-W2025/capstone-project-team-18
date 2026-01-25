@@ -16,7 +16,6 @@ from src.database.base import Base
 from src.database.utils.init_columns import make_columns
 from src.database.models.proj_user_assoc_table import proj_user_assoc_table
 from src.database.models.resume_proj_assoc_table import resume_proj_assoc_table
-from src.database.models.proj_user_assoc import proj_user_assoc_table
 from src.database.models.file_report_table import FileReportTable
 
 from src.core.statistic import ProjectStatCollection

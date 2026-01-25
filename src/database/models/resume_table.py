@@ -12,9 +12,9 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from src.core.resume.resume import Resume
 
-from src.infrastructure.database.utils.init_columns import make_columns
-from src.infrastructure.database.models.resume_proj_assoc_table import resume_proj_assoc_table
-from src.infrastructure.database.base import Base
+from src.database.utils.init_columns import make_columns
+from src.database.models.resume_proj_assoc_table import resume_proj_assoc_table
+from src.database.base import Base
 
 
 @make_columns(Resume)

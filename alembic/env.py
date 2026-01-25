@@ -4,11 +4,10 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 
-from src.infrastructure.database.base import DB_PATH, Base
+from src.database.base import DB_PATH, Base
 
 # This module isn't used, but it is still required so that
 # Alembic knows where our ORM models are located.
-import src.infrastructure.database.models  # DO NOT REMOVE
 
 
 # this is the Alembic Config object, which provides
