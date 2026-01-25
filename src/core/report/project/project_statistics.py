@@ -443,10 +443,9 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
             return []
 
         commit_count_by_author = self._get_commits_by_author(
-            repo = report.project_repo
+            repo=report.project_repo
         )
 
-       # BUG FIX: Initialize as list, not int
         user_commits = [value for key, value in commit_count_by_author.items()
                        if key == report.email]
 
@@ -457,17 +456,16 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
 
         # Calculate user's commit percentage
         user_commit_count = sum(user_commits) if user_commits else 0
-        user_commit_percentage = (user_commit_count / total_commits) * 100
+        user_commit_percentage = round((user_commit_count / total_commits) * 100, 2)
 
         # Determine if it's a group project
         num_authors = len(commit_count_by_author)
         is_group_project = num_authors > 1
 
-        return [
-            Statistic(
-                ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
-                user_commit_percentage,
-            ),
+        # Calculate authors per file
+        authors_per_file = self._get_authors_per_file(report.project_repo)
+
+        stats = [
             Statistic(
                 ProjectStatCollection.IS_GROUP_PROJECT.value,
                 is_group_project,
@@ -476,7 +474,22 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
                 ProjectStatCollection.TOTAL_AUTHORS.value,
                 num_authors,
             ),
+            Statistic(
+                ProjectStatCollection.AUTHORS_PER_FILE.value,
+                authors_per_file,
+            ),
         ]
+
+        # Only add user commit percentage for group projects
+        if is_group_project:
+            stats.append(
+                Statistic(
+                    ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
+                    user_commit_percentage,
+                )
+            )
+
+        return stats
 
     def _get_commits_by_author(self, repo) -> dict[str, int]:
         """Returns a dictionary mapping author emails to commit counts."""
@@ -489,6 +502,36 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
                 )
         return commit_count_by_author
 
+    def _get_authors_per_file(self, repo) -> dict[str, int]:
+        """Returns a dictionary mapping file paths to number of unique authors."""
+        authors_per_file: dict[str, set[str]] = {}
+
+        for commit in repo.iter_commits():
+            if not hasattr(commit, "author") or not hasattr(commit.author, "email"):
+                continue
+
+            author_email = commit.author.email
+
+            # Get files changed in this commit
+            if commit.parents:
+                diffs = commit.parents[0].diff(commit)
+                for diff in diffs:
+                    # Use b_path for new/modified files
+                    file_path = diff.b_path if diff.b_path else diff.a_path
+                    if file_path:
+                        if file_path not in authors_per_file:
+                            authors_per_file[file_path] = set()
+                        authors_per_file[file_path].add(author_email)
+            else:
+                # First commit, all files are new
+                for item in commit.tree.traverse():
+                    if item.type == "blob":  # It's a file
+                        if item.path not in authors_per_file:
+                            authors_per_file[item.path] = set()
+                        authors_per_file[item.path].add(author_email)
+
+        # Convert sets to counts
+        return {path: len(authors) for path, authors in authors_per_file.items()}
 
 class ProjectContributionPatterns(ProjectStatisticCalculation):
     """
