@@ -81,9 +81,8 @@ class UserSkillsSectionBuilder(PortfolioSectionBuilder):
         skill_first_seen = {}
 
         for pr in project_reports:
-            start_dt = user_report._coerce_datetime(
-                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-            )
+            start_dt = pr.get_value(
+                ProjectStatCollection.PROJECT_START_DATE.value)
             skills = pr.get_value(
                 ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value)
             if not skills:
@@ -177,13 +176,10 @@ class UserGenericStatisticsSectionBuilder(PortfolioSectionBuilder):
             should_try_date = (
                 template.expected_type in (datetime, type(None))
                 or isinstance(value, (datetime,))
-                or isinstance(value, str)
             )
-            maybe_dt = report._coerce_datetime(
-                value) if should_try_date else None
 
-            if maybe_dt:
-                lines.append(f"{title}: {fmt_mdy(maybe_dt)}")
+            if should_try_date:
+                lines.append(f"{title}: {fmt_mdy(value)}")
             else:
                 lines.append(f"{title}: {value!r}")
 
@@ -219,12 +215,9 @@ class ChronologicalProjectsSectionBuilder(PortfolioSectionBuilder):
         entries = []
         for pr in user_report.project_reports:
             title = getattr(pr, "project_name", None) or "Untitled Project"
-            start_dt = user_report._coerce_datetime(
-                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-            )
-            end_dt = user_report._coerce_datetime(
-                pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-            )
+            start_dt = pr.get_value(
+                ProjectStatCollection.PROJECT_START_DATE.value)
+            end_dt = pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
 
             if start_dt:
                 formatted = f"{title} - Started {fmt_mdy_short(start_dt)}"

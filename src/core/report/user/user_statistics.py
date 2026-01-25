@@ -4,7 +4,7 @@ User-level statistic calculation classes and a report builder.
 Mirrors the structure used for project statistics.
 """
 from typing import List, TYPE_CHECKING
-from datetime import datetime, timedelta, MINYEAR
+from datetime import datetime
 
 from src.core.report.statistic_builder import StatisticCalculation, StatisticReportBuilder
 from src.core.statistic import Statistic, UserStatCollection, WeightedSkills, FileStatCollection, ProjectStatCollection
@@ -26,20 +26,18 @@ class UserDates(UserStatisticCalculation):
 
     def calculate(self, report: "UserReport") -> List[Statistic]:
         # Loop through and find the earliest start date and latest end date of all projects
-        latest_date = datetime.now() + timedelta(days=1)
-        earliest_date = datetime(MINYEAR, 1, 1, 0, 0, 0, 0)
+        latest_date = datetime.min.date()
+        earliest_date = datetime.max.date()
 
         # For checking that the time range is valid
         start_date = latest_date
         end_date = earliest_date
 
         for pr in report.project_reports:
-            curr_start_date = report._coerce_datetime(
-                pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
-            )
-            curr_end_date = report._coerce_datetime(
-                pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-            )
+            curr_start_date = pr.get_value(
+                ProjectStatCollection.PROJECT_START_DATE.value)
+            curr_end_date = pr.get_value(
+                ProjectStatCollection.PROJECT_END_DATE.value)
 
             if curr_start_date is not None and curr_start_date < start_date:
                 start_date = curr_start_date
