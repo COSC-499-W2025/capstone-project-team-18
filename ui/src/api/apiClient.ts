@@ -52,15 +52,15 @@ export const api = {
    * FastAPI always exposes /docs in dev.
    */
   
-  ping: async (): Promise<boolean> => {
-    try {
-      const base = getApiBaseUrl();
-      const res = await fetch(`${base}/docs`);
-      return res.ok;
-    } catch {
-      return false;
-    }
-  },
+ping: async (): Promise<boolean> => {
+  try {
+    const base = getApiBaseUrl();
+    const res = await fetch(`${base}/projects`);
+    return res.ok;
+  } catch {
+    return false;
+  }
+},
 
   getProjects: () => getJson<any>("/projects"),
 
