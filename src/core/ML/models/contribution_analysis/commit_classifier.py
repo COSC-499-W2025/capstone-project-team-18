@@ -7,6 +7,11 @@ logger = get_logger(__name__)
 _CLASSIFIER_PIPELINE = None
 _CLASSIFIER_FAILED = False
 
+# Model configuration constants
+_MAX_COMMIT_MESSAGE_LENGTH = 256  # BART model has 1024 token limit; 256 chars provides a safe margin for tokenization
+_MIN_CONFIDENCE_THRESHOLD = 0.3  # Minimum confidence score to accept ML classification (0-1 scale)
+
+
 # Commit type labels for zero-shot classification
 _COMMIT_LABELS = [
     "feature implementation",
@@ -92,8 +97,10 @@ class CommitClassifier:
                 continue
 
             try:
-                # Use first line of commit message
-                first_line = msg.split('\n')[0].strip()[:256]  # Truncate for model
+                # Use first line of commit message, truncated to model's input limit
+                # BART tokenizer can handle ~1024 tokens; 256 chars provides a safe margin for tokenization
+                # and captures essential commit message as commits are typically <100 chars
+                first_line = msg.split('\n')[0].strip()[:_MAX_COMMIT_MESSAGE_LENGTH]  # Truncate for model
 
                 result = self.model(
                     first_line,
@@ -105,7 +112,9 @@ class CommitClassifier:
                 top_label = result["labels"][0]
                 top_score = result["scores"][0]
 
-                if top_score < 0.3:  # Low confidence threshold
+                # Reject low-confidence predictions to avoid misclassification
+                # Threshold of 0.3 gives a stable balance of precision vs coverage
+                if top_score < _MIN_CONFIDENCE_THRESHOLD:  # Low confidence threshold hit
                     counts["unknown"] += 1
                 else:
                     category = _LABEL_MAP.get(top_label, "unknown")

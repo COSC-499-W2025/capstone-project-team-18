@@ -105,7 +105,29 @@ class PatternDetector:
             return WorkPattern.BURST
 
     def get_activity_metrics(self, commit_dates: list[datetime]) -> dict[str, float]:
-        """Calculate activity metrics from commit dates."""
+        """
+        Calculate activity metrics from commit dates.
+
+        Args:
+            commit_dates: List of datetime objects representing commit timestamps
+
+        Returns:
+            Dictionary with avg_commits_per_week and consistency_score
+
+        Raises:
+            ValueError: If commit_dates is not a list or contains non-datetime objects
+        """
+        # Validate input type
+        if not isinstance(commit_dates, list):
+            raise ValueError(f"commit_dates must be a list, got {type(commit_dates).__name__}")
+
+        # Validate all elements are datetime objects
+        for i, date in enumerate(commit_dates):
+            if not isinstance(date, datetime):
+                raise ValueError(
+                    f"commit_dates[{i}] must be a datetime object, got {type(date).__name__}"
+                )
+
         if not commit_dates or len(commit_dates) < 2:
             return {
                 "avg_commits_per_week": 0.0,

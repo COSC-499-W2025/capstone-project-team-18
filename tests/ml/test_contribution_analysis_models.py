@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime, timedelta
-from src.core.ML.models.contribution_analysis.CommitClassifier import CommitClassifier
-from src.core.ML.models.contribution_analysis.PatternDetector import PatternDetector, WorkPattern
-from src.core.ML.models.contribution_analysis.RoleAnalyzer import RoleAnalyzer, CollaborationRole
+from src.core.ML.models.contribution_analysis.commit_classifier import CommitClassifier
+from src.core.ML.models.contribution_analysis.pattern_detector import PatternDetector, WorkPattern
+from src.core.ML.models.contribution_analysis.role_analyzer import RoleAnalyzer, CollaborationRole
 
 
 def test_commit_classifier_basic():

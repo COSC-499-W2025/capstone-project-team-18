@@ -123,7 +123,13 @@ class ProjectStatCollection(Enum):
 
     ACTIVITY_METRICS = ProjectStatisticTemplate(
         name="ACTIVITY_METRICS",
-        description="Various activity metrics (commits per week, consistency, etc.)",
+        description=(
+            "Various activity metrics derived from commit timestamps. "
+            "JSON schema: {"
+            "  'avg_commits_per_week': float (commits per week), "
+            "  'consistency_score': float (0-1, higher = more consistent)"
+            "}"
+        ),
         expected_type=dict
     )
 
