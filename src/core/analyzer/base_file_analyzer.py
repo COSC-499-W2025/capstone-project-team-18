@@ -85,8 +85,12 @@ class BaseFileAnalyzer:
             fileReport: Only runs in the case of should_include() -> False.
         """
 
-        stats = []
-        stats.append(Statistic(FileStatCollection.CONTRIBUTED_TO.value, False))
+        if self.language_filter:
+            if not self._matches_language_filter():
+                return None
+
+        stats = [Statistic(FileStatCollection.CONTRIBUTED_TO.value, False)]
+        self.stats.extend(stats)
 
         return FileReport(statistics=self.stats, filepath=self.relative_path)
 

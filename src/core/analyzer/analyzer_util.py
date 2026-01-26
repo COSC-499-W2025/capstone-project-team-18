@@ -57,7 +57,8 @@ def extract_file_reports(
             language_filter)
 
         if analyzer.should_include() is False:
-            reports.append(analyzer.is_info_file())
+            if analyzer.is_info_file():
+                reports.append(analyzer.is_info_file())
             logger.info("Skipping file %s in project %s",
                         file, project_file.name)
             continue
