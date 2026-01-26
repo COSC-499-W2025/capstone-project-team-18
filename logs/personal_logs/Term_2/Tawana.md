@@ -6,7 +6,23 @@
 
 **[Week 2, 01/12 - 01/18](#week-2-0112---0118)**
 
+**[Week 3, 01/19 - 01/25](#week-3-0119---0125)**
+
 ---
+
+# Week 3 01/19 - 01/25
+[Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week3_log.png)
+
+This week, I focused on initializing the Electron-based UI and setting up a clean integration between the frontend and our existing FastAPI backend. I created an Electron + React + Vite scaffold under the ui/ directory and implemented a centralized API client to handle all frontend communication with FastAPI.
+
+To validate the setup, I added a simple landing page that displays the active API base URL, shows backend connectivity status (Connected / Disconnected), and allows querying the /projects and /skills endpoints, displaying responses as formatted JSON. I also added lightweight unit tests for the API client using Vitest to verify URL handling and error cases without requiring the backend to be running.
+
+This work establishes a solid foundation for future UI development in Milestone 3.
+
+Additionally, I reviewed the following PRs:
+1. [PR `#378` Robust start_miner_service](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/378)
+2. [PR `#374` Move src/infrastructure/database to src/database](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/374)
+
 
 # Week 2 01/12 - 01/18
 
