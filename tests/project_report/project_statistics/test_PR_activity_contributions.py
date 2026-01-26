@@ -71,9 +71,9 @@ def test_activity_contribution_from_git_project(project_realistic):
         user_email=my_email
     )
 
-    # Check to see that files are only included if the user themselves
-    # contributed and local
-    assert frs is not None and len(frs) == 5
+    # Adjusted to include uncontributed files in case of use for semantic analysis
+    # All activty type contributions should remain the same however
+    assert frs is not None and len(frs) == 7
 
     contr = pr.get_value(
         ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)

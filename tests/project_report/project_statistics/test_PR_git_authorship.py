@@ -6,6 +6,7 @@ import pytest
 
 from src.core.report import ProjectReport
 from src.core.statistic import ProjectStatCollection
+from src.core.statistic import FileStatCollection
 from src.core.analyzer import extract_file_reports
 from src.core.project_discovery.project_discovery import ProjectLayout
 
@@ -522,14 +523,15 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
                        project_name="SelectiveProject",
                        user_email="charlie@example.com")
 
-    # should only be two files in ProjectReport
-    assert len(fr) == 2
+    # should only be three files in ProjectReport and the first has a False CONTRIBUTED_TO flag
+    assert len(fr) == 3
+    assert fr[0].get_value(FileStatCollection.CONTRIBUTED_TO.value) is False
 
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path):
-    """Test that 0% is returned when user has no contribution to any file"""
+def test_total_contribution_percentage_zero_contribution(tmp_path: Path):
+    """Test that files with False CONTRIBUTED_TO flag are returned"""
 
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
     project_dir = Path(temp_dir) / "NoContributionProject"
@@ -570,7 +572,8 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
     # Charlie contributed 0% since not in any file reports
     assert pr.get_value(
         ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value) == 0.0
-    assert len(fr) == 0
+    assert fr[0].get_value(FileStatCollection.CONTRIBUTED_TO.value) is False
+    assert fr[1].get_value(FileStatCollection.CONTRIBUTED_TO.value) is False
 
     shutil.rmtree(temp_dir, ignore_errors=True)
 
