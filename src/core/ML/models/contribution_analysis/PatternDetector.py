@@ -1,13 +1,11 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 import numpy as np
 from sklearn.cluster import DBSCAN
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
-
-_PATTERN_DETECTOR_DISABLED = False
 
 
 class WorkPattern(Enum):

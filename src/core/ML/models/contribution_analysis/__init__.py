@@ -8,7 +8,6 @@ from .RoleAnalyzer import RoleAnalyzer, CollaborationRole
 
 __all__ = [
     "CommitClassifier",
-    "CommitType",
     "PatternDetector",
     "WorkPattern",
     "RoleAnalyzer",
