@@ -1,0 +1,13 @@
+# This .gitignore is specific to the logs branch.
+# It will ignore all non-markdown and non-png files
+
+# Ignore everything
+*
+
+# Keep directories so that git can traverse them
+!*/
+
+# Allow markdown and PNGs
+!*.md
+!*.png
+!*.gitignore
