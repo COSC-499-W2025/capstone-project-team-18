@@ -10,10 +10,11 @@ from sqlalchemy import select
 from src.core.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.core.report import FileReport, ProjectReport, UserReport
 
-from src.infrastructure.database.models import ProjectReportTable, UserReportTable
-from src.infrastructure.database.base import get_engine
+from src.database.models import ProjectReportTable, UserReportTable
+from src.database.base import get_engine
 
 from src.infrastructure.log.logging import get_logger
+from src.services.preferences.preference_service import UserConfig
 
 import logging
 logger = get_logger(__name__)
@@ -191,3 +192,9 @@ def get_user_report(name: str, engine=None) -> UserReport:
             logging.error(
                 f'Error: Multiple user reports found with name "{name}"')
             raise
+
+
+def get_user_config() -> UserConfig:
+    # TODO: Flesh this out when the UserConfig
+    # is in the database
+    raise NotImplementedError()

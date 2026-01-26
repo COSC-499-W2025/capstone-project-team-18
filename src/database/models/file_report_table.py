@@ -12,9 +12,9 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from src.core.statistic import FileStatCollection
 
-from src.infrastructure.database.utils.init_columns import make_columns
-from src.infrastructure.database.models.project_report_table import ProjectReportTable
-from src.infrastructure.database.base import Base
+from src.database.utils.init_columns import make_columns
+from src.database.models.project_report_table import ProjectReportTable
+from src.database.base import Base
 
 
 @make_columns(FileStatCollection)

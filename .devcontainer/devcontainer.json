@@ -29,6 +29,7 @@
                     "${workspaceFolder}"
                 ],
                 "files.trimTrailingWhitespace": true,
+                "autoDocstring.docstringFormat": "sphinx",
                 "[python]": {
                     "editor.defaultFormatter": "ms-python.autopep8",
                     "editor.formatOnSave": true,
