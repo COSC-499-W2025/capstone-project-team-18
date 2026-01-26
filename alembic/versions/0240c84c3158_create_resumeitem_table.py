@@ -1,10 +1,10 @@
-"""create ResumeItem table
+"""create resume_item table
 
 Revision ID: 0240c84c3158
 Revises: a5249b44f9dd
 Create Date: 2026-01-26 19:12:57.189332
 Related Issue: https://github.com/COSC-499-W2025/capstone-project-team-18/issues/361
-Description: Create a new ResumeItem table, which has a 1-1 relationship with ProjectReport
+Description: Create a new resume_item table, which has a 1-1 relationship with ProjectReport
 """
 from typing import Sequence, Union
 

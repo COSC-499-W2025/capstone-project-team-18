@@ -21,7 +21,7 @@ from src.database.base import Base
 
 @make_columns(Resume)
 class ResumeItemTable(Base):
-    __tablename__ = 'resume'
+    __tablename__ = 'resume_item'
 
     id: Mapped[int] = mapped_column(primary_key=True)  # PK
 

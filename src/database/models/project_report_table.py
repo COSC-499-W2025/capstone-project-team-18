@@ -66,10 +66,3 @@ class ProjectReportTable(Base):
         back_populates="project_reports",
         cascade="save-update, merge"
     )
-
-    # One-to-many with ResumeItem table
-    file_reports: Mapped[List["ResumeItemTable"]] = relationship(
-        back_populates="project_report",
-        # see https://docs.sqlalchemy.org/en/20/orm/cascades.html#cascades
-        cascade="all, delete-orphan",
-    )
