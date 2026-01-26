@@ -5,6 +5,13 @@ UserStatCollection) and dynamically create columns in their
 respective tables as a result.
 '''
 
+from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
+from src.core.resume.resume import Resume
+from src.core.statistic import (
+    FileStatCollection,
+    ProjectStatCollection,
+    UserStatCollection
+)
 from datetime import date
 import typing as t
 from enum import Enum
@@ -12,14 +19,9 @@ from enum import Enum
 from sqlalchemy import Integer, Boolean, Float, String, Date
 from sqlalchemy.orm import mapped_column
 
+from src.infrastructure.log.logging import get_logger
+logger = get_logger(__name__)
 
-from src.core.statistic import (
-    FileStatCollection,
-    ProjectStatCollection,
-    UserStatCollection
-)
-from src.core.resume.resume import Resume
-from src.database.utils.column_statistic_serializer import ColumnStatisticSerializer
 
 # [type[src.core.statistic.FileStatCollection], type[src.core.statistic.ProjectStatCollection], type[src.core.statistic.UserStatCollection]]
 CollectionType = t.Union[
@@ -75,10 +77,12 @@ def make_columns(collection: CollectionType):
 
     def decorator(cls):
         if issubclass(collection, Enum):
+            logger.info(f'COLUMNS FOR TABLE: {collection}')
             for member in collection:
                 template = member.value  # StatisticTemplate
                 col_name = template.name.lower()  # e.g., "LINES_IN_FILE" -> "lines_in_file"
                 col_type = _sqlalchemy_type_for(template.expected_type)
+                logger.info(f'Column Name: {col_name}, Type: {col_type}')
                 setattr(cls, col_name, mapped_column(col_type))
         else:
             for attr_name in dir(collection):

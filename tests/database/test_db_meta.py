@@ -7,10 +7,9 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 
-from src.database.models import (
-    FileReportTable,
-    ProjectReportTable,
-)
+from src.database.models import (FileReportTable, ProjectReportTable)
+
+from src.core.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
 
 
 def test_tables_exist(temp_db):
@@ -48,6 +47,54 @@ def test_file_to_project_relationship(temp_db):
         # child rows should reference parent PK via FK
         for fr in project.file_reports:
             assert fr.project_id == project.id
+
+
+def test_exists_file_report_stat_cols(temp_db):
+    """
+    Test that all of the statistics defined in
+    file_stat_collection.py are present as columns
+    in the database
+    """
+    file_report_table = FileReportTable.__table__
+
+    for stat in FileStatCollection:
+        stat_col_name = stat.value.name.lower()
+
+        assert stat_col_name in file_report_table.c, (
+            f"Missing column '{stat_col_name}' in FileReport table."
+        )
+
+
+def test_exists_project_report_stat_cols(temp_db):
+    """
+    Test that all of the statistics defined in
+    project_stat_collection.py are present as columns
+    in the database
+    """
+    project_report_table = ProjectReportTable.__table__
+
+    for stat in ProjectStatCollection:
+        stat_col_name = stat.value.name.lower()
+
+        assert stat_col_name in project_report_table.c, (
+            f"Missing column '{stat_col_name}' in ProjectReport table."
+        )
+
+
+def test_exists_user_report_stat_cols(temp_db):
+    """
+    Test that all of the statistics defined in
+    project_stat_collection.py are present as columns
+    in the database
+    """
+    user_report_table = ProjectReportTable.__table__
+
+    for stat in UserStatCollection:
+        stat_col_name = stat.value.name.lower()
+
+        assert stat_col_name in user_report_table.c, (
+            f"Missing column '{stat_col_name}' in UserReport table."
+        )
 
 
 """
