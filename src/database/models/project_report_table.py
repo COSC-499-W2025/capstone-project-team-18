@@ -38,10 +38,17 @@ class ProjectReportTable(Base):
     project_path = mapped_column(String)
     thumbnail = mapped_column(String)  # path to local copy
 
+    # One-to-many with FileReport table
     file_reports: Mapped[List["FileReportTable"]] = relationship(
         back_populates="project_report",
         # see https://docs.sqlalchemy.org/en/20/orm/cascades.html#cascades
         cascade="all, delete-orphan",
+    )
+
+    # One-to-many with ResumeItem table
+    resume_items: Mapped[List["ResumeItemTable"]] = relationship(
+        back_populates="project_report",
+        cascade="all, delete-orphan"
     )
 
     # Many-to-many with UserReport via association table
@@ -58,4 +65,11 @@ class ProjectReportTable(Base):
         secondary=resume_proj_assoc_table,
         back_populates="project_reports",
         cascade="save-update, merge"
+    )
+
+    # One-to-many with ResumeItem table
+    file_reports: Mapped[List["ResumeItemTable"]] = relationship(
+        back_populates="project_report",
+        # see https://docs.sqlalchemy.org/en/20/orm/cascades.html#cascades
+        cascade="all, delete-orphan",
     )
