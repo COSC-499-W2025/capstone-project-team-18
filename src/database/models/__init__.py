@@ -15,6 +15,7 @@ from .user_report_table import UserReportTable
 from .proj_user_assoc_table import proj_user_assoc_table
 from .resume_table import Resume
 from .resume_item_table import ResumeItemTable
+from .portfolio_table import PortfolioTable
 
 __all__ = [
     "FileReportTable",
@@ -23,4 +24,5 @@ __all__ = [
     "proj_user_assoc_table",
     "Resume",
     "ResumeItemTable",
+    "PortfolioTable",
 ]

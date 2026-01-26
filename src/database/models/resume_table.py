@@ -1,18 +1,9 @@
 '''
-The user_report table will store generated user reports, which are made using
-one or more project reports. It has a bi-directional many-to-many relationship with the
-`project_report` table. We use `proj_user_assoc` to store FK references to both the `user_report`
-table *and* the `project_report` table to track which project reports are used to make which user
-reports.
-
 The resume table will store the formatted text versions of project reports, so that when the user
 modifies a resume, we have a way to keep that edit persistent. It has a bi-directional many-to-many
 relationship with the `project_report` table. We use the `resume_proj_assoc` table to store FK
 references to both the `resume` table *and* the `project_report` table to track which project
 reports are used in which resumes.
-
-Key Columns:
-- `id`: The table's PK
 '''
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 

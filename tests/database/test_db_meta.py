@@ -15,7 +15,7 @@ def test_tables_exist(temp_db):
     '''verify that all tables are present in the DB'''
     inspector = inspect(temp_db)
     tables = set(inspector.get_table_names())
-    assert {"file_report", "proj_user_assoc", "project_report",
+    assert {"file_report", "portfolio", "proj_user_assoc", "project_report",
             "resume_item", "resume_proj_assoc", "resume", "user_report", } <= tables
     assert "invalid_table" not in tables
 

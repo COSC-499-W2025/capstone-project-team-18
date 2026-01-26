@@ -8,8 +8,10 @@ reports.
 Key Columns:
 - `id`: The table's PK
 '''
+from typing import List
+
 from sqlalchemy import Integer, String
-from sqlalchemy.orm import relationship, mapped_column
+from sqlalchemy.orm import relationship, mapped_column, Mapped
 
 from src.core.statistic import UserStatCollection
 
@@ -42,3 +44,7 @@ class UserReportTable(Base):
         back_populates="user_reports",
         cascade="save-update, merge"
     )
+
+    # 1..1 with portfolio table
+    portfolios: Mapped[List["PortfolioTable"]] = relationship(  # pyright: ignore[reportUndefinedVariable]
+        back_populates="user_report", cascade="all, delete-orphan")
