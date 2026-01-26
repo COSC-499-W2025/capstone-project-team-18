@@ -2,7 +2,7 @@
 The entry point for the ArtifactMiner program.
 """
 
-from src.infrastructure.database.utils.db_migrate import run_migrations
+from src.database.utils.db_migrate import run_migrations
 
 
 def main():
