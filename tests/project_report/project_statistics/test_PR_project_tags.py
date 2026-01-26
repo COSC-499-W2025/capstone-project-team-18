@@ -95,3 +95,46 @@ def test_single_readme_themes_fallback(monkeypatch):
 
     themes_by_doc = readme_insights.extract_readme_themes_bulk(["API API API"])
     assert themes_by_doc == [["API"]]
+
+
+def test_small_corpus_themes_fallback(monkeypatch):
+    monkeypatch.setattr(readme_insights, "_MIN_DOCS_FOR_BERTOPIC", 4)
+    monkeypatch.setattr(readme_insights, "_MIN_TOTAL_CHARS_FOR_BERTOPIC", 1000)
+    monkeypatch.setattr(
+        readme_insights,
+        "_extract_themes_small_corpus",
+        lambda texts, max_themes=5: [["ClusterTheme"] for _ in texts],
+    )
+
+    themes_by_doc = readme_insights.extract_readme_themes_bulk(
+        ["Short README", "Another short README"], max_themes=5
+    )
+    assert themes_by_doc == [["ClusterTheme"], ["ClusterTheme"]]
+
+
+def test_bertopic_failure_falls_back(monkeypatch):
+    class _FakeTopicModel:
+        def fit_transform(self, _texts):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(readme_insights, "_MIN_DOCS_FOR_BERTOPIC", 1)
+    monkeypatch.setattr(readme_insights, "_MIN_TOTAL_CHARS_FOR_BERTOPIC", 1)
+    monkeypatch.setattr(readme_insights, "_get_topic_model",
+                        lambda: _FakeTopicModel())
+    monkeypatch.setattr(
+        readme_insights,
+        "_extract_themes_small_corpus",
+        lambda texts, max_themes=5: [["FallbackTheme"] for _ in texts],
+    )
+
+    themes_by_doc = readme_insights.extract_readme_themes_bulk(
+        ["README one", "README two"], max_themes=5
+    )
+    assert themes_by_doc == [["FallbackTheme"], ["FallbackTheme"]]
+
+
+def test_theme_url_noise_filtered():
+    cleaned = readme_insights._clean_theme_terms(
+        ["https", "github", "api", "http://example.com", "data", "www.site.com"]
+    )
+    assert cleaned == ["api", "data"]

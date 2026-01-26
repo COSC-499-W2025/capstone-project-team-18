@@ -63,9 +63,9 @@ def extract_file_reports(
 
         try:
             reports.append(analyzer.analyze())
-        except Exception as e:
-            logger.error(
-                f"Error analyzing file {file} in {project_file.name}: {e}")
+        except Exception:
+            logger.exception(
+                "Error analyzing file %s in %s", file, project_file.name)
 
     return reports
 
