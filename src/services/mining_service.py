@@ -195,6 +195,14 @@ def start_miner_service(
         try:
             report = _analyze_project_files(layout, user_config)
             project_reports.append(report)
+        # we want to add a project error if no files are contributed to
+            if report.contributed_to is False:
+                logger.error(f"No user contribution in {layout.name}")
+                project_errors.append(ProjectError(
+                    project_name=layout.name,
+                    error_code=ErrorCode.NO_RELEVANT_FILES.value,
+                    error_message=f"No user contribution in {layout.name}"
+                ))
         except ArtifactMinerException as e:
             logger.error(f"Error analyzing project {layout.name}: {e}")
             project_errors.append(ProjectError(
