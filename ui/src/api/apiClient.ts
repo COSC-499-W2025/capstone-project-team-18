@@ -1,9 +1,5 @@
 const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
 
-/**
- * Normalize base URL so there are no double slashes
- */
-
 function normalizeBaseUrl(baseUrl: string): string {
   const trimmed = baseUrl.trim();
   return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
@@ -17,13 +13,16 @@ function normalizeBaseUrl(baseUrl: string): string {
  */
 
 export function getApiBaseUrl(): string {
-  const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  return normalizeBaseUrl(envBase ?? DEFAULT_BASE_URL);
-}
+  // Vitest/Node-friendly override
+  const nodeEnvBase = typeof process !== "undefined" ? process.env.VITE_API_BASE_URL : undefined;
 
-/**
- * Generic GET helper
- */
+  const viteEnvBase =
+    typeof import.meta !== "undefined"
+      ? ((import.meta as any).env?.VITE_API_BASE_URL as string | undefined)
+      : undefined;
+
+  return normalizeBaseUrl(nodeEnvBase ?? viteEnvBase ?? DEFAULT_BASE_URL);
+}
 
 async function getJson<T>(path: string): Promise<T> {
   const base = getApiBaseUrl();
