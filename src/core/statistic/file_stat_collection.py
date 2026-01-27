@@ -6,7 +6,6 @@ from enum import Enum
 from datetime import date
 from .base_classes import StatisticTemplate
 from .statistic_models import FileDomain, CodingLanguage
-from sqlalchemy import LargeBinary
 
 
 class FileStatisticTemplate(StatisticTemplate):
@@ -132,5 +131,5 @@ class FileStatCollection(Enum):
     FILE_HASH = FileStatisticTemplate(
         name="FILE_HASH",
         description="a hash value of file contents",
-        expected_type=LargeBinary
+        expected_type=str
     )

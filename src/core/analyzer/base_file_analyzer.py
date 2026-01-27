@@ -101,8 +101,9 @@ class BaseFileAnalyzer:
             bool: True if the file should be included, False otherwise.
         """
 
-        # CIf duplicate file exists with matching hash , do not include in analysis
+        # If duplicate file exists with matching hash do not include in analysis
         if self.compare_hashes():
+            print("hash was checked")
             return False
 
        # Check language filter
