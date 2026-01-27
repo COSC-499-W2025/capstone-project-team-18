@@ -3,7 +3,13 @@ from pathlib import Path
 from typing import Optional
 from git import GitCommandError, Repo
 import hashlib
-from sqlalchemy import LargeBinary
+
+# database imports are needed for duplicate files checks
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
+from sqlalchemy import select, inspect
+from src.database.base import get_engine
+from src.database.models import FileReportTable
 
 
 from src.core.report.file_report import FileReport
@@ -59,6 +65,8 @@ class BaseFileAnalyzer:
         self.stats = StatisticIndex()
         self.blame_info = None
         self.is_git_tracked = self.file_in_git_repo()
+        # will either be used as a check or added to fileReport
+        self.hashed_content = self.create_hash()
 
     def file_in_git_repo(self) -> bool:
         """
@@ -93,6 +101,10 @@ class BaseFileAnalyzer:
             bool: True if the file should be included, False otherwise.
         """
 
+        # CIf duplicate file exists with matching hash , do not include in analysis
+        if self.compare_hashes():
+            return False
+
        # Check language filter
         if self.language_filter:
             if not self._matches_language_filter():
@@ -114,13 +126,13 @@ class BaseFileAnalyzer:
 
         return False
 
-    def create_hash(self) -> LargeBinary:
+    def create_hash(self) -> bytes:
         """
         Create a hash of the file's content. Should only occur in the case of a new file, or
         in the case of a matching existing path in order to check against hash value
 
         Returns:
-            str: A byte representation of the resulting MD5 hash (for efficient comparison)
+            bytes: A byte representation of the resulting MD5 hash (for efficient comparison)
         """
         try:
             with open(self.filepath, "rb") as f:
@@ -132,6 +144,44 @@ class BaseFileAnalyzer:
         except BlockingIOError as e:
             logger.exception(f"Error: {e}")
             return b'\0'
+
+    def compare_hashes(self) -> bool:
+        """
+        Checks against the database to see if any filepaths are matching,
+        upon any matches checks against the hash value to see
+        if the content has changed (more accurate than modified date)
+
+        :param self: file analyzer object
+        :return: T/F value representing presence of duplicate file
+        :rtype: bool
+        """
+
+        # for testing purposes, we need to be able to pass the engine for
+        # the temporary database to the function when we call it.
+        if engine is None:
+            engine = get_engine()
+        with Session(engine) as session:
+            inspector = inspect(engine)
+            if inspector.has_table('file_report'):
+                try:
+                    # check if both filepath and hash exist
+                    _ = session.execute(
+                        select(FileReportTable)
+                        .where(FileReportTable.filepath == self.filepath, FileReportTable.file_hash == self.hashed_content)
+                        # should result in the only existing column
+                    ).scalars().one()
+                    logger.exception(
+                        f"{self.filepath} already exists and hasn't changes since last analysis")
+                    return True  # true if no exception thrown
+
+                # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
+                except MultipleResultsFound:
+                    logger.error(
+                        f'Error: Multiple filepaths found with name "{self.filepath}. Should not be possible under current updates"')
+                    return True
+                except NoResultFound:
+                    return False
+            return False  # false if database hasn't been created yet
 
     def _matches_language_filter(self) -> bool:
         """
@@ -165,6 +215,7 @@ class BaseFileAnalyzer:
         - Creation date
         - Last modified date
         - Size (in bytes)
+        - hash (type: bytes)
 
         If the file is part of a Git repository, we get the creation
         and last modified dates from the Git commit history. If not,
@@ -182,6 +233,7 @@ class BaseFileAnalyzer:
         stats = [
             Statistic(FileStatCollection.FILE_SIZE_BYTES.value,
                       metadata.st_size),
+            Statistic(FileStatCollection.FILE_HASH.value, self.hashed_content),
         ]
 
         if self.is_git_tracked:
