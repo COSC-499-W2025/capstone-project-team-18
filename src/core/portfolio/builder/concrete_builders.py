@@ -343,3 +343,90 @@ class ProjectTonesSectionBuilder(PortfolioSectionBuilder):
             lines.append(f"{pr.project_name}: {tone}")
 
         return lines
+
+
+class ProjectActivityMetricsSectionBuilder(PortfolioSectionBuilder):
+    """Builds a section with per-project activity metrics."""
+
+    section_id = "project_activity_metrics"
+    section_title = "Activity Metrics"
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        activity_lines = self.get_project_activity_metrics(report)
+
+        if activity_lines:
+            block = Block("activity_metrics",
+                          TextListBlock(items=activity_lines))
+            return [block]
+
+        return []
+
+    def get_project_activity_metrics(self, user_report: UserReport) -> list[str]:
+        """
+        Return a list of per-project activity metrics:
+            "Project Name: 5.2 commits/week, consistency 0.85"
+        """
+        if not getattr(user_report, "project_reports", None):
+            return []
+
+        lines = []
+        for pr in user_report.project_reports:
+            activity = pr.get_value(
+                ProjectStatCollection.ACTIVITY_METRICS.value)
+            if not activity:
+                continue
+
+            cpw = activity.get("avg_commits_per_week")
+            cons = activity.get("consistency_score")
+            parts = []
+            if cpw is not None:
+                parts.append(f"{cpw:.1f} commits/week")
+            if cons is not None:
+                parts.append(f"consistency {cons:.2f}")
+
+            activity_str = ", ".join(
+                parts) if parts else "activity data unavailable"
+            lines.append(f"{pr.project_name}: {activity_str}")
+
+        return lines
+
+
+class ProjectCommitFocusSectionBuilder(PortfolioSectionBuilder):
+    """Builds a section with per-project commit type distributions."""
+
+    section_id = "project_commit_focus"
+    section_title = "Commit Focus"
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        commit_lines = self.get_project_commit_focus(report)
+
+        if commit_lines:
+            block = Block("commit_focus", TextListBlock(items=commit_lines))
+            return [block]
+
+        return []
+
+    def get_project_commit_focus(self, user_report: UserReport) -> list[str]:
+        """
+        Return a list of per-project commit type distributions:
+            "Project Name: Feature 45%, Bugfix 30%, Documentation 25%"
+        """
+        if not getattr(user_report, "project_reports", None):
+            return []
+
+        lines = []
+        for pr in user_report.project_reports:
+            commit_dist = pr.get_value(
+                ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
+            if not commit_dist:
+                continue
+
+            top = sorted(commit_dist.items(),
+                         key=lambda kv: kv[1], reverse=True)
+            commit_str = ", ".join(
+                f"{k.title()} {v:.0f}%" for k, v in top if v > 0)
+            if not commit_str:
+                commit_str = "no commit data"
+            lines.append(f"{pr.project_name}: {commit_str}")
+
+        return lines
