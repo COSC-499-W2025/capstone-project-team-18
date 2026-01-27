@@ -2,6 +2,9 @@ import datetime
 from pathlib import Path
 from typing import Optional
 from git import GitCommandError, Repo
+import hashlib
+from sqlalchemy import LargeBinary
+
 
 from src.core.report.file_report import FileReport
 from src.core.statistic import Statistic, StatisticIndex, FileStatCollection, LANGUAGE_EXTENSIONS
@@ -110,6 +113,25 @@ class BaseFileAnalyzer:
             return True
 
         return False
+
+    def create_hash(self) -> LargeBinary:
+        """
+        Create a hash of the file's content. Should only occur in the case of a new file, or
+        in the case of a matching existing path in order to check against hash value
+
+        Returns:
+            str: A byte representation of the resulting MD5 hash (for efficient comparison)
+        """
+        try:
+            with open(self.filepath, "rb") as f:
+                hash = hashlib.file_digest(f, "md5")
+            return hash.digest()
+        except FileNotFoundError:
+            logger.exception(f"File not found for {self.filepath}")
+            return b'\0'
+        except BlockingIOError as e:
+            logger.exception(f"Error: {e}")
+            return b'\0'
 
     def _matches_language_filter(self) -> bool:
         """

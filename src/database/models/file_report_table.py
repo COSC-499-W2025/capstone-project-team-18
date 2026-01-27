@@ -21,13 +21,13 @@ from src.database.base import Base
 class FileReportTable(Base):
     '''
     Example rows:
-    | id  | project_id | filepath                                          | lines_in_code | date_created               | date_modified              | other columns...   |
-    | --- | ---------- | ------------------------------------------------- | ------------- | -------------------------- | -------------------------- | ------------------ |
-    | 1   | 1          | /tmp/proj_one/app.py                              | 265           | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
-    | 2   | 2          | /tmp/proj_two/src/app/page.tsx                    | 189           | 2024-10-28 10:03:59.187515 | 2024-12-14 15:35:54.564158 | other statistics...|
-    | 3   | 2          | /tmp/proj_two/src/apps/components/navbar/page.tsx | 122           | 2025-03-26 15:13:29.549154 | 2025-07-12 19:43:22.186141 | other statistics...|
-    | 4   | 3          | /tmp/proj_three/clock.py                          | 241           | 2025-01-05 04:48:26.875495 | 2025-10-21 13:51:15.185489 | other statistics...|
-    | ... | ...        | ...                                               | ...           | ...                        | ...                        | ...                |
+    | id  | project_id | filepath                                     | lines_in_code | date_created               | date_modified              | other columns...   |
+    | --- | ---------- | -------------------------------------------- | ------------- | -------------------------- | -------------------------- | ------------------ |
+    | 1   | 1          | proj_one/app.py                              | 265           | 2024-11-15 09:45:15.218714 | 2025-03-25 11:53:12.237414 | other statistics...|
+    | 2   | 2          | proj_two/src/app/page.tsx                    | 189           | 2024-10-28 10:03:59.187515 | 2024-12-14 15:35:54.564158 | other statistics...|
+    | 3   | 2          | proj_two/src/apps/components/navbar/page.tsx | 122           | 2025-03-26 15:13:29.549154 | 2025-07-12 19:43:22.186141 | other statistics...|
+    | 4   | 3          | proj_three/clock.py                          | 241           | 2025-01-05 04:48:26.875495 | 2025-10-21 13:51:15.185489 | other statistics...|
+    | ... | ...        | ...                                          | ...           | ...                        | ...                        | ...                |
     '''
     __tablename__ = 'file_report'
 
@@ -40,5 +40,5 @@ class FileReportTable(Base):
     project_report: Mapped["ProjectReportTable"] = relationship(
         back_populates="file_reports")
 
-    # path to the file when we unzip to the temp dir
+    # absolute path to the file relative to the project
     filepath = mapped_column(String)

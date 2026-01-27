@@ -110,6 +110,7 @@ def start_miner_service(
             # create the rows for the file reports FOR THIS PROJECT ONLY
             file_report_rows = []  # Reset for each project
             for fr in file_reports:
+                fr.filepath = f"{project.name}/{fr.filepath}"
                 file_report = create_row(fr)
                 file_report_rows.append(file_report)
 
