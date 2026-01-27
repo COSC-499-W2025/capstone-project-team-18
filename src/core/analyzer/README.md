@@ -36,6 +36,7 @@ classDiagram
         +DATE_CREATED
         +DATE_MODIFIED
         +FILE_SIZE_BYTES
+        +FILE_HASH
     }
 
     class TextFileAnalyzer {
