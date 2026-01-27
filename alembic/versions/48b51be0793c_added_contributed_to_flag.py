@@ -4,7 +4,7 @@ Revision ID: 48b51be0793c
 Revises: 3275deff618c
 Create Date: 2026-01-27 19:57:52.444530
 Related Issue: https://github.com/COSC-499-W2025/capstone-project-team-18/issues/375
-Description: This revision
+Description: This revision adds the contributed_to flag as a new statistic as part of the file_report table
 
 """
 from typing import Sequence, Union
