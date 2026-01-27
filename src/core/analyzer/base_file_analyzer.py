@@ -126,24 +126,24 @@ class BaseFileAnalyzer:
 
         return False
 
-    def create_hash(self) -> bytes:
+    def create_hash(self) -> str:
         """
         Create a hash of the file's content. Should only occur in the case of a new file, or
         in the case of a matching existing path in order to check against hash value
 
         Returns:
-            bytes: A byte representation of the resulting MD5 hash (for efficient comparison)
+            str: A hex representation of the resulting MD5 hash
         """
         try:
             with open(self.filepath, "rb") as f:
                 hash = hashlib.file_digest(f, "md5")
-            return hash.digest()
+            return hash.hexdigest()
         except FileNotFoundError:
             logger.exception(f"File not found for {self.filepath}")
-            return b'\0'
+            return '0x00'
         except BlockingIOError as e:
             logger.exception(f"Error: {e}")
-            return b'\0'
+            return '0x00'
 
     def compare_hashes(self) -> bool:
         """
@@ -156,10 +156,7 @@ class BaseFileAnalyzer:
         :rtype: bool
         """
 
-        # for testing purposes, we need to be able to pass the engine for
-        # the temporary database to the function when we call it.
-        if engine is None:
-            engine = get_engine()
+        engine = get_engine()
         with Session(engine) as session:
             inspector = inspect(engine)
             if inspector.has_table('file_report'):
@@ -215,7 +212,6 @@ class BaseFileAnalyzer:
         - Creation date
         - Last modified date
         - Size (in bytes)
-        - hash (type: bytes)
 
         If the file is part of a Git repository, we get the creation
         and last modified dates from the Git commit history. If not,
