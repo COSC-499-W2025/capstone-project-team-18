@@ -4,7 +4,7 @@ it utilizes the StatisticBuilder and StatisticCalculation classes
 to create and compute various statistics related to projects.
 """
 
-from typing import List
+from typing import Iterable, List, Type
 import os
 from pathlib import Path
 from src.core.statistic import Statistic, FileStatCollection, ProjectStatCollection, WeightedSkills
@@ -18,9 +18,7 @@ from src.core.ML.models.readme_analysis import readme_insights
 from src.core.ML.models.contribution_analysis import (
     CommitClassifier,
     PatternDetector,
-    WorkPattern,
-    RoleAnalyzer,
-    CollaborationRole
+    RoleAnalyzer
 )
 from src.core.project_discovery.ignore_constants import *
 from typing import Optional
@@ -445,7 +443,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
         )
 
         user_commits = [value for key, value in commit_count_by_author.items()
-                       if key == report.email]
+                        if key == report.email]
 
         total_commits = sum(commit_count_by_author.values())
 
@@ -454,7 +452,8 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
 
         # Calculate user's commit percentage
         user_commit_count = sum(user_commits) if user_commits else 0
-        user_commit_percentage = round((user_commit_count / total_commits) * 100, 2)
+        user_commit_percentage = round(
+            (user_commit_count / total_commits) * 100, 2)
 
         # Determine if it's a group project
         num_authors = len(commit_count_by_author)
@@ -531,6 +530,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
         # Convert sets to counts
         return {path: len(authors) for path, authors in authors_per_file.items()}
 
+
 class ProjectContributionPatterns(ProjectStatisticCalculation):
     """
     Analyze commit patterns (types, work cadence, collaboration role) for the user.
@@ -543,10 +543,12 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
     """
 
     def calculate(self, report: ProjectReport) -> list[Statistic]:
-        logger.info(f"ProjectContributionPatterns.calculate called for {report.project_name}")
+        logger.info(
+            f"ProjectContributionPatterns.calculate called for {report.project_name}")
 
         if not report.project_repo or not report.email:
-            logger.info("Skipping contribution pattern analysis: no repo or email")
+            logger.info(
+                "Skipping contribution pattern analysis: no repo or email")
             return []
 
         try:
@@ -556,11 +558,13 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
             ]
 
             if not user_commits:
-                logger.info(f"No commits found for {report.email} in {report.project_name}")
+                logger.info(
+                    f"No commits found for {report.email} in {report.project_name}")
                 return []
 
             commit_messages = [c.message for c in user_commits]
-            commit_dates = [datetime.fromtimestamp(c.authored_date) for c in user_commits]
+            commit_dates = [datetime.fromtimestamp(
+                c.authored_date) for c in user_commits]
 
             # ML-based commit classification using zero-shot learning
             classifier = CommitClassifier()
@@ -570,13 +574,17 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
             # ML-based pattern detection using DBSCAN clustering
             pattern_detector = PatternDetector()
             work_pattern = pattern_detector.detect_pattern(commit_dates)
-            activity_metrics = pattern_detector.get_activity_metrics(commit_dates)
+            activity_metrics = pattern_detector.get_activity_metrics(
+                commit_dates)
 
             # ML-based role inference using zero-shot classification
             role_analyzer = RoleAnalyzer()
-            user_commit_pct = report.get_value(ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
-            total_authors = report.get_value(ProjectStatCollection.TOTAL_AUTHORS.value) or 1
-            is_group = report.get_value(ProjectStatCollection.IS_GROUP_PROJECT.value) or False
+            user_commit_pct = report.get_value(
+                ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
+            total_authors = report.get_value(
+                ProjectStatCollection.TOTAL_AUTHORS.value) or 1
+            is_group = report.get_value(
+                ProjectStatCollection.IS_GROUP_PROJECT.value) or False
 
             role = role_analyzer.infer_role(
                 user_commit_pct,
@@ -591,18 +599,24 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
             )
 
             logger.info(f"ML contribution pattern analysis completed for {report.project_name}: "
-                       f"role={role.value}, pattern={work_pattern.value}")
+                        f"role={role.value}, pattern={work_pattern.value}")
 
             stats = [
-                Statistic(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value, commit_pct),
-                Statistic(ProjectStatCollection.WORK_PATTERN.value, work_pattern.value),
-                Statistic(ProjectStatCollection.COLLABORATION_ROLE.value, role.value),
-                Statistic(ProjectStatCollection.ACTIVITY_METRICS.value, activity_metrics),
-                Statistic(ProjectStatCollection.ROLE_DESCRIPTION.value, role_description),
+                Statistic(
+                    ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value, commit_pct),
+                Statistic(ProjectStatCollection.WORK_PATTERN.value,
+                          work_pattern.value),
+                Statistic(
+                    ProjectStatCollection.COLLABORATION_ROLE.value, role.value),
+                Statistic(ProjectStatCollection.ACTIVITY_METRICS.value,
+                          activity_metrics),
+                Statistic(ProjectStatCollection.ROLE_DESCRIPTION.value,
+                          role_description),
             ]
             return stats
         except Exception as e:
-            logger.error(f"ML contribution pattern analysis failed for {report.project_name}: {e}", exc_info=True)
+            logger.error(
+                f"ML contribution pattern analysis failed for {report.project_name}: {e}", exc_info=True)
             return []
 
 
@@ -689,19 +703,31 @@ class ProjectTotalContributionPercentage(ProjectStatisticCalculation):
 class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
     """Base builder for project reports."""
 
-    def __init__(self) -> None:
-        self.calculators = [
-            ProjectDates(),
-            CodingLanguageRatio(),
-            ProjectWeightedSkills(),
-            ProjectReadmeInsights(),
-            ProjectActivityTypeContributions(),
-            ProjectAnalyzeGitAuthorship(),
-            ProjectTotalContributionPercentage(),
-            ProjectContributionPatterns(),
+    def __init__(self, calculator_classes: Optional[Iterable[Type]] = None) -> None:
+        all_calculator_classes = [
+            ProjectDates,
+            CodingLanguageRatio,
+            ProjectWeightedSkills,
+            ProjectReadmeInsights,
+            ProjectActivityTypeContributions,
+            ProjectAnalyzeGitAuthorship,
+            ProjectTotalContributionPercentage,
+            ProjectContributionPatterns,
         ]
-        logger.info(f"ProjectStatisticReportBuilder initialized with {len(self.calculators)} calculators")
-        logger.info(f"Calculators: {[type(c).__name__ for c in self.calculators]}")
+
+        # If specific calculator classes are requested, filter to only those
+        if calculator_classes:
+            self.calculators = [
+                cls() for cls in all_calculator_classes
+                if cls in calculator_classes
+            ]
+        else:
+            self.calculators = [cls() for cls in all_calculator_classes]
+
+        logger.info(
+            f"ProjectStatisticReportBuilder initialized with {len(self.calculators)} calculators")
+        logger.info(
+            f"Calculators: {[type(c).__name__ for c in self.calculators]}")
 
     def build(self, report: ProjectReport) -> List[Statistic]:
         """

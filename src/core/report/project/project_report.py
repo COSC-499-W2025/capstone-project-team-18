@@ -6,6 +6,7 @@ from typing import Optional
 from pathlib import Path
 from git import Repo
 from datetime import datetime, date
+from typing import Iterable, Type
 
 from src.core.report.base_report import BaseReport
 from src.core.report.file_report import FileReport
@@ -33,7 +34,8 @@ class ProjectReport(BaseReport):
                  user_email: Optional[str] = None,
                  user_github: Optional[str] = None,
                  statistics: Optional[StatisticIndex] = None,
-                 project_repo: Optional[Repo] = None
+                 project_repo: Optional[Repo] = None,
+                 calculator_classes: Optional[Iterable[Type]] = None
                  ):
         """
         Initialize `ProjectReport` with file reports and optional Git analysis from zip file.
@@ -46,6 +48,8 @@ class ProjectReport(BaseReport):
             project_repo: Optional Repo object for Git analysis
             user_email: Optional user email for Git authourship analysis
             user_github: Optional username for additonal Git authourship analysis
+            calculator_classes: Optional list of ProjectStatisticCalculation classes to process.
+                              If None, all calculators will be used. Example: [ProjectDates, CodingLanguageRatio]
 
         NOTE: `statistics` should only be included when the `get_project_from_project_name()`
         function is creating a `ProjectReport` object from an existing row in
@@ -76,10 +80,9 @@ class ProjectReport(BaseReport):
         # Use a local import to avoid potential circular imports at module load time
         from src.core.report.project.project_statistics import ProjectStatisticReportBuilder
 
-        builder = ProjectStatisticReportBuilder()
+        builder = ProjectStatisticReportBuilder(
+            calculator_classes=calculator_classes)
         builder.build(self)
-
-
 
     def get_project_weight(self) -> float:
         """
