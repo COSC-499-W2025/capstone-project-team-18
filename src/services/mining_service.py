@@ -2,67 +2,55 @@
 This file holds the main service, the miner.
 """
 
-from typing import Optional, Callable
-from dataclasses import dataclass
 import tempfile
-import time
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from src.utils.pathing_utils import unzip_file_bytes
-from src.core.project_discovery.project_discovery import discover_projects
+from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
 from src.core.analyzer import extract_file_reports
-from src.core.report import ProjectReport, UserReport
+from src.core.report import ProjectReport
 from src.database.base import get_engine, Base
 from src.database.utils.database_modify import create_row
 from src.infrastructure.log.logging import get_logger
-from src.utils.errors import NoDiscoveredProjects
+from src.services.preferences.preference_service import UserConfig
+from src.utils.errors import (
+    NoDiscoveredProjects,
+    MissingStartMinerConsent,
+    NoRevelantFiles,
+    ErrorCode,
+    ArtifactMinerException
+)
 
 logger = get_logger(__name__)
 
 
-@dataclass
-class MinerResults():
-    user_report: UserReport
+class ProjectError(BaseModel):
+    """Represents a single project-level error"""
+    project_name: str
+    error_code: str
+    error_message: str
+
+
+class MinerResults(BaseModel):
+    """Results from the mining operation"""
+    project_errors: list[ProjectError]
     success: bool
 
 
-def start_miner_service(
+def _discover_projects_from_file(
     zipped_bytes: bytes,
-    zipped_format: str,
-    user_report_title: str = f"UserReport{str(int(time.time()))}",
-
-    github: Optional[str] = None,
-    email: Optional[str] = None,
-    language_filter: Optional[list[str]] = None,
-    progress_callback: Optional[Callable[[str, int, int, str], None]] = None,
-
-) -> MinerResults:
+    zipped_format: str
+) -> list[ProjectLayout]:
     """
-    This is the defacto function to start the minering function
-    for the Artifact Miner. This function receives the bytes and file
-    format of the zipped file (.zip, .7z, etc). There is no output of this
-    function, but rather the miner results are written to the database for
-    later retrieval.
+    Unzips the files form a user uploaded zip
+    into a temporary a directory, and discover projects.
 
-    :param zipped_bytes: The bytes of a zipped file.
-    :type zipped_bytes: bytes
+    :param zipped_bytes: The bytes of the zipped file
     :param zipped_format: The file format of the file (".7z", ".zip", etc)
-    :type zipped_format: str
-    :param user_report_title: The user report name you would like to save in the database
-    :type user_report_title: str
-    :param email: The git email of the user
-    :type email: Optional[str]
-    :param language_filter: A list of strings of what file formats to ignore
-    :type language_filter: Optional[list[str]]
-    :param progress_callback: Used by the CLI to make a visual progress bar.
-    :type progress_callback: Optional[Callable[[str, int, int, str], None]]
-    :return: Returns a MinerResults object
-    :rtype: MinerResults
+    :return: List of projects described in the zipped file.
+    :rtype: ProjectLayout
     """
-
-    logger.info("Starting analysis for the zipped file")
-
-    # TODO: Retrieve preferences from the database and validate parameters (like consent)
 
     # Unzip the file into temp directory
     unzipped_dir = tempfile.mkdtemp(prefix="artifact_miner_")
@@ -71,13 +59,62 @@ def start_miner_service(
     # Project Discovery
     project_list = discover_projects(unzipped_dir)
 
-    logger.debug(project_list)
+    logger.debug(f"Project Discovery: {project_list}")
 
-    # Initialize progress bar with total project count
-    if progress_callback:
-        progress_callback("start", 0, len(project_list), "")
-        progress_callback("unzip", 1, 1, "")
-        progress_callback("discovery", 1, 1, "")
+    return project_list
+
+
+def _analyze_project_files(
+    project_layout: ProjectLayout,
+    user_config: UserConfig,
+) -> ProjectReport:
+    """
+    Takes a defined ProjectLayout and returns a
+    full ProjectReport. Note, if a ProjectReport
+    has no FileReports, that PR is still returned,
+    just as an empty ProjectReport.
+
+    :param project_layout: The layout of the project to be analyzed.
+    :type project_files: ProjectLayout
+    :param user_config: The configuations of the user
+    :type user_config: UserConfig
+    :return: A ProjectReport based on the ProjectLayout
+    :rtype: Optional[ProjectReport]
+    """
+
+    file_reports = extract_file_reports(
+        project_file=project_layout,
+        email=user_config.email,
+        github=user_config.github,
+        language_filter=user_config.language_filter
+    )
+
+    logger.debug("File reports for project %s file_reports",
+                 project_layout.name)
+
+    if file_reports == []:
+        logger.warning(f"{project_layout.name} had no FileReports")
+        raise NoRevelantFiles(
+            "f{project_layout.name} had no revelent files to analyze")
+
+    return ProjectReport(
+        project_name=project_layout.name,
+        project_path=str(project_layout.root_path),
+        project_repo=project_layout.repo,
+        file_reports=file_reports,
+        user_email=user_config.email,
+        user_github=user_config.github
+    )
+
+
+def _save_project_report_to_db(project_report: list[ProjectReport]) -> None:
+    """
+    Saves many ProjectReports and their corresponding FileReports
+    to the database.
+
+    :param project_report: ProjectReport(s) to be saved
+    :type project_report: list[ProjectReport]
+    """
 
     engine = get_engine()
 
@@ -114,51 +151,88 @@ def start_miner_service(
                 file_report = create_row(fr)
                 file_report_rows.append(file_report)
 
-            # make a ProjectReport with the FileReports
-            project_report = ProjectReport(
-                project_name=project.name,
-                project_path=project.root_path,
-                project_repo=project.repo,
-                file_reports=file_reports,
-                user_email=email,
-                user_github=github
-            )
-            # store ProjectReports for UserReport
-            project_reports.append(project_report)
-            # create project_report row and configure FK relations
-            project_row = create_row(report=project_report)
-            project_row.file_reports.extend(file_report_rows)  # type: ignore
-            project_report_rows.append(project_row)
+            # Create project_report row and configure FK relations
+            project_row = create_row(pr)
+            project_row.file_reports.extend(file_report_rows)
 
-        if project_reports == []:
-            raise NoDiscoveredProjects(
-                "The analyzer found no projects to analyze. "
-                "Please check your zipped file. "
-                "If configured, check your git email."
-                "The analyzer will not analyze Git projects you have not contributed to."
-            )
+            # Insert all of the rows into the database
+            session.add_all([project_row])
+            session.commit()
 
-        # Update at END of all project analysis
-        if progress_callback:
-            progress_callback("analysis", total_projects, total_projects, "")
 
-        # =================== Saving stage ===================
-        if progress_callback:
-            progress_callback("saving", 1, 1, "")
+def start_miner_service(
+    zipped_bytes: bytes,
+    zipped_format: str,
+    user_config: UserConfig
+) -> MinerResults:
+    """
+    This is the defacto function to start the miner function
+    for the Artifact Miner. This function receives the bytes and file
+    format of the zipped file (.zip, .7z, etc). Discovered projects are
+    analyzed individually, and errors are caught per-project to allow
+    processing to continue. ProjectReports and their corrsponding FileReports
+    are written to the local database.
 
-        # make a UserReport with the ProjectReports
-        user_report = UserReport(project_reports, user_report_title)
+    Per-project errors are NOT raised but collected in MinerResults.project_errors:
+        - NO_RELEVANT_FILES: Project has no analyzable files
+        - NO_DISCOVERED_PROJECTS: No projects found in discovery (caught per-project)
+        - ANALYSIS_FAILED: Analysis operation failed
+        - UNKNOWN_ERROR: Unexpected exception during analysis
 
-        # create a user_report row and configure FK relations
-        user_row = create_row(report=user_report)
-        user_row.project_reports.extend(project_report_rows)  # type: ignore
+    :param zipped_bytes: The bytes of a zipped file.
+    :type zipped_bytes: bytes
+    :param zipped_format: The file format of the file (".7z", ".zip", etc)
+    :type zipped_format: str
+    :param user_config: The user's configuration
+    :type user_config: UserConfig
 
-        # Insert all of the rows into the database (INSIDE the session block)
-        session.add_all([user_row])  # type: ignore
-        session.commit()
+    :return: Returns a MinerResults object containing analyzed projects and per-project errors
+    :rtype: MinerResults
 
-        # =================== Analysis Complete ===================
-        if progress_callback:
-            progress_callback("complete", 1, 1, "")
+    :raises MissingStartMinerConsent: If user consent is not provided
+    :raises NoDiscoveredProjects: If no projects are found in the zipped file
 
-    return MinerResults(user_report, True)
+    """
+
+    logger.info("Starting analysis for the zipped file")
+
+    if not user_config.consent:
+        raise MissingStartMinerConsent()
+
+    projects_discovered = _discover_projects_from_file(
+        zipped_bytes, zipped_format)
+
+    if len(projects_discovered) == 0:
+        raise NoDiscoveredProjects(
+            "The analyzer found no projects to analyze.")
+
+    # For every discovered project, try to analyze the project
+    # If an error occurs, catch it for that project to be returned
+    # and move on
+    project_reports = []
+    project_errors = []
+
+    for layout in projects_discovered:
+        try:
+            report = _analyze_project_files(layout, user_config)
+            project_reports.append(report)
+        except ArtifactMinerException as e:
+            logger.error(f"Error analyzing project {layout.name}: {e}")
+            project_errors.append(ProjectError(
+                project_name=layout.name,
+                error_code=e.error_code.value,
+                error_message=str(e)
+            ))
+        except Exception as e:
+            logger.error(
+                f"Unexpected error analyzing project {layout.name}: {e}")
+            project_errors.append(ProjectError(
+                project_name=layout.name,
+                error_code=ErrorCode.UNKNOWN_ERROR.value,
+                error_message=str(e)
+            ))
+
+    _save_project_report_to_db(project_reports)
+
+    success = len(project_errors) == 0
+    return MinerResults(project_errors=project_errors, success=success)

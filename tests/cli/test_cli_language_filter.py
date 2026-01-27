@@ -1,8 +1,9 @@
 """
 Tests for language filtering functionality
 """
+from pathlib import Path
 from src.core.analyzer import get_appropriate_analyzer, extract_file_reports
-from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.project_discovery.project_discovery import ProjectLayout
 
 
 def test_language_filter_excludes_non_matching_files(tmp_path):
@@ -17,8 +18,8 @@ def test_language_filter_excludes_non_matching_files(tmp_path):
     html_file = tmp_path / "test.html"
     html_file.write_text("<html></html>")
 
-    # Create ProjectFiles with RELATIVE paths from root_path
-    project = ProjectFiles(
+    # Create ProjectLayout with RELATIVE paths from root_path
+    project = ProjectLayout(
         name="test_project",
         root_path=str(tmp_path),
         file_paths=["test.py", "test.js", "test.html"],
@@ -47,11 +48,11 @@ def test_language_filter_includes_matching_files(tmp_path):
     css_file = tmp_path / "style.css"
     css_file.write_text("body { color: red; }")
 
-    # Create ProjectFiles with RELATIVE paths
-    project = ProjectFiles(
+    # Create ProjectLayout with RELATIVE paths
+    project = ProjectLayout(
         name="test_project",
-        root_path=str(tmp_path),
-        file_paths=["script.py", "app.js", "style.css"],
+        root_path=tmp_path,
+        file_paths=[Path("script.py"), Path("app.js"), Path("style.css")],
         repo=None
     )
 
@@ -77,11 +78,11 @@ def test_language_filter_empty_allows_all(tmp_path):
     js_file = tmp_path / "test.js"
     js_file.write_text("console.log('test')")
 
-    # Create ProjectFiles with RELATIVE paths
-    project = ProjectFiles(
+    # Create ProjectLayout with RELATIVE paths
+    project = ProjectLayout(
         name="test_project",
-        root_path=str(tmp_path),
-        file_paths=["test.py", "test.js"],
+        root_path=tmp_path,
+        file_paths=[Path("test.py"), Path("test.js")],
         repo=None
     )
 
@@ -100,8 +101,8 @@ def test_language_filter_case_insensitive(tmp_path):
     py_file = tmp_path / "test.py"
     py_file.write_text("print('test')")
 
-    # Create ProjectFiles with RELATIVE path
-    project = ProjectFiles(
+    # Create ProjectLayout with RELATIVE path
+    project = ProjectLayout(
         name="test_project",
         root_path=str(tmp_path),
         file_paths=["test.py"],
@@ -153,8 +154,8 @@ def test_language_filter_with_multiple_extensions(tmp_path):
     tsx_file = tmp_path / "component.tsx"
     tsx_file.write_text("const Component = () => <div>Hello</div>;")
 
-    # Create ProjectFiles with RELATIVE paths
-    project = ProjectFiles(
+    # Create ProjectLayout with RELATIVE paths
+    project = ProjectLayout(
         name="test_project",
         root_path=str(tmp_path),
         file_paths=["app.ts", "component.tsx"],
