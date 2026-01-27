@@ -12,9 +12,9 @@ from typing import List
 from sqlalchemy import String
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from src.infrastructure.database.base import Base
-from src.infrastructure.database.utils.init_columns import make_columns
-from src.infrastructure.database.models.association_table import association_table
+from src.database.base import Base
+from src.database.utils.init_columns import make_columns
+from src.database.models.association_table import association_table
 
 from src.core.statistic import ProjectStatCollection
 

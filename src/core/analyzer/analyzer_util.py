@@ -9,7 +9,7 @@ from typing import Optional
 
 from src.core.report.file_report import FileReport
 from src.core.statistic import LANGUAGE_EXTENSIONS
-from src.core.project_discovery.project_discovery import ProjectFiles
+from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.analyzer.base_file_analyzer import BaseFileAnalyzer
 from src.core.analyzer.c_analyzer import CAnalyzer
 from src.core.analyzer.code_file_analyzer import CodeFileAnalyzer
@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 
 
 def extract_file_reports(
-    project_file: ProjectFiles,
+    project_file: ProjectLayout,
     email: Optional[str] = None,
     github: Optional[str] = None,
     language_filter: Optional[list[str]] = None
@@ -42,15 +42,15 @@ def extract_file_reports(
             "Invalid state. extract_file_reports was given a None project_file")
 
     # Given a single project for a user and the project's structure return a list with each fileReport
-    projectFiles = project_file.file_paths
+    project_files = project_file.file_paths
 
     # list of reports for each file in an individual project to be returned
     reports = []
-    for file in projectFiles:
+    for file in project_files:
 
         analyzer = get_appropriate_analyzer(
-            project_file.root_path,
-            file,
+            str(project_file.root_path),
+            str(file),
             project_file.repo,
             email,
             github,
@@ -63,9 +63,9 @@ def extract_file_reports(
 
         try:
             reports.append(analyzer.analyze())
-        except Exception as e:
-            logger.error(
-                f"Error analyzing file {file} in {project_file.name}: {e}")
+        except Exception:
+            logger.exception(
+                "Error analyzing file %s in %s", file, project_file.name)
 
     return reports
 

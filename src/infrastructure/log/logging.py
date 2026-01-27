@@ -4,10 +4,13 @@ This file handles all logic for logging
 
 import logging
 from pathlib import Path
+from datetime import datetime
 
 from logging.handlers import RotatingFileHandler
 
-LOG_FILE = Path(__file__).parent / "app.log"
+# Create a new logfile with timestamp each time the program runs
+LOG_FILE = Path(__file__).parent / \
+    f"app_{datetime.now().strftime('%m-%d_%H%M%S')}.log"
 
 
 def get_logger(name: str, level=logging.INFO):
@@ -40,3 +43,17 @@ def get_logger(name: str, level=logging.INFO):
         logger.addHandler(fh)
 
     return logger
+
+
+def clear_logs() -> None:
+    """Remove existing log files (base and rotated) to start fresh."""
+    try:
+        if LOG_FILE.exists():
+            LOG_FILE.unlink()
+        for idx in range(1, 5):
+            rotated = LOG_FILE.with_suffix(LOG_FILE.suffix + f".{idx}")
+            if rotated.exists():
+                rotated.unlink()
+    except OSError:
+        # Best-effort cleanup; logging will still work if deletion fails.
+        pass

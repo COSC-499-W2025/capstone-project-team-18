@@ -249,7 +249,7 @@ def test_do_portfolio_retrieve_uses_preferences_when_blank(cli):
         "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
     with patch('builtins.input', side_effect=['', 'n']), \
             patch('src.interface.cli.print'), \
-            patch('src.infrastructure.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
+            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
         cli.do_portfolio_retrieve("")
         mock_get.assert_called_once_with("last")
 
@@ -260,7 +260,7 @@ def test_do_portfolio_retrieve_option_two_prompts_for_name(cli):
         "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
     with patch('builtins.input', side_effect=['2', 'my-portfolio', 'n']), \
             patch('src.interface.cli.print'), \
-            patch('src.infrastructure.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
+            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
         cli.do_portfolio_retrieve("")
         mock_get.assert_called_once_with("my-portfolio")
 
@@ -273,7 +273,7 @@ def test_do_portfolio_retrieve_option_two_blank_uses_last(cli):
         "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
     with patch('builtins.input', side_effect=['2', '', 'n']), \
             patch('src.interface.cli.print'), \
-            patch('src.infrastructure.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
+            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
         cli.do_portfolio_retrieve("")
         mock_get.assert_called_once_with("last")
 

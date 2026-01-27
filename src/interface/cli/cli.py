@@ -10,8 +10,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from src.interface.cli.cli_service_handler import start_miner_cli
-from src.infrastructure.database.utils.database_modify import rename_user_report
-from src.infrastructure.database.utils.database_access import get_project_from_project_name
+from src.database.utils.database_modify import rename_user_report
+from src.database.utils.database_access import get_project_from_project_name
 from src.core.resume.bullet_point_builder import BulletPointBuilder
 from src.utils.pathing_utils import is_valid_filepath_to_zip, normalize_path
 from src.interface.cli.user_preferences import UserPreferences
@@ -451,11 +451,12 @@ class ArtifactMiner(cmd.Cmd):
             print("(1) Configure Date Range Filtering")
             print("(2) Configure Files to Ignore")
             print("(3) Configure Language Filter")
-            print("(4) Reset to Defaults")
-            print("(5) Back to Main Menu")
+            print("(4) Configure Max Project Tags")
+            print("(5) Reset to Defaults")
+            print("(6) Back to Main Menu")
 
             choice = input(
-                "\nSelect option (1-5), or 'exit'/'quit' to close app): ").strip()
+                "\nSelect option (1-6), or 'exit'/'quit' to close app): ").strip()
 
             # User enters exit/quit
             if choice.lower() in ['exit', 'quit']:
@@ -479,12 +480,14 @@ class ArtifactMiner(cmd.Cmd):
             elif choice == "3":
                 self._configure_language_filter()
             elif choice == "4":
-                self._reset_preferences()
+                self._configure_max_project_tags()
             elif choice == "5":
+                self._reset_preferences()
+            elif choice == "6":
                 print("\n" + self.options)
                 return
             else:
-                print("Invalid choice. Please select 1-4.")
+                print("Invalid choice. Please select 1-6.")
 
     def do_view(self, arg):
         '''Display current preferences and configuration'''
@@ -518,6 +521,9 @@ class ArtifactMiner(cmd.Cmd):
                 print(f"Language Filter: {', '.join(languages)}")
             else:
                 print("Language Filter: All languages")
+
+            max_project_tags = prefs.get("max_project_tags", 8)
+            print(f"Max Project Tags: {max_project_tags}")
 
             print(f"Last Updated: {prefs.get('last_updated', 'Never')}")
             print(
@@ -738,7 +744,7 @@ class ArtifactMiner(cmd.Cmd):
                     print(f"Using last analyzed portfolio: {portfolio_name}")
 
             try:
-                from src.infrastructure.database.utils.database_access import get_user_report
+                from src.database.utils.database_access import get_user_report
                 from src.interface.cli.print_resume_and_portfolio import portfolio_CLI_stringify
                 report = get_user_report(portfolio_name)
                 portfolio_CLI_stringify(report)
@@ -985,6 +991,34 @@ class ArtifactMiner(cmd.Cmd):
             print(message)
         else:
             print("✗ Failed to save language filter configuration")
+
+    def _configure_max_project_tags(self):
+        '''Configure max number of project tags to display'''
+        print("\n=== Project Tag Display Limit ===")
+        current = self.preferences.get("max_project_tags", 8)
+        print(f"Current max project tags: {current}")
+        print("Enter a positive integer (or 'back'/'cancel' to return)")
+
+        user_input = input("Max project tags to display: ").strip()
+
+        # Handle cancel/back
+        if user_input.lower() in ['cancel', 'back']:
+            if self._handle_cancel_input(user_input, "preferences"):
+                return
+
+        # Handle exit/quit
+        if user_input.lower() in ['exit', 'quit']:
+            return self.do_exit("")
+
+        if not user_input.isdigit() or int(user_input) <= 0:
+            print("✗ Invalid number. Please enter a positive integer.")
+            return
+
+        success = self.preferences.update("max_project_tags", int(user_input))
+        if success:
+            print(f"✓ Max project tags set to {user_input}")
+        else:
+            print("✗ Failed to save max project tags configuration")
 
     def _reset_preferences(self):
         '''Reset all preferences to defaults'''
