@@ -76,7 +76,14 @@ class BaseFileAnalyzer:
                 f"File not tracked by git or git error: {e}")
             return False
 
-    def is_info_file(self) -> FileReport:
+    def is_info_file(self) -> bool:
+        if self.language_filter:
+            if not self._matches_language_filter():
+                return False
+        else:
+            return True
+
+    def create_info_file(self) -> FileReport:
         """
         This is a method that is used to create a fileReport object with no stats and only
         a bool denoting whether it has been contributed to
@@ -84,10 +91,6 @@ class BaseFileAnalyzer:
         Returns:
             fileReport: Only runs in the case of should_include() -> False.
         """
-
-        if self.language_filter:
-            if not self._matches_language_filter():
-                return None
 
         stats = [Statistic(FileStatCollection.CONTRIBUTED_TO.value, False)]
         self.stats.extend(stats)
