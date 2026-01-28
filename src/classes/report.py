@@ -4,13 +4,12 @@ Reports hold statistics.
 import os
 from typing import Any, Dict, Optional
 from pathlib import Path
-import tempfile
-import shutil
-import zipfile
 import os
-from git import Repo, InvalidGitRepositoryError
-from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
-from git import NoSuchPathError, Repo
+from git import Repo
+
+from src.utils.project_discovery.ignore_constants import IGNORE_FILES
+from .statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
+from git import Repo
 from typing import Any
 from datetime import datetime, date, timedelta, MINYEAR
 
@@ -18,7 +17,7 @@ from git import Repo
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from src.classes.statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills, CodingLanguage
+from src.classes.statistic import Statistic, StatisticTemplate, StatisticIndex, ProjectStatCollection, FileStatCollection, UserStatCollection, WeightedSkills
 from src.classes.resume.bullet_point_builder import BulletPointBuilder
 from src.classes.resume.resume import Resume, ResumeItem
 
@@ -223,13 +222,14 @@ class ProjectReport(BaseReport):
         if self.project_repo:
             tracked_files = self.project_repo.git.ls_files().split("\n")
             for f in tracked_files:
-                try:
-                    with open(os.path.join(self.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
-                        content = fp.read()
-                        count = len(content.split("\n"))
-                        total += count
-                except (FileNotFoundError, IsADirectoryError):
-                    pass  # skip directories or removed files
+                if f not in IGNORE_FILES:
+                    try:
+                        with open(os.path.join(self.project_path, f), "r", encoding="utf-8", errors="ignore") as fp:
+                            content = fp.read()
+                            count = len(content.split("\n"))
+                            total += count
+                    except (FileNotFoundError, IsADirectoryError):
+                        pass  # skip directories or removed files
         else:
             for fr in self.file_reports:
                 val = fr.get_value(FileStatCollection.LINES_IN_FILE.value)
