@@ -89,7 +89,7 @@ class BaseFileAnalyzer:
         a bool denoting whether it has been contributed to
 
         Returns:
-            fileReport: Only runs in the case of should_include() -> False.
+            fileReport: Only runs in the case of should_analyze_file() -> False.
         """
 
         stats = [Statistic(FileStatCollection.CONTRIBUTED_TO.value, False)]
@@ -97,7 +97,7 @@ class BaseFileAnalyzer:
 
         return FileReport(statistics=self.stats, filepath=self.relative_path)
 
-    def should_include(self) -> bool:
+    def should_analyze_file(self) -> bool:
         """
         This is a lightweight check to see if the file should be
         included in analysis. By default, all files are included.
