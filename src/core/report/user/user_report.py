@@ -240,6 +240,36 @@ class UserReport(BaseReport):
         s = raw.replace("_", " ").replace("-", " ").strip().lower().title()
         return s
 
+    @staticmethod
+    def _format_limited_list(items: list[str], max_items: int) -> str:
+        """Format a list with a max length, sorted for deterministic output."""
+        if max_items <= 0:
+            return ""
+        sorted_items = sorted(items, key=lambda s: s.lower())
+        return ", ".join(sorted_items[:max_items])
+
+    @staticmethod
+    def _get_user_pref_int(key: str, default: int) -> int:
+        """Best-effort read of a user preference integer; fall back to default."""
+        try:
+            from src.interface.cli.user_preferences import UserPreferences
+        except Exception:
+            return default
+
+        try:
+            value = UserPreferences().get(key, default)
+            if isinstance(value, bool):
+                return default
+            if isinstance(value, (int, float)) and int(value) > 0:
+                return int(value)
+            if isinstance(value, str) and value.strip().isdigit():
+                parsed = int(value.strip())
+                return parsed if parsed > 0 else default
+        except Exception:
+            return default
+
+        return default
+
     def to_user_readable_string(self) -> str:
         """
         For every statistic in self.statistics, return a human-readable line.
@@ -344,6 +374,30 @@ class UserReport(BaseReport):
         if tones_str:
             lines.append("\nProject tone:")
             lines.append(tones_str)
+
+       # Collaboration role
+        role_lines = self.get_project_roles(as_string=True)
+        if role_lines:
+            lines.append("\nProject roles:")
+            lines.append(role_lines)
+
+        # Work pattern
+        work_lines = self.get_project_work_patterns(as_string=True)
+        if work_lines:
+            lines.append("\nWork patterns:")
+            lines.append(work_lines)
+
+        # Activity metrics
+        activity_lines = self.get_project_activity_metrics(as_string=True)
+        if activity_lines:
+            lines.append("\nActivity cadence:")
+            lines.append(activity_lines)
+
+        # Commit type distribution
+        dist_lines = self.get_project_commit_focus(as_string=True)
+        if dist_lines:
+            lines.append("\nCommit focus:")
+            lines.append(dist_lines)
 
         return "\n".join(lines)
 
@@ -516,14 +570,20 @@ class UserReport(BaseReport):
 
         return "\n".join(lines) if as_string else lines
 
-    def get_project_tags(self, as_string: bool = True) -> list[str] | str:
+    def get_project_tags(
+        self,
+        as_string: bool = True,
+        max_items: int | None = None,
+    ) -> list[str] | str:
         """
         Return a list of per-project tag lines:
             "Project Name: tag1, tag2, tag3"
         """
+        if max_items is None:
+            max_items = self._get_user_pref_int("max_project_tags", 8)
         return self._project_stat_lines(
             ProjectStatCollection.PROJECT_TAGS.value,
-            lambda tags: ", ".join(tags),
+            lambda tags: self._format_limited_list(tags, max_items),
             as_string,
         )
 
@@ -534,7 +594,7 @@ class UserReport(BaseReport):
         """
         return self._project_stat_lines(
             ProjectStatCollection.PROJECT_THEMES.value,
-            lambda themes: ", ".join(themes),
+            lambda themes: self._format_limited_list(themes, 6),
             as_string,
         )
 
@@ -546,5 +606,65 @@ class UserReport(BaseReport):
         return self._project_stat_lines(
             ProjectStatCollection.PROJECT_TONE.value,
             lambda tone: tone,
+            as_string,
+        )
+
+    def get_project_roles(self, as_string: bool = True) -> list[str] | str:
+        """
+        Return a list of per-project collaboration roles:
+            "Project Name: Leader"
+        """
+        return self._project_stat_lines(
+            ProjectStatCollection.COLLABORATION_ROLE.value,
+            lambda role: str(role).replace("_", " ").title(),
+            as_string,
+        )
+
+    def get_project_work_patterns(self, as_string: bool = True) -> list[str] | str:
+        """
+        Return a list of per-project work patterns:
+            "Project Name: Consistent"
+        """
+        return self._project_stat_lines(
+            ProjectStatCollection.WORK_PATTERN.value,
+            lambda pattern: str(pattern).replace("_", " ").title(),
+            as_string,
+        )
+
+    def get_project_activity_metrics(self, as_string: bool = True) -> list[str] | str:
+        """
+        Return a list of per-project activity metrics:
+            "Project Name: 5.2 commits/week, consistency 0.85"
+        """
+        def _fmt_activity(val: dict) -> str:
+            cpw = val.get("avg_commits_per_week")
+            cons = val.get("consistency_score")
+            parts = []
+            if cpw is not None:
+                parts.append(f"{cpw:.1f} commits/week")
+            if cons is not None:
+                parts.append(f"consistency {cons:.2f}")
+            return ", ".join(parts) if parts else "activity data unavailable"
+
+        return self._project_stat_lines(
+            ProjectStatCollection.ACTIVITY_METRICS.value,
+            _fmt_activity,
+            as_string,
+        )
+
+    def get_project_commit_focus(self, as_string: bool = True) -> list[str] | str:
+        """
+        Return a list of per-project commit type distributions:
+            "Project Name: Feature 45%, Bugfix 30%, Documentation 25%"
+        """
+        def _fmt_commit_dist(val: dict) -> str:
+            if not val:
+                return "no commit data"
+            top = sorted(val.items(), key=lambda kv: kv[1], reverse=True)
+            return ", ".join(f"{k.title()} {v:.0f}%" for k, v in top if v > 0)
+
+        return self._project_stat_lines(
+            ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value,
+            _fmt_commit_dist,
             as_string,
         )

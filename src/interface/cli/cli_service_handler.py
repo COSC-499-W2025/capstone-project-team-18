@@ -3,6 +3,9 @@ Functions that allow the CLI to interact with the services
 """
 
 from typing import Optional, Callable
+import os
+import warnings
+import logging
 from pathlib import Path
 
 from src.infrastructure.log.logging import get_logger
@@ -32,6 +35,27 @@ def start_miner_cli(
     :param progress_callback: Description
     :type progress_callback: Optional[Callable[[str, int, int, str], None]]
     """
+
+    # Keep ML enabled in CLI, but silence model loading noise/progress bars.
+    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+    os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    # Silence noisy warnings from ML stack (e.g., UMAP/BERTopic) in CLI output.
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    # Ensure root logger does not emit to console.
+    root_logger = logging.getLogger()
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+    root_logger.addHandler(logging.NullHandler())
+    root_logger.setLevel(logging.CRITICAL)
+    try:
+        from transformers.utils import logging as hf_logging
+        hf_logging.set_verbosity_error()
+    except Exception:
+        pass
 
     prefs = UserPreferences()
     zipped_file = Path(zipped_file_path)

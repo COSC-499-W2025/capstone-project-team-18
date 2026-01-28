@@ -44,8 +44,8 @@ class ProjectReport(BaseReport):
             project_name: Optional project name for Git analysis
             statistics: Optional StatisicIndex
             project_repo: Optional Repo object for Git analysis
-            user_email: Optional user email for Git authorship analysis
-            user_github: Optional username for additonal Git authorship analysis
+            user_email: Optional user email for Git authourship analysis
+            user_github: Optional username for additonal Git authourship analysis
 
         NOTE: `statistics` should only be included when the `get_project_from_project_name()`
         function is creating a `ProjectReport` object from an existing row in
@@ -68,6 +68,10 @@ class ProjectReport(BaseReport):
             super().__init__(self.project_statistics)
             return
 
+        # BUG FIX: Initialize the base class BEFORE building statistics
+        # so that get_value() works during the build process
+        super().__init__(self.project_statistics)
+
         # Build statistics using the project statistic builder
         # Use a local import to avoid potential circular imports at module load time
         from src.core.report.project.project_statistics import ProjectStatisticReportBuilder
@@ -75,8 +79,7 @@ class ProjectReport(BaseReport):
         builder = ProjectStatisticReportBuilder()
         builder.build(self)
 
-        # Initialize the base class with the project statistics
-        super().__init__(self.project_statistics)
+
 
     def get_project_weight(self) -> float:
         """

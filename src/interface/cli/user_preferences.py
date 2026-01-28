@@ -21,6 +21,7 @@ class UserPreferences:
             "file_start_time": None,
             "file_end_time": None,
             "last_updated": None,
+            "max_project_tags": 8,
             "project_filepath": "",
             "user_name": "",
             "user_password": "",
