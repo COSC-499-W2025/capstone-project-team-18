@@ -9,7 +9,7 @@ from src.core.analyzer import extract_file_reports
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
 from src.core.statistic import ProjectStatCollection
 from src.core.report import ProjectReport
-from src.core.report.project.project_statistics import ProjectAnalyzeGitAuthorship, ProjectTotalContributionPercentage
+from src.core.report.project.project_statistics import ProjectTotalContributionPercentage
 
 
 @pytest.mark.parametrize(
@@ -47,7 +47,7 @@ def test_verify_accurate_contribution_percentage(resource_dir, email, percentage
         project_repo=project.repo,
         file_reports=file_reports,
         user_email=email,
-        calculator_classes=[ProjectAnalyzeGitAuthorship]
+        calculator_classes=[ProjectTotalContributionPercentage]
     )
 
     assert percentage == project_report.get_value(

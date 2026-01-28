@@ -179,7 +179,8 @@ def test_git_authorship_user_commit_percentage():
             project_path=str(temp_dir + "/UnequalProject"),
             project_name="UnequalProject",
             user_email="charlie@example.com",
-            project_repo=repo
+            project_repo=repo,
+            calculator_classes=[ProjectAnalyzeGitAuthorship]
         )
         charlie_percentage = report_charlie.get_value(
             ProjectStatCollection.USER_COMMIT_PERCENTAGE.value
