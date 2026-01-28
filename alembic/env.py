@@ -8,7 +8,7 @@ from src.database.base import DB_PATH, Base
 
 # This module isn't used, but it is still required so that
 # Alembic knows where our ORM models are located.
-
+from src.database import models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
