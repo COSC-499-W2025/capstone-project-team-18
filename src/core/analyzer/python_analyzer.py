@@ -1,4 +1,3 @@
-import logging
 import ast
 
 from src.core.statistic import Statistic, FileStatCollection
@@ -30,7 +29,7 @@ class PythonAnalyzer(SpecificCodeAnalyzer):
         try:
             tree = ast.parse(self.text_content)
         except SyntaxError as e:
-            logging.error(f"Syntax error while parsing {self.filepath}: {e}")
+            logger.exception("Syntax error while parsing %s", self.filepath)
             return
 
         function_count = 0

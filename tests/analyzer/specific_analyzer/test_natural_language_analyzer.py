@@ -14,8 +14,11 @@ def _readme_report(tmp_path, create_temp_file, monkeypatch, filename, content):
     # Stub model calls so tests are fast and do not download large models.
     monkeypatch.setattr(
         keyphrase_extraction, "_extract_with_keybert", fake_extract)
-    monkeypatch.setattr(
-        readme_insights, "_classify_labels", lambda *_args, **_kwargs: ["Professional"])
+    def _fake_classifier(_text, _labels, multi_label=False):
+        return {"labels": ["Professional"], "scores": [0.99]}
+
+    monkeypatch.setattr(readme_insights, "_get_classifier",
+                        lambda: _fake_classifier)
     root, name = create_temp_file(filename, content, tmp_path)
     return NaturalLanguageAnalyzer(root, name).analyze()
 

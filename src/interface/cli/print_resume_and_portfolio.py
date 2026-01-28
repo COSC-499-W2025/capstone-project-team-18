@@ -41,7 +41,7 @@ def resume_CLI_stringify(resume: Resume):
         print(header_line)
         print(f'{resume}{'-' * len(header_line)}\n')
     except IndexError:
-        logger.error(f'`resume.items[0]` is not a valid index')
+        logger.exception("`resume.items[0]` is not a valid index")
 
 
 def portfolio_CLI_stringify(user_report: UserReport):

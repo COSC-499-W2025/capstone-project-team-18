@@ -240,6 +240,36 @@ class UserReport(BaseReport):
         s = raw.replace("_", " ").replace("-", " ").strip().lower().title()
         return s
 
+    @staticmethod
+    def _format_limited_list(items: list[str], max_items: int) -> str:
+        """Format a list with a max length, sorted for deterministic output."""
+        if max_items <= 0:
+            return ""
+        sorted_items = sorted(items, key=lambda s: s.lower())
+        return ", ".join(sorted_items[:max_items])
+
+    @staticmethod
+    def _get_user_pref_int(key: str, default: int) -> int:
+        """Best-effort read of a user preference integer; fall back to default."""
+        try:
+            from src.interface.cli.user_preferences import UserPreferences
+        except Exception:
+            return default
+
+        try:
+            value = UserPreferences().get(key, default)
+            if isinstance(value, bool):
+                return default
+            if isinstance(value, (int, float)) and int(value) > 0:
+                return int(value)
+            if isinstance(value, str) and value.strip().isdigit():
+                parsed = int(value.strip())
+                return parsed if parsed > 0 else default
+        except Exception:
+            return default
+
+        return default
+
     def to_user_readable_string(self) -> str:
         """
         For every statistic in self.statistics, return a human-readable line.
@@ -540,14 +570,20 @@ class UserReport(BaseReport):
 
         return "\n".join(lines) if as_string else lines
 
-    def get_project_tags(self, as_string: bool = True) -> list[str] | str:
+    def get_project_tags(
+        self,
+        as_string: bool = True,
+        max_items: int | None = None,
+    ) -> list[str] | str:
         """
         Return a list of per-project tag lines:
             "Project Name: tag1, tag2, tag3"
         """
+        if max_items is None:
+            max_items = self._get_user_pref_int("max_project_tags", 8)
         return self._project_stat_lines(
             ProjectStatCollection.PROJECT_TAGS.value,
-            lambda tags: ", ".join(tags),
+            lambda tags: self._format_limited_list(tags, max_items),
             as_string,
         )
 
@@ -558,7 +594,7 @@ class UserReport(BaseReport):
         """
         return self._project_stat_lines(
             ProjectStatCollection.PROJECT_THEMES.value,
-            lambda themes: ", ".join(themes),
+            lambda themes: self._format_limited_list(themes, 6),
             as_string,
         )
 
