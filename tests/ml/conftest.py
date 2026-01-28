@@ -10,6 +10,9 @@ from src.core.ML.models.contribution_analysis.role_analyzer import (
     RoleAnalyzer,
 )
 
+# NOTE: Anything inside the tests/ml folder will not run with the pytest command
+# if you wish to run it, set env "RUN_ML_TESTS" variable to 1
+
 
 def pytest_collection_modifyitems(config, items):
     if os.environ.get("RUN_ML_TESTS") == "1":
