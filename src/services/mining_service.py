@@ -4,12 +4,13 @@ This file holds the main service, the miner.
 
 import tempfile
 from sqlalchemy.orm import Session
+from dataclasses import dataclass
 from pydantic import BaseModel
 
 from src.utils.pathing_utils import unzip_file_bytes
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
 from src.core.analyzer import extract_file_reports
-from src.core.report import ProjectReport, UserReport
+from src.core.report import ProjectReport
 from src.database.base import get_engine, Base
 from src.database.utils.database_modify import create_row
 from src.infrastructure.log.logging import get_logger
@@ -32,9 +33,11 @@ class ProjectError(BaseModel):
     error_message: str
 
 
-class MinerResults(BaseModel):
+@dataclass
+class MinerResults():
     """Results from the mining operation"""
     project_errors: list[ProjectError]
+    project_reports: list[ProjectReport]
     success: bool
 
 
@@ -214,4 +217,6 @@ def start_miner_service(
     _save_project_report_to_db(project_reports)
 
     success = len(project_errors) == 0
-    return MinerResults(project_errors=project_errors, success=success)
+    return MinerResults(project_errors=project_errors,
+                        success=success,
+                        project_reports=project_reports)
