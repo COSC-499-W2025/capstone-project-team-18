@@ -722,6 +722,8 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
                 logger.warning(
                     "ProjectStatisticReportBuilder was called with no requested calulators. Was this intended?")
 
+                return
+
             self.calculators = [
                 cls() for cls in all_calculator_classes
                 if cls in calculator_classes
