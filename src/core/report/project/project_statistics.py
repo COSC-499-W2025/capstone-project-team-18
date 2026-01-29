@@ -4,7 +4,7 @@ it utilizes the StatisticBuilder and StatisticCalculation classes
 to create and compute various statistics related to projects.
 """
 
-from typing import Iterable, List, Type
+from typing import List, Type
 import os
 from pathlib import Path
 from src.core.statistic import Statistic, FileStatCollection, ProjectStatCollection, WeightedSkills
@@ -703,7 +703,7 @@ class ProjectTotalContributionPercentage(ProjectStatisticCalculation):
 class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
     """Base builder for project reports."""
 
-    def __init__(self, calculator_classes: Optional[Iterable[Type]] = None) -> None:
+    def __init__(self, calculator_classes: Optional[list[Type]] = None) -> None:
         all_calculator_classes = [
             ProjectDates,
             CodingLanguageRatio,
@@ -716,7 +716,12 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
         ]
 
         # If specific calculator classes are requested, filter to only those
-        if calculator_classes:
+        if calculator_classes is not None:
+
+            if len(calculator_classes) == 0:
+                logger.warning(
+                    "ProjectStatisticReportBuilder was called with no requested calulators. Was this intended?")
+
             self.calculators = [
                 cls() for cls in all_calculator_classes
                 if cls in calculator_classes
