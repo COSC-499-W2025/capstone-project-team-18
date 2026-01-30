@@ -63,6 +63,16 @@ _GENERIC_THEME_STOPWORDS = {
     "github",
 }
 
+# Short acronyms that are still high-signal for themes.
+_THEME_SHORT_ALLOWLIST = {
+    "api",
+    "ui",
+    "ux",
+    "db",
+    "ml",
+    "ai",
+}
+
 def _clean_theme_terms(terms: list[str]) -> list[str]:
     """Filter URL-like and low-signal tokens from theme terms."""
     cleaned: list[str] = []
@@ -86,7 +96,7 @@ def _clean_theme_terms(terms: list[str]) -> list[str]:
         if any(any(ch.isdigit() for ch in token) for token in tokens):
             continue
         # Drop very short or low-signal tokens.
-        if len(tokens) == 1 and len(tokens[0]) < 4:
+        if len(tokens) == 1 and len(tokens[0]) < 4 and tokens[0] not in _THEME_SHORT_ALLOWLIST:
             continue
         if len(tokens) >= 2 and all(len(t) < 4 for t in tokens):
             continue
