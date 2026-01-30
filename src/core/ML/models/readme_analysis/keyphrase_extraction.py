@@ -61,7 +61,7 @@ def _extract_with_keybert(text: str, top_n: int) -> list[str]:
         return []
     try:
         model_name = os.environ.get(
-            "ARTIFACT_MINER_KEYBERT_MODEL", "all-MiniLM-L6-v2")
+            "ARTIFACT_MINER_KEYBERT_MODEL", "all-mpnet-base-v2")
         if _KEYBERT_MODEL is None:
             _KEYBERT_MODEL = KeyBERT(model_name)
         keywords = _KEYBERT_MODEL.extract_keywords(

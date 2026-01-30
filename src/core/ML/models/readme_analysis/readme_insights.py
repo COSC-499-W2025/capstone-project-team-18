@@ -28,8 +28,39 @@ _EMBEDDING_FAILED = False
 _TOPIC_SINGLE_CACHE: dict[int, list[str]] = {}
 _TOPIC_CORPUS_CACHE: dict[int, list[list[str]]] = {}
 
-_MIN_DOCS_FOR_BERTOPIC = 4
-_MIN_TOTAL_CHARS_FOR_BERTOPIC = 800
+_MIN_DOCS_FOR_BERTOPIC = 6
+_MIN_TOTAL_CHARS_FOR_BERTOPIC = 1500
+
+# Generic README command words that tend to be low-signal for themes.
+_GENERIC_THEME_STOPWORDS = {
+    "run",
+    "running",
+    "install",
+    "installation",
+    "setup",
+    "open",
+    "script",
+    "scripts",
+    "file",
+    "files",
+    "example",
+    "usage",
+    "command",
+    "commands",
+    "docker",
+    "make",
+    "build",
+    "start",
+    "starting",
+    "startup",
+    "readme",
+    "license",
+    "contributing",
+    "project",
+    "repository",
+    "repo",
+    "github",
+}
 
 def _clean_theme_terms(terms: list[str]) -> list[str]:
     """Filter URL-like and low-signal tokens from theme terms."""
@@ -42,9 +73,26 @@ def _clean_theme_terms(terms: list[str]) -> list[str]:
             continue
         if lowered in URL_STOPWORDS:
             continue
+        if lowered in _GENERIC_THEME_STOPWORDS:
+            continue
         tokens = [t for t in re.split(r"[^a-z0-9]+", lowered) if t]
         if any(token in URL_STOPWORDS for token in tokens):
             continue
+        if any(token in _GENERIC_THEME_STOPWORDS for token in tokens):
+            continue
+        # Drop tokens with digits (often IDs or usernames)
+        if any(any(ch.isdigit() for ch in token) for token in tokens):
+            continue
+        # Drop very short or low-signal tokens
+        if len(tokens) == 1 and len(tokens[0]) < 4:
+            continue
+        if len(tokens) >= 2 and all(len(t) < 4 for t in tokens):
+            continue
+        # Drop likely repo/user names: single token with no vowels or too long
+        if len(tokens) == 1:
+            token = tokens[0]
+            if len(token) > 20 or not re.search(r"[aeiou]", token):
+                continue
         cleaned.append(term)
     return cleaned
 
@@ -101,7 +149,7 @@ def _get_topic_model():
         try:
             from bertopic import BERTopic
             model_name = os.environ.get(
-                "ARTIFACT_MINER_TOPIC_MODEL", "all-MiniLM-L6-v2")
+                "ARTIFACT_MINER_TOPIC_MODEL", "all-mpnet-base-v2")
             _TOPIC_MODEL = BERTopic(embedding_model=model_name, verbose=False)
         except Exception:
             logger.exception("Failed to initialize BERTopic model")
@@ -119,7 +167,7 @@ def _get_embedding_model():
         try:
             from sentence_transformers import SentenceTransformer
             model_name = os.environ.get(
-                "ARTIFACT_MINER_TOPIC_MODEL", "all-MiniLM-L6-v2")
+                "ARTIFACT_MINER_TOPIC_MODEL", "all-mpnet-base-v2")
             _EMBEDDING_MODEL = SentenceTransformer(model_name)
         except Exception:
             logger.exception("Failed to initialize embedding model for fallback")
