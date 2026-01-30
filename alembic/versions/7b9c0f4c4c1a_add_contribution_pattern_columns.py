@@ -19,6 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Columns needed for contribution-pattern analysis in project reports.
     op.add_column('project_report', sa.Column('commit_type_distribution', ColumnStatisticSerializer(), nullable=True))
     op.add_column('project_report', sa.Column('work_pattern', sa.String(), nullable=True))
     op.add_column('project_report', sa.Column('collaboration_role', sa.String(), nullable=True))
@@ -27,6 +28,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Drop contribution-pattern columns to revert schema.
     op.drop_column('project_report', 'role_description')
     op.drop_column('project_report', 'activity_metrics')
     op.drop_column('project_report', 'collaboration_role')

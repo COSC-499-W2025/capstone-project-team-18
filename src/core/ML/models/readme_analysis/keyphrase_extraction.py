@@ -29,6 +29,7 @@ def _dedupe_phrases(phrases: Iterable[str]) -> list[str]:
     seen: set[str] = set()
     deduped: list[str] = []
     for phrase in phrases:
+        # Normalize punctuation and whitespace to improve de-duping.
         cleaned = " ".join(phrase.split()).strip(" \t\n\r.,;:!?()[]{}<>\"'")
         if not cleaned:
             continue
@@ -62,6 +63,7 @@ def _extract_with_keybert(text: str, top_n: int) -> list[str]:
     try:
         model_name = os.environ.get(
             "ARTIFACT_MINER_KEYBERT_MODEL", "all-mpnet-base-v2")
+        # Use the same stronger default embedding model as BERTopic.
         if _KEYBERT_MODEL is None:
             _KEYBERT_MODEL = KeyBERT(model_name)
         keywords = _KEYBERT_MODEL.extract_keywords(
