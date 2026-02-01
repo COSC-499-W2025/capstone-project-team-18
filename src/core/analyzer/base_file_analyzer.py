@@ -80,6 +80,8 @@ class BaseFileAnalyzer:
         if self.language_filter:
             if not self._matches_language_filter():
                 return False
+            else:
+                return True
         else:
             return True
 
