@@ -61,6 +61,26 @@ _GENERIC_THEME_STOPWORDS = {
     "repository",
     "repo",
     "github",
+    # Common language names that show up as noisy themes.
+    "python",
+    "java",
+    "javascript",
+    "typescript",
+    "c",
+    "c++",
+    "cpp",
+    "csharp",
+    "go",
+    "golang",
+    "rust",
+    "kotlin",
+    "swift",
+    "php",
+    "ruby",
+    "r",
+    "sql",
+    "bash",
+    "shell",
 }
 
 # Short acronyms that are still high-signal for themes.
