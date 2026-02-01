@@ -122,32 +122,12 @@ def _save_project_report_to_db(project_report: list[ProjectReport]) -> None:
     Base.metadata.create_all(engine)
 
     with Session(engine) as session:
-        # For each project, extract file reports and create ProjectReports
-        project_reports = []  # Stores ProjectReport objs
-        project_report_rows = []  # Stores ProjectReportTable objs
+        for pr in project_report:
 
-        total_projects = len(project_list)
-
-        # =================== Analysis Stage ===================
-        for idx, project in enumerate(project_list):
-            # Update at START of processing each project (idx is 0-based, so idx is the "current" count)
-            if progress_callback:
-                progress_callback(
-                    "analysis", idx, total_projects, project.name)
-
-            file_reports = extract_file_reports(
-                project, email, github, language_filter)  # get the project's FileReports
-
-            logger.debug(
-                "File reports for project %s file_reports", project.name)
-
-            if file_reports == []:
-                continue  # skip if directory is empty
-
-            # create the rows for the file reports FOR THIS PROJECT ONLY
-            file_report_rows = []  # Reset for each project
-            for fr in file_reports:
-                fr.filepath = f"{project.name}/{fr.filepath}"
+            # Save File Reports
+            file_report_rows = []
+            for fr in pr.file_reports:
+                fr.filepath = f"{pr.project_name}/{fr.filepath}"
                 file_report = create_row(fr)
                 file_report_rows.append(file_report)
 

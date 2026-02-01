@@ -32,6 +32,7 @@ class FileReportTable(Base):
     __tablename__ = 'file_report'
 
     id: Mapped[int] = mapped_column(primary_key=True)  # PK
+    filepath = mapped_column(String)  # filepath to proj in temp dir
 
     # Define a FK and many-to-one relationship with ProjectReport.
     # This will allow us to easily find the related file reports that are used to create
@@ -39,6 +40,3 @@ class FileReportTable(Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("project_report.id"))
     project_report: Mapped["ProjectReportTable"] = relationship(
         back_populates="file_reports")
-
-    # absolute path to the file relative to the project
-    filepath = mapped_column(String)
