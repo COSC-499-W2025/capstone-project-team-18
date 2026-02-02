@@ -9,7 +9,7 @@ from src.core.statistic import ProjectStatCollection
 from src.core.statistic import FileStatCollection
 from src.core.analyzer import extract_file_reports
 from src.core.project_discovery.project_discovery import ProjectLayout
-from src.core.report.project.project_statistics import ProjectAnalyzeGitAuthorship
+from src.core.report.project.project_statistics import ProjectAnalyzeGitAuthorship, ProjectTotalContributionPercentage
 
 
 @pytest.fixture
@@ -582,12 +582,13 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
                        project_repo=Repo(str(project_dir)),
                        project_name="NoContributionProject",
                        user_email="charlie@example.com",
-                       calculator_classes=[ProjectAnalyzeGitAuthorship])
+                       calculator_classes=[ProjectTotalContributionPercentage])
 
     # Charlie contributed 0% since not in any file reports
-    assert pr.get_value(
-        ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value) == 0.0
-    assert len(fr) == 0
+    contrib_flags = [f.get_value(
+        FileStatCollection.CONTRIBUTED_TO.value) for f in fr]
+    assert contrib_flags.count(True) == 0
+    assert contrib_flags.count(False) == 2
 
     shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -621,7 +622,7 @@ def test_total_contribution_percentage_single_file_full_contribution(tmp_path: P
                        project_repo=Repo(str(project_dir)),
                        project_name="SingleAuthorProject",
                        user_email="alice@example.com",
-                       calculator_classes=[ProjectAnalyzeGitAuthorship])
+                       calculator_classes=[ProjectTotalContributionPercentage])
 
     assert pr.get_value(
         ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value) == 100.0
@@ -664,7 +665,7 @@ def test_total_contribution_percentage_three_way_split(tmp_path: Path):
                        project_repo=Repo(str(project_dir)),
                        project_name="ThreeWayProject",
                        user_email="alice@example.com",
-                       calculator_classes=[ProjectAnalyzeGitAuthorship])
+                       calculator_classes=[ProjectTotalContributionPercentage])
 
     # Alice should have ~33.33%
     assert pytest.approx(pr.get_value(

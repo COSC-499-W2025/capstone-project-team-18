@@ -45,7 +45,10 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_l
         file_reports=frs,
         project_path=str(pf.root_path),
         project_name=pf.name,
-        user_email=None
+        user_email=None,
+        calculator_classes=[
+            ProjectActivityTypeContributions
+        ]
     )
 
     for pr in [pr_email, pr_no_email]:

@@ -134,7 +134,8 @@ def test_identify_project_type(git_dir: Path):
     # Multiple authors = group (True)
     team_report = ProjectReport(project_path=str(
         git_dir / "TeamProject"), project_name="TeamProject",
-        project_repo=Repo(str(git_dir / "TeamProject")), user_email="charlie@example.com")
+        project_repo=Repo(str(git_dir / "TeamProject")), user_email="charlie@example.com",
+        calculator_classes=[ProjectAnalyzeGitAuthorship])
     assert team_report.statistics.get(
         ProjectStatCollection.IS_GROUP_PROJECT.value).value is True
 
@@ -379,7 +380,9 @@ def test_partial_project_contribution(tmp_path: Path):
                            project_path=str(layout.root_path),
                            project_name=layout.name,
                            project_repo=layout.repo,
-                           user_email="charlie@example.com")
+                           user_email="charlie@example.com",
+                           calculator_classes=[]
+                           )
         reports.append(pr)
         if pr.contributed_to is False:
             errors.append(ProjectError(project_name=layout.name,

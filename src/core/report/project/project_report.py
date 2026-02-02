@@ -6,7 +6,7 @@ from typing import Optional
 from pathlib import Path
 from git import Repo
 from datetime import datetime, date
-from typing import Iterable, Type
+from typing import Type
 
 from src.core.report.base_report import BaseReport
 from src.core.report.file_report import FileReport
@@ -35,7 +35,7 @@ class ProjectReport(BaseReport):
                  user_github: Optional[str] = None,
                  statistics: Optional[StatisticIndex] = None,
                  project_repo: Optional[Repo] = None,
-                 calculator_classes: Optional[Iterable[Type]] = None
+                 calculator_classes: Optional[list[Type]] = None
                  ):
         """
         Initialize `ProjectReport` with file reports and optional Git analysis from zip file.
