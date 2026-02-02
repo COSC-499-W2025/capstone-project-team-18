@@ -142,3 +142,10 @@ def test_theme_url_noise_filtered():
         ["https", "github", "api", "http://example.com", "data", "www.site.com"]
     )
     assert cleaned == ["api", "data"]
+
+
+def test_theme_generic_terms_filtered():
+    cleaned = readme_insights._clean_theme_terms(
+        ["startup", "run", "install", "tkinter"]
+    )
+    assert cleaned == ["tkinter"]

@@ -1,5 +1,5 @@
 """
-This file will test the should_include() function
+This file will test the should_analyze_file() function
 in the Analyzer class
 """
 
@@ -7,7 +7,7 @@ from src.core.analyzer import get_appropriate_analyzer
 from src.core.project_discovery.project_discovery import ProjectLayout
 
 
-def test_should_include_file_not_in_git_repo(project_no_git_dir: ProjectLayout):
+def test_should_analyze_file_file_not_in_git_repo(project_no_git_dir: ProjectLayout):
     """
     Tests to see that a file in a non-git project
     should be included
@@ -23,10 +23,10 @@ def test_should_include_file_not_in_git_repo(project_no_git_dir: ProjectLayout):
             email="example@gmail.com"
         )
 
-        assert analyzer.should_include() is True
+        assert analyzer.should_analyze_file() is True
 
 
-def test_should_include_file_not_tracked_by_git(project_shared_file):
+def test_should_analyze_file_file_not_tracked_by_git(project_shared_file):
     """
     Tests to see if a file that is not tracked
     in a git repo is included
@@ -46,7 +46,7 @@ def test_should_include_file_not_tracked_by_git(project_shared_file):
     )
 
     # File does not exist in the repo -> not tracked -> should be included
-    assert analyzer.should_include() is True
+    assert analyzer.should_analyze_file() is True
 
 
 def test_should_not_include_file_not_commited_by_user(project_shared_file):
@@ -64,10 +64,10 @@ def test_should_not_include_file_not_commited_by_user(project_shared_file):
     )
 
     # temp@example.com did not commit to shared.py -> should NOT be included
-    assert analyzer.should_include() is False
+    assert analyzer.should_analyze_file() is False
 
 
-def test_should_include_file_commited_by_user(project_shared_file):
+def test_should_analyze_file_file_commited_by_user(project_shared_file):
     """
     If a user HAS commited to a file, check to
     see the file HAS be included.
@@ -81,10 +81,10 @@ def test_should_include_file_commited_by_user(project_shared_file):
     )
 
     # Alice committed to shared.py -> should be included
-    assert analyzer.should_include() is True
+    assert analyzer.should_analyze_file() is True
 
 
-def test_should_include_file_if_email_not_configured(project_shared_file):
+def test_should_analyze_file_file_if_email_not_configured(project_shared_file):
     """
     If the email is not configured, check to see
     that all files are included
@@ -98,4 +98,4 @@ def test_should_include_file_if_email_not_configured(project_shared_file):
     )
 
     # If no email is configured the analyzer should include the file
-    assert analyzer.should_include() is True
+    assert analyzer.should_analyze_file() is True

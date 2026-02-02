@@ -6,9 +6,10 @@ import pytest
 
 from src.core.report import ProjectReport
 from src.core.statistic import ProjectStatCollection
+from src.core.statistic import FileStatCollection
 from src.core.analyzer import extract_file_reports
 from src.core.project_discovery.project_discovery import ProjectLayout
-from src.core.report.project.project_statistics import ProjectAnalyzeGitAuthorship, ProjectTotalContributionPercentage
+from src.core.report.project.project_statistics import ProjectAnalyzeGitAuthorship
 
 
 @pytest.fixture
@@ -536,7 +537,137 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
                        user_email="charlie@example.com",
                        calculator_classes=[ProjectAnalyzeGitAuthorship])
 
-    # should only be two files in ProjectReport
-    assert len(fr) == 2
+    # should only be three files in ProjectReport and the first has a False CONTRIBUTED_TO flag
+    assert len(fr) == 3
+    assert fr[0].get_value(FileStatCollection.CONTRIBUTED_TO.value) is False
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path):
+    """Test that 0% is returned when user has no contribution to any file"""
+
+    temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
+    project_dir = Path(temp_dir) / "NoContributionProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # fileA.py: John only
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "John")
+        config.set_value("user", "email", "john@example.com")
+    (project_dir / "fileA.py").write_text("# Created by John\nprint('John')\n")
+    repo.index.add(["fileA.py"])
+    repo.index.commit("John creates fileA")
+
+    # fileB.py: Bob only
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Bob")
+        config.set_value("user", "email", "bob@example.com")
+    (project_dir / "fileB.py").write_text("# Created by Bob\nprint('Bob')\n")
+    repo.index.add(["fileB.py"])
+    repo.index.commit("Bob creates fileB")
+
+    project_files = ProjectLayout(
+        name="NoContributionProject",
+        root_path=project_dir,
+        file_paths=[Path("fileA.py"), Path("fileB.py")],
+        repo=repo
+    )
+
+    fr = extract_file_reports(project_files, "charlie@example.com")
+
+    pr = ProjectReport(file_reports=fr,
+                       project_path=str(project_dir),
+                       project_repo=Repo(str(project_dir)),
+                       project_name="NoContributionProject",
+                       user_email="charlie@example.com",
+                       calculator_classes=[ProjectAnalyzeGitAuthorship])
+
+    # Charlie contributed 0% since not in any file reports
+    assert pr.get_value(
+        ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value) == 0.0
+    assert len(fr) == 0
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_total_contribution_percentage_single_file_full_contribution(tmp_path: Path):
+    """Test 100% contribution when user is sole contributor"""
+
+    temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
+    project_dir = Path(temp_dir) / "SingleAuthorProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Alice")
+        config.set_value("user", "email", "alice@example.com")
+    (project_dir / "main.py").write_text("# Alice's work\nprint('hello')\n")
+    repo.index.add(["main.py"])
+    repo.index.commit("Alice creates main")
+
+    project_files = ProjectLayout(
+        name="SingleAuthorProject",
+        root_path=project_dir,
+        file_paths=[Path("main.py")],
+        repo=repo
+    )
+
+    fr = extract_file_reports(project_files, "alice@example.com")
+
+    pr = ProjectReport(file_reports=fr,
+                       project_path=str(project_dir),
+                       project_repo=Repo(str(project_dir)),
+                       project_name="SingleAuthorProject",
+                       user_email="alice@example.com",
+                       calculator_classes=[ProjectAnalyzeGitAuthorship])
+
+    assert pr.get_value(
+        ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value) == 100.0
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_total_contribution_percentage_three_way_split(tmp_path: Path):
+    """Test contribution percentage with three equal contributors"""
+
+    temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
+    project_dir = Path(temp_dir) / "ThreeWayProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # Each author creates one file with equal lines
+    for author, email, filename in [
+        ("Alice", "alice@example.com", "fileA.py"),
+        ("Bob", "bob@example.com", "fileB.py"),
+        ("Charlie", "charlie@example.com", "fileC.py")
+    ]:
+        with repo.config_writer() as config:
+            config.set_value("user", "name", author)
+            config.set_value("user", "email", email)
+        (project_dir / filename).write_text(f"# {author}\nline1\nline2\n")
+        repo.index.add([filename])
+        repo.index.commit(f"{author} creates {filename}")
+
+    project_files = ProjectLayout(
+        name="ThreeWayProject",
+        root_path=project_dir,
+        file_paths=[Path("fileA.py"), Path("fileB.py"), Path("fileC.py")],
+        repo=repo
+    )
+
+    fr = extract_file_reports(project_files, "alice@example.com")
+
+    pr = ProjectReport(file_reports=fr,
+                       project_path=str(project_dir),
+                       project_repo=Repo(str(project_dir)),
+                       project_name="ThreeWayProject",
+                       user_email="alice@example.com",
+                       calculator_classes=[ProjectAnalyzeGitAuthorship])
+
+    # Alice should have ~33.33%
+    assert pytest.approx(pr.get_value(
+        ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value), 0.1) == 33.33
 
     shutil.rmtree(temp_dir, ignore_errors=True)

@@ -116,8 +116,8 @@ def test_language_filter_case_insensitive(tmp_path):
         assert len(file_reports) == 1
 
 
-def test_should_include_respects_language_filter(tmp_path):
-    """Test that BaseFileAnalyzer.should_include() respects language filter"""
+def test_should_analyze_file_respects_language_filter(tmp_path):
+    """Test that BaseFileAnalyzer.should_analyze_file() respects language filter"""
     # Create Python file
     py_file = tmp_path / "test.py"
     py_file.write_text("print('hello')")
@@ -131,7 +131,7 @@ def test_should_include_respects_language_filter(tmp_path):
         None,
         ["Python"]
     )
-    assert analyzer.should_include() is True
+    assert analyzer.should_analyze_file() is True
 
     # Test with only JavaScript in filter - should exclude
     analyzer = get_appropriate_analyzer(
@@ -142,7 +142,7 @@ def test_should_include_respects_language_filter(tmp_path):
         None,
         ["Javascript"]
     )
-    assert analyzer.should_include() is False
+    assert analyzer.should_analyze_file() is False
 
 
 def test_language_filter_with_multiple_extensions(tmp_path):

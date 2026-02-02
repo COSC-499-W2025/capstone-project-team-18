@@ -3,7 +3,11 @@ import zipfile
 import pytest
 from git import Repo
 
-
+import shutil
+import tempfile
+from src.core.project_discovery.project_discovery import ProjectLayout
+from src.core.analyzer import extract_file_reports
+from src.core.statistic import FileStatCollection
 from src.core.project_discovery.project_discovery import discover_projects  # type: ignore  # noqa: E402
 from src.core.report import ProjectReport  # type: ignore  # noqa: E402
 from src.core.statistic import ProjectStatCollection  # type: ignore  # noqa: E402
@@ -252,3 +256,143 @@ def test_project_report_git_analysis(git_dir: Path):
     assert "feature2.py" in authors_per_file.value
     assert authors_per_file.value["feature1.py"] == 1
     assert authors_per_file.value["feature2.py"] == 1
+
+
+def test_info_files_exist(tmp_path: Path):
+    """Given partial contribution, a project report will exist but
+    include only full reports on some files. In this case, 2/4 are contrubted to
+    and the other 2 are info files
+    """
+
+    temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
+    project_dir = Path(temp_dir) / "PartialProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # Two files created by Alice (not the user)
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Alice")
+        config.set_value("user", "email", "alice@example.com")
+    (project_dir / "a1.py").write_text("# by Alice\n")
+    repo.index.add(["a1.py"])
+    repo.index.commit("Alice commit a1")
+    (project_dir / "a2.py").write_text("# by Alice\n")
+    repo.index.add(["a2.py"])
+    repo.index.commit("Alice commit a2")
+
+    # Two files created by Charlie (the user)
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Charlie")
+        config.set_value("user", "email", "charlie@example.com")
+    (project_dir / "c1.py").write_text("# by Charlie\n")
+    repo.index.add(["c1.py"])
+    repo.index.commit("Charlie commit c1")
+    (project_dir / "c2.py").write_text("# by Charlie\n")
+    repo.index.add(["c2.py"])
+    repo.index.commit("Charlie commit c2")
+
+    project_files = ProjectLayout(
+        name="PartialProject",
+        root_path=project_dir,
+        file_paths=[Path("a1.py"), Path("a2.py"),
+                    Path("c1.py"), Path("c2.py")],
+        repo=repo
+    )
+
+    fr = extract_file_reports(project_files, "charlie@example.com")
+
+    # Four file reports included
+    assert len(fr) == 4
+
+    # Exactly two files should be marked as contributed to by Charlie
+    contrib_flags = [f.get_value(
+        FileStatCollection.CONTRIBUTED_TO.value) for f in fr]
+    assert contrib_flags.count(True) == 2
+    assert contrib_flags.count(False) == 2
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_partial_project_contribution(tmp_path: Path):
+    """Test that given a portion of project with contribution, that the correct contribution flags are set
+    Additionlly, the correct project errors should be thrown"""
+    from src.services.mining_service import ProjectError
+    from src.utils.errors import ErrorCode
+
+    temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
+
+    # Project A: user contributes (Charlie)
+    proj_a = Path(temp_dir) / "ProjectA"
+    proj_a.mkdir()
+    repo_a = Repo.init(proj_a)
+    with repo_a.config_writer() as cfg:
+        cfg.set_value("user", "name", "Charlie")
+        cfg.set_value("user", "email", "charlie@example.com")
+    (proj_a / "main.py").write_text("# by Charlie\n")
+    repo_a.index.add(["main.py"])
+    repo_a.index.commit("Charlie commit")
+
+    # Project B: user contributes to one file among others
+    proj_b = Path(temp_dir) / "ProjectB"
+    proj_b.mkdir()
+    repo_b = Repo.init(proj_b)
+    with repo_b.config_writer() as cfg:
+        cfg.set_value("user", "name", "Alice")
+        cfg.set_value("user", "email", "alice@example.com")
+    (proj_b / "lib.py").write_text("# by Alice\n")
+    repo_b.index.add(["lib.py"])
+    repo_b.index.commit("Alice commit")
+    with repo_b.config_writer() as cfg:
+        cfg.set_value("user", "name", "Charlie")
+        cfg.set_value("user", "email", "charlie@example.com")
+    (proj_b / "util.py").write_text("# by Charlie\n")
+    repo_b.index.add(["util.py"])
+    repo_b.index.commit("Charlie commit")
+
+    # Project C: no user contributions (only Alice)
+    proj_c = Path(temp_dir) / "ProjectC"
+    proj_c.mkdir()
+    repo_c = Repo.init(proj_c)
+    with repo_c.config_writer() as cfg:
+        cfg.set_value("user", "name", "Alice")
+        cfg.set_value("user", "email", "alice@example.com")
+    (proj_c / "only.py").write_text("# by Alice only\n")
+    repo_c.index.add(["only.py"])
+    repo_c.index.commit("Alice commit only")
+
+    # below is mock of start_miner behaviour
+    layouts = [
+        ProjectLayout(name="ProjectA", root_path=proj_a,
+                      file_paths=[Path("main.py")], repo=repo_a),
+        ProjectLayout(name="ProjectB", root_path=proj_b, file_paths=[
+                      Path("lib.py"), Path("util.py")], repo=repo_b),
+        ProjectLayout(name="ProjectC", root_path=proj_c,
+                      file_paths=[Path("only.py")], repo=repo_c),
+    ]
+
+    reports = []
+    errors = []
+
+    for layout in layouts:
+        fr = extract_file_reports(layout, "charlie@example.com")
+        pr = ProjectReport(file_reports=fr,
+                           project_path=str(layout.root_path),
+                           project_name=layout.name,
+                           project_repo=layout.repo,
+                           user_email="charlie@example.com")
+        reports.append(pr)
+        if pr.contributed_to is False:
+            errors.append(ProjectError(project_name=layout.name,
+                                       error_code=ErrorCode.NO_RELEVANT_FILES.value,
+                                       error_message=f"No user contribution in {layout.name}"))
+
+    # Two projects should show contributed_to == True, one should be False
+    contributed_flags = [r.contributed_to for r in reports]
+    assert contributed_flags.count(True) == 2
+    assert contributed_flags.count(False) == 1
+
+    # One project error should be produced for the uncontributed project
+    assert len(errors) == 1
+    assert errors[0].error_code == ErrorCode.NO_RELEVANT_FILES.value
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
