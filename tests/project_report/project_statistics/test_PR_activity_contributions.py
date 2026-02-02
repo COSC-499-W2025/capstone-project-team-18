@@ -3,7 +3,7 @@ from pytest import approx
 from src.core.report import ProjectReport
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.analyzer import extract_file_reports
-from src.core.statistic import ProjectStatCollection, FileDomain
+from src.core.statistic import ProjectStatCollection, FileDomain, FileStatCollection
 
 
 def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_layout):
@@ -71,9 +71,13 @@ def test_activity_contribution_from_git_project(project_realistic):
         user_email=my_email
     )
 
-    # Check to see that files are only included if the user themselves
-    # contributed and local
-    assert frs is not None and len(frs) == 5
+    # Adjusted to include uncontributed files in case of use for semantic analysis
+    # All activty type contributions should remain the same however
+    assert frs is not None and len(frs) == 7
+    contrib_flags = [f.get_value(
+        FileStatCollection.CONTRIBUTED_TO.value) for f in frs]
+    assert contrib_flags.count(True) == 5
+    assert contrib_flags.count(False) == 2
 
     contr = pr.get_value(
         ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)

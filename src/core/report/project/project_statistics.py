@@ -398,6 +398,9 @@ class ProjectActivityTypeContributions(ProjectStatisticCalculation):
             if not file_domain or not lines_in_file:
                 continue
 
+            if fr.get_value(FileStatCollection.CONTRIBUTED_TO.value) is False:
+                continue
+
             percent = 1
 
             # If git analysis, check to see if the user has contributed
