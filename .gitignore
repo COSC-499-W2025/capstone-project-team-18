@@ -62,3 +62,20 @@ src/classes/database/preferences.json
 src/interface/cli/preferences.json
 .gitignore
 src/infrastructure/log/*.log
+
+# =====================
+# Electron / UI (Node)
+# =====================
+
+# Dependencies
+ui/node_modules/
+
+# Build outputs
+ui/dist/
+ui/dist-electron/
+ui/dist-renderer/
+ui/out/
+ui/.vite/
+
+# Logs (if any appear later)
+ui/*.log
