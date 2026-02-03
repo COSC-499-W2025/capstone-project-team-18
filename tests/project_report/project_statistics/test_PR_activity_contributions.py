@@ -4,9 +4,10 @@ from src.core.report import ProjectReport
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.analyzer import extract_file_reports
 from src.core.statistic import ProjectStatCollection, FileDomain, FileStatCollection
+from src.core.report.project.project_statistics import ProjectActivityTypeContributions
 
 
-def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_layout):
+def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_layout, mock_readme_analysis):
     """
     Tests that in a normal project,
     we see normal activity contributions.
@@ -34,14 +35,20 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_l
         file_reports=frs,
         project_path=str(pf.root_path),
         project_name=pf.name,
-        user_email="bob@example.com"
+        user_email="bob@example.com",
+        calculator_classes=[
+            ProjectActivityTypeContributions
+        ]
     )
 
     pr_no_email = ProjectReport(
         file_reports=frs,
         project_path=str(pf.root_path),
         project_name=pf.name,
-        user_email=None
+        user_email=None,
+        calculator_classes=[
+            ProjectActivityTypeContributions
+        ]
     )
 
     for pr in [pr_email, pr_no_email]:
@@ -53,7 +60,7 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_l
         assert contr[FileDomain.CODE] == approx(3/6)
 
 
-def test_activity_contribution_from_git_project(project_realistic):
+def test_activity_contribution_from_git_project(project_realistic, mock_readme_analysis):
     """
     Test that for a Gitproject, we accuractly
     count the contribution percentage
@@ -68,7 +75,10 @@ def test_activity_contribution_from_git_project(project_realistic):
         project_path=str(project_realistic.root_path),
         project_name=project_realistic.name,
         project_repo=project_realistic.repo,
-        user_email=my_email
+        user_email=my_email,
+        calculator_classes=[
+            ProjectActivityTypeContributions
+        ]
     )
 
     # Adjusted to include uncontributed files in case of use for semantic analysis

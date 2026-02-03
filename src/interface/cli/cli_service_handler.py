@@ -84,6 +84,10 @@ def start_miner_cli(
         )
     )
 
+    if miner_results.success is False:
+        print("Error analyzing projects! Check logs for more info")
+        return miner_results
+
     # make a UserReport with the ProjectReports
     user_report = UserReport(
         miner_results.project_reports, report_name=datetime.now().strftime("%d/%m:%S")

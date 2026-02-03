@@ -4,13 +4,12 @@ This file handles all logic for logging
 
 import logging
 from pathlib import Path
-from datetime import datetime
 
 from logging.handlers import RotatingFileHandler
 
 # Create a new logfile with timestamp each time the program runs
-LOG_FILE = Path(__file__).parent / \
-    f"app_{datetime.now().strftime('%m-%d_%H%M%S')}.log"
+
+LOG_FILE = Path(__file__).parent / "app.log"
 
 
 def get_logger(name: str, level=logging.INFO):

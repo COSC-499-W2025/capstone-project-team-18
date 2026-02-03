@@ -2,6 +2,7 @@ from pathlib import Path
 from src.core.statistic import ProjectStatCollection, CodingLanguage
 from src.core.analyzer import get_appropriate_analyzer
 from src.core.report import ProjectReport
+from src.core.report.project.project_statistics import CodingLanguageRatio
 
 
 def test_coding_ratio_in_normal_project(tmp_path):
@@ -35,7 +36,8 @@ def test_coding_ratio_in_normal_project(tmp_path):
 
         reports.append(get_appropriate_analyzer(str(tmp_path), file).analyze())
 
-    project_report = ProjectReport(reports)
+    project_report = ProjectReport(
+        reports, calculator_classes=[CodingLanguageRatio])
 
     coding_language_ratio = project_report.get_value(
         ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
