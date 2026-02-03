@@ -56,7 +56,9 @@ def extract_file_reports(
             github,
             language_filter)
 
-        if analyzer.should_include() is False:
+        if analyzer.should_analyze_file() is False:
+            if analyzer.is_info_file():
+                reports.append(analyzer.create_info_file())
             logger.info("Skipping file %s in project %s",
                         file, project_file.name)
             continue

@@ -85,6 +85,30 @@ def blank_db():
 
     yield engine
 
+@pytest.fixture
+def mock_readme_analysis(monkeypatch):
+    """
+    This fixture is needed if you are running the file analyzer sysytem
+    to skip the machine learning analysis
+    """
+
+    def fake_extract_keyphrases(text):
+        return ["installation", "usage", "configuration"]
+
+    def fake_classify_tone(text):
+        return "informative"
+
+    monkeypatch.setattr(
+        "src.core.analyzer.natural_language_analyzer.extract_readme_keyphrases",
+        fake_extract_keyphrases
+    )
+
+    monkeypatch.setattr(
+        "src.core.analyzer.natural_language_analyzer.classify_readme_tone",
+        fake_classify_tone
+    )
+
+
 
 def commit_as(repo: Repo, author_name: str, author_email: str,
               file_path: Path, content: str, message: str,

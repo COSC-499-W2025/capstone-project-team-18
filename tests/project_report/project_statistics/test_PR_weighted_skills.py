@@ -1,11 +1,12 @@
-from src.core.statistic import StatisticIndex, ProjectStatCollection
+from pytest import approx
+
+from src.core.statistic import StatisticIndex, ProjectStatCollection, Statistic, FileStatCollection, ProjectStatCollection
 from src.core.report import ProjectReport, FileReport
+from src.core.report.project.project_statistics import ProjectWeightedSkills
 
 
 def test_weighted_skills_from_imported_packages():
     """Ensure weighted skills are aggregated from imported packages across files."""
-    from pytest import approx
-    from src.core.statistic import Statistic, StatisticIndex, FileStatCollection, ProjectStatCollection
 
     # file1 imports numpy and pandas, file2 imports numpy
     file1_stats = StatisticIndex([
@@ -19,7 +20,8 @@ def test_weighted_skills_from_imported_packages():
     file1 = FileReport(file1_stats, "file1.py")
     file2 = FileReport(file2_stats, "file2.py")
 
-    project = ProjectReport([file1, file2])
+    project = ProjectReport([file1, file2], calculator_classes=[
+                            ProjectWeightedSkills])
 
     skills = project.get_value(
         ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value)
@@ -35,8 +37,6 @@ def test_weighted_skills_from_imported_packages():
 
 def test_multiple_weighted_skills_from_imported_packages():
     """Ensure weighted skills are aggregated from imported packages across files."""
-    from pytest import approx
-    from src.core.statistic import Statistic, StatisticIndex, FileStatCollection, ProjectStatCollection
 
     # file1 imports numpy and pandas, file2 imports numpy
     file1_stats = StatisticIndex([
@@ -53,7 +53,8 @@ def test_multiple_weighted_skills_from_imported_packages():
     file1 = FileReport(file1_stats, "file1.py")
     file2 = FileReport(file2_stats, "file2.py")
     file3 = FileReport(file3_stats, "file3.py")
-    project = ProjectReport([file1, file2, file3])
+    project = ProjectReport([file1, file2, file3], calculator_classes=[
+                            ProjectWeightedSkills])
 
     skills = project.get_value(
         ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value)
@@ -76,7 +77,8 @@ def test_weighted_skills_absent_when_no_imports():
     file_stats = StatisticIndex([])
     file_report = FileReport(file_stats, "no_imports.py")
 
-    project = ProjectReport([file_report])
+    project = ProjectReport([file_report], calculator_classes=[
+                            ProjectWeightedSkills])
 
     skills = project.get_value(
         ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value)
@@ -91,7 +93,8 @@ def test_filename_maps_to_skills():
     file1 = FileReport(file_stats, "Dockerfile")
     file2 = FileReport(file_stats, "securityCheck.py")
     file3 = FileReport(file_stats, "database_migration.py")
-    project = ProjectReport([file1, file2, file3])
+    project = ProjectReport([file1, file2, file3], calculator_classes=[
+                            ProjectWeightedSkills])
 
     skills = project.get_value(
         ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value)
