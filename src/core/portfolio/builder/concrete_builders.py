@@ -175,7 +175,7 @@ class UserGenericStatisticsSectionBuilder(PortfolioSectionBuilder):
 
             should_try_date = (
                 template.expected_type in (datetime, type(None))
-                or isinstance(value, (datetime,))
+                or isinstance(value, datetime)
             )
 
             if should_try_date:
