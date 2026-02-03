@@ -13,7 +13,19 @@ class ErrorCode(str, Enum):
     NO_DISCOVERED_PROJECTS = "NO_DISCOVERED_PROJECTS"
     MISSING_CONSENT = "MISSING_CONSENT"
     ANALYSIS_FAILED = "ANALYSIS_FAILED"
+    ALEMBIC_ERROR = "ALMEBIC_ERROR"
+    ALEMBIC_MIGRATION_ERROR = "ALEMBIC_MIGRATION_ERROR"
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
+
+
+class AlembicError(Exception):
+    """Alembic database error"""
+    error_code: ErrorCode = ErrorCode.ALEMBIC_ERROR
+
+
+class AlembicMigrationError(AlembicError):
+    """Alembic Migration database error"""
+    error_code: ErrorCode = ErrorCode.ALEMBIC_MIGRATION_ERROR
 
 
 class ArtifactMinerException(Exception):

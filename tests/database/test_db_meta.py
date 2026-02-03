@@ -5,6 +5,7 @@ and also in that we check to see if our fixtures work
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
+from src.database.utils.db_migrate import run_migrations
 
 
 from src.database.models import (
@@ -48,6 +49,18 @@ def test_file_to_project_relationship(temp_db):
         # child rows should reference parent PK via FK
         for fr in project.file_reports:
             assert fr.project_id == project.id
+
+
+def test_migrations(temp_db):
+    """
+    Tests the database migrations. If this errors out, it is
+    very much likely that you added something to a database tracked
+    object (Like adding a statistic to ProjectReport) that you did
+    not handle in `alembic/versions` read the `alembic/README.md`
+    for more information on how to add
+    """
+
+    run_migrations()
 
 
 """
