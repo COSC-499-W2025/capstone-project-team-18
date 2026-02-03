@@ -30,7 +30,7 @@ def discovered_project(resource_dir, tmp_path):
     ],
 )
 def test_verify_accurate_contribution_percentage(
-    discovered_project, email, expected_percentage
+    discovered_project, email, expected_percentage, mock_readme_analysis
 ):
     """
     Verify total contribution percentage for different user emails.
@@ -59,7 +59,7 @@ def test_verify_accurate_contribution_percentage(
     )
 
 
-def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path):
+def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path, mock_readme_analysis):
     """Test that 0% is returned when user has no contribution to any file"""
 
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
@@ -108,7 +108,7 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_total_contribution_percentage_single_file_full_contribution(tmp_path: Path):
+def test_total_contribution_percentage_single_file_full_contribution(tmp_path: Path, mock_readme_analysis):
     """Test 100% contribution when user is sole contributor"""
 
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
@@ -145,7 +145,7 @@ def test_total_contribution_percentage_single_file_full_contribution(tmp_path: P
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_total_contribution_percentage_three_way_split(tmp_path: Path):
+def test_total_contribution_percentage_three_way_split(tmp_path: Path, mock_readme_analysis):
     """Test contribution percentage with three equal contributors"""
 
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))

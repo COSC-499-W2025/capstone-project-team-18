@@ -27,7 +27,7 @@ def mock_engine(monkeypatch, blank_db):
     yield blank_db
 
 
-def test_app_runs(mock_engine):
+def test_app_runs(mock_engine, mock_readme_analysis):
     """
     Test that the main app function runs without errors.
     """
@@ -48,7 +48,7 @@ def test_app_runs(mock_engine):
     assert isinstance(project_b, ProjectReport)
 
 
-def test_app_runs_empty_zip():
+def test_app_runs_empty_zip(mock_readme_analysis):
     """
     Test that the main app function raises ValueError
     for a zip file that contains one empty folder.
@@ -61,7 +61,7 @@ def test_app_runs_empty_zip():
         start_miner_cli(sample_zipped_file, sample_email)
 
 
-def test_app_runs_git_repo_wrong_email():
+def test_app_runs_git_repo_wrong_email(mock_readme_analysis):
     """
     Test that the main app function raises ValueError
     for a zip file that contains a git project with
