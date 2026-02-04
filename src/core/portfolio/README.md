@@ -118,23 +118,22 @@ Also new in M2 is that a user needs to update their Portfolio with a new project
 
 The crux of the portfolio is that we may have a situation where the user edits a portfolio, and then they add on to the portfolio with another project. In this, the user and the system have divergent changes. The block will then go into conflict mode. In this mode, the user is presented with the conflicts on the frontend and they must 1. either accept the system changes or 2. update the user content.
 
-```mermaid
 graph TD
     User([User]) -->|Triggers Update| FE[Frontend]
     FE -->|Update Request| API[Backend API]
 
-    subgraph Data_Aggregation [Data Aggregation]
+    subgraph DataAggregation [Data Aggregation]
         API -->|Fetch Latest| DB[(DB: ProjectReports)]
         DB -->|Raw Data| UR[New UserReport Object]
         UR -->|Generate| P_New[Temporary New Portfolio]
     end
 
-    subgraph Merge_Logic [Conflict Resolution Mode]
-        P_Existing[(Existing Portfolio)] -->|User-Modified Content| CM{Conflict Manager}
-        P_New -->|System-Generated Content| CM
-        CM -->|Logic: Flag Conflicting Manual Edits| P_Final[Portfolio in Conflict Mode]
+    subgraph MergeLogic [Conflict Resolution Mode]
+        P_Existing[(Existing Portfolio)] -->|Manual Edits| CM{Conflict Manager}
+        P_New -->|System Content| CM
+        CM -->|Flag Edits| P_Final[Portfolio in Conflict Mode]
     end
 
     P_Final -->|Overwrite| P_Existing
-    P_Existing -->|Present Conflicts| FE
+    P_Existing -.->|Present Conflicts| FE
 ```
