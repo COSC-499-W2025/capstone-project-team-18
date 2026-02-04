@@ -114,11 +114,10 @@ graph LR
 
 ### Incremental Additions / Conflict Resolution
 
+Also new in M2 is that a user needs to update their Portfolio with a new project or update the original projects used to first generate the portfolio. So, to update a portfolio, we need to retrieve the projects from the database, create a **new UserReport** object, which is used to create a **new portfolio**, and that new portfolio is then merged with the user's portfolio.
+
 The crux of the portfolio is that we may have a situation where the user edits a portfolio, and then they add on to the portfolio with another project. In this, the user and the system have divergent changes. The block will then go into conflict mode. In this mode, the user is presented with the conflicts on the frontend and they must 1. either accept the system changes or 2. update the user content.
 
-```
-
-Also new in M2 is that a user needs to update their Portfolio with a new project or update the original projects used to first generate the portfolio. So, to update a portfolio, we need to retrieve the projects from the database, create a **new UserReport** object, which is used to create a **new portfolio**, and that new portfolio is then merged with the user's portfolio, and that's when we enter a conflict resolution mode if needed.
 ```mermaid
 graph TD
     User([User]) -->|Triggers Update| FE[Frontend]
