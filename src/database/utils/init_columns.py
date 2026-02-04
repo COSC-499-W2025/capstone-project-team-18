@@ -84,6 +84,7 @@ def make_columns(collection: CollectionType):
                 col_type = _sqlalchemy_type_for(template.expected_type)
                 logger.info(f'Column Name: {col_name}, Type: {col_type}')
                 setattr(cls, col_name, mapped_column(col_type))
+        '''
         else:
             for attr_name in dir(collection):
                 # filter out built-in attrs like __name__
@@ -91,5 +92,6 @@ def make_columns(collection: CollectionType):
                     col_name = attr_name
                     col_type = type(getattr(collection, attr_name))
                     setattr(cls, col_name, col_type)
+        '''
         return cls
     return decorator
