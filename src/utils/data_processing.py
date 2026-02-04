@@ -4,6 +4,7 @@ with data processing.
 """
 
 from typing import Any
+from datetime import datetime, date
 
 
 def normalize(d: dict[Any, float]) -> None:
@@ -58,3 +59,20 @@ def float_to_percent(f: float) -> str:
         return "~" + percent_str
 
     return percent_str
+
+
+def fmt_mdy_short(d: datetime | date | None) -> str:
+    """Format as 'Mon D, YYYY' (e.g. 'Jan 12, 2023')."""
+    if d is None:
+        return "an unknown date"
+    if isinstance(d, date) and not isinstance(d, datetime):
+        d = datetime(d.year, d.month, d.day)
+    return d.strftime("%b %d, %Y")
+
+
+def fmt_mdy(d: datetime | date | None) -> str:
+    if d is None:
+        return "an unknown date"
+    if isinstance(d, date) and not isinstance(d, datetime):
+        d = datetime(d.year, d.month, d.day)
+    return f"{d.month}/{d.day}/{d.year}"

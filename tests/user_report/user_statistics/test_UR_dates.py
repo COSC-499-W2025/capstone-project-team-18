@@ -45,8 +45,8 @@ def test_user_dates_from_multiple_projects(project_report_from_stats):
     user_start = user.get_value(UserStatCollection.USER_START_DATE.value)
     user_end = user.get_value(UserStatCollection.USER_END_DATE.value)
 
-    assert user_start == datetime(2022, 1, 1)
-    assert user_end == datetime(2023, 12, 31)
+    assert user_start == datetime(2022, 1, 1, 0, 0)
+    assert user_end == datetime(2023, 12, 31, 0, 0)
 
 
 def test_empty_project_list():
