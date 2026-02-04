@@ -91,8 +91,8 @@ def temp_db(tmp_path: Path, fr1, fr2, fr3, fr4):
     db_url = f"sqlite:///{db_path}"
     engine = create_engine(f"sqlite:///{db_path}")
 
-    Base.metadata.create_all(engine)  # add columns to temp DB
     run_migrations(db_url)
+    Base.metadata.create_all(engine)  # add columns to temp DB
 
     pr1 = ProjectReport(file_reports=[fr2, fr3], project_name="Project1")
     pr2 = ProjectReport(file_reports=[fr4, fr1], project_name="Project2")
