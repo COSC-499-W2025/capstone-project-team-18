@@ -4,9 +4,11 @@ The entry point for the ArtifactMiner program.
 
 from src.database.utils.db_migrate import run_migrations
 
+db_url = "sqlite:///src/database/data.db"
+
 
 def main():
-    run_migrations()
+    run_migrations(db_url)
 
     from src.interface.cli.cli import ArtifactMiner
     try:

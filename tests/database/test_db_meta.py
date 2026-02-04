@@ -2,12 +2,15 @@
 'Meta' tests in the db. Both in the way that we check the schema
 and also in that we check to see if our fixtures work
 """
+from pathlib import Path
+from alembic import command
+from alembic.config import Config
+
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from src.database.models import FileReportTable, ProjectReportTable, UserReportTable
-from src.database.utils.db_migrate import run_migrations
 from src.core.statistic import FileStatCollection, ProjectStatCollection, UserStatCollection
 
 
@@ -88,7 +91,6 @@ def test_exists_user_report_stat_cols(temp_db):
     project_stat_collection.py are present as columns
     in the database
     """
-    run_migrations()
     user_report_table = UserReportTable.__table__
 
     for stat in UserStatCollection:
@@ -127,6 +129,7 @@ def test_proj_user_assoc_table(temp_db):
     pk = inspector.get_pk_constraint("proj_user_assoc")
     assert set(pk["constrained_columns"]) == {
         "project_report_id", "user_report_id", }
+
 
 # TODO: Once the resume and portfolio tables are more fleshed
 # out, we'll need tests to verify their config, relationships, etc.
