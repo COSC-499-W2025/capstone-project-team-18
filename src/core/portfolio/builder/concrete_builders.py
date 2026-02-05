@@ -6,6 +6,7 @@ from src.core.portfolio.sections.block.block_content import TextListBlock, TextB
 from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
 from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
+from src.core.ML.models.contribution_analysis import generate_signature, build_signature_facts
 
 
 class UserDateSectionBuilder(PortfolioSectionBuilder):
@@ -116,6 +117,174 @@ class UserSkillsSectionBuilder(PortfolioSectionBuilder):
         ]
 
         return lines
+
+
+class UserSummarySectionBuilder(PortfolioSectionBuilder):
+    """Builds a section with the user's summary."""
+
+    section_id = "summary"
+    section_title = "Summary"
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        # Build a dynamic signature from current report data (no DB storage).
+        signature = self._build_signature(report)
+
+        if not signature or not isinstance(signature, str):
+            return []
+
+        signature = signature.strip()
+        if not signature:
+            return []
+
+        return [Block("signature", TextBlock(text=signature))]
+
+    def _build_signature(self, report: UserReport) -> str | None:
+        lang_ratio = report.get_value(
+            UserStatCollection.USER_CODING_LANGUAGE_RATIO.value
+        )
+        user_skills = report.get_value(UserStatCollection.USER_SKILLS.value)
+
+        role = self._dominant_role(report)
+        cadence = self._dominant_cadence(report)
+        commit_focus = self._dominant_commit_focus(report)
+        tools = self._top_tools(report, limit=6)
+        focus = None
+
+        top_langs = self._top_languages_list(lang_ratio, limit=4)
+        top_skills = self._top_skills_list(user_skills, limit=6)
+        themes = self._top_project_themes(report, limit=4)
+        tags = self._top_project_tags(report, limit=8)
+        project_names = [pr.project_name for pr in report.project_reports if getattr(pr, "project_name", None)]
+
+        facts = build_signature_facts(
+            focus=focus,
+            top_skills=top_skills,
+            top_languages=top_langs,
+            tools=tools,
+            role=role,
+            cadence=cadence,
+            commit_focus=commit_focus,
+            themes=themes,
+            activities=[],
+            emerging=[],
+            project_names=project_names,
+            tags=tags,
+        )
+
+        signature = generate_signature(facts)
+        if signature:
+            if self._is_valid_summary(signature):
+                return signature
+            from src.infrastructure.log.logging import get_logger
+            logger = get_logger(__name__)
+            logger.warning(
+                "Summary rejected by validator (len=%d, sentences=%d): %s",
+                len(signature.split()),
+                signature.count("."),
+                signature[:200],
+            )
+            return None
+        return None
+
+    def _dominant_role(self, report: UserReport) -> str | None:
+        role_counts: dict[str, int] = {}
+        for pr in report.project_reports:
+            role = pr.get_value(ProjectStatCollection.COLLABORATION_ROLE.value)
+            if role is None:
+                continue
+            role_key = getattr(role, "value", str(role))
+            role_counts[role_key] = role_counts.get(role_key, 0) + 1
+        if not role_counts:
+            return None
+        return max(role_counts.items(), key=lambda kv: kv[1])[0]
+
+    def _dominant_cadence(self, report: UserReport) -> str | None:
+        cadence_counts: dict[str, int] = {}
+        for pr in report.project_reports:
+            cadence = pr.get_value(ProjectStatCollection.WORK_PATTERN.value)
+            if cadence is None:
+                continue
+            cadence_key = getattr(cadence, "value", str(cadence))
+            cadence_counts[cadence_key] = cadence_counts.get(cadence_key, 0) + 1
+        if not cadence_counts:
+            return None
+        return max(cadence_counts.items(), key=lambda kv: kv[1])[0]
+
+    def _dominant_commit_focus(self, report: UserReport) -> str | None:
+        totals: dict[str, float] = {}
+        for pr in report.project_reports:
+            dist = pr.get_value(
+                ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value
+            )
+            if not dist:
+                continue
+            for k, v in dist.items():
+                totals[k] = totals.get(k, 0.0) + float(v)
+        if not totals:
+            return None
+        return max(totals.items(), key=lambda kv: kv[1])[0]
+
+    def _top_tools(self, report: UserReport, limit: int) -> list[str]:
+        tools: dict[str, float] = {}
+        for pr in report.project_reports:
+            frameworks = pr.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value)
+            if not frameworks:
+                continue
+            for ws in frameworks:
+                name = getattr(ws, "skill_name", None) or str(ws)
+                weight = getattr(ws, "weight", 1.0)
+                tools[name] = tools.get(name, 0.0) + float(weight)
+        if not tools:
+            return []
+        ranked = sorted(tools.items(), key=lambda kv: kv[1], reverse=True)
+        return [name for name, _ in ranked[:limit]]
+
+    def _top_languages_list(self, lang_ratio, limit: int) -> list[str]:
+        if not lang_ratio:
+            return []
+        ranked = sorted(lang_ratio.items(), key=lambda kv: kv[1], reverse=True)
+        return [getattr(lang, "value", str(lang)) for lang, _ in ranked[:limit]]
+
+    def _top_skills_list(self, user_skills, limit: int) -> list[str]:
+        if not user_skills:
+            return []
+        ranked = sorted(
+            user_skills, key=lambda s: getattr(s, "weight", 0), reverse=True
+        )
+        return [getattr(ws, "skill_name", str(ws)) for ws in ranked[:limit]]
+
+    def _top_project_themes(self, report: UserReport, limit: int) -> list[str]:
+        themes: dict[str, int] = {}
+        for pr in report.project_reports:
+            project_themes = pr.get_value(ProjectStatCollection.PROJECT_THEMES.value)
+            if not project_themes:
+                continue
+            for t in project_themes:
+                themes[t] = themes.get(t, 0) + 1
+        if not themes:
+            return []
+        ranked = sorted(themes.items(), key=lambda kv: kv[1], reverse=True)
+        return [name for name, _ in ranked[:limit]]
+
+    def _top_project_tags(self, report: UserReport, limit: int) -> list[str]:
+        tags: dict[str, int] = {}
+        for pr in report.project_reports:
+            project_tags = pr.get_value(ProjectStatCollection.PROJECT_TAGS.value)
+            if not project_tags:
+                continue
+            for t in project_tags:
+                tags[t] = tags.get(t, 0) + 1
+        if not tags:
+            return []
+        ranked = sorted(tags.items(), key=lambda kv: kv[1], reverse=True)
+        return [name for name, _ in ranked[:limit]]
+
+    def _is_valid_summary(self, summary: str) -> bool:
+        word_count = len(summary.split())
+        sentence_count = summary.count(".")
+        if word_count < 20 or word_count > 140:
+            return False
+        return 1 <= sentence_count <= 6
 
 
 class UserCodingLanguageRatioSectionBuilder(PortfolioSectionBuilder):

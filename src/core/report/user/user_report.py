@@ -207,6 +207,7 @@ class UserReport(BaseReport):
         This delegates to concrete builders for flexible, modular portfolio generation.
         """
         from src.core.portfolio.builder.concrete_builders import (
+            UserSummarySectionBuilder,
             UserSkillsSectionBuilder,
             UserCodingLanguageRatioSectionBuilder,
             UserGenericStatisticsSectionBuilder,
@@ -221,6 +222,7 @@ class UserReport(BaseReport):
 
         # Create portfolio builder with all section builders
         builder = PortfolioBuilder()
+        builder.register_section_builder(UserSummarySectionBuilder())
         builder.register_section_builder(UserSkillsSectionBuilder())
         builder.register_section_builder(
             UserCodingLanguageRatioSectionBuilder())
