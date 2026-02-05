@@ -13,8 +13,7 @@ from src.core.statistic import Statistic, StatisticIndex
 from src.core.report import UserReport, ProjectReport
 import tempfile
 import shutil
-from sqlalchemy import create_engine
-from src.database.base import Base
+from sqlmodel import create_engine, SQLModel
 
 
 @pytest.fixture
@@ -81,9 +80,10 @@ def blank_db():
     """
 
     engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
+    SQLModel.metadata.create_all(engine)
 
     yield engine
+
 
 @pytest.fixture
 def mock_readme_analysis(monkeypatch):
@@ -107,7 +107,6 @@ def mock_readme_analysis(monkeypatch):
         "src.core.analyzer.natural_language_analyzer.classify_readme_tone",
         fake_classify_tone
     )
-
 
 
 def commit_as(repo: Repo, author_name: str, author_email: str,

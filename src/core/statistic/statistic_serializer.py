@@ -8,7 +8,7 @@ from dataclasses import is_dataclass, asdict
 from typing import Any
 import ast
 import json
-from src.core.statistic import FileDomain, CodingLanguage, WeightedSkills
+from src.core.statistic.statistic_models import FileDomain, CodingLanguage, WeightedSkills
 
 ENUM_REGISTRY = {
     "FileDomain": FileDomain,
