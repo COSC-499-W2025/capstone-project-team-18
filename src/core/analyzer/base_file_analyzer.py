@@ -3,7 +3,7 @@ from pathlib import Path
 from git import GitCommandError
 
 from src.core.report.file_report import FileReport
-from src.db.api.models import UserConfigModel as UserConfig
+from src.database.api.models import UserConfigModel as UserConfig
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.statistic import Statistic, StatisticIndex, FileStatCollection
 from src.infrastructure.log.logging import get_logger

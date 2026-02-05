@@ -11,10 +11,10 @@ from src.utils.pathing_utils import unzip_file_bytes
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
 from src.core.analyzer import extract_file_reports
 from src.core.report import ProjectReport
-from src.db.core.base import get_engine
-from src.db.api.CRUD.projects import save_project_report
+from src.database.core.base import get_engine
+from src.database.api.CRUD.projects import save_project_report
 from src.infrastructure.log.logging import get_logger
-from src.db.api.models import UserConfigModel as UserConfig
+from src.database.api.models import UserConfigModel as UserConfig
 from src.utils.errors import (
     NoDiscoveredProjects,
     MissingStartMinerConsent,

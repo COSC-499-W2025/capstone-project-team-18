@@ -21,7 +21,7 @@ from src.core.analyzer.python_analyzer import PythonAnalyzer
 from src.core.analyzer.text_file_analyzer import TextFileAnalyzer
 from src.core.analyzer.type_script_analyzer import TypeScriptAnalyzer
 from src.infrastructure.log.logging import get_logger
-from src.db.api.models import UserConfigModel as UserConfig
+from src.database.api.models import UserConfigModel as UserConfig
 
 logger = get_logger(__name__)
 

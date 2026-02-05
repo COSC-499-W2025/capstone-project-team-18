@@ -1,9 +1,9 @@
 from sqlmodel import Session, select
 from typing import Optional
 from sqlmodel import Session
-from src.db.api.models import ProjectReportModel
+from src.database.api.models import ProjectReportModel
 from src.core.report import ProjectReport
-from src.db.core.model_seralizer import serialize_project_report, serialize_file_report
+from src.database.core.model_seralizer import serialize_project_report, serialize_file_report
 
 
 def save_project_report(

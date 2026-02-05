@@ -1,6 +1,6 @@
 
 from sqlmodel import Session, select
-from src.db.api.models import UserConfigModel
+from src.database.api.models import UserConfigModel
 
 
 def get_most_recent_user_config(session: Session) -> UserConfigModel | None:

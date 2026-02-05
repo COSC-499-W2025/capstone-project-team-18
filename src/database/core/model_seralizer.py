@@ -4,7 +4,7 @@ them into their respective SQLModels to be stored for future use
 """
 
 from src.core.report import FileReport, ProjectReport
-from src.db.api.models import FileReportModel, ProjectReportModel
+from src.database.api.models import FileReportModel, ProjectReportModel
 from src.utils.errors import DomainClassToModelConverisonError
 
 
