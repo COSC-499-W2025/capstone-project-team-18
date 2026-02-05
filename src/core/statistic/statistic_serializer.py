@@ -8,6 +8,7 @@ from dataclasses import is_dataclass, asdict
 from typing import Any
 import ast
 import json
+from datetime import datetime
 from src.core.statistic.statistic_models import FileDomain, CodingLanguage, WeightedSkills
 
 ENUM_REGISTRY = {
@@ -39,6 +40,9 @@ def serialize(value: Any) -> Any:
     if is_dataclass(value) and not isinstance(value, type):
         # If it is a Dataclass instance, store its class name and asdict representation
         return {"__type__": "dataclass", "class": value.__class__.__name__, "value": asdict(value)}
+
+    if isinstance(value, datetime):
+        return {"__type__": "datetime", "value": value.isoformat()}
 
     if isinstance(value, dict):
         # If it's a dict, serialize keys and values
@@ -81,6 +85,8 @@ def deserialize(value: Any):
             if value["__type__"] == "dataclass":
                 cls = DATACLASS_REGISTRY[value["class"]]
                 return cls(**value["value"])
+            if value["__type__"] == "datetime":
+                return datetime.fromisoformat(value["value"])
 
         # Otherwise, it's a regular dict; deserialize keys and values recursively
         # and reconstruct the original dict.

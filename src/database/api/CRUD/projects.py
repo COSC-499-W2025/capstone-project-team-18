@@ -4,6 +4,7 @@ from sqlmodel import Session
 from src.database.api.models import ProjectReportModel
 from src.core.report import ProjectReport
 from src.database.core.model_seralizer import serialize_project_report, serialize_file_report
+from src.database.core.model_deseralizer import deseralize_project_report
 
 
 def save_project_report(
@@ -40,7 +41,7 @@ def save_project_report(
 def get_project_report_by_name(
     session: Session,
     project_name: str
-) -> Optional[ProjectReportModel]:
+) -> Optional[ProjectReport]:
     """
     Retrieve a ProjectReportModel by its project_name, including
     related FileReports and ResumeItems.
@@ -58,4 +59,7 @@ def get_project_report_by_name(
 
     result = session.exec(statement).first()
 
-    return result
+    if result is None:
+        return None
+
+    return deseralize_project_report(result)
