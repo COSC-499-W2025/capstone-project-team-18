@@ -36,15 +36,15 @@ def test_app_runs(mock_engine, mock_readme_analysis):
 
     start_miner_cli(sample_zipped_file, sample_email)
 
-    #project_a = get_project_from_project_name(
+    # project_a = get_project_from_project_name(
     #    "ProjectA", engine=mock_engine)
-    #project_b = get_project_from_project_name(
+    # project_b = get_project_from_project_name(
     #    "ProjectB", engine=mock_engine)
 
-    #assert project_a is not None
-    #assert project_b is not None
-    #assert isinstance(project_a, ProjectReport)
-    #assert isinstance(project_b, ProjectReport)
+    # assert project_a is not None
+    # assert project_b is not None
+    # assert isinstance(project_a, ProjectReport)
+    # assert isinstance(project_b, ProjectReport)
 
 
 def test_app_runs_empty_zip(mock_readme_analysis):

@@ -10,7 +10,7 @@ from src.database.core.model_deseralizer import deseralize_project_report
 def save_project_report(
     session: Session,
     project_report: ProjectReport,
-    user_config_id: int
+    user_config_id: Optional[int]
 ) -> ProjectReportModel:
     """
     Save a ProjectReport domain object along with all its FileReports

@@ -2,6 +2,7 @@
 This file will take the domain classes in our code base and turn
 them into their respective SQLModels to be stored for future use
 """
+from typing import Optional
 
 from src.core.report import FileReport, ProjectReport
 from src.database.api.models import FileReportModel, ProjectReportModel
@@ -49,7 +50,7 @@ def serialize_file_report(file_report: FileReport) -> FileReportModel:
 
 def serialize_project_report(
     project_report: ProjectReport,
-    user_config_id: int
+    user_config_id: Optional[int]
 ) -> ProjectReportModel:
     """
     Serializes a ProjectReport domain object into a ProjectReportModel (SQLModel)

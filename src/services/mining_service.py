@@ -3,6 +3,7 @@ This file holds the main service, the miner.
 """
 
 import tempfile
+from typing import Optional
 from sqlmodel import SQLModel, Session
 from dataclasses import dataclass
 from pydantic import BaseModel
@@ -108,7 +109,7 @@ def _analyze_project_files(
     )
 
 
-def _save_project_report_to_db(project_report: list[ProjectReport], user_config_id: int) -> None:
+def _save_project_report_to_db(project_report: list[ProjectReport], user_config_id: Optional[int]) -> None:
     """
     Saves many ProjectReports and their corresponding FileReports
     to the database.
@@ -207,7 +208,7 @@ def start_miner_service(
                 error_message=str(e)
             ))
 
-    _save_project_report_to_db(project_reports, 1)
+    _save_project_report_to_db(project_reports, None)
 
     success = len(project_errors) == 0
     return MinerResults(project_errors=project_errors,
