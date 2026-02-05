@@ -2,9 +2,9 @@
 Tests for NaturalLanguageAnalyzer.
 """
 
-from src.core.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
-from src.core.statistic import FileStatCollection, FileDomain
-from src.core.ML.models.readme_analysis import keyphrase_extraction, readme_insights
+from src.core.ML.models.readme_analysis import (keyphrase_extraction,
+                                                readme_insights)
+from src.core.statistic import FileDomain, FileStatCollection
 
 
 def _readme_report(tmp_path, create_temp_file, monkeypatch, filename, content, get_ready_specific_analyzer):
@@ -102,12 +102,12 @@ def test_create_with_analysis_natural_language_md(tmp_path, create_temp_file, ge
         FileStatCollection.DATE_CREATED.value) is not None
 
 
-def test_natural_language_file_with_only_words(tmp_path, create_temp_file):
+def test_natural_language_file_with_only_words(tmp_path, create_temp_file, get_ready_specific_analyzer):
     """Test natural language analysis with words but no sentence punctuation."""
     content = "just some words without any punctuation marks"
 
     root, name = create_temp_file("words_only.md", content, tmp_path)
-    analyzer = get_appropriate_analyzer(root, name)
+    analyzer = get_ready_specific_analyzer(root, name)
     file_report = analyzer.analyze()
 
     # Should not crash due to division by zero protection
@@ -159,9 +159,11 @@ def test_readme_keyphrase_extraction(tmp_path, create_temp_file, monkeypatch, ge
         "README.md",
         "# Project X\nA REST API built with FastAPI and PostgreSQL. "
         "Includes OAuth authentication and Docker deployment.",
+        get_ready_specific_analyzer
     )
     keyphrases = report.get_value(FileStatCollection.README_KEYPHRASES.value)
     tone = report.get_value(FileStatCollection.README_TONE.value)
     assert isinstance(keyphrases, list)
     assert len(keyphrases) > 0
+    assert tone == "Professional"
     assert tone == "Professional"

@@ -1,8 +1,12 @@
 """
 Tests for CodeFileAnalyzer (coding language detection and file domain).
 """
-from src.core.analyzer import CodeFileAnalyzer
-from src.core.statistic import FileStatCollection, CodingLanguage, FileDomain
+
+import shutil
+
+import pytest
+
+from src.core.statistic import CodingLanguage, FileDomain, FileStatCollection
 
 
 def test_determines_correct_coding_language(tmp_path, create_temp_file, get_ready_specific_analyzer):
@@ -42,17 +46,32 @@ def test_file_domain_is_not_test(tmp_path, create_temp_file, get_ready_specific_
             FileStatCollection.TYPE_OF_FILE.value) == FileDomain.CODE
 
 
-def test_file_domain_is_test_by_filename(tmp_path, create_temp_file, get_ready_specific_analyzer):
-    filenames = ["test_example.py", "example_test.py", "hello_test_example",
-                 "sam_testing.py", "utils.test.py", "api-test-get-requests.js"]
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "test_example.py",
+        "example_test.py",
+        "hello_test_example.py",
+        "sam_testing.py",
+        "utils.test.py",
+        "api-test-get-requests.js",
+    ],
+)
+def test_file_domain_is_test_by_filename(
+    filename,
+    tmp_path,
+    create_temp_file,
+    get_ready_specific_analyzer,
+):
+    file = create_temp_file(
+        filename, "print('Hello, world!')", path=tmp_path
+    )
+    report = get_ready_specific_analyzer(file[0], file[1]).analyze()
 
-    for filename in filenames:
-        file = create_temp_file(
-            filename, "print('Hello, world!')", path=tmp_path)
-        report = get_ready_specific_analyzer(file[0], file[1]).analyze()
-
-        assert report.get_value(
-            FileStatCollection.TYPE_OF_FILE.value) == FileDomain.TEST
+    assert (
+        report.get_value(FileStatCollection.TYPE_OF_FILE.value)
+        == FileDomain.TEST
+    )
 
 
 def test_file_domain_is_test_by_path(tmp_path, create_temp_file, get_ready_specific_analyzer):
@@ -67,3 +86,5 @@ def test_file_domain_is_test_by_path(tmp_path, create_temp_file, get_ready_speci
 
         assert report.get_value(
             FileStatCollection.TYPE_OF_FILE.value) == FileDomain.TEST
+
+        shutil.rmtree(target_dir)

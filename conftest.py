@@ -4,16 +4,20 @@ starts running tests. It is used to
 make global changes to the testing environment.
 """
 
+import os
+import shutil
+import tempfile
 from pathlib import Path
+
 import pytest
 from git import Repo
-import os
+from sqlmodel import SQLModel, create_engine
+
+from src.core.analyzer import BaseFileAnalyzer, get_appropriate_analyzer
 from src.core.project_discovery.project_discovery import ProjectLayout
+from src.core.report import ProjectReport, UserReport
 from src.core.statistic import Statistic, StatisticIndex
-from src.core.report import UserReport, ProjectReport
-import tempfile
-import shutil
-from sqlmodel import create_engine, SQLModel
+from src.database.api.models import UserConfigModel
 
 
 @pytest.fixture
@@ -107,6 +111,35 @@ def mock_readme_analysis(monkeypatch):
         "src.core.analyzer.natural_language_analyzer.classify_readme_tone",
         fake_classify_tone
     )
+
+
+@pytest.fixture
+def project_context_from_root():
+    """
+    Builds a ProjectLayout using the passed root path
+    """
+
+    def _create(root_path, repo=None) -> ProjectLayout:
+
+        return ProjectLayout(
+            file_paths=[],
+            root_path=Path(root_path),
+            name="test_project",
+            repo=repo
+        )
+
+    return _create
+
+
+@pytest.fixture
+def get_ready_specific_analyzer(project_context_from_root):
+    def _create(root_path, rel_path, repo=None, email=None) -> BaseFileAnalyzer:
+        uc = UserConfigModel()
+        uc.user_email = email
+        return get_appropriate_analyzer(
+            uc, project_context_from_root(root_path, repo), rel_path)
+
+    return _create
 
 
 def commit_as(repo: Repo, author_name: str, author_email: str,
