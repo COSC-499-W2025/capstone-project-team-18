@@ -79,3 +79,5 @@ ui/.vite/
 
 # Logs (if any appear later)
 ui/*.log
+
+*.db
