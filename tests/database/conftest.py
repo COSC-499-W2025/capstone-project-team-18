@@ -18,6 +18,7 @@ import pytest
 from src.core.report import FileReport
 from src.core.statistic import StatisticIndex, Statistic, FileStatCollection
 from src.database.api.CRUD.projects import save_project_report
+from src.core.statistic.statistic_models import FileDomain
 
 
 @pytest.fixture
@@ -30,8 +31,12 @@ def fr1() -> FileReport:
             Statistic(FileStatCollection.DATE_MODIFIED.value,
                       datetime.datetime(2025, 1, 2, 12, 0)),
             Statistic(FileStatCollection.FILE_SIZE_BYTES.value, 500),
+            Statistic(FileStatCollection.TYPE_OF_FILE.value, FileDomain.CODE)
         ]),
-        "file1.py"
+        "file1.py",
+        is_info_file=False,
+        file_hash=b"",
+        project_name="Project2"
     )
 
 
@@ -45,8 +50,12 @@ def fr2() -> FileReport:
             Statistic(FileStatCollection.DATE_MODIFIED.value,
                       datetime.datetime(2025, 2, 2, 12, 0)),
             Statistic(FileStatCollection.FILE_SIZE_BYTES.value, 600),
+            Statistic(FileStatCollection.TYPE_OF_FILE.value, FileDomain.CODE)
         ]),
-        "file2.py"
+        "file2.py",
+        is_info_file=False,
+        file_hash=b"",
+        project_name="Project1"
     )
 
 
@@ -60,8 +69,12 @@ def fr3() -> FileReport:
             Statistic(FileStatCollection.DATE_MODIFIED.value,
                       datetime.datetime(2025, 3, 2, 12, 0)),
             Statistic(FileStatCollection.FILE_SIZE_BYTES.value, 700),
+            Statistic(FileStatCollection.TYPE_OF_FILE.value, FileDomain.CODE)
         ]),
-        "file3.py"
+        "file3.py",
+        is_info_file=False,
+        file_hash=b"",
+        project_name="Project1"
     )
 
 
@@ -75,8 +88,12 @@ def fr4() -> FileReport:
             Statistic(FileStatCollection.DATE_MODIFIED.value,
                       datetime.datetime(2025, 4, 2, 12, 0)),
             Statistic(FileStatCollection.FILE_SIZE_BYTES.value, 550),
+            Statistic(FileStatCollection.TYPE_OF_FILE.value, FileDomain.CODE)
         ]),
-        "file4.py"
+        "file4.py",
+        is_info_file=False,
+        file_hash=b"",
+        project_name="Project2"
     )
 
 
