@@ -81,3 +81,5 @@ ui/.vite/
 ui/*.log
 
 *.db
+src/database/schema.sql
+src/database/example.py

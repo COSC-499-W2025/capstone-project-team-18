@@ -13,7 +13,19 @@ class ErrorCode(str, Enum):
     NO_DISCOVERED_PROJECTS = "NO_DISCOVERED_PROJECTS"
     MISSING_CONSENT = "MISSING_CONSENT"
     ANALYSIS_FAILED = "ANALYSIS_FAILED"
+    SQL_MODEL_ERROR = "SQL_MODEL_ERROR"
+    SQL_MODEL_CONVERSION_ERROR = "SQL_MODEL_CONVERSION_ERROR"
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
+
+
+class SQLModelError(Exception):
+    """Errors that relate specifical to SQLModel"""
+    error_code: ErrorCode = ErrorCode.SQL_MODEL_ERROR
+
+
+class DomainClassToModelConverisonError(SQLModelError):
+    """Tried to convert a domain class to a SQLModel"""
+    error_code: ErrorCode = ErrorCode.SQL_MODEL_CONVERSION_ERROR
 
 
 class ArtifactMinerException(Exception):

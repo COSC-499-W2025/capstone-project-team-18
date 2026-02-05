@@ -1,0 +1,61 @@
+from sqlmodel import Session, select
+from typing import Optional
+from sqlmodel import Session
+from src.db.api.models import ProjectReportModel
+from src.core.report import ProjectReport
+from src.db.core.model_seralizer import serialize_project_report, serialize_file_report
+
+
+def save_project_report(
+    session: Session,
+    project_report: ProjectReport,
+    user_config_id: int
+) -> ProjectReportModel:
+    """
+    Save a ProjectReport domain object along with all its FileReports
+    and generated ResumeItems into the database.
+
+    Args:
+        session: SQLModel Session
+        project_report: ProjectReport domain object
+        user_config_id: ID of the associated UserConfigModel
+
+    Returns:
+        The saved ProjectReportModel instance
+    """
+
+    project_model = serialize_project_report(project_report, user_config_id)
+
+    file_models = [serialize_file_report(fr)
+                   for fr in project_report.file_reports]
+    project_model.file_reports = file_models
+
+    session.add(project_model)
+    session.commit()
+    session.refresh(project_model)  # refresh to get updated relationships
+
+    return project_model
+
+
+def get_project_report_by_name(
+    session: Session,
+    project_name: str
+) -> Optional[ProjectReportModel]:
+    """
+    Retrieve a ProjectReportModel by its project_name, including
+    related FileReports and ResumeItems.
+
+    Args:
+        session: SQLModel Session
+        project_name: The project name to query
+
+    Returns:
+        ProjectReportModel if found, else None
+    """
+    statement = select(ProjectReportModel).where(
+        ProjectReportModel.project_name == project_name
+    )
+
+    result = session.exec(statement).first()
+
+    return result
