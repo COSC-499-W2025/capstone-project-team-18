@@ -262,6 +262,3 @@ class BulletPointBuilder:
             return self.fallback.generate(report)
 
         return bullet_points
-        return self.fallback.generate(report)
-
-        return bullet_points

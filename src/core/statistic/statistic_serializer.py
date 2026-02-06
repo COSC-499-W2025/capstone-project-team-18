@@ -10,6 +10,9 @@ import ast
 import json
 from datetime import datetime
 from src.core.statistic.statistic_models import FileDomain, CodingLanguage, WeightedSkills
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 ENUM_REGISTRY = {
     "FileDomain": FileDomain,
@@ -135,6 +138,8 @@ def _deserialize_dict_key(key: str) -> Any:
             # which lead to a malformed string error. In this case
             # we treat the value to just be the val_str. The cls(val)
             # statement will error out if this was not the right choice
+            logger.debug(
+                f"Tried to parse value: {val} for a type. It failed. Expected if this value is a string.")
             pass
 
         cls = ENUM_REGISTRY[cls_name]
