@@ -246,6 +246,166 @@ class ChronologicalProjectsSectionBuilder(PortfolioSectionBuilder):
         return lines
 
 
+class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
+    """
+    Builds a section with deterministic, grounded textual summaries per project.
+
+    Each project summary targets 2-3 sentences and is composed from trusted
+    project statistics only: goals (themes/tags), stack (frameworks/languages),
+    and contribution (role/commit focus/contribution percentages).
+    """
+
+    section_id = "project_summaries"
+    section_title = "Project Summaries"
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        summary_lines = self.get_project_summaries(report)
+
+        if summary_lines:
+            block = Block("project_summaries", TextListBlock(items=summary_lines))
+            return [block]
+
+        return []
+
+    def get_project_summaries(self, user_report: UserReport) -> list[str]:
+        """
+        Return one summary line per project:
+            "Project Name: sentence one. sentence two. [sentence three.]"
+        """
+        if not getattr(user_report, "project_reports", None):
+            return []
+
+        lines: list[str] = []
+        for pr in user_report.project_reports:
+            summary = self._build_project_summary(pr)
+            if not summary:
+                continue
+            title = getattr(pr, "project_name", None) or "Untitled Project"
+            lines.append(f"{title}: {summary}")
+        return lines
+
+    def _build_project_summary(self, project_report) -> str | None:
+        """
+        Compose a 2-3 sentence grounded summary from project statistics.
+
+        The function only uses existing computed stats and never invents new
+        technologies/goals/contributions.
+        """
+        goal_sentence = self._goal_sentence(project_report)
+        stack_sentence = self._stack_sentence(project_report)
+        contribution_sentence = self._contribution_sentence(project_report)
+
+        sentences = [s for s in [goal_sentence, stack_sentence, contribution_sentence] if s]
+        if len(sentences) < 2:
+            return None
+        return " ".join(sentences[:3])
+
+    def _goal_sentence(self, project_report) -> str | None:
+        """Build a sentence describing project goals/themes from README-derived stats."""
+        themes = project_report.get_value(ProjectStatCollection.PROJECT_THEMES.value)
+        tags = project_report.get_value(ProjectStatCollection.PROJECT_TAGS.value)
+
+        if themes:
+            top_themes = [str(t) for t in themes[:2]]
+            if len(top_themes) == 1:
+                return f"The project goals centered on {top_themes[0]}."
+            return f"The project goals centered on {top_themes[0]} and {top_themes[1]}."
+
+        if tags:
+            top_tags = [str(t) for t in tags[:3]]
+            if len(top_tags) == 1:
+                return f"A primary project goal was {top_tags[0]}."
+            if len(top_tags) == 2:
+                return f"Primary goals included {top_tags[0]} and {top_tags[1]}."
+            return f"Primary goals included {top_tags[0]}, {top_tags[1]}, and {top_tags[2]}."
+
+        return None
+
+    def _stack_sentence(self, project_report) -> str | None:
+        """Build a sentence describing frameworks and core implementation languages."""
+        frameworks = project_report.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value)
+        lang_ratio = project_report.get_value(ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
+
+        framework_names: list[str] = []
+        if frameworks:
+            ranked_frameworks = sorted(
+                frameworks,
+                key=lambda ws: getattr(ws, "weight", 0),
+                reverse=True,
+            )
+            framework_names = [
+                getattr(ws, "skill_name", str(ws)) for ws in ranked_frameworks[:3]
+            ]
+
+        language_names: list[str] = []
+        if lang_ratio:
+            ranked_langs = sorted(lang_ratio.items(), key=lambda kv: kv[1], reverse=True)
+            language_names = [
+                getattr(lang, "value", str(lang)) for lang, _ in ranked_langs[:2]
+            ]
+
+        if framework_names and language_names:
+            return (
+                f"The implementation used {self._join_english(framework_names)} with primary languages "
+                f"{self._join_english(language_names)}."
+            )
+        if framework_names:
+            return f"The implementation used {self._join_english(framework_names)}."
+        if language_names:
+            return f"Primary implementation languages were {self._join_english(language_names)}."
+        return None
+
+    def _contribution_sentence(self, project_report) -> str | None:
+        """Build a sentence describing role and measurable contribution."""
+        role = project_report.get_value(ProjectStatCollection.COLLABORATION_ROLE.value)
+        role_description = project_report.get_value(ProjectStatCollection.ROLE_DESCRIPTION.value)
+        commit_dist = project_report.get_value(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
+        commit_pct = project_report.get_value(ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
+        line_pct = project_report.get_value(ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value)
+
+        if role_description:
+            return str(role_description).strip().rstrip(".") + "."
+
+        pieces: list[str] = []
+        if role:
+            role_phrase = str(getattr(role, "value", role)).replace("_", " ")
+            pieces.append(f"as a {role_phrase}")
+
+        if isinstance(commit_pct, (int, float)):
+            pieces.append(f"contributing about {commit_pct:.0f}% of commits")
+        elif isinstance(line_pct, (int, float)):
+            pieces.append(f"contributing about {line_pct:.0f}% of authored lines")
+
+        commit_focus = self._top_commit_focus(commit_dist)
+        if commit_focus:
+            pieces.append(f"with most work in {commit_focus} changes")
+
+        if not pieces:
+            return None
+        return f"My contribution was primarily {self._join_english(pieces)}."
+
+    def _top_commit_focus(self, commit_dist) -> str | None:
+        """Return the dominant commit type label from a distribution dict."""
+        if not commit_dist:
+            return None
+        top = sorted(commit_dist.items(), key=lambda kv: kv[1], reverse=True)
+        if not top:
+            return None
+        label = str(top[0][0]).replace("_", " ").strip().lower()
+        return label if label else None
+
+    def _join_english(self, items: list[str]) -> str:
+        """Join phrases with natural English conjunctions."""
+        clean = [i for i in items if i]
+        if not clean:
+            return ""
+        if len(clean) == 1:
+            return clean[0]
+        if len(clean) == 2:
+            return f"{clean[0]} and {clean[1]}"
+        return f"{', '.join(clean[:-1])}, and {clean[-1]}"
+
+
 class ProjectTagsSectionBuilder(PortfolioSectionBuilder):
     """Builds a section with project tags."""
 
