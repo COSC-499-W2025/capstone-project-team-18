@@ -2,6 +2,10 @@
 Database CRUD for the resume object
 """
 
+from typing import Optional
+from src.database.core.model_deseralizer import deserialize_resume
+from sqlalchemy.orm import selectinload
+from sqlmodel import Session, select
 from sqlmodel import Session
 from src.core.resume.resume import Resume
 from src.database.api.models import ResumeModel
@@ -30,3 +34,23 @@ def save_resume(
     session.refresh(resume_model)
 
     return resume_model
+
+
+def load_resume(session: Session, resume_id: int) -> Optional[Resume]:
+    """
+    Load a Resume from the database by ID and convert it
+    into the domain Resume object.
+    """
+
+    statement = (
+        select(ResumeModel)
+        .where(ResumeModel.id == resume_id)
+        .options(selectinload(ResumeModel.items))  # pyright: ignore
+    )
+
+    model = session.exec(statement).first()
+
+    if model is None:
+        return None
+
+    return deserialize_resume(model)

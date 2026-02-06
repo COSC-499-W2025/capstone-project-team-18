@@ -38,6 +38,15 @@ def save_project_report(
     return project_model
 
 
+def get_project_report_model_by_name(
+        session: Session,
+        project_name: str
+) -> Optional[ProjectReportModel]:
+    statement = select(ProjectReportModel).where(
+        ProjectReportModel.project_name == project_name)
+    return session.exec(statement).first()
+
+
 def get_project_report_by_name(
     session: Session,
     project_name: str
@@ -53,11 +62,7 @@ def get_project_report_by_name(
     Returns:
         ProjectReportModel if found, else None
     """
-    statement = select(ProjectReportModel).where(
-        ProjectReportModel.project_name == project_name
-    )
-
-    result = session.exec(statement).first()
+    result = get_project_report_model_by_name(session, project_name)
 
     if result is None:
         return None

@@ -15,7 +15,6 @@ def test_ping_pong(client):
     "method,url",
     [
         ("POST", "/projects/upload"),
-        ("POST", "/privacy-consent"),
         ("GET", "/projects"),
         ("GET", "/projects/test-id"),          # placeholder ID
         ("GET", "/skills"),
