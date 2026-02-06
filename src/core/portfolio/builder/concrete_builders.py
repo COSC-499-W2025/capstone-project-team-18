@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 from src.core.report import UserReport
 from src.core.portfolio.sections.block.block import Block
@@ -148,12 +149,21 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         cadence = self._dominant_cadence(report)
         commit_focus = self._dominant_commit_focus(report)
         tools = self._top_tools(report, limit=6)
-        focus = None
 
         top_langs = self._top_languages_list(lang_ratio, limit=4)
         top_skills = self._top_skills_list(user_skills, limit=6)
         themes = self._top_project_themes(report, limit=4)
         tags = self._top_project_tags(report, limit=8)
+        focus = self._infer_focus(
+            top_skills=top_skills,
+            tools=tools,
+            themes=themes,
+            tags=tags,
+            commit_focus=commit_focus,
+        )
+        activities = self._activity_signals(report, cadence, commit_focus)
+        emerging = self._emerging_signals(top_skills, tools, themes, tags)
+        experience_stage = self._infer_experience_stage(report, role)
         project_names = [pr.project_name for pr in report.project_reports if getattr(pr, "project_name", None)]
 
         facts = build_signature_facts(
@@ -165,10 +175,11 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
             cadence=cadence,
             commit_focus=commit_focus,
             themes=themes,
-            activities=[],
-            emerging=[],
+            activities=activities,
+            emerging=emerging,
             project_names=project_names,
             tags=tags,
+            experience_stage=experience_stage,
         )
 
         signature = generate_signature(facts)
@@ -278,6 +289,178 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
             return []
         ranked = sorted(tags.items(), key=lambda kv: kv[1], reverse=True)
         return [name for name, _ in ranked[:limit]]
+
+    def _infer_focus(
+        self,
+        top_skills: list[str],
+        tools: list[str],
+        themes: list[str],
+        tags: list[str],
+        commit_focus: str | None,
+    ) -> str | None:
+        """Infer a primary professional focus from skills, tools, and project signals."""
+        focus_keywords = {
+            "Analytics": {
+                "analytics", "analysis", "dashboard", "report", "reporting", "sql", "power bi", "tableau", "excel", "pandas", "numpy", "data"
+            },
+            "Backend": {
+                "backend", "api", "service", "server", "fastapi", "flask", "django", "spring", "node", "sqlalchemy", "postgres", "database"
+            },
+            "Frontend": {
+                "frontend", "ui", "ux", "react", "vue", "angular", "html", "css", "typescript", "javascript", "web"
+            },
+            "ML": {
+                "ml", "machine learning", "ai", "llm", "nlp", "model", "tensorflow", "pytorch", "embedding", "classification"
+            },
+            "DevOps": {
+                "devops", "docker", "kubernetes", "terraform", "ci", "cd", "pipeline", "aws", "gcp", "azure", "deployment"
+            },
+        }
+
+        def _normalize_tokens(items: list[str]) -> list[str]:
+            tokens: list[str] = []
+            for item in items:
+                if not item:
+                    continue
+                normalized = re.sub(r"[^a-z0-9+# ]+", " ", item.lower())
+                tokens.append(" ".join(normalized.split()))
+            return tokens
+
+        corpus = _normalize_tokens(top_skills + tools + themes + tags)
+        if commit_focus:
+            corpus.append(commit_focus.lower())
+
+        scores = {focus: 0 for focus in focus_keywords}
+        for text in corpus:
+            for focus, keywords in focus_keywords.items():
+                for keyword in keywords:
+                    if keyword in text:
+                        scores[focus] += 1
+
+        best_focus = max(scores.items(), key=lambda kv: kv[1])
+        if best_focus[1] <= 0:
+            return None
+        return best_focus[0]
+
+    def _activity_signals(
+        self,
+        report: UserReport,
+        cadence: str | None,
+        commit_focus: str | None,
+    ) -> list[str]:
+        signals: list[str] = []
+
+        cadence_map = {
+            "consistent": "consistent delivery cadence",
+            "sprint-based": "sprint-oriented execution",
+            "burst": "burst-style iteration",
+            "sporadic": "intermittent execution pattern",
+        }
+        if cadence and cadence in cadence_map:
+            signals.append(cadence_map[cadence])
+
+        commit_map = {
+            "feature": "feature implementation",
+            "bugfix": "reliability and bug resolution",
+            "fix": "reliability and bug resolution",
+            "docs": "documentation quality",
+            "refactor": "code quality and maintainability",
+            "test": "test coverage and verification",
+            "chore": "engineering operations",
+        }
+        if commit_focus:
+            lowered = commit_focus.lower()
+            if lowered in commit_map:
+                signals.append(commit_map[lowered])
+
+        commits_per_week: list[float] = []
+        consistency_scores: list[float] = []
+        for pr in report.project_reports:
+            activity = pr.get_value(ProjectStatCollection.ACTIVITY_METRICS.value)
+            if not activity:
+                continue
+            cpw = activity.get("avg_commits_per_week")
+            consistency = activity.get("consistency_score")
+            if isinstance(cpw, (int, float)):
+                commits_per_week.append(float(cpw))
+            if isinstance(consistency, (int, float)):
+                consistency_scores.append(float(consistency))
+
+        if commits_per_week:
+            avg_cpw = sum(commits_per_week) / len(commits_per_week)
+            if avg_cpw >= 5.0:
+                signals.append("high weekly delivery cadence")
+            elif avg_cpw >= 2.0:
+                signals.append("steady weekly delivery")
+
+        if consistency_scores:
+            avg_consistency = sum(consistency_scores) / len(consistency_scores)
+            if avg_consistency >= 0.75:
+                signals.append("consistent execution patterns")
+            elif avg_consistency <= 0.40:
+                signals.append("deadline-driven execution spikes")
+
+        unique_signals = list(dict.fromkeys(signals))
+        return unique_signals[:4]
+
+    def _emerging_signals(
+        self,
+        top_skills: list[str],
+        tools: list[str],
+        themes: list[str],
+        tags: list[str],
+    ) -> list[str]:
+        corpus = " ".join(top_skills + tools + themes + tags).lower()
+        signals: list[str] = []
+
+        if any(term in corpus for term in ["llm", "generative ai", "genai"]):
+            signals.append("Generative AI")
+        if any(term in corpus for term in ["machine learning", "ml", "pytorch", "tensorflow"]):
+            signals.append("Machine Learning")
+        if any(term in corpus for term in ["data engineering", "etl", "pipeline"]):
+            signals.append("Data Engineering")
+        if any(term in corpus for term in ["cloud", "aws", "azure", "gcp"]):
+            signals.append("Cloud Platforms")
+
+        return signals[:3]
+
+    def _infer_experience_stage(self, report: UserReport, role: str | None) -> str:
+        """
+        Infer summary tone profile: student, early-career, or experienced.
+        Uses timeline span and project count with a role-based nudge.
+        """
+        project_count = len(getattr(report, "project_reports", []) or [])
+        start_date = report.get_value(UserStatCollection.USER_START_DATE.value)
+        end_date = report.get_value(UserStatCollection.USER_END_DATE.value)
+
+        months_span: float | None = None
+        if start_date and end_date:
+            days = abs((end_date - start_date).days)
+            months_span = days / 30.0
+
+        if months_span is not None:
+            if months_span >= 48 or project_count >= 8:
+                stage = "experienced"
+            elif months_span >= 18 or project_count >= 4:
+                stage = "early-career"
+            else:
+                stage = "student"
+        else:
+            if project_count >= 8:
+                stage = "experienced"
+            elif project_count >= 3:
+                stage = "early-career"
+            else:
+                stage = "student"
+
+        if role:
+            lowered_role = role.lower()
+            if "leader" in lowered_role and stage == "student":
+                stage = "early-career"
+            if "leader" in lowered_role and project_count >= 6:
+                stage = "experienced"
+
+        return stage
 
     def _is_valid_summary(self, summary: str) -> bool:
         word_count = len(summary.split())

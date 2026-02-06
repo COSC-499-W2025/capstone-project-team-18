@@ -1,4 +1,5 @@
 import os
+from datetime import date
 
 import pytest
 
@@ -36,7 +37,7 @@ def _make_project_report(tmp_path, *, role=None, cadence=None, commit_focus=None
     )
 
 
-def _make_user_report(project_reports):
+def _make_user_report(project_reports, *, start_date=None, end_date=None):
     user_stats = StatisticIndex()
     user_stats.add(
         Statistic(
@@ -58,6 +59,14 @@ def _make_user_report(project_reports):
             ],
         )
     )
+    if start_date is not None:
+        user_stats.add(
+            Statistic(UserStatCollection.USER_START_DATE.value, start_date)
+        )
+    if end_date is not None:
+        user_stats.add(
+            Statistic(UserStatCollection.USER_END_DATE.value, end_date)
+        )
 
     return UserReport(
         project_reports=project_reports,
@@ -289,4 +298,41 @@ def test_summary_section_focus_inference_uses_skills_and_tools(tmp_path, monkeyp
     blocks = builder.create_blocks(report)
 
     assert len(blocks) == 1
-    assert captured_facts["focus"] in {"Analytics", "Data", "Backend", "Frontend", "ML", "DevOps", None}
+    assert captured_facts["focus"] == "Analytics"
+
+
+def test_summary_section_infers_experience_stage_from_timeline(tmp_path, monkeypatch):
+    project = _make_project_report(
+        tmp_path,
+        role="leader",
+        frameworks=[WeightedSkills("FastAPI", 1.0)],
+    )
+    report = _make_user_report(
+        [project],
+        start_date=date(2019, 1, 1),
+        end_date=date(2026, 1, 1),
+    )
+
+    captured_facts = {}
+
+    def fake_build_signature_facts(**kwargs):
+        captured_facts.update(kwargs)
+        return {"mock": "facts"}
+
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.build_signature_facts",
+        fake_build_signature_facts,
+    )
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.generate_signature",
+        lambda _facts: (
+            "Experienced software engineer with practical experience in backend services and delivery quality. "
+            "Strong in Python and FastAPI with a track record of dependable implementation and communication."
+        ),
+    )
+
+    builder = UserSummarySectionBuilder()
+    blocks = builder.create_blocks(report)
+
+    assert len(blocks) == 1
+    assert captured_facts["experience_stage"] == "experienced"
