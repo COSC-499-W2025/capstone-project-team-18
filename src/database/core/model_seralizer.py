@@ -2,10 +2,12 @@
 This file will take the domain classes in our code base and turn
 them into their respective SQLModels to be stored for future use
 """
+from src.database.api.models import ResumeModel, ResumeItemModel
 from typing import Optional
 
 from src.core.report import FileReport, ProjectReport
-from src.database.api.models import FileReportModel, ProjectReportModel
+from src.core.resume.resume import Resume, ResumeItem
+from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
 from src.utils.errors import DomainClassToModelConverisonError
 
 
@@ -77,4 +79,37 @@ def serialize_project_report(
         project_name=project_name,
         user_config_used=user_config_id,
         statistic=project_statistics
+    )
+
+
+def serialize_resume(resume: Resume) -> ResumeModel:
+    return ResumeModel(
+        id=None,
+        email=resume.email,
+        github=resume.github,
+        skills=resume.skills,
+    )
+
+
+def serialize_resume_item(
+    resume_item: ResumeItem,
+    project_name: Optional[str] = None
+) -> ResumeItemModel:
+
+    if resume_item.title is None:
+        raise DomainClassToModelConverisonError(
+            "resume_item.title is None, cannot save ResumeItem")
+
+    frameworks_json = []
+    for fw in resume_item.frameworks:
+        frameworks_json.append(str(fw.skill_name))
+
+    return ResumeItemModel(
+        id=None,
+        project_name=project_name,
+        title=resume_item.title,
+        frameworks=frameworks_json,
+        bullet_points=resume_item.bullet_points,
+        start_date=resume_item.start_date,
+        end_date=resume_item.end_date,
     )

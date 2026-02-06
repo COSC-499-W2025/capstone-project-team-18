@@ -3,6 +3,7 @@ Defines the SQLModels for the database. Note these are also valid
 returnable types for FastAPI
 """
 
+from datetime import datetime, date
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, SQLModel, Relationship
@@ -56,18 +57,39 @@ class FileReportModel(SQLModel, table=True):
         back_populates="file_reports")
 
 
-class ResumeItemModel(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    project_name: Optional[str] = Field(
-        default=None, foreign_key="projectreportmodel.project_name")
-    content: dict = Field(sa_column=Column(JSON, nullable=False))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
-
-
 class ResumeModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    email: str
-    report: dict = Field(sa_column=Column(JSON, nullable=False))
+    email: Optional[str] = None
+    github: Optional[str] = None
+    skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_updated: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationship
+    items: List["ResumeItemModel"] = Relationship(back_populates="resume")
+
+
+class ResumeItemModel(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    resume_id: Optional[int] = Field(
+        default=None, foreign_key="resumemodel.id")
+
+    project_name: Optional[str] = Field(
+        default=None,
+        foreign_key="projectreportmodel.project_name"
+    )
+
+    title: str
+    frameworks: List[str] = Field(sa_column=Column(JSON, nullable=False))
+    bullet_points: List[str] = Field(sa_column=Column(JSON, nullable=False))
+
+    start_date: date
+    end_date: date
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationship
+    resume: Optional[ResumeModel] = Relationship(back_populates="items")

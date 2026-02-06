@@ -63,3 +63,31 @@ def get_project_report_by_name(
         return None
 
     return deseralize_project_report(result)
+
+
+def delete_project_report_by_name(
+    session: Session,
+    project_name: str
+) -> bool:
+    """
+    Delete a ProjectReportModel by its project_name.
+
+    Args:
+        session: SQLModel Session
+        project_name: The project name to delete
+
+    Returns:
+        True if a record was deleted, False if not found.
+    """
+    statement = select(ProjectReportModel).where(
+        ProjectReportModel.project_name == project_name
+    )
+
+    project = session.exec(statement).first()
+
+    if project is None:
+        return False
+
+    session.delete(project)
+    session.commit()
+    return True

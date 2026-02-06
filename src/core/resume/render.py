@@ -187,4 +187,3 @@ class ResumeLatexRenderer(ResumeRender):
         tex.append(r"\end{document}")
 
         return "\n".join(tex)
-        return "\n".join(tex)
