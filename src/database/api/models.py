@@ -15,7 +15,8 @@ class UserConfigModel(SQLModel, table=True):
     consent: bool = Field(default=False)
     user_email: Optional[str] = None
     github: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now().timestamp())
 
     # One-to-many relationship with ProjectReport
     project_reports: List["ProjectReportModel"] = Relationship(
@@ -30,7 +31,8 @@ class ProjectReportModel(SQLModel, table=True):
         default=None, sa_column=Column(LargeBinary, nullable=True)
     )  # This stores your image bytes
     statistic: dict = Field(sa_column=Column(JSON, nullable=False))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now().timestamp())
     last_updated: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
@@ -49,8 +51,8 @@ class FileReportModel(SQLModel, table=True):
     is_info_file: bool = False
     file_hash: Optional[bytes] = None
     statistic: dict = Field(sa_column=Column(JSON, nullable=False))
-    created_at: int = Field(
-        default_factory=lambda: int(datetime.now().timestamp()))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now().timestamp())
 
     # Relationship
     project: Optional[ProjectReportModel] = Relationship(
@@ -63,8 +65,10 @@ class ResumeModel(SQLModel, table=True):
     github: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now().timestamp())
+    last_updated: datetime = Field(
+        default_factory=lambda: datetime.now().timestamp())
 
     # Relationship
     items: List["ResumeItemModel"] = Relationship(back_populates="resume")
@@ -88,8 +92,10 @@ class ResumeItemModel(SQLModel, table=True):
     start_date: date
     end_date: date
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now().timestamp())
+    last_updated: datetime = Field(
+        default_factory=lambda: datetime.now().timestamp())
 
     # Relationship
     resume: Optional[ResumeModel] = Relationship(back_populates="items")
