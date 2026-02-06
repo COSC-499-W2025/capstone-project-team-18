@@ -19,6 +19,12 @@ _CACHE: dict[str, str] = {}
 
 
 def _ml_required() -> bool:
+    """
+    Return whether callers explicitly require ML-generated summaries.
+
+    When true, deterministic fallback summaries are disabled so the caller
+    can enforce strict model-only behavior.
+    """
     return os.environ.get("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML") == "1"
 
 
@@ -77,6 +83,7 @@ def _load_model():
 
 
 def _facts_hash(facts: dict[str, Any]) -> str:
+    """Create a stable cache key for a facts payload."""
     serialized = json.dumps(facts, sort_keys=True, ensure_ascii=True)
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
@@ -135,7 +142,12 @@ def _build_prompt(facts: dict[str, Any], strict: bool = False, include_example: 
 
 
 def _normalize_summary(text: str) -> str:
-    # Strip common list prefixes and redundant labels.
+    """
+    Normalize raw generated text into a single clean paragraph.
+
+    The function removes common list headers and collapses whitespace so
+    validator checks operate on predictable formatting.
+    """
     cleaned = text.strip()
     cleaned = cleaned.replace("Skills:", "").replace("Tools:", "")
     cleaned = cleaned.replace("Languages:", "")
@@ -143,6 +155,7 @@ def _normalize_summary(text: str) -> str:
 
 
 def _is_list_like(text: str) -> bool:
+    """Heuristic: detect bullet/list style outputs instead of narrative prose."""
     lowered = text.lower()
     if "skills:" in lowered or "tools:" in lowered or "languages:" in lowered:
         return True
@@ -152,6 +165,12 @@ def _is_list_like(text: str) -> bool:
 
 
 def _remove_invalid_sentences(text: str, project_names: list[str] | None = None) -> str:
+    """
+    Remove sentences that violate tone/safety constraints.
+
+    This strips assistant meta-language, generic filler, and any sentence that
+    leaks explicit project names from the facts payload.
+    """
     banned_phrases = [
         "resume assistant",
         "as an assistant",
@@ -185,6 +204,7 @@ def _remove_invalid_sentences(text: str, project_names: list[str] | None = None)
 
 
 def _trim_to_sentences(text: str, max_sentences: int = 4) -> str:
+    """Trim output to a maximum sentence count while preserving punctuation."""
     sentences = [s.strip() for s in text.split(".") if s.strip()]
     if not sentences:
         return text
@@ -195,24 +215,29 @@ def _trim_to_sentences(text: str, max_sentences: int = 4) -> str:
 
 
 def _normalize_token(token: str) -> str:
+    """Normalize a token for loose matching by removing non-alphanumeric chars."""
     return "".join(ch for ch in token.lower() if ch.isalnum())
 
 
 def _tokenize_words(text: str) -> list[str]:
+    """Tokenize text for overlap/duplication heuristics."""
     return [tok for tok in re.findall(r"[a-z0-9+#]+", text.lower()) if tok]
 
 
 def _split_sentences(text: str) -> list[str]:
+    """Split free-form text into sentence-like chunks."""
     return [s.strip() for s in re.split(r"[.!?]+", text) if s.strip()]
 
 
 def _jaccard_similarity(a: set[str], b: set[str]) -> float:
+    """Compute token-set overlap used for near-duplicate detection."""
     if not a or not b:
         return 0.0
     return len(a & b) / len(a | b)
 
 
 def _ngrams(tokens: list[str], n: int = 4) -> set[tuple[str, ...]]:
+    """Build n-gram tuples so phrase-level duplicates can be detected."""
     if len(tokens) < n:
         return set()
     return {tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)}
@@ -240,6 +265,12 @@ _DOMAIN_KEYWORDS: dict[str, list[str]] = {
 
 
 def _sentence_domains(sentence: str) -> set[str]:
+    """
+    Map a sentence to coarse semantic domains (web/data/mobile/backend/ml).
+
+    Domain tags are used to avoid restating the same high-level profile point
+    across multiple sentences.
+    """
     lowered = sentence.lower()
     domains: set[str] = set()
     for domain, keywords in _DOMAIN_KEYWORDS.items():
@@ -249,6 +280,12 @@ def _sentence_domains(sentence: str) -> set[str]:
 
 
 def _canonicalize_phrase_repetition(text: str) -> str:
+    """
+    Normalize known repetitive phrase patterns to a single canonical form.
+
+    This improves dedup reliability for common verbose patterns observed in
+    generated summaries.
+    """
     replacements = [
         (r"\bdata analysis and data visualization\b", "data analysis and visualization"),
         (r"\bweb development and web applications\b", "web application development"),
@@ -315,6 +352,7 @@ def _polish_summary(summary: str) -> str:
 
 
 def _summary_mentions_any(summary: str, items: list[str]) -> bool:
+    """Check whether summary references at least one expected anchor term."""
     lowered = summary.lower()
     normalized_summary = _normalize_token(summary)
     for item in items:
@@ -349,6 +387,7 @@ def _contains_example_overlap(summary: str) -> bool:
 
 
 def _contains_project_name(summary: str, project_names: list[str]) -> bool:
+    """Return true if summary leaks a project name from the input facts."""
     lowered = summary.lower()
     for name in project_names:
         if name and name.lower() in lowered:
@@ -384,6 +423,12 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
 
 
 def _has_redundant_repetition(summary: str) -> bool:
+    """
+    Detect substantial repetition at sentence and phrase level.
+
+    We reject summaries that restate the same domain point with high lexical
+    overlap or repeated 4-gram phrases.
+    """
     sentences = _split_sentences(summary)
     if len(sentences) >= 2:
         for i in range(len(sentences)):
@@ -412,6 +457,7 @@ def _has_redundant_repetition(summary: str) -> bool:
 
 
 def _join_phrases(items: list[str], limit: int = 3) -> str:
+    """Join short phrase lists with readable English conjunctions."""
     trimmed = [item for item in items if item][:limit]
     if not trimmed:
         return ""
@@ -423,6 +469,7 @@ def _join_phrases(items: list[str], limit: int = 3) -> str:
 
 
 def _role_phrase(role: str | None) -> str:
+    """Map internal role labels to resume-friendly identity phrases."""
     if not role:
         return "software contributor"
     lowered = role.lower()
@@ -436,6 +483,7 @@ def _role_phrase(role: str | None) -> str:
 
 
 def _stage_identity_phrase(experience_stage: str | None, role: str | None) -> str:
+    """Select stage-aware opening identity text for the summary."""
     stage = (experience_stage or "").lower()
     role_phrase = _role_phrase(role)
 
@@ -449,6 +497,7 @@ def _stage_identity_phrase(experience_stage: str | None, role: str | None) -> st
 
 
 def _focus_phrase(focus: str | None) -> str:
+    """Map inferred focus categories to polished narrative focus phrases."""
     focus_map = {
         "Analytics": "data and analytics delivery",
         "Backend": "backend systems and service reliability",

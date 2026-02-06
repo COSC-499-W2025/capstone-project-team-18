@@ -140,6 +140,12 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return [Block("signature", TextBlock(text=signature))]
 
     def _build_signature(self, report: UserReport) -> str | None:
+        """
+        Build a summary by collecting user/project signals and calling the generator.
+
+        The method intentionally works only from report statistics so the summary
+        stays deterministic relative to analyzed project data.
+        """
         lang_ratio = report.get_value(
             UserStatCollection.USER_CODING_LANGUAGE_RATIO.value
         )
@@ -198,6 +204,7 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return None
 
     def _dominant_role(self, report: UserReport) -> str | None:
+        """Infer the user's dominant collaboration role across projects."""
         role_counts: dict[str, int] = {}
         for pr in report.project_reports:
             role = pr.get_value(ProjectStatCollection.COLLABORATION_ROLE.value)
@@ -210,6 +217,7 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return max(role_counts.items(), key=lambda kv: kv[1])[0]
 
     def _dominant_cadence(self, report: UserReport) -> str | None:
+        """Infer the most common work cadence across projects."""
         cadence_counts: dict[str, int] = {}
         for pr in report.project_reports:
             cadence = pr.get_value(ProjectStatCollection.WORK_PATTERN.value)
@@ -222,6 +230,7 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return max(cadence_counts.items(), key=lambda kv: kv[1])[0]
 
     def _dominant_commit_focus(self, report: UserReport) -> str | None:
+        """Infer top commit focus by aggregating commit type distributions."""
         totals: dict[str, float] = {}
         for pr in report.project_reports:
             dist = pr.get_value(
@@ -236,6 +245,7 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return max(totals.items(), key=lambda kv: kv[1])[0]
 
     def _top_tools(self, report: UserReport, limit: int) -> list[str]:
+        """Aggregate framework/tool usage by weight and return top entries."""
         tools: dict[str, float] = {}
         for pr in report.project_reports:
             frameworks = pr.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value)
@@ -251,12 +261,14 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return [name for name, _ in ranked[:limit]]
 
     def _top_languages_list(self, lang_ratio, limit: int) -> list[str]:
+        """Return top coding languages from user language ratio stats."""
         if not lang_ratio:
             return []
         ranked = sorted(lang_ratio.items(), key=lambda kv: kv[1], reverse=True)
         return [getattr(lang, "value", str(lang)) for lang, _ in ranked[:limit]]
 
     def _top_skills_list(self, user_skills, limit: int) -> list[str]:
+        """Return top weighted user skills in descending order."""
         if not user_skills:
             return []
         ranked = sorted(
@@ -265,6 +277,7 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return [getattr(ws, "skill_name", str(ws)) for ws in ranked[:limit]]
 
     def _top_project_themes(self, report: UserReport, limit: int) -> list[str]:
+        """Return most frequent inferred project themes across repositories."""
         themes: dict[str, int] = {}
         for pr in report.project_reports:
             project_themes = pr.get_value(ProjectStatCollection.PROJECT_THEMES.value)
@@ -278,6 +291,7 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return [name for name, _ in ranked[:limit]]
 
     def _top_project_tags(self, report: UserReport, limit: int) -> list[str]:
+        """Return most frequent README-derived project tags across repositories."""
         tags: dict[str, int] = {}
         for pr in report.project_reports:
             project_tags = pr.get_value(ProjectStatCollection.PROJECT_TAGS.value)
@@ -348,6 +362,12 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         cadence: str | None,
         commit_focus: str | None,
     ) -> list[str]:
+        """
+        Build human-readable activity signals for summary prompting.
+
+        Signals combine categorical stats (cadence/commit focus) with numeric
+        activity metrics so summary language can reflect execution style.
+        """
         signals: list[str] = []
 
         cadence_map = {
@@ -410,6 +430,11 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         themes: list[str],
         tags: list[str],
     ) -> list[str]:
+        """
+        Detect emerging capability areas from skill/tool/theme/tag text.
+
+        These hints are used for optional forward-looking summary language.
+        """
         corpus = " ".join(top_skills + tools + themes + tags).lower()
         signals: list[str] = []
 
@@ -463,6 +488,7 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         return stage
 
     def _is_valid_summary(self, summary: str) -> bool:
+        """Builder-level safety check before rendering summary block."""
         word_count = len(summary.split())
         sentence_count = summary.count(".")
         if word_count < 20 or word_count > 140:
