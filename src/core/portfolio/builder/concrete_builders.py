@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 from src.core.report import UserReport
 from src.core.portfolio.sections.block.block import Block
@@ -6,6 +7,10 @@ from src.core.portfolio.sections.block.block_content import TextListBlock, TextB
 from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
 from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
+from src.core.ML.models.contribution_analysis import (
+    generate_project_summary,
+    build_project_summary_facts,
+)
 
 
 class UserDateSectionBuilder(PortfolioSectionBuilder):
@@ -288,44 +293,30 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """
         Compose a 2-3 sentence grounded summary from project statistics.
 
-        The function only uses existing computed stats and never invents new
-        technologies/goals/contributions.
+        The builder attempts ML generation first (grounded by structured facts),
+        then falls back to deterministic phrasing if ML is unavailable or fails.
         """
-        goal_sentence = self._goal_sentence(project_report)
-        stack_sentence = self._stack_sentence(project_report)
-        contribution_sentence = self._contribution_sentence(project_report)
-
-        sentences = [s for s in [goal_sentence, stack_sentence, contribution_sentence] if s]
-        if len(sentences) < 2:
+        facts = self._build_project_summary_facts(project_report)
+        if not facts:
             return None
-        return " ".join(sentences[:3])
+        summary = generate_project_summary(facts)
+        if summary and self._is_summary_well_formed(summary) and self._summary_covers_requirements(summary, facts):
+            return summary
 
-    def _goal_sentence(self, project_report) -> str | None:
-        """Build a sentence describing project goals/themes from README-derived stats."""
-        themes = project_report.get_value(ProjectStatCollection.PROJECT_THEMES.value)
-        tags = project_report.get_value(ProjectStatCollection.PROJECT_TAGS.value)
-
-        if themes:
-            top_themes = [str(t) for t in themes[:2]]
-            if len(top_themes) == 1:
-                return f"The project goals centered on {top_themes[0]}."
-            return f"The project goals centered on {top_themes[0]} and {top_themes[1]}."
-
-        if tags:
-            top_tags = [str(t) for t in tags[:3]]
-            if len(top_tags) == 1:
-                return f"A primary project goal was {top_tags[0]}."
-            if len(top_tags) == 2:
-                return f"Primary goals included {top_tags[0]} and {top_tags[1]}."
-            return f"Primary goals included {top_tags[0]}, {top_tags[1]}, and {top_tags[2]}."
-
+        fallback = self._build_project_summary_deterministic(facts)
+        if fallback and self._is_summary_well_formed(fallback) and self._summary_covers_requirements(fallback, facts):
+            return fallback
         return None
 
-    def _stack_sentence(self, project_report) -> str | None:
-        """Build a sentence describing frameworks and core implementation languages."""
-        frameworks = project_report.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value)
-        lang_ratio = project_report.get_value(ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
+    def _build_project_summary_facts(self, project_report) -> dict | None:
+        """Extract trusted stats into a compact facts payload for summary generation."""
+        project_name = getattr(project_report, "project_name", None)
 
+        themes = project_report.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
+        tags = project_report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+        goal_terms = self._select_goal_terms(project_name, themes, tags)
+
+        frameworks = project_report.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value)
         framework_names: list[str] = []
         if frameworks:
             ranked_frameworks = sorted(
@@ -337,52 +328,248 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 getattr(ws, "skill_name", str(ws)) for ws in ranked_frameworks[:3]
             ]
 
+        lang_ratio = project_report.get_value(ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
         language_names: list[str] = []
         if lang_ratio:
             ranked_langs = sorted(lang_ratio.items(), key=lambda kv: kv[1], reverse=True)
-            language_names = [
-                getattr(lang, "value", str(lang)) for lang, _ in ranked_langs[:2]
-            ]
+            language_names = [getattr(lang, "value", str(lang)) for lang, _ in ranked_langs[:2]]
 
-        if framework_names and language_names:
-            return (
-                f"The implementation used {self._join_english(framework_names)} with primary languages "
-                f"{self._join_english(language_names)}."
-            )
-        if framework_names:
-            return f"The implementation used {self._join_english(framework_names)}."
-        if language_names:
-            return f"Primary implementation languages were {self._join_english(language_names)}."
-        return None
-
-    def _contribution_sentence(self, project_report) -> str | None:
-        """Build a sentence describing role and measurable contribution."""
         role = project_report.get_value(ProjectStatCollection.COLLABORATION_ROLE.value)
+        role_text = str(getattr(role, "value", role)) if role else None
         role_description = project_report.get_value(ProjectStatCollection.ROLE_DESCRIPTION.value)
+
         commit_dist = project_report.get_value(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
+        commit_focus = self._top_commit_focus(commit_dist)
         commit_pct = project_report.get_value(ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
         line_pct = project_report.get_value(ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value)
+        activity_breakdown = self._activity_breakdown(project_report)
 
-        if role_description:
-            return str(role_description).strip().rstrip(".") + "."
-
-        pieces: list[str] = []
-        if role:
-            role_phrase = str(getattr(role, "value", role)).replace("_", " ")
-            pieces.append(f"as a {role_phrase}")
-
-        if isinstance(commit_pct, (int, float)):
-            pieces.append(f"contributing about {commit_pct:.0f}% of commits")
-        elif isinstance(line_pct, (int, float)):
-            pieces.append(f"contributing about {line_pct:.0f}% of authored lines")
-
-        commit_focus = self._top_commit_focus(commit_dist)
-        if commit_focus:
-            pieces.append(f"with most work in {commit_focus} changes")
-
-        if not pieces:
+        if not goal_terms and not framework_names and not language_names and not role_description and not activity_breakdown:
             return None
-        return f"My contribution was primarily {self._join_english(pieces)}."
+
+        return build_project_summary_facts(
+            project_name=project_name,
+            goal_terms=goal_terms,
+            frameworks=framework_names,
+            languages=language_names,
+            role=role_text,
+            commit_focus=commit_focus,
+            commit_pct=commit_pct if isinstance(commit_pct, (int, float)) else None,
+            line_pct=line_pct if isinstance(line_pct, (int, float)) else None,
+            activity_breakdown=activity_breakdown,
+            role_description=str(role_description).strip() if role_description else None,
+        )
+
+    def _build_project_summary_deterministic(self, facts: dict) -> str | None:
+        """Fallback summary generator using only local deterministic templates."""
+        goal_terms = facts.get("goal_terms", [])
+        frameworks = facts.get("frameworks", [])
+        languages = facts.get("languages", [])
+        role_description = facts.get("role_description")
+        role = facts.get("role")
+        commit_focus = facts.get("commit_focus")
+        commit_pct = facts.get("commit_pct")
+        line_pct = facts.get("line_pct")
+        activity_breakdown = facts.get("activity_breakdown", [])
+
+        goal_sentence = None
+        if goal_terms:
+            top = goal_terms[:2]
+            if len(top) == 1:
+                goal_sentence = f"The project had a primary goal of {top[0]}."
+            else:
+                goal_sentence = f"The project had primary goals of {top[0]} and {top[1]}."
+        else:
+            project_name = str(facts.get("project_name", "")).strip()
+            if project_name:
+                normalized_name = project_name.replace("-", " ").replace("_", " ").lower()
+                goal_sentence = f"The project targeted {normalized_name} outcomes."
+            else:
+                goal_sentence = "The project targeted a clearly scoped product outcome."
+
+        stack_sentence = None
+        if frameworks and languages:
+            stack_sentence = (
+                f"It was implemented with {self._join_english(frameworks[:3])} and primarily written in "
+                f"{self._join_english(languages[:2])}."
+            )
+        elif frameworks:
+            stack_sentence = f"It was implemented with {self._join_english(frameworks[:3])}."
+        elif languages:
+            stack_sentence = f"It was primarily written in {self._join_english(languages[:2])}."
+        else:
+            stack_sentence = "The implementation stack was selected to match the project requirements."
+
+        contribution_sentence = None
+        if role_description:
+            contribution_sentence = role_description.rstrip(".") + "."
+        else:
+            contribution_sentence = self._compose_contribution_sentence(
+                role=role,
+                commit_focus=commit_focus,
+                commit_pct=commit_pct,
+                line_pct=line_pct,
+                activity_breakdown=activity_breakdown,
+            )
+
+        sentences = [s for s in [goal_sentence, stack_sentence, contribution_sentence] if s]
+        if len(sentences) < 2:
+            return None
+        return " ".join(sentences[:3])
+
+    def _select_goal_terms(self, project_name: str | None, themes, tags) -> list[str]:
+        """
+        Select concise goal terms and filter repeated project-name variants.
+        """
+        project_tokens = self._token_set(project_name or "")
+        raw_terms = [str(x).strip() for x in list(themes) + list(tags) if str(x).strip()]
+
+        selected: list[str] = []
+        selected_tokens: list[set[str]] = []
+        for term in raw_terms:
+            term_tokens = self._token_set(term)
+            if not term_tokens:
+                continue
+            if project_tokens:
+                overlap = len(term_tokens & project_tokens) / len(term_tokens)
+                if overlap >= 0.6:
+                    continue
+            if any(self._jaccard(term_tokens, existing) >= 0.6 for existing in selected_tokens):
+                continue
+
+            selected.append(term)
+            selected_tokens.append(term_tokens)
+            if len(selected) >= 4:
+                break
+
+        return selected[:4]
+
+    def _activity_breakdown(self, project_report) -> list[tuple[str, float]]:
+        """Return sorted contribution activity breakdown as (domain, percentage)."""
+        activity = project_report.get_value(ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)
+        if not activity:
+            return []
+
+        pairs: list[tuple[str, float]] = []
+        for domain, value in activity.items():
+            name = str(getattr(domain, "value", domain)).replace("_", " ").lower()
+            pct = float(value) * 100 if float(value) <= 1.0 else float(value)
+            pairs.append((name, pct))
+        pairs.sort(key=lambda x: x[1], reverse=True)
+        return pairs
+
+    def _is_summary_well_formed(self, summary: str) -> bool:
+        """Validate output shape for section rendering."""
+        sentence_count = summary.count(".")
+        word_count = len(summary.split())
+        return 2 <= sentence_count <= 3 and 20 <= word_count <= 160
+
+    def _summary_covers_requirements(self, summary: str, facts: dict) -> bool:
+        """
+        Ensure summary reflects available goal, stack, and contribution facts.
+        """
+        lowered = summary.lower()
+
+        goal_terms = [str(x).lower() for x in facts.get("goal_terms", []) if str(x).strip()]
+        if goal_terms and not any(term in lowered for term in goal_terms):
+            return False
+
+        stack_terms = [str(x).lower() for x in facts.get("frameworks", []) + facts.get("languages", []) if str(x).strip()]
+        if stack_terms and not any(term in lowered for term in stack_terms):
+            return False
+
+        contribution_terms = self._contribution_anchor_terms(facts)
+        if contribution_terms and not any(term in lowered for term in contribution_terms):
+            return False
+        return True
+
+    def _contribution_anchor_terms(self, facts: dict) -> list[str]:
+        """Build normalized anchors to verify contribution coverage."""
+        terms: list[str] = []
+        stopwords = {
+            "and", "the", "with", "for", "from", "into", "onto", "across",
+            "this", "that", "was", "were", "have", "has", "had", "project",
+            "delivery", "work", "changes",
+        }
+
+        role = facts.get("role")
+        if role:
+            role_tokens = str(role).replace("_", " ").lower().split()
+            terms.extend([t for t in role_tokens if len(t) >= 4 and t not in stopwords])
+
+        commit_focus = facts.get("commit_focus")
+        if commit_focus:
+            focus_tokens = str(commit_focus).replace("_", " ").lower().split()
+            terms.extend([t for t in focus_tokens if len(t) >= 4 and t not in stopwords])
+
+        role_description = facts.get("role_description")
+        if role_description:
+            desc_tokens = self._token_set(str(role_description))
+            terms.extend([t for t in desc_tokens if len(t) >= 4 and t not in stopwords])
+
+        commit_pct = facts.get("commit_pct")
+        if isinstance(commit_pct, (int, float)):
+            pct_str = f"{int(round(float(commit_pct)))}%"
+            terms.append(pct_str)
+
+        line_pct = facts.get("line_pct")
+        if isinstance(line_pct, (int, float)):
+            pct_str = f"{int(round(float(line_pct)))}%"
+            terms.append(pct_str)
+
+        for domain, _pct in facts.get("activity_breakdown", [])[:2]:
+            if domain:
+                domain_tokens = str(domain).lower().split()
+                terms.extend([t for t in domain_tokens if len(t) >= 4 and t not in stopwords])
+
+        return [t for t in terms if t]
+
+    def _compose_contribution_sentence(
+        self,
+        role: str | None,
+        commit_focus: str | None,
+        commit_pct: float | None,
+        line_pct: float | None,
+        activity_breakdown: list[tuple[str, float]] | None,
+    ) -> str:
+        """
+        Compose a readable contribution sentence from available contribution metrics.
+        """
+        lead = "I contributed"
+        role_text = str(role).replace("_", " ").strip() if role else None
+        if role_text:
+            lead += f" as a {role_text}"
+
+        detail_phrases: list[str] = []
+        if isinstance(commit_pct, (int, float)):
+            detail_phrases.append(f"authoring about {commit_pct:.0f}% of commits")
+        elif isinstance(line_pct, (int, float)):
+            detail_phrases.append(f"accounting for about {line_pct:.0f}% of authored lines")
+
+        if commit_focus:
+            focus = str(commit_focus).replace("_", " ").strip().lower()
+            detail_phrases.append(f"focusing on {focus} changes")
+
+        activity_phrase = self._activity_phrase(activity_breakdown or [])
+        if activity_phrase:
+            detail_phrases.append(activity_phrase)
+
+        if detail_phrases:
+            return f"{lead}, {self._join_english(detail_phrases)}."
+        return f"{lead} across project delivery tasks."
+
+    def _activity_phrase(self, activity_breakdown: list[tuple[str, float]]) -> str | None:
+        """Return concise, professional activity-distribution wording."""
+        if not activity_breakdown:
+            return None
+
+        top = activity_breakdown[:2]
+        if len(top) == 1:
+            return f"primarily through {top[0][0]} work ({top[0][1]:.0f}%)"
+        return (
+            f"primarily through {top[0][0]} ({top[0][1]:.0f}%) and "
+            f"{top[1][0]} ({top[1][1]:.0f}%) work"
+        )
 
     def _top_commit_focus(self, commit_dist) -> str | None:
         """Return the dominant commit type label from a distribution dict."""
@@ -404,6 +591,14 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         if len(clean) == 2:
             return f"{clean[0]} and {clean[1]}"
         return f"{', '.join(clean[:-1])}, and {clean[-1]}"
+
+    def _token_set(self, text: str) -> set[str]:
+        return set(t for t in re.findall(r"[a-z0-9]+", text.lower()) if t)
+
+    def _jaccard(self, left: set[str], right: set[str]) -> float:
+        if not left or not right:
+            return 0.0
+        return len(left & right) / len(left | right)
 
 
 class ProjectTagsSectionBuilder(PortfolioSectionBuilder):

@@ -1,3 +1,5 @@
+import pytest
+
 from src.core.report import UserReport
 from src.core.portfolio.builder.concrete_builders import ProjectSummariesSectionBuilder
 from src.core.statistic import (
@@ -5,7 +7,13 @@ from src.core.statistic import (
     ProjectStatCollection,
     WeightedSkills,
     CodingLanguage,
+    FileDomain,
 )
+
+
+@pytest.fixture(autouse=True)
+def disable_project_summary_model(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL", "1")
 
 
 def test_project_summaries_empty_user_report_returns_no_lines(user_report_from_stats):
@@ -44,11 +52,11 @@ def test_project_summary_builds_grounded_three_sentence_text(project_report_from
     assert len(lines) == 1
     line = lines[0]
     assert line.startswith("Insight Portal:")
-    assert "goals centered on analytics and reporting" in line.lower()
+    assert "primary goals of analytics and reporting" in line.lower()
     assert "React and FastAPI" in line
-    assert "Python and JavaScript" in line
+    assert "written in Python and JavaScript" in line
     assert "about 42% of commits" in line
-    assert "feature changes" in line
+    assert "focusing on feature changes" in line
 
     summary_text = line.split(": ", 1)[1]
     assert 2 <= summary_text.count(".") <= 3
@@ -109,3 +117,74 @@ def test_to_user_readable_string_includes_project_summaries_section(project_repo
 
     assert "## Project Summaries" in readable
     assert "KPI Dashboard:" in readable
+
+
+def test_project_summary_uses_ml_output_when_available(project_report_from_stats, monkeypatch):
+    project = project_report_from_stats(
+        [
+            Statistic(ProjectStatCollection.PROJECT_THEMES.value, ["analytics"]),
+            Statistic(
+                ProjectStatCollection.PROJECT_FRAMEWORKS.value,
+                [WeightedSkills("React", 0.9)],
+            ),
+            Statistic(
+                ProjectStatCollection.CODING_LANGUAGE_RATIO.value,
+                {CodingLanguage.JAVASCRIPT: 1.0},
+            ),
+            Statistic(ProjectStatCollection.USER_COMMIT_PERCENTAGE.value, 50.0),
+        ],
+        project_name="ML Portal",
+    )
+    user_report = UserReport([project], "UserReport")
+
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.generate_project_summary",
+        lambda _facts: (
+            "This project targeted analytics workflows for product reporting. "
+            "It was implemented with React and JavaScript. "
+            "My contribution covered 50% of commits focused on feature delivery."
+        ),
+    )
+
+    builder = ProjectSummariesSectionBuilder()
+    lines = builder.get_project_summaries(user_report)
+
+    assert len(lines) == 1
+    assert "This project targeted analytics workflows for product reporting." in lines[0]
+
+
+def test_project_summary_fallback_uses_activity_breakdown(project_report_from_stats, monkeypatch):
+    project = project_report_from_stats(
+        [
+            Statistic(ProjectStatCollection.PROJECT_THEMES.value, ["reporting"]),
+            Statistic(
+                ProjectStatCollection.PROJECT_FRAMEWORKS.value,
+                [WeightedSkills("FastAPI", 1.0)],
+            ),
+            Statistic(
+                ProjectStatCollection.CODING_LANGUAGE_RATIO.value,
+                {CodingLanguage.PYTHON: 1.0},
+            ),
+            Statistic(
+                ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value,
+                {
+                    FileDomain.CODE: 0.62,
+                    FileDomain.DOCUMENTATION: 0.38,
+                },
+            ),
+        ],
+        project_name="Activity API",
+    )
+    user_report = UserReport([project], "UserReport")
+
+    # Force fallback path by returning no ML summary.
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.generate_project_summary",
+        lambda _facts: None,
+    )
+
+    builder = ProjectSummariesSectionBuilder()
+    lines = builder.get_project_summaries(user_report)
+
+    assert len(lines) == 1
+    assert "primarily through code (62%) and documentation (38%) work" in lines[0].lower()
