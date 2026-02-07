@@ -216,6 +216,21 @@ def _summary_mentions_any(summary: str, items: list[str]) -> bool:
     return False
 
 
+def _normalize_percentage(value: float | int | None) -> float | None:
+    """
+    Normalize a ratio/percentage input into a percentage value.
+
+    Expected canonical range is 0-100. Values in [0, 1] are treated as ratios
+    and converted to percentages. This prevents mixed-unit bugs at render time.
+    """
+    if not isinstance(value, (int, float)):
+        return None
+    pct = float(value)
+    if 0.0 <= pct <= 1.0:
+        pct *= 100.0
+    return pct
+
+
 def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     """Validate shape and grounding of generated summary."""
     if _is_list_like(summary):
@@ -336,6 +351,14 @@ def build_project_summary_facts(
     role_description: str | None = None,
 ) -> dict[str, Any]:
     """Build compact facts payload for ML summary generation."""
+    normalized_activity: list[tuple[str, float]] = []
+    if activity_breakdown:
+        for domain, pct in activity_breakdown[:3]:
+            normalized_pct = _normalize_percentage(pct)
+            if normalized_pct is None:
+                continue
+            normalized_activity.append((domain, normalized_pct))
+
     return {
         "project_name": project_name,
         "goal_terms": goal_terms[:4],
@@ -344,7 +367,7 @@ def build_project_summary_facts(
         "role": role,
         "role_description": role_description,
         "commit_focus": commit_focus,
-        "commit_pct": commit_pct,
-        "line_pct": line_pct,
-        "activity_breakdown": activity_breakdown[:3] if activity_breakdown else [],
+        "commit_pct": _normalize_percentage(commit_pct),
+        "line_pct": _normalize_percentage(line_pct),
+        "activity_breakdown": normalized_activity,
     }

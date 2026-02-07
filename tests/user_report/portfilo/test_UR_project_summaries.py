@@ -208,3 +208,38 @@ def test_project_summary_validator_counts_exclamation_and_question_sentences():
 
     ok, reason = psg._is_valid_summary(summary, facts)
     assert ok is True, reason
+
+
+def test_project_summary_normalizes_ratio_commit_percentage(project_report_from_stats, monkeypatch):
+    project = project_report_from_stats(
+        [
+            Statistic(ProjectStatCollection.PROJECT_THEMES.value, ["analytics"]),
+            Statistic(
+                ProjectStatCollection.PROJECT_FRAMEWORKS.value,
+                [WeightedSkills("FastAPI", 1.0)],
+            ),
+            Statistic(
+                ProjectStatCollection.CODING_LANGUAGE_RATIO.value,
+                {CodingLanguage.PYTHON: 1.0},
+            ),
+            # Ratio format (0-1) should be normalized to percentage (0-100).
+            Statistic(ProjectStatCollection.USER_COMMIT_PERCENTAGE.value, 0.42),
+            Statistic(
+                ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value,
+                {"feature": 100.0},
+            ),
+        ],
+        project_name="Ratio API",
+    )
+    user_report = UserReport([project], "UserReport")
+
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.generate_project_summary",
+        lambda _facts: None,
+    )
+
+    builder = ProjectSummariesSectionBuilder()
+    lines = builder.get_project_summaries(user_report)
+
+    assert len(lines) == 1
+    assert "42% of commits" in lines[0]
