@@ -9,6 +9,9 @@ from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
 from src.core.statistic.skills import SkillMapper
 from src.core.ML.models.contribution_analysis import generate_signature, build_signature_facts
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class UserDateSectionBuilder(PortfolioSectionBuilder):
@@ -193,8 +196,6 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         if signature:
             if self._is_valid_summary(signature):
                 return signature
-            from src.infrastructure.log.logging import get_logger
-            logger = get_logger(__name__)
             logger.warning(
                 "Summary rejected by validator (len=%d, sentences=%d): %s",
                 len(signature.split()),
