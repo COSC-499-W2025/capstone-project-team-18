@@ -4,7 +4,8 @@ from src.services.project.retrieve_project_service import(
     retrieve_project_by_id,
     retrieve_projects,
     ProjectResponse,
-    AllProjectsResponse
+    AllProjectsResponse,
+    DatabaseNotInitializedError
 )
 
 router = APIRouter(
@@ -21,15 +22,22 @@ def upload_project():
 @router.get("", response_model=AllProjectsResponse)
 def list_projects():
     """Get all projects from database"""
-    return retrieve_projects()
+    try:
+        return retrieve_projects()
+    except DatabaseNotInitializedError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(project_id: int):
     """Get a single project by ID"""
-    project = retrieve_project_by_id(project_id)
+    try:
+        project = retrieve_project_by_id(project_id)
 
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    return project
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        return project
+
+    except DatabaseNotInitializedError as e:
+        raise HTTPException(status_code=503, detail=str(e))

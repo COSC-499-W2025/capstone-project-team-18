@@ -4,6 +4,7 @@ Retrieval Services for a Project
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
+from sqlalchemy import inspect
 from typing import Dict, Any, Optional
 from datetime import datetime
 
@@ -28,6 +29,22 @@ class AllProjectsResponse(BaseModel):
     """Response model for all projects"""
     projects: list[ProjectResponse]
 
+class DatabaseNotInitializedError(Exception):
+    """Raised when the database tables haven't been initialized"""
+    pass
+
+def _check_table_exists(engine) -> None:
+    """
+    Check if the project_report table exists in the database.
+
+    :param engine: SQLAlchemy engine
+    :raises DatabaseNotInitializedError: If table doesn't exist
+    """
+    inspector = inspect(engine)
+    if not inspector.has_table("project_report"):
+        raise DatabaseNotInitializedError(
+            "Database has not been initialized. Please run project analysis first."
+        )
 
 def retrieve_project_by_id(project_id: int) -> Optional[ProjectResponse]:
     """
@@ -35,8 +52,10 @@ def retrieve_project_by_id(project_id: int) -> Optional[ProjectResponse]:
 
     :param project_id: The id of the project to retrieve
     :return: ProjectResponse or None if not found
+    :raises DatabaseNotInitializedError: If database tables don't exist
     """
     engine = get_engine()
+    _check_table_exists(engine)
 
     with Session(engine) as session:
         project = session.query(ProjectReportTable).filter(
@@ -71,8 +90,10 @@ def retrieve_projects() -> AllProjectsResponse:
     Retrieve all available projects in the database
 
     :return: AllProjectsResponse containing all projects
+    :raises DatabaseNotInitializedError: If database tables don't exist
     """
     engine = get_engine()
+    _check_table_exists(engine)
 
     with Session(engine) as session:
         project_rows = session.query(ProjectReportTable).all()
