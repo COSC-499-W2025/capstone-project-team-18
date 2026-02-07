@@ -513,6 +513,34 @@ class SkillMapper:
     }
 
     _SUMMARY_FOCUS_KEYWORDS_CACHE: Optional[Dict[str, Set[str]]] = None
+    _SUMMARY_EMERGING_KEYWORDS_BASE: Dict[str, Set[str]] = {
+        "Generative AI": {
+            "llm", "generative ai", "genai", "transformers", "huggingface",
+            "embedding", "prompt", "prompting",
+        },
+        "Machine Learning": {
+            "machine learning", "ml", "model", "training", "inference",
+            "pytorch", "tensorflow",
+        },
+        "Data Engineering": {
+            "data engineering", "etl", "pipeline", "orchestration",
+            "data pipeline",
+        },
+        "Cloud Platforms": {
+            "cloud", "aws", "azure", "gcp", "serverless", "infrastructure",
+        },
+    }
+    _SUMMARY_EMERGING_SKILL_SOURCES: Dict[str, Set[Skill]] = {
+        "Generative AI": {Skill.MACHINE_LEARNING},
+        "Machine Learning": {Skill.MACHINE_LEARNING},
+        "Data Engineering": {Skill.DATA_ANALYTICS, Skill.DATABASE},
+        "Cloud Platforms": {
+            Skill.CLOUD_COMPUTING,
+            Skill.DEVOPS,
+            Skill.CONTAINERIZATION,
+        },
+    }
+    _SUMMARY_EMERGING_KEYWORDS_CACHE: Optional[Dict[str, Set[str]]] = None
 
     @classmethod
     def summary_focus_keywords(cls) -> Dict[str, Set[str]]:
@@ -553,6 +581,46 @@ class SkillMapper:
         return {
             focus: set(keywords)
             for focus, keywords in cls._SUMMARY_FOCUS_KEYWORDS_CACHE.items()
+        }
+
+    @classmethod
+    def summary_emerging_keywords(cls) -> Dict[str, Set[str]]:
+        """
+        Return merged keyword map for emerging-capability summary signals.
+
+        This reuses SkillMapper indicators so emerging-signal detection and skill
+        mapping are sourced from the same vocabulary.
+        """
+        if cls._SUMMARY_EMERGING_KEYWORDS_CACHE is not None:
+            return {
+                label: set(keywords)
+                for label, keywords in cls._SUMMARY_EMERGING_KEYWORDS_CACHE.items()
+            }
+
+        merged: Dict[str, Set[str]] = {
+            label: {token.lower() for token in keywords}
+            for label, keywords in cls._SUMMARY_EMERGING_KEYWORDS_BASE.items()
+        }
+
+        for label, skills in cls._SUMMARY_EMERGING_SKILL_SOURCES.items():
+            merged.setdefault(label, set())
+            for skill in skills:
+                indicators = cls.SKILL_INDICATORS.get(skill)
+                if not indicators:
+                    continue
+                merged[label].update(
+                    package.lower() for package in indicators.packages if package
+                )
+                merged[label].update(
+                    keyword.lower() for keyword in indicators.keywords if keyword
+                )
+
+        cls._SUMMARY_EMERGING_KEYWORDS_CACHE = {
+            label: set(keywords) for label, keywords in merged.items()
+        }
+        return {
+            label: set(keywords)
+            for label, keywords in cls._SUMMARY_EMERGING_KEYWORDS_CACHE.items()
         }
 
     @classmethod

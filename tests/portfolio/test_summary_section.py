@@ -334,6 +334,42 @@ def test_summary_section_focus_inference_uses_skillmapper_keywords(tmp_path, mon
     assert captured_facts["focus"] == "Analytics"
 
 
+def test_summary_section_emerging_signals_use_skillmapper_keywords(tmp_path, monkeypatch):
+    # "huggingface" is from SkillMapper ML packages and should surface as emerging.
+    project = _make_project_report(
+        tmp_path,
+        frameworks=[WeightedSkills("huggingface", 1.0)],
+    )
+    report = _make_user_report([project])
+
+    captured_facts = {}
+
+    def fake_build_signature_facts(**kwargs):
+        captured_facts.update(kwargs)
+        return {"mock": "facts"}
+
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.build_signature_facts",
+        fake_build_signature_facts,
+    )
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.generate_signature",
+        lambda _facts: (
+            "Machine-learning oriented developer with practical experience building model-backed workflows and experimentation cycles. "
+            "Strong in Python and SQL with reliable delivery habits and clear technical communication."
+        ),
+    )
+
+    builder = UserSummarySectionBuilder()
+    blocks = builder.create_blocks(report)
+
+    assert len(blocks) == 1
+    assert any(
+        signal in captured_facts["emerging"]
+        for signal in {"Generative AI", "Machine Learning"}
+    )
+
+
 def test_summary_section_infers_experience_stage_from_timeline(tmp_path, monkeypatch):
     project = _make_project_report(
         tmp_path,

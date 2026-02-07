@@ -423,14 +423,9 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         corpus = " ".join(top_skills + tools + themes + tags).lower()
         signals: list[str] = []
 
-        if any(term in corpus for term in ["llm", "generative ai", "genai"]):
-            signals.append("Generative AI")
-        if any(term in corpus for term in ["machine learning", "ml", "pytorch", "tensorflow"]):
-            signals.append("Machine Learning")
-        if any(term in corpus for term in ["data engineering", "etl", "pipeline"]):
-            signals.append("Data Engineering")
-        if any(term in corpus for term in ["cloud", "aws", "azure", "gcp"]):
-            signals.append("Cloud Platforms")
+        for label, keywords in SkillMapper.summary_emerging_keywords().items():
+            if any(keyword in corpus for keyword in keywords):
+                signals.append(label)
 
         return signals[:3]
 
