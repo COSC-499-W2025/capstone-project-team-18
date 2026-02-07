@@ -94,5 +94,4 @@ def delete_project_report_by_name(
         return False
 
     session.delete(project)
-    session.commit()
     return True
