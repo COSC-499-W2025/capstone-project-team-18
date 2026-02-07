@@ -30,7 +30,16 @@ def list_projects():
 
 @router.get("/{project_name}", response_model=ProjectReportResponse)
 def get_project(project_name: str, session=Depends(get_session)):
+
     result = get_project_report_model_by_name(session, project_name)
+
+    try:
+        print()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve project report {e}"
+        )
 
     if not result:
         raise HTTPException(

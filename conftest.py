@@ -8,16 +8,17 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-
 import pytest
 from git import Repo
 from sqlmodel import SQLModel, create_engine
+from sqlalchemy.pool import StaticPool
 
 from src.core.analyzer import BaseFileAnalyzer, get_appropriate_analyzer
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.report import ProjectReport, UserReport
 from src.core.statistic import Statistic, StatisticIndex
 from src.database.api.models import UserConfigModel
+from src.database.api import models
 
 
 @pytest.fixture
@@ -83,7 +84,15 @@ def blank_db():
     when the test is done.
     """
 
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    # Make sure models module is here so all tables get run
+    models.__file__
+
     SQLModel.metadata.create_all(engine)
 
     yield engine

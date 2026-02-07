@@ -10,7 +10,7 @@ from src.core.project_discovery.project_discovery import discover_projects, Proj
 from src.core.statistic import ProjectStatCollection, FileStatCollection
 from src.core.report import ProjectReport
 from src.core.report.project.project_statistics import ProjectTotalContributionPercentage
-from src.database.api.modles import UserConfigModel
+from src.database.api.models import UserConfigModel
 
 
 @pytest.fixture
@@ -31,15 +31,14 @@ def discovered_project(resource_dir, tmp_path):
     ],
 )
 def test_verify_accurate_contribution_percentage(
-    discovered_project, email, expected_percentage, mock_readme_analysis, get_ready_specific_analyzer
+    discovered_project, email, expected_percentage, mock_readme_analysis
 ):
     """
     Verify total contribution percentage for different user emails.
     """
-    file_reports = get_ready_specific_analyzer(
+    file_reports = extract_file_reports(
         discovered_project,
-        UserConfigModel(),
-        email=email,
+        UserConfigModel(user_email=email)
     )
 
     project_report = ProjectReport(
@@ -91,7 +90,7 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
     )
 
     user_config = UserConfigModel()
-    user_config.email = "charlie@example.com"
+    user_config.user_email = "charlie@example.com"
 
     fr = extract_file_reports(project_files, user_config)
 
@@ -134,7 +133,7 @@ def test_total_contribution_percentage_single_file_full_contribution(tmp_path: P
     )
 
     user_config = UserConfigModel()
-    user_config.email = "alice@example.com"
+    user_config.user_email = "alice@example.com"
 
     fr = extract_file_reports(project_files, user_config)
 
@@ -180,7 +179,7 @@ def test_total_contribution_percentage_three_way_split(tmp_path: Path, mock_read
     )
 
     user_config = UserConfigModel()
-    user_config.email = "alice@example.com"
+    user_config.user_email = "alice@example.com"
 
     fr = extract_file_reports(project_files, user_config)
 
