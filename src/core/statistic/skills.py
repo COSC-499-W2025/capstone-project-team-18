@@ -473,6 +473,88 @@ class SkillMapper:
         )
     }
 
+    # Summary-focus labels are intentionally broader than Skill enum names.
+    # We keep base focus terms and enrich them with SkillMapper indicators so
+    # summary focus inference can share one keyword source.
+    _SUMMARY_FOCUS_KEYWORDS_BASE: Dict[str, Set[str]] = {
+        "Analytics": {
+            "analytics", "analysis", "dashboard", "report", "reporting", "sql",
+            "power bi", "tableau", "excel", "pandas", "numpy", "data",
+        },
+        "Backend": {
+            "backend", "api", "service", "server", "fastapi", "flask", "django",
+            "spring", "node", "sqlalchemy", "postgres", "database",
+        },
+        "Frontend": {
+            "frontend", "ui", "ux", "react", "vue", "angular", "html", "css",
+            "typescript", "javascript", "web",
+        },
+        "ML": {
+            "ml", "machine learning", "ai", "llm", "nlp", "model", "tensorflow",
+            "pytorch", "embedding", "classification",
+        },
+        "DevOps": {
+            "devops", "docker", "kubernetes", "terraform", "ci", "cd",
+            "pipeline", "aws", "gcp", "azure", "deployment",
+        },
+    }
+
+    _SUMMARY_FOCUS_SKILL_SOURCES: Dict[str, Set[Skill]] = {
+        "Analytics": {Skill.DATA_ANALYTICS},
+        "Backend": {Skill.API_DEVELOPMENT, Skill.DATABASE},
+        "Frontend": {Skill.WEB_DEVELOPMENT},
+        "ML": {Skill.MACHINE_LEARNING},
+        "DevOps": {
+            Skill.DEVOPS,
+            Skill.CI_CD,
+            Skill.CONTAINERIZATION,
+            Skill.CLOUD_COMPUTING,
+        },
+    }
+
+    _SUMMARY_FOCUS_KEYWORDS_CACHE: Optional[Dict[str, Set[str]]] = None
+
+    @classmethod
+    def summary_focus_keywords(cls) -> Dict[str, Set[str]]:
+        """
+        Return merged focus keyword map for resume/portfolio summary inference.
+
+        This combines:
+        - curated focus terms used by summary generation, and
+        - package/keyword indicators already maintained in `SKILL_INDICATORS`.
+        """
+        if cls._SUMMARY_FOCUS_KEYWORDS_CACHE is not None:
+            return {
+                focus: set(keywords)
+                for focus, keywords in cls._SUMMARY_FOCUS_KEYWORDS_CACHE.items()
+            }
+
+        merged: Dict[str, Set[str]] = {
+            focus: {token.lower() for token in keywords}
+            for focus, keywords in cls._SUMMARY_FOCUS_KEYWORDS_BASE.items()
+        }
+
+        for focus, skills in cls._SUMMARY_FOCUS_SKILL_SOURCES.items():
+            merged.setdefault(focus, set())
+            for skill in skills:
+                indicators = cls.SKILL_INDICATORS.get(skill)
+                if not indicators:
+                    continue
+                merged[focus].update(
+                    package.lower() for package in indicators.packages if package
+                )
+                merged[focus].update(
+                    keyword.lower() for keyword in indicators.keywords if keyword
+                )
+
+        cls._SUMMARY_FOCUS_KEYWORDS_CACHE = {
+            focus: set(keywords) for focus, keywords in merged.items()
+        }
+        return {
+            focus: set(keywords)
+            for focus, keywords in cls._SUMMARY_FOCUS_KEYWORDS_CACHE.items()
+        }
+
     @classmethod
     def map_package_to_skill(cls, package: str) -> Optional[Skill]:
         """

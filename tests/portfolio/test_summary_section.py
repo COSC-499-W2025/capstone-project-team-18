@@ -301,6 +301,39 @@ def test_summary_section_focus_inference_uses_skills_and_tools(tmp_path, monkeyp
     assert captured_facts["focus"] == "Analytics"
 
 
+def test_summary_section_focus_inference_uses_skillmapper_keywords(tmp_path, monkeypatch):
+    # "statsmodels" is sourced from SkillMapper indicators (Data Analytics).
+    project = _make_project_report(
+        tmp_path,
+        frameworks=[WeightedSkills("statsmodels", 1.0)],
+    )
+    report = _make_user_report([project])
+
+    captured_facts = {}
+
+    def fake_build_signature_facts(**kwargs):
+        captured_facts.update(kwargs)
+        return {"mock": "facts"}
+
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.build_signature_facts",
+        fake_build_signature_facts,
+    )
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.generate_signature",
+        lambda _facts: (
+            "Data-focused developer with practical analytics experience, strong problem framing, and consistent delivery habits. "
+            "Skilled in Python and SQL with evidence-driven reporting workflows that improve decision quality and communication."
+        ),
+    )
+
+    builder = UserSummarySectionBuilder()
+    blocks = builder.create_blocks(report)
+
+    assert len(blocks) == 1
+    assert captured_facts["focus"] == "Analytics"
+
+
 def test_summary_section_infers_experience_stage_from_timeline(tmp_path, monkeypatch):
     project = _make_project_report(
         tmp_path,

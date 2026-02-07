@@ -7,6 +7,7 @@ from src.core.portfolio.sections.block.block_content import TextListBlock, TextB
 from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
 from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
+from src.core.statistic.skills import SkillMapper
 from src.core.ML.models.contribution_analysis import generate_signature, build_signature_facts
 
 
@@ -313,23 +314,7 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         commit_focus: str | None,
     ) -> str | None:
         """Infer a primary professional focus from skills, tools, and project signals."""
-        focus_keywords = {
-            "Analytics": {
-                "analytics", "analysis", "dashboard", "report", "reporting", "sql", "power bi", "tableau", "excel", "pandas", "numpy", "data"
-            },
-            "Backend": {
-                "backend", "api", "service", "server", "fastapi", "flask", "django", "spring", "node", "sqlalchemy", "postgres", "database"
-            },
-            "Frontend": {
-                "frontend", "ui", "ux", "react", "vue", "angular", "html", "css", "typescript", "javascript", "web"
-            },
-            "ML": {
-                "ml", "machine learning", "ai", "llm", "nlp", "model", "tensorflow", "pytorch", "embedding", "classification"
-            },
-            "DevOps": {
-                "devops", "docker", "kubernetes", "terraform", "ci", "cd", "pipeline", "aws", "gcp", "azure", "deployment"
-            },
-        }
+        focus_keywords = SkillMapper.summary_focus_keywords()
 
         def _normalize_tokens(items: list[str]) -> list[str]:
             tokens: list[str] = []
