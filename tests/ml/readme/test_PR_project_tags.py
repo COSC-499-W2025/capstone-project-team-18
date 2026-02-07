@@ -1,4 +1,3 @@
-from src.core.analyzer.natural_language_analyzer import NaturalLanguageAnalyzer
 from src.core.report import ProjectReport, FileReport
 from src.core.statistic import (
     StatisticIndex,
@@ -25,7 +24,7 @@ def test_project_tags_from_readme_keyphrases():
     assert tags == ["REST API", "OAuth", "PostgreSQL"]
 
 
-def test_project_tags_from_readme_text(tmp_path, monkeypatch, get_ready):
+def test_project_tags_from_readme_text(tmp_path, monkeypatch, get_ready_specific_analyzer):
     readme_text = "API API API. This project exposes an API for clients."
 
     monkeypatch.setattr(
