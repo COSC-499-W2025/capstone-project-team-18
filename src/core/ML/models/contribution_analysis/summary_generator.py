@@ -9,6 +9,14 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
+from src.core.ML.models.contribution_analysis.summary_constants import (
+    SUMMARY_STYLE_EXAMPLE,
+    SUMMARY_EXAMPLE_GUIDANCE,
+    SUMMARY_BASE_PROMPT,
+    SUMMARY_BANNED_PHRASES,
+    SUMMARY_DOMAIN_KEYWORDS,
+    SUMMARY_PHRASE_NORMALIZATION_REPLACEMENTS,
+)
 
 logger = get_logger(__name__)
 
@@ -88,14 +96,6 @@ def _facts_hash(facts: dict[str, Any]) -> str:
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
-_STYLE_EXAMPLE = (
-    "Data-driven Computer Science Honours student with hands-on experience analyzing user and system data "
-    "to generate insights that improve software delivery processes. Strong in Python, Java, SQL, Excel and "
-    "Power BI with proven ability to automate reporting, build dashboards, and clearly communicate findings "
-    "to technical and non-technical stakeholders. Curious learner with exposure to Generative AI and LLM evaluation."
-)
-
-
 def _build_prompt(facts: dict[str, Any], strict: bool = False, include_example: bool = True) -> str:
     """
     Build a constrained prompt that forces narrative output and avoids list repetition.
@@ -105,27 +105,8 @@ def _build_prompt(facts: dict[str, Any], strict: bool = False, include_example: 
     prompt_facts.pop("project_names", None)
     prompt_facts.pop("tags", None)
     facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    style_example = (
-        "Example style (do NOT copy wording, only match tone and structure). "
-        "Do NOT reuse any phrases from the example; avoid any 5-word sequence overlap.\n"
-        f"Example: {_STYLE_EXAMPLE}"
-    )
-
-    base = (
-        "Write a 2–6 sentence professional summary based ONLY on the facts below. "
-        "The summary must be narrative, not a list. Avoid repeating full skill/tool lists; "
-        "instead describe experience and impact. Do not invent tools, roles, or skills. "
-        "Adapt wording to the user's profile by using their focus, role, cadence, commit_focus, "
-        "themes, activities, emerging fields, and experience_stage when available. "
-        "Do not repeat the same domain statement more than once (e.g., web, data, mobile). "
-        "Merge overlapping ideas instead of repeating them with different wording. "
-        "Use stage-specific identity language: student, early-career, or experienced. "
-        "Prefer concise, specific phrasing used in modern resume summaries. "
-        "Use a professional resume tone. Do NOT mention being an assistant or providing summaries. "
-        "Avoid generic filler like 'team player', 'keen eye for detail', 'strong focus on quality', "
-        "'committed to delivering high-quality work' or 'strive to meet deadlines'. "
-        "Do NOT mention specific project names, company names, or team management."
-    )
+    style_example = f"{SUMMARY_EXAMPLE_GUIDANCE}{SUMMARY_STYLE_EXAMPLE}"
+    base = SUMMARY_BASE_PROMPT
     if strict:
         must_mention = ", ".join([str(x) for x in facts.get("top_skills", []) + facts.get("top_languages", []) + facts.get("tools", [])][:4])
         base += (
@@ -171,29 +152,11 @@ def _remove_invalid_sentences(text: str, project_names: list[str] | None = None)
     This strips assistant meta-language, generic filler, and any sentence that
     leaks explicit project names from the facts payload.
     """
-    banned_phrases = [
-        "resume assistant",
-        "as an assistant",
-        "i can provide",
-        "i can help",
-        "committed to delivering",
-        "strive to meet deadlines",
-        "high-quality work",
-        "team player",
-        "keen eye for detail",
-        "strong focus on quality",
-        "collaborative environment",
-        "team members",
-        "company",
-        "organization",
-        "project names",
-    ]
-
     sentences = [s.strip() for s in text.split(".") if s.strip()]
     kept = []
     for s in sentences:
         lowered = s.lower()
-        if any(bad in lowered for bad in banned_phrases):
+        if any(bad in lowered for bad in SUMMARY_BANNED_PHRASES):
             continue
         if project_names and _contains_project_name(s, project_names):
             continue
@@ -243,27 +206,6 @@ def _ngrams(tokens: list[str], n: int = 4) -> set[tuple[str, ...]]:
     return {tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)}
 
 
-_DOMAIN_KEYWORDS: dict[str, list[str]] = {
-    "web": [
-        "web", "frontend", "html", "css", "javascript",
-        "typescript", "react", "vue", "angular",
-    ],
-    "data": [
-        "data analysis", "data visualization", "analytics", "dashboard",
-        "sql", "power bi", "tableau", "pandas",
-    ],
-    "mobile": [
-        "mobile", "android", "android studio", "ios", "kotlin", "swift",
-    ],
-    "backend": [
-        "backend", "api", "service", "server", "microservice",
-    ],
-    "ml": [
-        "machine learning", "generative ai", "llm", "model evaluation",
-    ],
-}
-
-
 def _sentence_domains(sentence: str) -> set[str]:
     """
     Map a sentence to coarse semantic domains (web/data/mobile/backend/ml).
@@ -273,7 +215,7 @@ def _sentence_domains(sentence: str) -> set[str]:
     """
     lowered = sentence.lower()
     domains: set[str] = set()
-    for domain, keywords in _DOMAIN_KEYWORDS.items():
+    for domain, keywords in SUMMARY_DOMAIN_KEYWORDS.items():
         if any(keyword in lowered for keyword in keywords):
             domains.add(domain)
     return domains
@@ -286,13 +228,8 @@ def _canonicalize_phrase_repetition(text: str) -> str:
     This improves dedup reliability for common verbose patterns observed in
     generated summaries.
     """
-    replacements = [
-        (r"\bdata analysis and data visualization\b", "data analysis and visualization"),
-        (r"\bweb development and web applications\b", "web application development"),
-        (r"\bmobile development using\b", "mobile development with"),
-    ]
     updated = text
-    for pattern, replacement in replacements:
+    for pattern, replacement in SUMMARY_PHRASE_NORMALIZATION_REPLACEMENTS:
         updated = re.sub(pattern, replacement, updated, flags=re.IGNORECASE)
     return updated
 
@@ -372,7 +309,7 @@ def _contains_example_overlap(summary: str) -> bool:
         return [t for t in "".join(ch.lower() if ch.isalnum() else " " for ch in text).split() if t]
 
     summary_tokens = _tokens(summary)
-    example_tokens = _tokens(_STYLE_EXAMPLE)
+    example_tokens = _tokens(SUMMARY_STYLE_EXAMPLE)
 
     if len(summary_tokens) < 5 or len(example_tokens) < 5:
         return False
