@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 from time import perf_counter
 from typing import Any
 
@@ -188,6 +189,17 @@ def _is_list_like(text: str) -> bool:
     return "\n-" in text or "\n•" in text
 
 
+def _sentence_count(text: str) -> int:
+    """
+    Count sentence-like segments using punctuation boundaries.
+
+    This treats `.`, `!`, and `?` as sentence endings and avoids relying on a
+    raw period count.
+    """
+    parts = [segment.strip() for segment in re.split(r"[.!?]+", text) if segment.strip()]
+    return len(parts)
+
+
 def _summary_mentions_any(summary: str, items: list[str]) -> bool:
     """Return True if summary contains any anchor term."""
     lowered = summary.lower()
@@ -213,7 +225,7 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     if word_count < 20 or word_count > 130:
         return False, f"word_count={word_count}"
 
-    sentence_count = summary.count(".")
+    sentence_count = _sentence_count(summary)
     if not (2 <= sentence_count <= 3):
         return False, f"sentence_count={sentence_count}"
 

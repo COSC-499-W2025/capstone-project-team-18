@@ -1,5 +1,6 @@
 import pytest
 
+from src.core.ML.models.contribution_analysis import project_summary_generator as psg
 from src.core.report import UserReport
 from src.core.portfolio.builder.concrete_builders import ProjectSummariesSectionBuilder
 from src.core.statistic import (
@@ -188,3 +189,22 @@ def test_project_summary_fallback_uses_activity_breakdown(project_report_from_st
 
     assert len(lines) == 1
     assert "primarily through code (62%) and documentation (38%) work" in lines[0].lower()
+
+
+def test_project_summary_validator_counts_exclamation_and_question_sentences():
+    summary = (
+        "The project focused on analytics and reporting outcomes! "
+        "It was implemented with FastAPI and Python for service reliability and clear interfaces? "
+        "I contributed as a core contributor across feature delivery and system documentation."
+    )
+    facts = {
+        "goal_terms": ["analytics"],
+        "frameworks": ["FastAPI"],
+        "languages": ["Python"],
+        "role": "core_contributor",
+        "commit_focus": "feature",
+        "activity_breakdown": [],
+    }
+
+    ok, reason = psg._is_valid_summary(summary, facts)
+    assert ok is True, reason
