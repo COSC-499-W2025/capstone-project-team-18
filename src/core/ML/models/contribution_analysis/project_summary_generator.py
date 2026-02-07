@@ -204,6 +204,7 @@ def _summary_mentions_any(summary: str, items: list[str]) -> bool:
     """Return True if summary contains any anchor term."""
     lowered = summary.lower()
     norm_summary = "".join(ch for ch in lowered if ch.isalnum())
+    summary_tokens = set(_normalized_tokens(summary))
     for item in items:
         if not item:
             continue
@@ -212,6 +213,9 @@ def _summary_mentions_any(summary: str, items: list[str]) -> bool:
             return True
         norm_item = "".join(ch for ch in item_text if ch.isalnum())
         if norm_item and norm_item in norm_summary:
+            return True
+        item_tokens = [tok for tok in _normalized_tokens(item_text) if tok]
+        if item_tokens and all(tok in summary_tokens for tok in item_tokens):
             return True
     return False
 
@@ -231,6 +235,40 @@ def _normalize_percentage(value: float | int | None) -> float | None:
     return pct
 
 
+def _normalized_token(token: str) -> str:
+    """Normalize a token with simple plural handling for robust anchor matching."""
+    cleaned = "".join(ch for ch in token.lower() if ch.isalnum())
+    if not cleaned:
+        return ""
+    if cleaned.endswith("ies") and len(cleaned) > 4:
+        return cleaned[:-3] + "y"
+    if cleaned.endswith("es") and len(cleaned) > 4:
+        return cleaned[:-2]
+    if cleaned.endswith("s") and len(cleaned) > 3:
+        return cleaned[:-1]
+    return cleaned
+
+
+def _normalized_tokens(text: str) -> list[str]:
+    """Tokenize and normalize a text blob for forgiving containment checks."""
+    raw = re.findall(r"[a-zA-Z0-9]+", str(text).lower())
+    normalized: list[str] = []
+    for tok in raw:
+        cleaned = _normalized_token(tok)
+        if cleaned:
+            normalized.append(cleaned)
+    return normalized
+
+
+def _percentage_anchor_terms(value: float | int | None) -> list[str]:
+    """Build percentage anchor variants (e.g., '42%', '42 percent', '42')."""
+    normalized = _normalize_percentage(value)
+    if normalized is None:
+        return []
+    whole = int(round(float(normalized)))
+    return [f"{whole}%", f"{whole} percent", str(whole)]
+
+
 def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     """Validate shape and grounding of generated summary."""
     if _is_list_like(summary):
@@ -246,24 +284,31 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
 
     goal_terms = facts.get("goal_terms", [])
     stack_terms = facts.get("frameworks", []) + facts.get("languages", [])
-    contribution_terms = []
+    contribution_text_terms = []
+    contribution_pct_terms = []
     if facts.get("role"):
-        contribution_terms.append(str(facts["role"]))
+        contribution_text_terms.append(str(facts["role"]))
     if facts.get("commit_focus"):
-        contribution_terms.append(str(facts["commit_focus"]))
-    if isinstance(facts.get("commit_pct"), (int, float)):
-        contribution_terms.append(str(int(round(float(facts["commit_pct"])))))
-    if isinstance(facts.get("line_pct"), (int, float)):
-        contribution_terms.append(str(int(round(float(facts["line_pct"])))))
-    contribution_terms.extend([k for k, _ in facts.get("activity_breakdown", [])[:2]])
+        contribution_text_terms.append(str(facts["commit_focus"]))
+    contribution_pct_terms.extend(_percentage_anchor_terms(facts.get("commit_pct")))
+    contribution_pct_terms.extend(_percentage_anchor_terms(facts.get("line_pct")))
+    contribution_text_terms.extend([k for k, _ in facts.get("activity_breakdown", [])[:2]])
     if facts.get("role_description"):
-        contribution_terms.extend(str(facts["role_description"]).split()[:3])
+        contribution_text_terms.extend(str(facts["role_description"]).split()[:3])
 
     if goal_terms and not _summary_mentions_any(summary, goal_terms):
         return False, "missing_goal_anchor"
     if stack_terms and not _summary_mentions_any(summary, stack_terms):
         return False, "missing_stack_anchor"
-    if contribution_terms and not _summary_mentions_any(summary, contribution_terms):
+    # Contribution can be grounded by textual signals (role/focus/activity) or
+    # numeric percentage signals when available.
+    has_text_contribution = (
+        bool(contribution_text_terms) and _summary_mentions_any(summary, contribution_text_terms)
+    )
+    has_pct_contribution = (
+        bool(contribution_pct_terms) and _summary_mentions_any(summary, contribution_pct_terms)
+    )
+    if (contribution_text_terms or contribution_pct_terms) and not (has_text_contribution or has_pct_contribution):
         return False, "missing_contribution_anchor"
     return True, "ok"
 

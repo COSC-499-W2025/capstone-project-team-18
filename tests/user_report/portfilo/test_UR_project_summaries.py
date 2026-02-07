@@ -243,3 +243,43 @@ def test_project_summary_normalizes_ratio_commit_percentage(project_report_from_
 
     assert len(lines) == 1
     assert "42% of commits" in lines[0]
+
+
+def test_project_summary_validator_accepts_pluralized_goal_anchor():
+    summary = (
+        "The project focused on analytics dashboards for operational reporting. "
+        "It was implemented with FastAPI and Python for reliable delivery workflows. "
+        "I contributed as a core contributor with emphasis on feature changes."
+    )
+    facts = {
+        "goal_terms": ["dashboard"],
+        "frameworks": ["FastAPI"],
+        "languages": ["Python"],
+        "role": "core_contributor",
+        "commit_focus": "feature",
+        "activity_breakdown": [],
+    }
+
+    ok, reason = psg._is_valid_summary(summary, facts)
+    assert ok is True, reason
+
+
+def test_project_summary_validator_allows_missing_percent_when_textual_contribution_present():
+    summary = (
+        "The project focused on analytics and reporting outcomes for operational visibility. "
+        "It was implemented with FastAPI and Python across API and service workflows. "
+        "I contributed as a core contributor focused on feature changes and documentation quality."
+    )
+    facts = {
+        "goal_terms": ["analytics"],
+        "frameworks": ["FastAPI"],
+        "languages": ["Python"],
+        "role": "core_contributor",
+        "commit_focus": "feature",
+        "commit_pct": 42.0,
+        "line_pct": None,
+        "activity_breakdown": [("documentation", 38.0)],
+    }
+
+    ok, reason = psg._is_valid_summary(summary, facts)
+    assert ok is True, reason
