@@ -25,7 +25,7 @@ def test_project_tags_from_readme_keyphrases():
     assert tags == ["REST API", "OAuth", "PostgreSQL"]
 
 
-def test_project_tags_from_readme_text(tmp_path, monkeypatch):
+def test_project_tags_from_readme_text(tmp_path, monkeypatch, get_ready):
     readme_text = "API API API. This project exposes an API for clients."
 
     monkeypatch.setattr(
@@ -42,7 +42,7 @@ def test_project_tags_from_readme_text(tmp_path, monkeypatch):
     project_root.mkdir()
     (project_root / "README.md").write_text(readme_text, encoding="utf-8")
 
-    analyzer = NaturalLanguageAnalyzer(str(project_root), "README.md")
+    analyzer = get_ready_specific_analyzer(str(project_root), "README.md")
     file_report = analyzer.analyze()
     report = ProjectReport(file_reports=[file_report],
                            project_name="ProjectTagsTest",
