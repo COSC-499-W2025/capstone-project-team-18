@@ -15,7 +15,16 @@ from src.core.statistic import (
 from src.core.portfolio.builder.concrete_builders import UserSummarySectionBuilder
 
 
-def _make_project_report(tmp_path, *, role=None, cadence=None, commit_focus=None, frameworks=None, themes=None):
+def _make_project_report(
+    tmp_path,
+    *,
+    role=None,
+    cadence=None,
+    commit_focus=None,
+    frameworks=None,
+    themes=None,
+    tone=None,
+):
     stats = StatisticIndex()
 
     if role is not None:
@@ -28,6 +37,8 @@ def _make_project_report(tmp_path, *, role=None, cadence=None, commit_focus=None
         stats.add(Statistic(ProjectStatCollection.PROJECT_FRAMEWORKS.value, frameworks))
     if themes is not None:
         stats.add(Statistic(ProjectStatCollection.PROJECT_THEMES.value, themes))
+    if tone is not None:
+        stats.add(Statistic(ProjectStatCollection.PROJECT_TONE.value, tone))
 
     return ProjectReport(
         file_reports=[],
@@ -375,6 +386,7 @@ def test_summary_section_infers_experience_stage_from_timeline(tmp_path, monkeyp
         tmp_path,
         role="leader",
         frameworks=[WeightedSkills("FastAPI", 1.0)],
+        tone="Professional",
     )
     report = _make_user_report(
         [project],
@@ -397,6 +409,85 @@ def test_summary_section_infers_experience_stage_from_timeline(tmp_path, monkeyp
         lambda _facts: (
             "Experienced software engineer with practical experience in backend services and delivery quality. "
             "Strong in Python and FastAPI with a track record of dependable implementation and communication."
+        ),
+    )
+
+    builder = UserSummarySectionBuilder()
+    blocks = builder.create_blocks(report)
+
+    assert len(blocks) == 1
+    assert captured_facts["experience_stage"] == "early-career"
+
+
+def test_summary_stage_not_overstated_for_single_old_project(tmp_path, monkeypatch):
+    project = _make_project_report(
+        tmp_path,
+        role="core_contributor",
+        frameworks=[WeightedSkills("FastAPI", 1.0)],
+        tone="Professional",
+    )
+    report = _make_user_report(
+        [project],
+        start_date=date(2017, 1, 1),
+        end_date=date(2026, 1, 1),
+    )
+
+    captured_facts = {}
+
+    def fake_build_signature_facts(**kwargs):
+        captured_facts.update(kwargs)
+        return {"mock": "facts"}
+
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.build_signature_facts",
+        fake_build_signature_facts,
+    )
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.generate_signature",
+        lambda _facts: (
+            "Engineer with practical backend experience and clear delivery focus across technical initiatives. "
+            "Strong in Python and SQL with an emphasis on reliability and maintainable implementation."
+        ),
+    )
+
+    builder = UserSummarySectionBuilder()
+    blocks = builder.create_blocks(report)
+
+    assert len(blocks) == 1
+    assert captured_facts["experience_stage"] != "experienced"
+
+
+def test_summary_stage_uses_professional_tone_for_multi_project_history(tmp_path, monkeypatch):
+    projects = [
+        _make_project_report(
+            tmp_path,
+            role="leader" if idx == 0 else "core_contributor",
+            frameworks=[WeightedSkills("FastAPI", 1.0)],
+            tone="Professional",
+        )
+        for idx in range(5)
+    ]
+    report = _make_user_report(
+        projects,
+        start_date=date(2019, 1, 1),
+        end_date=date(2026, 1, 1),
+    )
+
+    captured_facts = {}
+
+    def fake_build_signature_facts(**kwargs):
+        captured_facts.update(kwargs)
+        return {"mock": "facts"}
+
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.build_signature_facts",
+        fake_build_signature_facts,
+    )
+    monkeypatch.setattr(
+        "src.core.portfolio.builder.concrete_builders.generate_signature",
+        lambda _facts: (
+            "Experienced engineer with a track record of delivering production-oriented backend services and measurable improvements. "
+            "Strong in Python and SQL with consistent execution and clear collaboration across technical contexts."
         ),
     )
 

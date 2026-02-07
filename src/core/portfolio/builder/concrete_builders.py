@@ -432,7 +432,8 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
     def _infer_experience_stage(self, report: UserReport, role: str | None) -> str:
         """
         Infer summary tone profile: student, early-career, or experienced.
-        Uses timeline span and project count with a role-based nudge.
+        Uses a weighted blend of project volume, active span, role, and
+        PROJECT_TONE so a single old repository does not overstate experience.
         """
         project_count = len(getattr(report, "project_reports", []) or [])
         start_date = report.get_value(UserStatCollection.USER_START_DATE.value)
@@ -443,27 +444,64 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
             days = abs((end_date - start_date).days)
             months_span = days / 30.0
 
-        if months_span is not None:
-            if months_span >= 48 or project_count >= 8:
-                stage = "experienced"
-            elif months_span >= 18 or project_count >= 4:
-                stage = "early-career"
-            else:
-                stage = "student"
-        else:
-            if project_count >= 8:
-                stage = "experienced"
-            elif project_count >= 3:
-                stage = "early-career"
-            else:
-                stage = "student"
+        score = 0.0
 
+        # Project volume is the strongest long-term signal.
+        if project_count >= 8:
+            score += 3.0
+        elif project_count >= 5:
+            score += 2.0
+        elif project_count >= 3:
+            score += 1.0
+        elif project_count <= 1:
+            score -= 1.0
+
+        # Active time span is supportive, but not enough on its own.
+        if months_span is not None:
+            if months_span >= 60:
+                score += 2.0
+            elif months_span >= 30:
+                score += 1.0
+
+        # Role signal nudges stage upward for leadership-heavy histories.
         if role:
             lowered_role = role.lower()
-            if "leader" in lowered_role and stage == "student":
-                stage = "early-career"
-            if "leader" in lowered_role and project_count >= 6:
-                stage = "experienced"
+            if "leader" in lowered_role:
+                score += 1.0
+            elif "core_contributor" in lowered_role or "core contributor" in lowered_role:
+                score += 0.5
+
+        # Use existing README tone metric as an additional maturity signal.
+        tone_counts: dict[str, int] = {}
+        for pr in report.project_reports:
+            tone = pr.get_value(ProjectStatCollection.PROJECT_TONE.value)
+            if not tone:
+                continue
+            tone_key = str(tone).strip().lower()
+            tone_counts[tone_key] = tone_counts.get(tone_key, 0) + 1
+
+        professional_count = tone_counts.get("professional", 0)
+        experimental_count = tone_counts.get("experimental", 0)
+        educational_count = tone_counts.get("educational", 0)
+        majority_threshold = max(1, project_count // 2)
+
+        if professional_count >= majority_threshold and professional_count > experimental_count:
+            score += 1.0
+        if experimental_count >= majority_threshold and experimental_count > professional_count:
+            score -= 0.5
+        if educational_count >= majority_threshold and project_count <= 3:
+            score -= 0.5
+
+        if score >= 4.0 and project_count >= 4:
+            stage = "experienced"
+        elif score >= 1.5:
+            stage = "early-career"
+        else:
+            stage = "student"
+
+        # Guardrail: prevent single-project histories from being marked as experienced.
+        if project_count <= 2 and stage == "experienced":
+            stage = "early-career"
 
         return stage
 
