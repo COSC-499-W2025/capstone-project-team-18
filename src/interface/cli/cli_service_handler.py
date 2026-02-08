@@ -99,7 +99,7 @@ def start_miner_cli(
     # Download latex resume to file system
     latex_str = resume.export(ResumeLatexRenderer())
 
-    resume.to_pdf('jimi2025.pdf')
+    resume.to_pdf()
 
     # Print the resume items
     resume_CLI_stringify(resume)
