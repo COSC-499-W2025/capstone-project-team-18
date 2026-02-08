@@ -11,6 +11,7 @@ import json
 from datetime import datetime
 from src.core.statistic.statistic_models import FileDomain, CodingLanguage, WeightedSkills
 from src.infrastructure.log.logging import get_logger
+from src.utils.errors import UnhandledValue, UnkownDeserializationClass
 
 logger = get_logger(__name__)
 
@@ -141,13 +142,28 @@ def _deserialize_dict_key(key: str) -> Any:
             logger.debug(
                 f"Tried to parse value: {val} for a type. It failed. Expected if this value is a string.")
             pass
+        except SyntaxError:
+            raise UnhandledValue(
+                f"Tried to parse value: {val} failed by syntax")
 
-        cls = ENUM_REGISTRY[cls_name]
+        cls = ENUM_REGISTRY.get(cls_name, None)
+
+        if cls is None:
+            raise UnkownDeserializationClass(
+                f"Tried to find {cls} in the enum registry but failed")
+
         return cls(val)
 
     if key.startswith("__dataclass__:"):
         _, cls_name, val_str = key.split(":", 2)
         val_dict = json.loads(val_str)
-        cls = DATACLASS_REGISTRY[cls_name]
+
+        cls = DATACLASS_REGISTRY.get(cls_name, None)
+
+        if cls is None:
+            raise UnkownDeserializationClass(
+                f"Tried to find {cls} in the dataclass registry but failed")
+
         return cls(**val_dict)
+
     return key

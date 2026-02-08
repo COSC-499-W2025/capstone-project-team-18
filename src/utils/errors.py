@@ -15,7 +15,25 @@ class ErrorCode(str, Enum):
     ANALYSIS_FAILED = "ANALYSIS_FAILED"
     SQL_MODEL_ERROR = "SQL_MODEL_ERROR"
     SQL_MODEL_CONVERSION_ERROR = "SQL_MODEL_CONVERSION_ERROR"
+    SERIALIZATION_ERROR = "SERIALIZATION_ERROR"
+    UNKNOWN_DESERIALIZATION_CLASS = "UNKNOWN_DESERIALIZATION_CLASS"
+    UNHANDLE_VALUE = "UNHANDLE_VALUE"
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
+
+
+class SerializationError(Exception):
+    """Error with the serialization or deserialization process"""
+    error_code: ErrorCode = ErrorCode.SERIALIZATION_ERROR
+
+
+class UnkownDeserializationClass(SerializationError):
+    """You tried to deserialize to an unkown class"""
+    error_code: ErrorCode = ErrorCode.UNKNOWN_DESERIALIZATION_CLASS
+
+
+class UnhandledValue(SerializationError):
+    """You tried to deserialize a malformated or unkown value"""
+    error_code: ErrorCode = ErrorCode.UNHANDLE_VALUE
 
 
 class SQLModelError(Exception):
