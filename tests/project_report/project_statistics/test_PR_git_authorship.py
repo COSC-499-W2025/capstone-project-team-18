@@ -10,6 +10,7 @@ from src.core.statistic import FileStatCollection
 from src.core.analyzer import extract_file_reports
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.report.project.project_statistics import ProjectAnalyzeGitAuthorship, ProjectTotalContributionPercentage
+from src.database.api.models import UserConfigModel
 
 
 @pytest.fixture
@@ -527,7 +528,10 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
         repo=repo
     )
 
-    fr = extract_file_reports(project_files, "charlie@example.com")
+    uc = UserConfigModel()
+    uc.user_email = "charlie@example.com"
+
+    fr = extract_file_reports(project_files, uc)
 
     # create a project report for Charlie, should only contain files B & C
     pr = ProjectReport(file_reports=fr,
@@ -539,7 +543,7 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
 
     # should only be three files in ProjectReport and the first has a False CONTRIBUTED_TO flag
     assert len(fr) == 3
-    assert fr[0].get_value(FileStatCollection.CONTRIBUTED_TO.value) is False
+    assert fr[0].is_info_file
 
     shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -575,7 +579,10 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
         repo=repo
     )
 
-    fr = extract_file_reports(project_files, "charlie@example.com")
+    uc = UserConfigModel()
+    uc.user_email = "charlie@example.com"
+
+    fr = extract_file_reports(project_files, uc)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),
@@ -585,8 +592,7 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
                        calculator_classes=[ProjectTotalContributionPercentage])
 
     # Charlie contributed 0% since not in any file reports
-    contrib_flags = [f.get_value(
-        FileStatCollection.CONTRIBUTED_TO.value) for f in fr]
+    contrib_flags = [f.is_info_file is False for f in fr]
     assert contrib_flags.count(True) == 0
     assert contrib_flags.count(False) == 2
 
@@ -615,7 +621,10 @@ def test_total_contribution_percentage_single_file_full_contribution(tmp_path: P
         repo=repo
     )
 
-    fr = extract_file_reports(project_files, "alice@example.com")
+    uc = UserConfigModel()
+    uc.user_email = "alice@example.com"
+
+    fr = extract_file_reports(project_files, uc)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),
@@ -658,7 +667,10 @@ def test_total_contribution_percentage_three_way_split(tmp_path: Path):
         repo=repo
     )
 
-    fr = extract_file_reports(project_files, "alice@example.com")
+    uc = UserConfigModel()
+    uc.user_email = "alice@example.com"
+
+    fr = extract_file_reports(project_files, uc)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),

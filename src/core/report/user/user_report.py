@@ -15,9 +15,6 @@ from src.core.statistic import (
 )
 from src.core.resume.resume import Resume
 
-from src.database.base import get_engine
-from src.database.models import UserReportTable
-
 
 class UserReport(BaseReport):
     """
@@ -90,6 +87,7 @@ class UserReport(BaseReport):
         Returns:
             tuple: (success: bool, message: str)
         """
+        raise ValueError("Deprecation")
         from src.database.utils.database_modify import delete_user_report_and_related_data
 
         engine = get_engine()
@@ -140,7 +138,7 @@ class UserReport(BaseReport):
         Returns:
             tuple: (found: bool, info: dict with title and project_count)
         """
-
+        raise ValueError("Deprecation")
         engine = get_engine()
 
         try:
@@ -178,7 +176,7 @@ class UserReport(BaseReport):
         Returns:
             list: List of dicts with portfolio info (title, project_count)
         """
-
+        raise ValueError("Deprecation")
         engine = get_engine()
 
         try:

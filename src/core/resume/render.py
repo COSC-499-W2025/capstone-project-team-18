@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
@@ -15,10 +16,10 @@ class TextResumeRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         to_return = ""
         to_return += f"Email: {resume.email}\n\n" if resume.email else ""
-        to_return += f"Core skills: {", ".join(resume.skills)}\n\n" if resume.skills else ""
+        to_return += f"Core skills: {', '.join(resume.skills)}\n\n" if resume.skills else ""
 
         for item in resume.items:
-            to_return += f"{item.title} : {item.start_date.strftime("%B, %Y")} - {item.end_date.strftime("%B, %Y")}\n"
+            to_return += f"{item.title} : {item.start_date.strftime('%B, %Y')} - {item.end_date.strftime('%B, %Y')}\n"
 
             if len(item.frameworks) != 0:
                 to_return += f"Frameworks: {', '.join(skill.skill_name for skill in item.frameworks)}\n"
@@ -151,7 +152,7 @@ class ResumeLatexRenderer(ResumeRender):
 
         for item in resume.items:
             title = latex_escape(item.title)
-            date = f"{item.start_date.strftime("%B, %Y")} -- {item.end_date.strftime("%B, %Y")}"
+            date = f"{item.start_date.strftime('%B, %Y')} -- {item.end_date.strftime('%B, %Y')}"
 
             # Only include frameworks if there is at least one
             if len(item.frameworks) > 0:

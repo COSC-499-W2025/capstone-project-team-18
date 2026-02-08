@@ -2,8 +2,8 @@
 This file contains functions to format and print the
 resume items and portfolio
 '''
-from src.core.resume.resume import Resume
 from src.core.report import UserReport
+from src.core.resume.resume import Resume
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -39,7 +39,7 @@ def resume_CLI_stringify(resume: Resume):
         header_line = "Resume".center(resume_header_len, '-')
 
         print(header_line)
-        print(f'{resume}{'-' * len(header_line)}\n')
+        print(f"{resume}{'-' * len(header_line)}\n")
     except IndexError:
         logger.exception("`resume.items[0]` is not a valid index")
 

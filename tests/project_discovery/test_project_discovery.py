@@ -1,17 +1,21 @@
-from pathlib import Path
+import shutil
+import tempfile
 import zipfile
+from pathlib import Path
+
 import pytest
 from git import Repo
 
-import shutil
-import tempfile
-from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.analyzer import extract_file_reports
-from src.core.statistic import FileStatCollection
-from src.core.project_discovery.project_discovery import discover_projects  # type: ignore  # noqa: E402
+from src.core.project_discovery.project_discovery import \
+    discover_projects  # type: ignore  # noqa: E402
+from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.report import ProjectReport  # type: ignore  # noqa: E402
-from src.core.statistic import ProjectStatCollection  # type: ignore  # noqa: E402
-from src.core.report.project.project_statistics import ProjectAnalyzeGitAuthorship
+from src.core.report.project.project_statistics import \
+    ProjectAnalyzeGitAuthorship
+from src.core.statistic import \
+    ProjectStatCollection  # type: ignore  # noqa: E402
+from src.database.api.models import UserConfigModel
 
 
 @pytest.fixture
@@ -300,14 +304,16 @@ def test_info_files_exist(tmp_path: Path):
         repo=repo
     )
 
-    fr = extract_file_reports(project_files, "charlie@example.com")
+    user_config = UserConfigModel()
+    user_config.user_email = "charlie@example.com"
+
+    fr = extract_file_reports(project_files, user_config)
 
     # Four file reports included
     assert len(fr) == 4
 
     # Exactly two files should be marked as contributed to by Charlie
-    contrib_flags = [f.get_value(
-        FileStatCollection.CONTRIBUTED_TO.value) for f in fr]
+    contrib_flags = [f.is_info_file is False for f in fr]
     assert contrib_flags.count(True) == 2
     assert contrib_flags.count(False) == 2
 
@@ -375,7 +381,10 @@ def test_partial_project_contribution(tmp_path: Path):
     errors = []
 
     for layout in layouts:
-        fr = extract_file_reports(layout, "charlie@example.com")
+        user_config = UserConfigModel()
+        user_config.user_email = "charlie@example.com"
+
+        fr = extract_file_reports(layout, user_config)
         pr = ProjectReport(file_reports=fr,
                            project_path=str(layout.root_path),
                            project_name=layout.name,
@@ -395,6 +404,10 @@ def test_partial_project_contribution(tmp_path: Path):
     assert contributed_flags.count(False) == 1
 
     # One project error should be produced for the uncontributed project
+    assert len(errors) == 1
+    assert errors[0].error_code == ErrorCode.NO_RELEVANT_FILES.value
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
     assert len(errors) == 1
     assert errors[0].error_code == ErrorCode.NO_RELEVANT_FILES.value
 

@@ -1,12 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import SQLModel
+from typing import Optional
+from datetime import datetime
 
-from src.services.project.retrieve_project_service import (
-    retrieve_project_by_id,
-    retrieve_projects,
-    ProjectResponse,
-    AllProjectsResponse,
-    DatabaseNotInitializedError
-)
+from src.interface.api.routers.util import get_session
+from src.database.api.CRUD.projects import get_project_report_model_by_name
 
 router = APIRouter(
     prefix="/projects",
@@ -14,30 +12,40 @@ router = APIRouter(
 )
 
 
+class ProjectReportResponse(SQLModel):
+    project_name: str
+    user_config_used: Optional[int]
+    image_data: Optional[bytes]
+    created_at: datetime
+    last_updated: datetime
+
+
 @router.post("/upload")
 def upload_project():
     return {"message": "Project uploaded"}
 
 
-@router.get("", response_model=AllProjectsResponse)
+@router.get("")
 def list_projects():
-    """Get all projects from database"""
+    return {"projects": []}
+
+
+@router.get("/{project_name}", response_model=ProjectReportResponse)
+def get_project(project_name: str, session=Depends(get_session)):
+
+    result = None
+
     try:
-        return retrieve_projects()
-    except DatabaseNotInitializedError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        result = get_project_report_model_by_name(session, project_name)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve project report {e}"
+        )
 
+    if not result:
+        raise HTTPException(
+            status_code=404, detail=f"No project report named {project_name}"
+        )
 
-@router.get("/{project_id}", response_model=ProjectResponse)
-def get_project(project_id: int):
-    """Get a single project by ID"""
-    try:
-        project = retrieve_project_by_id(project_id)
-
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-
-        return project
-
-    except DatabaseNotInitializedError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    return result

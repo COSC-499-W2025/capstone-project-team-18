@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import Any, List, Dict, Optional, get_origin
 from abc import ABC
 
+from src.core.statistic.statistic_serializer import serialize
+
 
 @dataclass(frozen=True)
 class StatisticTemplate(ABC):
@@ -127,6 +129,17 @@ class StatisticIndex():
 
         return {
             stat.get_template().name: stat.value
+            for stat in self._stats.values()
+        }
+
+    def to_json(self) -> dict[str, Any]:
+        """
+        Converts the StatisticIndex to a dict that maps str to
+        JSON convertable types.
+        """
+
+        return {
+            stat.get_template().name: serialize(stat.value)
             for stat in self._stats.values()
         }
 
