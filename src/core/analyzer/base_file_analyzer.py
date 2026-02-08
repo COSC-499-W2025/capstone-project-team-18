@@ -124,10 +124,6 @@ class BaseFileAnalyzer:
             bool: True if the file should be included, False otherwise.
         """
 
-        # If duplicate file exists with matching hash do not include in analysis
-        if self.compare_hashes():
-            return False
-
        # Check language filter
         if self.language_filter:
             if not self._matches_language_filter():

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from src.core.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection, UserStatCollection
 from src.core.report import FileReport, ProjectReport, UserReport
 
-from src.database.models import ProjectReportTable, UserReportTable
+from src.database.models import ProjectReportTable, UserReportTable, FileReportTable
 from src.database.base import get_engine
 
 from src.infrastructure.log.logging import get_logger
@@ -73,10 +73,12 @@ def get_project_from_project_name(proj_name: str, engine=None) -> ProjectReport:
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logger.exception('Error: No project found with name "%s"', proj_name)
+            logger.exception(
+                'Error: No project found with name "%s"', proj_name)
             raise
         except MultipleResultsFound:
-            logger.exception('Error: Multiple projects found with name "%s"', proj_name)
+            logger.exception(
+                'Error: Multiple projects found with name "%s"', proj_name)
             raise
 
 
@@ -115,6 +117,46 @@ def get_file_reports(report: ProjectReportTable, engine) -> list[FileReport]:
             file_report = FileReport(statistics, row.filepath)
             file_reports.append(file_report)
         return file_reports
+
+
+def get_report_by_hash(hash: bytes, engine) -> FileReport:
+    """
+    Function to allow us to rebuild a project report in the case where certain fileReports
+    are unchanged since the last analysis and can be grabbed from the database.
+    Grabs the matching fileReport to append to list of fileReports
+    """
+    with Session(engine) as session:
+        try:
+            result = session.execute(
+                select(FileReportTable)
+                .where(FileReportTable.file_hash == hash)
+            ).scalars().one()  # FileReportTable object
+
+        # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
+        except NoResultFound:
+            logger.exception('Error: No hash found with name')
+            raise
+        except MultipleResultsFound:
+            logger.exception('Error: Multiple files found with hash')
+            raise
+
+        statistics = StatisticIndex()
+
+        # get stats
+        for stat_template in FileStatCollection:
+            column_name = stat_template.value.name.lower()
+
+            # get stat if col exists and has value
+            if hasattr(result, column_name):
+                value = getattr(result, column_name)
+
+                if value is not None:
+                    statistics.add(
+                        Statistic(stat_template.value, value))
+
+    file_report = FileReport(statistics, result.filepath)
+
+    return file_report
 
 
 def get_user_report(name: str, engine=None) -> UserReport:
@@ -184,10 +226,12 @@ def get_user_report(name: str, engine=None) -> UserReport:
 
         # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
         except NoResultFound:
-            logger.exception('Error: No user report found with name "%s"', name)
+            logger.exception(
+                'Error: No user report found with name "%s"', name)
             raise
         except MultipleResultsFound:
-            logger.exception('Error: Multiple user reports found with name "%s"', name)
+            logger.exception(
+                'Error: Multiple user reports found with name "%s"', name)
             raise
 
 

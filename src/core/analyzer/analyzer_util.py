@@ -23,6 +23,7 @@ from src.core.analyzer.python_analyzer import PythonAnalyzer
 from src.core.analyzer.text_file_analyzer import TextFileAnalyzer
 from src.core.analyzer.type_script_analyzer import TypeScriptAnalyzer
 from src.infrastructure.log.logging import get_logger
+from src.database.utils.database_access import get_report_by_hash
 
 logger = get_logger(__name__)
 
@@ -55,6 +56,12 @@ def extract_file_reports(
             email,
             github,
             language_filter)
+
+        # If duplicate file exists with matching hash do not include in analysis
+        if analyzer.compare_hashes():
+            reports.append(get_report_by_hash(analyzer.hashed_content))
+            logger.info("Skipping already analyzed file: %s", file)
+            continue
 
         if analyzer.should_analyze_file() is False:
             if analyzer.is_info_file():
