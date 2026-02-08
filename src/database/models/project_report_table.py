@@ -14,12 +14,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from src.database.base import Base
 from src.database.utils.init_columns import make_columns
-<<<<<<< HEAD
 from src.database.models.association_table import association_table
-=======
-from src.database.models.proj_user_assoc_table import proj_user_assoc_table
-from src.database.models.resume_proj_assoc_table import resume_proj_assoc_table
->>>>>>> milestone-two-db-config
 
 from src.core.statistic import ProjectStatCollection
 
@@ -38,35 +33,20 @@ class ProjectReportTable(Base):
     __tablename__ = 'project_report'
 
     id: Mapped[int] = mapped_column(primary_key=True)  # PK
-    project_name = mapped_column(String)
-    project_path = mapped_column(String)
-    thumbnail = mapped_column(String)  # path to local copy
 
-    # One-to-many with FileReport table
-    file_reports: Mapped[List["FileReportTable"]] = relationship(  # pyright: ignore[reportUndefinedVariable]
+    file_reports: Mapped[List["FileReportTable"]] = relationship(
         back_populates="project_report",
         # see https://docs.sqlalchemy.org/en/20/orm/cascades.html#cascades
         cascade="all, delete-orphan",
     )
 
-    # One-to-many with ResumeItem table
-    resume_items: Mapped[List["ResumeItemTable"]] = relationship(  # pyright: ignore[reportUndefinedVariable]
-        back_populates="project_report",
-        cascade="all, delete-orphan"
-    )
-
     # Many-to-many with UserReport via association table
     user_reports = relationship(
         "UserReportTable",
-        secondary=proj_user_assoc_table,
+        secondary=association_table,
         back_populates="project_reports",
         cascade="save-update, merge"
     )
 
-    # Many-to-many with Resume via association table
-    resumes = relationship(
-        "ResumeTable",
-        secondary=resume_proj_assoc_table,
-        back_populates="project_reports",
-        cascade="save-update, merge"
-    )
+    project_name = mapped_column(String)
+    project_path = mapped_column(String)

@@ -200,7 +200,7 @@ def downgrade() -> None:
                               sqlite.JSON(), nullable=True),
                     sa.PrimaryKeyConstraint('id')
                     )
-    op.create_table('proj_user_assoc',
+    op.create_table('association_table',
                     sa.Column('project_report_id',
                               sa.INTEGER(), nullable=False),
                     sa.Column('user_report_id', sa.INTEGER(), nullable=False),

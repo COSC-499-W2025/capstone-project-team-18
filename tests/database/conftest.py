@@ -10,17 +10,16 @@ Focus:
 - get_file_reports (indirect + direct error cases)
 """
 
-from src.database.utils.db_migrate import run_migrations
-from src.database.utils.database_modify import create_row
-from src.core.report import FileReport, ProjectReport, UserReport
-from src.database.base import Base
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-from pathlib import Path
-import datetime
-import pytest
 from src.core.report import FileReport
 from src.core.statistic import StatisticIndex, Statistic, FileStatCollection
+import pytest
+import datetime
+from pathlib import Path
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from src.database.base import Base
+from src.core.report import FileReport, ProjectReport, UserReport
+from src.database.utils.database_modify import create_row
 
 
 @pytest.fixture
@@ -92,7 +91,6 @@ def temp_db(tmp_path: Path, fr1, fr2, fr3, fr4):
     db_path = tmp_path / "temp_db.db"
     engine = create_engine(f"sqlite:///{db_path}")
     Base.metadata.create_all(engine)  # add columns to temp DB
-    run_migrations()
 
     pr1 = ProjectReport(file_reports=[fr2, fr3], project_name="Project1")
     pr2 = ProjectReport(file_reports=[fr4, fr1], project_name="Project2")

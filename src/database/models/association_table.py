@@ -15,8 +15,8 @@ Example Rows:
 from sqlalchemy import ForeignKey, Table, Column
 from src.database.base import Base
 
-proj_user_assoc_table = Table(
-    "proj_user_assoc",
+association_table = Table(
+    "association_table",
     Base.metadata,
     Column("project_report_id", ForeignKey(
         "project_report.id"), primary_key=True),

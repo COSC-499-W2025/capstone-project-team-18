@@ -1,22 +1,20 @@
 '''
-The user_report table will store generated user reports, which are made using
+This table is **INCOMPLETE**. The table will store generated user reports, which are made using
 one or more project reports. It has a bi-directional many-to-many relationship with the
-`project_report` table. We use `proj_user_assoc` to store FK references to both the `user_report`
+`project_report` table. We use `association_table` to store FK references to both the `user_report`
 table *and* the `project_report` table to track which project reports are used to make which user
 reports.
 
 Key Columns:
 - `id`: The table's PK
 '''
-from typing import List
-
 from sqlalchemy import Integer, String
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.orm import relationship, mapped_column
 
 from src.core.statistic import UserStatCollection
 
 from src.database.utils.init_columns import make_columns
-from src.database.models.proj_user_assoc_table import proj_user_assoc_table
+from src.database.models.association_table import association_table
 from src.database.base import Base
 
 
@@ -40,11 +38,7 @@ class UserReportTable(Base):
     # Many-to-many backref to ProjectReportTable
     project_reports = relationship(
         "ProjectReportTable",
-        secondary=proj_user_assoc_table,
+        secondary=association_table,
         back_populates="user_reports",
         cascade="save-update, merge"
     )
-
-    # 1..1 with portfolio table
-    portfolios: Mapped[List["PortfolioTable"]] = relationship(  # pyright: ignore[reportUndefinedVariable]
-        back_populates="user_report", cascade="all, delete-orphan")

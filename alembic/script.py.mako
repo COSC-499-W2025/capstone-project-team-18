@@ -3,8 +3,7 @@
 Revision ID: ${up_revision}
 Revises: ${down_revision | comma,n}
 Create Date: ${create_date}
-Related Issue:
-Description:
+
 """
 from typing import Sequence, Union
 
