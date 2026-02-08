@@ -1,6 +1,7 @@
 from src.core.statistic import StatisticIndex, Statistic, FileStatCollection, ProjectStatCollection
 from src.core.report import ProjectReport, FileReport
 from datetime import datetime
+from src.core.report.project.project_statistics import ProjectDates
 
 
 def test_project_dates():
@@ -20,7 +21,7 @@ def test_project_dates():
     file2 = FileReport(file2_stats, "file2.py")
 
     # Create project report
-    project = ProjectReport([file1, file2])
+    project = ProjectReport([file1, file2], calculator_classes=[ProjectDates])
 
     # Test project start date (earliest created)
     start_date = project.get_value(
@@ -34,7 +35,7 @@ def test_project_dates():
 
 def test_empty_file_reports_list():
     """Test that empty file reports list doesn't crash"""
-    project = ProjectReport([])
+    project = ProjectReport([], calculator_classes=[ProjectDates])
 
     # Should not have start or end dates
     start_date = project.get_value(
@@ -55,7 +56,7 @@ def test_single_file_report():
     ])
     file_report = FileReport(file_stats, "single_file.py")
 
-    project = ProjectReport([file_report])
+    project = ProjectReport([file_report], calculator_classes=[ProjectDates])
 
     # Start and end should be the same file's dates
     start_date = project.get_value(
@@ -89,7 +90,8 @@ def test_files_with_missing_dates():
     ])
     file3 = FileReport(file3_stats, "file3.py")
 
-    project = ProjectReport([file1, file2, file3])
+    project = ProjectReport([file1, file2, file3],
+                            calculator_classes=[ProjectDates])
 
     # Should use earliest creation date from available files
     start_date = project.get_value(
@@ -106,7 +108,7 @@ def test_files_with_no_dates():
     file_stats = StatisticIndex([])  # No statistics
     file_report = FileReport(file_stats, "no_dates.py")
 
-    project = ProjectReport([file_report])
+    project = ProjectReport([file_report], calculator_classes=[ProjectDates])
 
     # Should have no dates
     start_date = project.get_value(
@@ -133,7 +135,7 @@ def test_wrong_date_assumptions():
     ])
     file2 = FileReport(file2_stats, "file2.py")
 
-    project = ProjectReport([file1, file2])
+    project = ProjectReport([file1, file2], calculator_classes=[ProjectDates])
 
     start_date = project.get_value(
         ProjectStatCollection.PROJECT_START_DATE.value)
@@ -167,7 +169,7 @@ def test_multiple_files_complex_dates():
         ])
         files.append(FileReport(stats, f"file{i}.py"))
 
-    project = ProjectReport(files)
+    project = ProjectReport(files, calculator_classes=[ProjectDates])
 
     start_date = project.get_value(
         ProjectStatCollection.PROJECT_START_DATE.value)

@@ -6,12 +6,17 @@ from typing import Optional, Callable
 import os
 import warnings
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from src.infrastructure.log.logging import get_logger
 from src.services.mining_service import start_miner_service, MinerResults
 from src.services.preferences.preference_service import UserConfig
 from src.interface.cli.user_preferences import UserPreferences
+from src.core.report import UserReport
+from src.interface.cli.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
+from src.core.resume.render import ResumeLatexRenderer
+
 
 logger = get_logger(__name__)
 
@@ -78,5 +83,29 @@ def start_miner_cli(
             language_filter=language_filter
         )
     )
+
+    if miner_results.success is False:
+        print("Error analyzing projects! Check logs for more info")
+        return miner_results
+
+    # make a UserReport with the ProjectReports
+    user_report = UserReport(
+        miner_results.project_reports, report_name=datetime.now().strftime("%d/%m:%S")
+    )
+
+    print("-------- Analysis Reports --------\n")
+    resume = user_report.generate_resume(email, github)
+
+    # Download latex resume to file system
+    latex_str = resume.export(ResumeLatexRenderer())
+
+    with open("resume.tex", "w", encoding="utf-8") as f:
+        f.write(latex_str)
+
+    # Print the resume items
+    resume_CLI_stringify(resume)
+
+    # Print the portfolio item
+    portfolio_CLI_stringify(user_report)
 
     return miner_results

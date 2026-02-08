@@ -7,6 +7,7 @@ from src.core.statistic import (
     ProjectStatCollection,
 )
 from src.core.ML.models.readme_analysis import keyphrase_extraction, readme_insights
+from src.core.report.project.project_statistics import ProjectReadmeInsights
 
 
 def test_project_tags_from_readme_keyphrases():
@@ -17,7 +18,8 @@ def test_project_tags_from_readme_keyphrases():
     file_report = FileReport(stats, filepath="README.md")
 
     report = ProjectReport(file_reports=[file_report],
-                           project_name="ProjectTagsTest")
+                           project_name="ProjectTagsTest",
+                           calculator_classes=[ProjectReadmeInsights])
 
     tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value)
     assert tags == ["REST API", "OAuth", "PostgreSQL"]
@@ -43,7 +45,8 @@ def test_project_tags_from_readme_text(tmp_path, monkeypatch):
     analyzer = NaturalLanguageAnalyzer(str(project_root), "README.md")
     file_report = analyzer.analyze()
     report = ProjectReport(file_reports=[file_report],
-                           project_name="ProjectTagsTest")
+                           project_name="ProjectTagsTest",
+                           calculator_classes=[ProjectReadmeInsights])
 
     tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value)
     assert tags == ["API"]
@@ -78,6 +81,7 @@ def test_project_themes_from_readme_corpus(tmp_path, monkeypatch):
         file_reports=file_reports,
         project_name="ProjectThemesTest",
         project_path=str(project_root),
+        calculator_classes=[ProjectReadmeInsights]
     )
 
     themes = report.get_value(ProjectStatCollection.PROJECT_THEMES.value)
@@ -138,3 +142,10 @@ def test_theme_url_noise_filtered():
         ["https", "github", "api", "http://example.com", "data", "www.site.com"]
     )
     assert cleaned == ["api", "data"]
+
+
+def test_theme_generic_terms_filtered():
+    cleaned = readme_insights._clean_theme_terms(
+        ["startup", "run", "install", "tkinter"]
+    )
+    assert cleaned == ["tkinter"]

@@ -87,10 +87,33 @@ class BaseFileAnalyzer:
                 f"File not tracked by git or git error: {e}")
             return False
 
-    def should_include(self) -> bool:
+    def is_info_file(self) -> bool:
+        if self.language_filter:
+            if not self._matches_language_filter():
+                return False
+            else:
+                return True
+        else:
+            return True
+
+    def create_info_file(self) -> FileReport:
+        """
+        This is a method that is used to create a fileReport object with no stats and only
+        a bool denoting whether it has been contributed to
+
+        Returns:
+            fileReport: Only runs in the case of should_analyze_file() -> False.
+        """
+
+        stats = [Statistic(FileStatCollection.CONTRIBUTED_TO.value, False)]
+        self.stats.extend(stats)
+
+        return FileReport(statistics=self.stats, filepath=self.relative_path)
+
+    def should_analyze_file(self) -> bool:
         """
         This is a lightweight check to see if the file should be
-        included in analysis. By deafult, all files are included.
+        included in analysis. By default, all files are included.
 
         A file is excluded if it meets certain criteria:
             - If the user has configured to exclude files of this type
@@ -230,7 +253,7 @@ class BaseFileAnalyzer:
         stats = [
             Statistic(FileStatCollection.FILE_SIZE_BYTES.value,
                       metadata.st_size),
-            Statistic(FileStatCollection.FILE_HASH.value, self.hashed_content),
+            Statistic(FileStatCollection.CONTRIBUTED_TO.value, True),
         ]
 
         if self.is_git_tracked:

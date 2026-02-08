@@ -4,6 +4,7 @@ This file holds the main service, the miner.
 
 import tempfile
 from sqlalchemy.orm import Session
+from dataclasses import dataclass
 from pydantic import BaseModel
 
 from src.utils.pathing_utils import unzip_file_bytes
@@ -32,9 +33,11 @@ class ProjectError(BaseModel):
     error_message: str
 
 
-class MinerResults(BaseModel):
+@dataclass
+class MinerResults():
     """Results from the mining operation"""
     project_errors: list[ProjectError]
+    project_reports: list[ProjectReport]
     success: bool
 
 
@@ -196,6 +199,14 @@ def start_miner_service(
         try:
             report = _analyze_project_files(layout, user_config)
             project_reports.append(report)
+        # we want to add a project error if no files are contributed to
+            if report.contributed_to is False:
+                logger.error(f"No user contribution in {layout.name}")
+                project_errors.append(ProjectError(
+                    project_name=layout.name,
+                    error_code=ErrorCode.NO_RELEVANT_FILES.value,
+                    error_message=f"No user contribution in {layout.name}"
+                ))
         except ArtifactMinerException as e:
             logger.error(f"Error analyzing project {layout.name}: {e}")
             project_errors.append(ProjectError(
@@ -215,4 +226,6 @@ def start_miner_service(
     _save_project_report_to_db(project_reports)
 
     success = len(project_errors) == 0
-    return MinerResults(project_errors=project_errors, success=success)
+    return MinerResults(project_errors=project_errors,
+                        success=success,
+                        project_reports=project_reports)
