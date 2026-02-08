@@ -61,7 +61,7 @@ class PDFRenderer(ResumeRender):
 
     def render(self, resume) -> bytes:
         with tempfile.TemporaryDirectory() as tmpdir:
-            tex_path = Path(tmpdir) / "resume.tex"
+            tex_path = Path(tmpdir) / "helper.tex"
             tex_path.write_text(
                 resume.export(ResumeLatexRenderer()),
                 encoding="utf-8"
