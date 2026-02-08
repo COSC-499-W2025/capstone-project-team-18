@@ -6,7 +6,7 @@ inherit and defines a function to use the database's `engine`.
 from sqlmodel import create_engine
 
 # for DB migration via alembic
-DB_PATH = "sqlite:///src/db/data.db"
+DB_PATH = "sqlite:///src/database/data.db"
 
 ENGINE_CACHE = None
 

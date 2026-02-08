@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import SQLModel
+from typing import Optional
+from datetime import datetime
 
 from src.interface.api.routers.util import get_session
 from src.database.api.CRUD.projects import get_project_report_model_by_name
@@ -12,10 +14,10 @@ router = APIRouter(
 
 class ProjectReportResponse(SQLModel):
     project_name: str
-    user_config_used: int
-    image_data: str
-    created_at: str
-    last_updated: str
+    user_config_used: Optional[int]
+    image_data: Optional[bytes]
+    created_at: datetime
+    last_updated: datetime
 
 
 @router.post("/upload")
