@@ -126,7 +126,6 @@ class BaseFileAnalyzer:
 
         # If duplicate file exists with matching hash do not include in analysis
         if self.compare_hashes():
-            print("hash was checked")
             return False
 
        # Check language filter
@@ -160,7 +159,11 @@ class BaseFileAnalyzer:
         """
         try:
             with open(self.filepath, "rb") as f:
-                hash = hashlib.file_digest(f, "md5")
+                hashed_file = hashlib.file_digest(f, "md5")
+
+            # unchanged file with changed email will still result in re-analysis
+            salt = self.email.encode('utf-8')
+            hash = hashed_file + salt
             return hash.digest()
         except FileNotFoundError:
             logger.exception(f"File not found for {self.filepath}")
@@ -185,10 +188,10 @@ class BaseFileAnalyzer:
             inspector = inspect(engine)
             if inspector.has_table('file_report'):
                 try:
-                    # check if both filepath and hash exist
+                    # check if filepath and hash exist and match within the DB
                     _ = session.execute(
                         select(FileReportTable)
-                        .where(FileReportTable.filepath == self.filepath, FileReportTable.file_hash == self.hashed_content)
+                        .where(FileReportTable.filepath == self.filepath, FileReportTable.file_hash == self.hashed_content, )
                         # should result in the only existing column
                     ).scalars().one()
                     logger.exception(
