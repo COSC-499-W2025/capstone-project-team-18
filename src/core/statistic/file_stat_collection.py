@@ -127,9 +127,3 @@ class FileStatCollection(Enum):
         description="the coding language of the file",
         expected_type=CodingLanguage
     )
-
-    FILE_HASH = FileStatisticTemplate(
-        name="FILE_HASH",
-        description="a hash value of file contents",
-        expected_type=str
-    )

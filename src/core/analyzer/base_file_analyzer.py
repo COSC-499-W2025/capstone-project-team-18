@@ -127,7 +127,7 @@ class BaseFileAnalyzer:
 
         return False
 
-    def create_hash(self) -> str:
+    def create_hash(self) -> bytes:
         """
         Create a hash of the file's content. Should only occur in the case of a new file, or
         in the case of a matching existing path in order to check against hash value
@@ -138,7 +138,7 @@ class BaseFileAnalyzer:
         try:
             with open(self.filepath, "rb") as f:
                 hash = hashlib.file_digest(f, "md5")
-            return hash.hexdigest()
+            return hash.digest()
         except FileNotFoundError:
             logger.exception(f"File not found for {self.filepath}")
             return '0x00'
