@@ -80,69 +80,30 @@ My feedback focused on code correctness, test coverage, and edge case handling.
 ## Week 4-5, Jan. 26-Feb. 08
 
 ### Peer Eval
-*Peer evaluation screenshots to be added*
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/priyansh/priyansh_week5_term2_log.png)
 
 ### Recap
 These two weeks were focused on enhancing ML-based analysis capabilities, particularly improving README theme extraction and implementing comprehensive project summary generation for portfolio output. The team also made significant progress on frontend UI development with Electron, API endpoints, and system optimization.
 
 #### Coding Tasks
 
-**1. [PR #401 - Improve README Theme Extraction](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/401)** (Merged)
+1. I completed [PR #401 - Improve README Theme Extraction](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/401), which closes [Issue #399](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/399). This PR significantly improves theme extraction quality by adding programming languages to the filter list to prevent generic terms from appearing as themes, while allowing short acronym themes like "ML", "API", and "CI/CD". The improvements result in cleaner, more meaningful theme tags for projects in portfolio output.
 
-This PR closes [Issue #399](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/399) and significantly improves the quality of theme extraction from project README files. Key improvements include:
+2. I completed [PR #414 - Display Textual Information About a Project](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/414), which closes [Issue #406](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/406). This PR introduces ML-generated project summaries that add concise, professional 2–3 sentence descriptions to each portfolio project, covering project goals, technologies used, and the user's contribution. The implementation includes a robust deterministic fallback system when ML generation is unavailable, lazy-loading for ML dependencies to prevent import-time crashes, regex-based sentence splitting, and normalized contribution statistics.
 
-- **Enhanced filtering**: Added programming languages to the filter list to prevent generic terms from appearing as themes
-- **Acronym support**: Modified filtering logic to allow short acronym themes (e.g., "ML", "API", "CI/CD") while still filtering out noise
-- **Better theme detection**: Improved the algorithm to identify more meaningful and relevant project themes
-- **Documentation**: Added inline comments explaining the changes and rationale
-
-The improvements result in cleaner, more meaningful theme tags for projects in portfolio output.
-
-**2. [PR #414 - Display Textual Information About a Project](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/414)** (In Progress)
-
-This PR closes [Issue #406](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/406) and introduces a general-purpose project summary feature that adds concise, professional 2–3 sentence descriptions to each portfolio project. The summaries cover project goals, technologies used, and the user's contribution. Key implementation details:
-
-- **ML-based generation**: Implemented ML-generated project summaries using existing project facts (themes/tags, frameworks/languages, and contribution metrics)
-- **Deterministic fallback**: Designed a robust fallback system to ensure consistent output quality when ML generation is unavailable
-- **Text processing**: Implemented regex-based sentence splitting for more accurate text parsing
-- **Contribution normalization**: Normalized percentage contribution statistics for accurate representation
-- **Import safety**: Added lazy-loading for ML dependencies to prevent import-time crashes in minimal CI/dev environments
-- **Comprehensive documentation**: Added detailed inline comments and documentation for all functions
-
-The feature received approvals from Alex and Tawana, with feedback from Erem being addressed regarding anchor normalization and contribution checks.
-
-**3. [PR #411 - ML Analysis for User Summary](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/411)** (In Progress)
-
-This ongoing PR closes [Issue #402](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/402) and implements ML-generated user summaries for portfolio output. The main goal is producing professional, personalized summaries instead of generic or repetitive text, with language that adapts to each user's profile (focus, role, work style, and experience stage). Major contributions include:
-
-- **Project summaries**: Implemented per-project summary generation that analyzes contribution patterns, project characteristics, and technical contributions
-- **Resume summary enhancement**: Improved the overall resume summary to better highlight user skills, project diversity, and work patterns
-- **Contribution normalization**: Normalized percentage contribution statistics across projects for accurate representation
-- **Text processing improvements**:
-  - Implemented regex-based sentence splitting for more robust text parsing
-  - Adjusted project tone metrics for better classification
-  - Combined and optimized keyword mappings for domain detection
-- **Code organization**: Moved tests to the ML folder for better structure and added comprehensive documentation for all functions
-- **Addressed peer feedback**: Incorporated review comments from Sam and Jimi regarding model warm-up placement, code readability, and preventing bloated functions
-
-The implementation uses multiple layers of ML analysis to generate meaningful summaries that capture the essence of user contributions across projects. Currently undergoing review with requested changes being addressed.
+3. Additionally, I completed [PR #411 - ML Analysis for User Summary](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/411), which closes [Issue #402](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/402). This PR implements ML-generated user summaries for portfolio output, producing professional, personalized summaries that adapt to each user's profile (focus, role, work style, and experience stage). The implementation includes per-project summary generation, improved resume summaries highlighting user skills and work patterns, enhanced text processing with regex-based sentence splitting, optimized keyword mappings for domain detection, and comprehensive documentation.
 
 #### Reviewing Tasks
 
-During these weeks, I reviewed the following PRs to support team progress on Milestone 2:
-
-1. [PR #383 - Portfolio Resume Generation Services](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/383) by Sam
-2. [PR #388 - Electron UI Init](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/388) by Jimi & Team
-3. [PR #391 - Uncontributed Files](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/391) by Jimi
-4. [PR #395 - Contribution Hotfix](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/395) by Sam
-5. [PR #397 - Optimize Tests](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/397) by Sam
-6. [PR #408 - Alembic Revision Hotfix](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/408) by Alex
-7. [PR #409 - Implement Endpoints Get Projects](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/409) by Erem
+1. [PR #389 - Tawana Term 2 Week 3 Personal Log](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/389) by Tawana
+2. [PR #391 - Store Files that Have Not Been Contributed to as INFO_FILES](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/391) by Jimi
+3. [PR #397 - Optimize Tests](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/397) by Sam
+4. [PR #412 - New Database System](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/412) by Sam
+5. [PR #418 - [Proposal] New Resume Class System](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/418) by Alex
 
 My reviews focused on ensuring code quality, proper error handling, test coverage, and alignment with our system architecture.
 
 #### Goals for Next Week
-- Complete PR #414 and PR #411, addressing remaining review comments
-- Continue supporting frontend integration efforts
+
 - Work on remaining Milestone 2 deliverables and documentation
 
