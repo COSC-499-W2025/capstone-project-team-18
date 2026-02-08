@@ -113,6 +113,7 @@ def temp_db(tmp_path: Path, fr1, fr2, fr3, fr4):
     with Session(engine) as session:
         save_project_report(session, pr1, 0)
         save_project_report(session, pr2, 0)
+        session.commit()
 
     try:
         yield engine

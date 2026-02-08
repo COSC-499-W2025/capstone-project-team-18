@@ -31,10 +31,10 @@ def list_projects():
 @router.get("/{project_name}", response_model=ProjectReportResponse)
 def get_project(project_name: str, session=Depends(get_session)):
 
-    result = get_project_report_model_by_name(session, project_name)
+    result = None
 
     try:
-        print()
+        result = get_project_report_model_by_name(session, project_name)
     except Exception as e:
         raise HTTPException(
             status_code=500,

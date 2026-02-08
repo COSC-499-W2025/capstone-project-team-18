@@ -25,4 +25,6 @@ def update_user_config(
     session=Depends(get_session)
 ):
     save_user_config(session, config_update)
+    session.commit()
+
     return config_update

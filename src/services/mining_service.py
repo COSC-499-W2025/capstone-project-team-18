@@ -126,6 +126,7 @@ def _save_project_report_to_db(project_report: list[ProjectReport], user_config_
     with Session(engine) as session:
         for pr in project_report:
             save_project_report(session, pr, user_config_id)
+            session.commit()
 
 
 def start_miner_service(

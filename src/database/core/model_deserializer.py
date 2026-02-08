@@ -38,7 +38,7 @@ def deserialize_statistics(statistic: dict) -> StatisticIndex:
     return stat_index
 
 
-def deseralize_file_report(file_report_model: FileReportModel) -> FileReport:
+def deserialize_file_report(file_report_model: FileReportModel) -> FileReport:
     """
     Turn a FileReportModel into a FileReport object
     """
@@ -54,7 +54,7 @@ def deseralize_file_report(file_report_model: FileReportModel) -> FileReport:
     )
 
 
-def deseralize_project_report(project_report_model: ProjectReportModel) -> ProjectReport:
+def deserialize_project_report(project_report_model: ProjectReportModel) -> ProjectReport:
     """
     Turn a ProjectReportModel into a ProjectReport domain object.
     """
@@ -63,7 +63,7 @@ def deseralize_project_report(project_report_model: ProjectReportModel) -> Proje
 
     # Deserialize file reports if needed
     file_reports = [
-        deseralize_file_report(f) for f in project_report_model.file_reports
+        deserialize_file_report(f) for f in project_report_model.file_reports
     ] if project_report_model.file_reports else []
 
     return ProjectReport(

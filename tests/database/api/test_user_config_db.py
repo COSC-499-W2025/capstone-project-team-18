@@ -30,6 +30,7 @@ def test_saving_user_config_object(temp_db):
 
     with Session(temp_db) as session:
         updated_uc = save_user_config(session, uc)
+        session.commit()
         user_config = get_most_recent_user_config(session)
 
         assert updated_uc is not None
@@ -52,6 +53,7 @@ def test_many_different_user_config_object(temp_db):
     with Session(temp_db) as session:
         updated_uc1 = save_user_config(session, uc1)
         updated_uc2 = save_user_config(session, uc2)
+        session.commit()
 
         user_config = get_most_recent_user_config(session)
 

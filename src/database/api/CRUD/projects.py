@@ -3,8 +3,8 @@ from typing import Optional
 from sqlmodel import Session
 from src.database.api.models import ProjectReportModel
 from src.core.report import ProjectReport
-from src.database.core.model_seralizer import serialize_project_report, serialize_file_report
-from src.database.core.model_deseralizer import deseralize_project_report
+from src.database.core.model_serializer import serialize_project_report, serialize_file_report
+from src.database.core.model_deserializer import deserialize_project_report
 
 
 def save_project_report(
@@ -14,7 +14,8 @@ def save_project_report(
 ) -> ProjectReportModel:
     """
     Save a ProjectReport domain object along with all its FileReports
-    and generated ResumeItems into the database.
+    and generated ResumeItems into the database. DOES NOT COMMIT THE
+    SESSION! YOU MUST COMMIT.
 
     Args:
         session: SQLModel Session
@@ -32,8 +33,6 @@ def save_project_report(
     project_model.file_reports = file_models
 
     session.add(project_model)
-    session.commit()
-    session.refresh(project_model)  # refresh to get updated relationships
 
     return project_model
 
@@ -67,7 +66,7 @@ def get_project_report_by_name(
     if result is None:
         return None
 
-    return deseralize_project_report(result)
+    return deserialize_project_report(result)
 
 
 def delete_project_report_by_name(
@@ -75,7 +74,8 @@ def delete_project_report_by_name(
     project_name: str
 ) -> bool:
     """
-    Delete a ProjectReportModel by its project_name.
+    Delete a ProjectReportModel by its project_name. DOES NOT COMMIT THE
+    SESSION! YOU MUST COMMIT.
 
     Args:
         session: SQLModel Session

@@ -1,5 +1,5 @@
 """
-This file defines both a serializer and a deseralizer method for
+This file defines both a serializer and a deserializer method for
 any statistic value.
 """
 

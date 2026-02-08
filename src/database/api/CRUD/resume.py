@@ -3,13 +3,13 @@ Database CRUD for the resume object
 """
 
 from typing import Optional
-from src.database.core.model_deseralizer import deserialize_resume
+from src.database.core.model_deserializer import deserialize_resume
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from sqlmodel import Session
 from src.core.resume.resume import Resume
 from src.database.api.models import ResumeModel
-from src.database.core.model_seralizer import (
+from src.database.core.model_serializer import (
     serialize_resume,
     serialize_resume_item,
 )
@@ -20,7 +20,8 @@ def save_resume(
     resume: Resume
 ) -> ResumeModel:
     """
-    Save a Resume domain object into the DB.
+    Save a Resume domain object into the DB. DOES NOT COMMIT THE
+    SESSION! YOU MUST COMMIT.
     """
 
     resume_model = serialize_resume(resume)
@@ -30,8 +31,6 @@ def save_resume(
     resume_model.items = resume_item_models
 
     session.add(resume_model)
-    session.commit()
-    session.refresh(resume_model)
 
     return resume_model
 

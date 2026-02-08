@@ -33,11 +33,10 @@ def get_most_recent_user_config(session: Session) -> UserConfigModel:
 def save_user_config(session: Session, user_config: UserConfigModel) -> UserConfigModel | None:
     """
     Write the passed UserConfigModel to the database. This config will
-    then become the defacto configuration
+    then become the defacto configuration. DOES NOT COMMIT THE
+    SESSION! YOU MUST COMMIT.
     """
 
     session.add(user_config)
-    session.commit()
-    session.refresh(user_config)
 
     return user_config

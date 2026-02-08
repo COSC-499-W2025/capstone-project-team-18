@@ -46,6 +46,7 @@ def test_save_and_load_resume(temp_db):
 
     with Session(temp_db) as session:
         saved_model = save_resume(session, resume)
+        session.commit()
 
         assert saved_model.id is not None
         assert saved_model.email == "test@example.com"
@@ -65,6 +66,7 @@ def test_resume_item_fields_preserved(temp_db):
 
     with Session(temp_db) as session:
         saved_model = save_resume(session, resume)
+        session.commit()
 
         if saved_model is None or saved_model.id is None:
             pytest.fail()
@@ -108,6 +110,7 @@ def test_resume_with_multiple_items(temp_db):
 
     with Session(temp_db) as session:
         saved_model = save_resume(session, resume)
+        session.commit()
         loaded_resume = load_resume(session, saved_model.id)  # pyright: ignore
 
         assert loaded_resume is not None
