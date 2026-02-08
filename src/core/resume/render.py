@@ -1,8 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from pathlib import Path
+import tempfile
+from typing import TYPE_CHECKING, Union
 from pdflatex import PDFLaTeX
-import os
 
 if TYPE_CHECKING:
     from src.core.resume.resume import Resume, ResumeItem
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
 
 class ResumeRender(ABC):
     @abstractmethod
-    def render(self, resume: Resume) -> str: ...
+    def render(self, resume: Resume) -> Union[str, bytes]: ...
 
 
 class TextResumeRenderer(ResumeRender):
@@ -58,14 +59,17 @@ class PDFRenderer(ResumeRender):
     convert the given LaTeX resume to PDF format for unfamiliar users
     """
 
-    def render(self, resume) -> str:
-        if not os.path.isfile('resume.tex'):
-            with open("resume.tex", "w", encoding="utf-8") as f:
-                f.write(resume.export(ResumeLatexRenderer()))
+    def render(self, resume) -> bytes:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tex_path = Path(tmpdir) / "resume.tex"
+            tex_path.write_text(
+                resume.export(ResumeLatexRenderer()),
+                encoding="utf-8"
+            )
 
-        pdfLATEX = PDFLaTeX.from_texfile('resume.tex')
-        pdfLATEX.set_interaction_mode()
-        pdf, _, _ = pdfLATEX.create_pdf(keep_pdf_file=True)
+            pdfLaTeX = PDFLaTeX.from_texfile(str(tex_path))
+            pdfLaTeX.set_interaction_mode()
+            pdf, _, _ = pdfLaTeX.create_pdf()
 
         return pdf
 
