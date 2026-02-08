@@ -5,9 +5,6 @@ import re
 from time import perf_counter
 from typing import Any
 
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 
@@ -97,9 +94,23 @@ def _get_model_name() -> str:
     if override:
         return override
 
-    if torch.cuda.is_available():
+    if _cuda_available():
         return "microsoft/Phi-3-mini-4k-instruct"
     return "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+
+
+def _cuda_available() -> bool:
+    """
+    Return whether CUDA is available, without requiring torch at import time.
+    """
+    try:
+        import torch
+    except ImportError:
+        return False
+    try:
+        return bool(torch.cuda.is_available())
+    except Exception:
+        return False
 
 
 def _load_model():
@@ -122,6 +133,14 @@ def _load_model():
 
     if _MODEL is not None and _TOKENIZER is not None:
         return _MODEL, _TOKENIZER
+
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+    except ImportError:
+        logger.info("ML dependencies are not installed; skipping project summary model load")
+        _MODEL_FAILED = True
+        return None, None
 
     try:
         load_start = perf_counter()
