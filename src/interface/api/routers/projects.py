@@ -1,4 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+
+from src.services.project.retrieve_project_service import (
+    retrieve_project_by_id,
+    retrieve_projects,
+    ProjectResponse,
+    AllProjectsResponse,
+    DatabaseNotInitializedError
+)
 
 router = APIRouter(
     prefix="/projects",
@@ -11,11 +19,25 @@ def upload_project():
     return {"message": "Project uploaded"}
 
 
-@router.get("")
+@router.get("", response_model=AllProjectsResponse)
 def list_projects():
-    return {"projects": []}
+    """Get all projects from database"""
+    try:
+        return retrieve_projects()
+    except DatabaseNotInitializedError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
-@router.get("/{project_id}")
-def get_project(project_id: str):
-    return {"project_id": project_id}
+@router.get("/{project_id}", response_model=ProjectResponse)
+def get_project(project_id: int):
+    """Get a single project by ID"""
+    try:
+        project = retrieve_project_by_id(project_id)
+
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        return project
+
+    except DatabaseNotInitializedError as e:
+        raise HTTPException(status_code=503, detail=str(e))
