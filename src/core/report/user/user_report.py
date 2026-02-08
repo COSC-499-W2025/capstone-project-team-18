@@ -211,6 +211,7 @@ class UserReport(BaseReport):
             UserCodingLanguageRatioSectionBuilder,
             UserGenericStatisticsSectionBuilder,
             ChronologicalProjectsSectionBuilder,
+            ProjectSummariesSectionBuilder,
             ProjectTagsSectionBuilder,
             ProjectThemesSectionBuilder,
             ProjectTonesSectionBuilder,
@@ -226,6 +227,7 @@ class UserReport(BaseReport):
             UserCodingLanguageRatioSectionBuilder())
         builder.register_section_builder(UserGenericStatisticsSectionBuilder())
         builder.register_section_builder(ChronologicalProjectsSectionBuilder())
+        builder.register_section_builder(ProjectSummariesSectionBuilder())
         builder.register_section_builder(ProjectTagsSectionBuilder())
         builder.register_section_builder(ProjectThemesSectionBuilder())
         builder.register_section_builder(ProjectTonesSectionBuilder())
