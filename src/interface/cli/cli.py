@@ -226,9 +226,6 @@ class ArtifactMiner(cmd.Cmd):
             print("\n" + self.options)
             return
 
-        # Warm up summary model so it doesn't stall later during portfolio output
-        self._warmup_summary_model()
-
         print(f"\nBeginning analysis of: {self.project_filepath}")
 
         # Show advanced configuration being used
@@ -1275,19 +1272,9 @@ class ArtifactMiner(cmd.Cmd):
 
     def do_warmup(self, arg):
         """Warm up the local summary model to avoid delays during output."""
-        self._warmup_summary_model(show_menu=True)
+        from src.app import init_system
 
-    def _warmup_summary_model(self, show_menu: bool = False):
-        """Load the summary model early to avoid delays during output."""
         print("\nWarming up summary model...")
-        try:
-            from src.core.ML.models.contribution_analysis.summary_generator import _load_model
-            model, tokenizer = _load_model()
-            if model is None or tokenizer is None:
-                print("Summary model not available or disabled.")
-            else:
-                print("Summary model loaded and ready.")
-        except Exception as e:
-            print(f"Summary model warmup failed: {e}")
-        if show_menu:
-            print("\n" + self.options)
+        _, status_message = init_system()
+        print(status_message)
+        print("\n" + self.options)
