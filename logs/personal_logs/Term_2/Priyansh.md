@@ -118,7 +118,7 @@ This ongoing PR closes [Issue #402](https://github.com/COSC-499-W2025/capstone-p
 - **Project summaries**: Implemented per-project summary generation that analyzes contribution patterns, project characteristics, and technical contributions
 - **Resume summary enhancement**: Improved the overall resume summary to better highlight user skills, project diversity, and work patterns
 - **Contribution normalization**: Normalized percentage contribution statistics across projects for accurate representation
-- **Text processing improvements**: 
+- **Text processing improvements**:
   - Implemented regex-based sentence splitting for more robust text parsing
   - Adjusted project tone metrics for better classification
   - Combined and optimized keyword mappings for domain detection
@@ -143,6 +143,6 @@ My reviews focused on ensuring code quality, proper error handling, test coverag
 
 #### Goals for Next Week
 - Complete PR #414 and PR #411, addressing remaining review comments
-- Continue supporting frontend integration efforts  
+- Continue supporting frontend integration efforts
 - Work on remaining Milestone 2 deliverables and documentation
 
