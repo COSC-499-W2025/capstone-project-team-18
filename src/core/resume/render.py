@@ -1,6 +1,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+from pdflatex import PDFLaTeX
+import os
 
 if TYPE_CHECKING:
     from src.core.resume.resume import Resume, ResumeItem
@@ -50,7 +52,26 @@ def latex_escape(text: str) -> str:
     return "".join(LATEX_SPECIAL_CHARS.get(c, c) for c in text)
 
 
+class PDFRenderer(ResumeRender):
+    """
+    This class extends the resumeRender and allows for the user to
+    convert the given LaTeX resume to PDF format for unfamiliar users
+    """
+
+    def render(self, resume) -> str:
+        if not os.path.isfile('resume.tex'):
+            with open("resume.tex", "w", encoding="utf-8") as f:
+                f.write(resume.export(ResumeLatexRenderer()))
+
+        pdfLATEX = PDFLaTeX.from_texfile('resume.tex')
+        pdfLATEX.set_interaction_mode()
+        pdf, _, _ = pdfLATEX.create_pdf(keep_pdf_file=True)
+
+        return pdf
+
 # --- Renderer ---
+
+
 class ResumeLatexRenderer(ResumeRender):
     """
     Generates a stable LaTeX resume using the Jake Gutierrez template.
@@ -62,7 +83,6 @@ class ResumeLatexRenderer(ResumeRender):
 \usepackage{latexsym}
 \usepackage[empty]{fullpage}
 \usepackage{titlesec}
-\usepackage{marvosym}
 \usepackage[usenames,dvipsnames]{color}
 \usepackage{verbatim}
 \usepackage{enumitem}
