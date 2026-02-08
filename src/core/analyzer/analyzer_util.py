@@ -3,6 +3,7 @@ This file holds top level functions for interacting
 with the analyzer class structure.
 """
 
+from multiprocessing import Pool, cpu_count
 from git import Repo
 from pathlib import Path
 from typing import Optional
@@ -27,6 +28,46 @@ from src.infrastructure.log.logging import get_logger
 logger = get_logger(__name__)
 
 
+def single_file_analysis(
+    args
+) -> Optional[FileReport]:
+    """
+    Method to anlayze a single file. Grabs appropriate analyzer, checks if it should be included
+    only as `INFO_FILE` and returns the analyzed fileReport.
+    """
+    (
+        root_path,
+        file,
+        repo_path,
+        email,
+        github,
+        language_filter,
+        project_name,
+    ) = args
+
+    analyzer = get_appropriate_analyzer(
+        root_path,
+        str(file),
+        Repo(repo_path) or None,
+        email,
+        github,
+        language_filter,
+    )
+
+    if not analyzer.should_analyze_file():
+        if analyzer.is_info_file():
+            return analyzer.create_info_file()
+        logger.info("Skipping file %s in project %s", file, project_name)
+        return None
+
+    try:
+        return analyzer.analyze()
+
+    except Exception:
+        logger.exception("Error analyzing file %s in %s", file, project_name)
+        return None
+
+
 def extract_file_reports(
     project_file: ProjectLayout,
     email: Optional[str] = None,
@@ -44,32 +85,25 @@ def extract_file_reports(
     # Given a single project for a user and the project's structure return a list with each fileReport
     project_files = project_file.file_paths
 
-    # list of reports for each file in an individual project to be returned
-    reports = []
-    for file in project_files:
+    workers = max(1, cpu_count() - 1)
 
-        analyzer = get_appropriate_analyzer(
+    args = [
+        (
             str(project_file.root_path),
-            str(file),
-            project_file.repo,
+            file,
+            project_file.repo.working_tree_dir if project_file.repo else None,
             email,
             github,
-            language_filter)
+            language_filter,
+            project_file.name,
+        )
+        for file in project_files
+    ]
 
-        if analyzer.should_analyze_file() is False:
-            if analyzer.is_info_file():
-                reports.append(analyzer.create_info_file())
-            logger.info("Skipping file %s in project %s",
-                        file, project_file.name)
-            continue
+    with Pool(processes=workers) as pool:
+        results = pool.map(single_file_analysis, args)
 
-        try:
-            reports.append(analyzer.analyze())
-        except Exception:
-            logger.exception(
-                "Error analyzing file %s in %s", file, project_file.name)
-
-    return reports
+    return [r for r in results if r is not None]
 
 
 def get_appropriate_analyzer(
