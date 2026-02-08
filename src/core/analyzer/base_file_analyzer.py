@@ -85,7 +85,7 @@ class BaseFileAnalyzer:
             fileReport: Only runs in the case of should_analyze_file() -> False.
         """
 
-        stats = [Statistic(FileStatCollection.CONTRIBUTED_TO.value, False)]
+        stats = []
         self.stats.extend(stats)
 
         return FileReport(statistics=self.stats,
@@ -151,8 +151,7 @@ class BaseFileAnalyzer:
 
         stats = [
             Statistic(FileStatCollection.FILE_SIZE_BYTES.value,
-                      metadata.st_size),
-            Statistic(FileStatCollection.CONTRIBUTED_TO.value, True),
+                      metadata.st_size)
         ]
 
         if self.is_git_tracked:

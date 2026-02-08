@@ -7,7 +7,7 @@ import pytest
 from src.utils.pathing_utils import unzip_file
 from src.core.analyzer import extract_file_reports
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
-from src.core.statistic import ProjectStatCollection, FileStatCollection
+from src.core.statistic import ProjectStatCollection
 from src.core.report import ProjectReport
 from src.core.report.project.project_statistics import ProjectTotalContributionPercentage
 from src.database.api.models import UserConfigModel
@@ -102,8 +102,7 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
                        calculator_classes=[ProjectTotalContributionPercentage])
 
     # Charlie contributed 0% since not in any file reports
-    contrib_flags = [f.get_value(
-        FileStatCollection.CONTRIBUTED_TO.value) for f in fr]
+    contrib_flags = [f.is_info_file is False for f in fr]
     assert contrib_flags.count(True) == 0
     assert contrib_flags.count(False) == 2
 

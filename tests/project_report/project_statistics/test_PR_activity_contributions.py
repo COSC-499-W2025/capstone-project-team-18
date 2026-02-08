@@ -7,8 +7,7 @@ from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.report import ProjectReport
 from src.core.report.project.project_statistics import \
     ProjectActivityTypeContributions
-from src.core.statistic import (FileDomain, FileStatCollection,
-                                ProjectStatCollection)
+from src.core.statistic import (FileDomain, ProjectStatCollection)
 from src.database.api.models import UserConfigModel
 
 
@@ -90,8 +89,7 @@ def test_activity_contribution_from_git_project(project_realistic, mock_readme_a
     # Adjusted to include uncontributed files in case of use for semantic analysis
     # All activty type contributions should remain the same however
     assert frs is not None and len(frs) == 7
-    contrib_flags = [f.get_value(
-        FileStatCollection.CONTRIBUTED_TO.value) for f in frs]
+    contrib_flags = [f.is_info_file is False for f in frs]
     assert contrib_flags.count(True) == 5
     assert contrib_flags.count(False) == 2
 

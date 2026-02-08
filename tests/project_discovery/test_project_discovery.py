@@ -15,7 +15,6 @@ from src.core.report.project.project_statistics import \
     ProjectAnalyzeGitAuthorship
 from src.core.statistic import \
     ProjectStatCollection  # type: ignore  # noqa: E402
-from src.core.statistic import FileStatCollection
 from src.database.api.models import UserConfigModel
 
 
@@ -314,8 +313,7 @@ def test_info_files_exist(tmp_path: Path):
     assert len(fr) == 4
 
     # Exactly two files should be marked as contributed to by Charlie
-    contrib_flags = [f.get_value(
-        FileStatCollection.CONTRIBUTED_TO.value) for f in fr]
+    contrib_flags = [f.is_info_file is False for f in fr]
     assert contrib_flags.count(True) == 2
     assert contrib_flags.count(False) == 2
 

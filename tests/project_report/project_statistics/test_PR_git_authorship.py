@@ -543,7 +543,7 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
 
     # should only be three files in ProjectReport and the first has a False CONTRIBUTED_TO flag
     assert len(fr) == 3
-    assert fr[0].get_value(FileStatCollection.CONTRIBUTED_TO.value) is False
+    assert fr[0].is_info_file
 
     shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -592,8 +592,7 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
                        calculator_classes=[ProjectTotalContributionPercentage])
 
     # Charlie contributed 0% since not in any file reports
-    contrib_flags = [f.get_value(
-        FileStatCollection.CONTRIBUTED_TO.value) for f in fr]
+    contrib_flags = [f.is_info_file is False for f in fr]
     assert contrib_flags.count(True) == 0
     assert contrib_flags.count(False) == 2
 
