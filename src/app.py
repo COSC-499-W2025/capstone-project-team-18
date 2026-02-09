@@ -2,14 +2,41 @@
 The entry point for the ArtifactMiner program.
 """
 
-from src.database import get_engine
-from sqlmodel import SQLModel
+from src.database.utils.db_migrate import run_migrations
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+def init_system() -> tuple[bool, str]:
+    """
+    This function does any setup and warmup tasks that are needed for a cold
+    session start for the system. This includes both database configuration
+    and ML warm-up.
+    """
+    # Setup db (handled separately)
+    # Setup ML warm-up
+    try:
+        from src.core.ML.models.contribution_analysis.summary_generator import _load_model
+
+        model, tokenizer = _load_model()
+        if model is None or tokenizer is None:
+            message = "Summary model not available or disabled."
+            logger.info(message)
+            return False, message
+
+        message = "Summary model loaded and ready."
+        logger.info(message)
+        return True, message
+    except Exception:
+        logger.exception("Summary model warmup failed")
+        return False, "Summary model warmup failed."
 
 
 def main():
-
-    engine = get_engine()
-    SQLModel.metadata.create_all(engine)
+    run_migrations()
+    _, startup_message = init_system()
+    print(startup_message)
 
     from src.interface.cli.cli import ArtifactMiner
     try:
