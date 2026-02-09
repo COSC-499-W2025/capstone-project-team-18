@@ -139,8 +139,7 @@ During development, Electron may log a warning about an insecure or missing
 Content Security Policy (CSP), often due to the use of Vite hot module
 reloading and development tooling that relies on `unsafe-eval`.
 
-This warning is expected in development mode and does **not** block functionality.
-It typically does not appear (or is different) once the app is packaged for
+This warning is expected in development mode and does not block functionality. It typically does not appear (or is different) once the app is packaged for
 production.
 
 **Planned improvements:**
