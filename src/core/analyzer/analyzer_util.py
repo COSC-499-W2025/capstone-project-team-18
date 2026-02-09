@@ -3,6 +3,8 @@ This file holds top level functions for interacting
 with the analyzer class structure.
 """
 
+from multiprocessing import Pool, cpu_count
+from typing import Optional
 from pathlib import Path
 
 from src.core.report.file_report import FileReport
@@ -26,6 +28,34 @@ from src.database.api.models import UserConfigModel as UserConfig
 logger = get_logger(__name__)
 
 
+def single_file_analysis(
+    file,
+        project_name,
+        user_config,
+        project_context,
+        relative_path
+) -> Optional[FileReport]:
+    """
+    Method to anlayze a single file. Grabs appropriate analyzer, checks if it should be included
+    only as `INFO_FILE` and returns the analyzed fileReport.
+    """
+
+    analyzer = get_appropriate_analyzer(
+        user_config, project_context, relative_path
+    )
+
+    if not analyzer.should_analyze_file():
+        logger.info("Skipping file %s in project %s", file, project_name)
+        return analyzer.create_info_file()
+
+    try:
+        return analyzer.analyze()
+
+    except Exception:
+        logger.exception("Error analyzing file %s in %s", file, project_name)
+        return None
+
+
 def extract_file_reports(
     project_file: ProjectLayout,
     user_config: UserConfig
@@ -41,29 +71,23 @@ def extract_file_reports(
     # Given a single project for a user and the project's structure return a list with each fileReport
     project_files = project_file.file_paths
 
-    # list of reports for each file in an individual project to be returned
-    reports = []
-    for file in project_files:
+    workers = max(1, cpu_count() - 1)
 
-        analyzer = get_appropriate_analyzer(
-            user_config=user_config,
-            project_context=project_file,
-            relative_path=str(file)
+    args = [
+        (
+            file,
+            project_file.name,
+            user_config,
+            project_file,
+            str(file)
         )
+        for file in project_files
+    ]
 
-        if analyzer.should_analyze_file() is False:
-            reports.append(analyzer.create_info_file())
-            logger.info("Skipping file %s in project %s",
-                        file, project_file.name)
-            continue
+    with Pool(processes=workers) as pool:
+        results = pool.starmap(single_file_analysis, args)
 
-        try:
-            reports.append(analyzer.analyze())
-        except Exception:
-            logger.exception(
-                "Error analyzing file %s in %s", file, project_file.name)
-
-    return reports
+    return [r for r in results if r is not None]
 
 
 def get_appropriate_analyzer(user_config: UserConfig,
