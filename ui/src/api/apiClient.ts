@@ -63,5 +63,8 @@ ping: async (): Promise<boolean> => {
 
   getProjects: () => getJson<any>("/projects"),
 
+  getProject: (Name: string | number) =>
+    getJson<any>(`/projects/${encodeURIComponent(String(Name))}`),
+
   getSkills: () => getJson<any>("/skills")
 };
