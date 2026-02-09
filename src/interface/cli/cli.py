@@ -10,8 +10,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from src.interface.cli.cli_service_handler import start_miner_cli
-from src.database.utils.database_modify import rename_user_report
-from src.database.utils.database_access import get_project_from_project_name
 from src.core.resume.bullet_point_builder import BulletPointBuilder
 from src.utils.pathing_utils import is_valid_filepath_to_zip, normalize_path
 from src.interface.cli.user_preferences import UserPreferences
@@ -357,6 +355,7 @@ class ArtifactMiner(cmd.Cmd):
                 self.preferences.update("last_portfolio_title", default_title)
             return
 
+        raise ValueError("Deprecation")
         success, message = rename_user_report(default_title, new_title)
         print(message)
         if success and hasattr(self.preferences, "update") and callable(getattr(self.preferences, "update", None)):
@@ -744,6 +743,7 @@ class ArtifactMiner(cmd.Cmd):
                     print(f"Using last analyzed portfolio: {portfolio_name}")
 
             try:
+                raise ValueError("Deprecation")
                 from src.database.utils.database_access import get_user_report
                 from src.interface.cli.print_resume_and_portfolio import portfolio_CLI_stringify
                 report = get_user_report(portfolio_name)
@@ -890,6 +890,7 @@ class ArtifactMiner(cmd.Cmd):
                     continue  # Loop back to ask for dates again
 
             # If gotten here, dates are valid, save and exit
+            raise ValueError("Deprecation")
             success = self.preferences.update_date_range(start_date, end_date)
             if success:
                 print("✓ Date range configuration saved")
@@ -1251,6 +1252,7 @@ class ArtifactMiner(cmd.Cmd):
             print("\n" + self.options)
             return
 
+        raise ValueError("Deprecation")
         try:
             project_report = get_project_from_project_name(user_input)
         except Exception:

@@ -9,10 +9,8 @@ for p in (str(CLASSES_DIR), str(SRC_DIR)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from src.core.analyzer import CAnalyzer, TypeScriptAnalyzer  # type: ignore  # noqa: E402
 
-
-def test_c_analyzer_functions_structs_typedefs_includes(tmp_path):
+def test_c_analyzer_functions_structs_typedefs_includes(tmp_path, get_ready_specific_analyzer):
     c_code = '''
     #include <stdio.h>
     #include "myheader.h"
@@ -33,7 +31,7 @@ def test_c_analyzer_functions_structs_typedefs_includes(tmp_path):
     c_file = tmp_path / "example.c"
     c_file.write_text(c_code)
 
-    analyzer = CAnalyzer(str(tmp_path), "example.c")
+    analyzer = get_ready_specific_analyzer(str(tmp_path), "example.c")
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
     assert stats["NUMBER_OF_FUNCTIONS"] == 2
@@ -42,10 +40,10 @@ def test_c_analyzer_functions_structs_typedefs_includes(tmp_path):
     assert "myheader.h" in stats["IMPORTED_PACKAGES"]
 
 
-def test_c_analyzer_empty_file(tmp_path):
+def test_c_analyzer_empty_file(tmp_path, get_ready_specific_analyzer):
     c_file = tmp_path / "empty.c"
     c_file.write_text("")
-    analyzer = CAnalyzer(str(tmp_path), "empty.c")
+    analyzer = get_ready_specific_analyzer(str(tmp_path), "empty.c")
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
     assert stats["NUMBER_OF_FUNCTIONS"] == 0
@@ -53,7 +51,7 @@ def test_c_analyzer_empty_file(tmp_path):
     assert stats["IMPORTED_PACKAGES"] == []
 
 
-def test_typescript_analyzer_classes_interfaces_functions_imports(tmp_path):
+def test_typescript_analyzer_classes_interfaces_functions_imports(tmp_path, get_ready_specific_analyzer):
     ts_code = '''
     import React from "react";
     import { something } from "./local";
@@ -69,7 +67,7 @@ def test_typescript_analyzer_classes_interfaces_functions_imports(tmp_path):
 
     ts_file = tmp_path / "example.ts"
     ts_file.write_text(ts_code)
-    analyzer = TypeScriptAnalyzer(str(tmp_path), "example.ts")
+    analyzer = get_ready_specific_analyzer(str(tmp_path), "example.ts")
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
     assert stats["NUMBER_OF_CLASSES"] == 1
@@ -79,10 +77,10 @@ def test_typescript_analyzer_classes_interfaces_functions_imports(tmp_path):
     assert "fs" in stats["IMPORTED_PACKAGES"]
 
 
-def test_typescript_analyzer_empty_file(tmp_path):
+def test_typescript_analyzer_empty_file(tmp_path, get_ready_specific_analyzer):
     ts_file = tmp_path / "empty.ts"
     ts_file.write_text("")
-    analyzer = TypeScriptAnalyzer(str(tmp_path), "empty.ts")
+    analyzer = get_ready_specific_analyzer(str(tmp_path), "empty.ts")
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
     assert stats["NUMBER_OF_CLASSES"] == 0

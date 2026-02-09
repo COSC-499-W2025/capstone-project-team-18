@@ -6,7 +6,7 @@ from src.core.analyzer import PythonAnalyzer
 from src.core.statistic import FileStatCollection, FileDomain
 
 
-def test_PythonAnalyzer_core_stats(tmp_path):
+def test_PythonAnalyzer_core_stats(tmp_path, get_ready_specific_analyzer):
     target_dir = tmp_path / "example_python"
     target_dir.mkdir()
 
@@ -15,7 +15,8 @@ def test_PythonAnalyzer_core_stats(tmp_path):
     shutil.copyfile(src="./tests/resources/example_python.py",
                     dst=target_file)
 
-    report = PythonAnalyzer(str(target_dir), "example_python.py").analyze()
+    report = get_ready_specific_analyzer(
+        str(target_dir), "example_python.py").analyze()
 
     REAL_TYPE_OF_FILE = FileDomain.CODE
     REAL_NUMBER_OF_FUNCTIONS = 7
@@ -37,7 +38,7 @@ def test_PythonAnalyzer_core_stats(tmp_path):
     assert set(REAL_IMPORTS) == set(measured_imports)
 
 
-def test_PythonAnalyzer_no_functions_or_classes(tmp_path, create_temp_file):
+def test_PythonAnalyzer_no_functions_or_classes(tmp_path, create_temp_file, get_ready_specific_analyzer):
     content = (
         "# This is a simple python file\n"
         "import os\n"
@@ -49,7 +50,7 @@ def test_PythonAnalyzer_no_functions_or_classes(tmp_path, create_temp_file):
     file_path = create_temp_file(
         "test_PythonAnalyzer_no_functions_or_classes.py", content, tmp_path)
 
-    report = PythonAnalyzer(file_path[0], file_path[1]).analyze()
+    report = get_ready_specific_analyzer(file_path[0], file_path[1]).analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)
@@ -63,7 +64,7 @@ def test_PythonAnalyzer_no_functions_or_classes(tmp_path, create_temp_file):
     assert set(imported_packages) == set(["os", "sys"])
 
 
-def test_create_with_analysis_python_file(tmp_path, create_temp_file):
+def test_create_with_analysis_python_file(tmp_path, create_temp_file, get_ready_specific_analyzer):
     """Test analysis for Python files."""
     content = (
         "import os\n"
@@ -81,7 +82,8 @@ def test_create_with_analysis_python_file(tmp_path, create_temp_file):
     )
 
     file_path = create_temp_file("example.py", content, tmp_path)
-    file_report = PythonAnalyzer(file_path[0], file_path[1]).analyze()
+    file_report = get_ready_specific_analyzer(
+        file_path[0], file_path[1]).analyze()
 
     # Test Python-specific statistics
     assert file_report.get_value(

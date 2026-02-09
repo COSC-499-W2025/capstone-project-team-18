@@ -79,3 +79,7 @@ ui/.vite/
 
 # Logs (if any appear later)
 ui/*.log
+
+*.db
+src/database/schema.sql
+src/database/example.py

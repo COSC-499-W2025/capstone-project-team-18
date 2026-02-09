@@ -4,7 +4,7 @@ from src.core.statistic import FileStatCollection
 from src.core.analyzer import PythonAnalyzer, get_appropriate_analyzer
 
 
-def test_process_not_empty_not_called_for_empty_file(tmp_path, monkeypatch, create_temp_file):
+def test_process_not_empty_not_called_for_empty_file(tmp_path, monkeypatch, create_temp_file, get_ready_specific_analyzer):
     """
     For a code file that is empty, ensure that
     _process_not_empty method is not called and
@@ -25,7 +25,7 @@ def test_process_not_empty_not_called_for_empty_file(tmp_path, monkeypatch, crea
     monkeypatch.setattr(PythonAnalyzer, "_process_not_empty",
                         _fake_process_not_empty)
 
-    report = PythonAnalyzer(file_path[0], file_path[1]).analyze()
+    report = get_ready_specific_analyzer(file_path[0], file_path[1]).analyze()
 
     # Ensure _process_not_empty was NOT called for an empty file
     assert called["val"] is False
@@ -36,7 +36,7 @@ def test_process_not_empty_not_called_for_empty_file(tmp_path, monkeypatch, crea
     assert report.get_value(FileStatCollection.NUMBER_OF_INTERFACES.value) == 0
 
 
-def test_general_coding_language_does_not_get_specific(tmp_path, create_temp_file):
+def test_general_coding_language_does_not_get_specific(tmp_path, create_temp_file, get_ready_specific_analyzer):
     """
     Test if we have a empty file that we don't have a specifc
     analyzer for, we do not get any statistics about function,
@@ -45,7 +45,7 @@ def test_general_coding_language_does_not_get_specific(tmp_path, create_temp_fil
 
     file_path = create_temp_file("empty.R", "", tmp_path)
 
-    report = get_appropriate_analyzer(
+    report = get_ready_specific_analyzer(
         file_path[0], file_path[1]).analyze()
 
     assert report.get_value(
