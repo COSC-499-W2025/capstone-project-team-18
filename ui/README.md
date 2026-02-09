@@ -130,3 +130,25 @@ rm -f "$HOME/Library/Application Support/electron-vite-react/SingletonLock"
 npm run dev
 ```
 ---
+
+# 9. TODO / Future Improvements
+
+### 9.1 Content Security Policy (CSP) Hardening
+
+During development, Electron may log a warning about an insecure or missing
+Content Security Policy (CSP), often due to the use of Vite hot module
+reloading and development tooling that relies on `unsafe-eval`.
+
+This warning is expected in development mode and does **not** block functionality.
+It typically does not appear (or is different) once the app is packaged for
+production.
+
+**Planned improvements:**
+- Define an explicit CSP for the Electron renderer process
+- Remove `unsafe-eval` and other overly permissive directives in production
+- Align CSP rules with packaged Electron assets (`file://`) instead of dev URLs
+- Document production vs development CSP differences
+
+These changes will be addressed when preparing the app for production builds.
+
+---
