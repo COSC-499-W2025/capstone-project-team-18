@@ -127,7 +127,7 @@ This week I completed the second stage of the CLI User Preferences system implem
 
 Building on that foundation, I successfully implemented and merged PR [#186](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/186) which added the complete user login and credentials system. This included developing the `do_login()` method with input validation and retry loops, adding credential storage methods to UserPreferences, and integrating the new "(5) User Login" option into the CLI command routing system. The implementation features secure password display, persistent credential storage, and proper integration with existing preference management.
 
-# Week 12, Nov 17-23
+## Week 12, Nov 17-23
 
 ![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week12_log.png)
 
@@ -138,7 +138,7 @@ I also tackled a critical bug fix in PR [#242](https://github.com/COSC-499-W2025
 
 For code reviews, I checked out Alex's database retrieval PR [#236](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/236) which added methods for fetching stored reports from the database, and Tawana's chronological skills list PR [#246](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/246) that organizes skills by time period for resume generation.
 
-# Week 13, Nov 24-30
+## Week 13, Nov 24-30
 
 ![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_1/Erem/erem_week13_log.png)
 
