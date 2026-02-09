@@ -8,7 +8,23 @@
 
 **[Week 3, 01/19 - 01/25](#week-3-0119---0125)**
 
+**[Week 4–5, 01/26 - 02/08](#week-4-5-0126---0208)**
+
 ---
+
+# Week 4-5 01/26 - 02/08
+[Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week4-5_log.png)
+Over Weeks 4–5, I expanded the Electron-based UI beyond the initial scaffold by implementing basic frontend pages for browsing projects and skills and wiring them to the existing FastAPI endpoints. I added client-side routing for project lists and project detail views, with appropriate loading, empty-state, and error handling aligned with the current backend contracts.
+
+I also extended the centralized API client to support fetching individual projects and updated the backend connectivity check to use the lightweight /ping endpoint, decoupling UI checks from database-backed routes. Alongside this, I expanded Vitest unit test coverage for the API client to validate URL construction, parameter encoding, and error handling without requiring the backend to be running. This was done in the following PR: [PR `#425` Add basic Electron UI with projects and skills Pages](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/425)
+
+In addition, I refined the original Electron UI initialization work by incorporating feedback, configuring CORS for local development, adding a ui/README.md to document frontend setup and testing, and adding UI tests to GitHub Actions workflows. This was done in the following PR: [PR `#388` Initialize Electron UI and FastAPI Integration](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/388)
+
+Additionally, I reviewed the following PRs:
+1. [PR `#417` LaTeX to PDF Rendering](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/417)
+2. [PR `#419` [perf] Speed-up file reports analysis](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/419)
+3. [PR `#414` 406 display textual information about a project](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/414)
+4. [PR `#395` Contribution Metric HOTFIX](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/395)
 
 # Week 3 01/19 - 01/25
 [Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week3_log.png)
