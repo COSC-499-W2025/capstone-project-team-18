@@ -396,7 +396,7 @@ class ProjectActivityTypeContributions(ProjectStatisticCalculation):
             if not file_domain or not lines_in_file:
                 continue
 
-            if fr.get_value(FileStatCollection.CONTRIBUTED_TO.value) is False:
+            if fr.is_info_file:
                 continue
 
             percent = 1

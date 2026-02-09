@@ -2,14 +2,15 @@
 Utility functions for handling zipped files.
 """
 
+import os
+import re
 import shutil
 import subprocess
-import tempfile
-import os
 import sys
-import zipfile
-import py7zr
 import tempfile
+import zipfile
+
+import py7zr
 
 from src.infrastructure.log.logging import get_logger
 

@@ -3,7 +3,7 @@ from src.core.analyzer import (
 )
 
 
-def test_css_analyzer_rules_classes_imports(tmp_path):
+def test_css_analyzer_rules_classes_imports(tmp_path, get_ready_specific_analyzer):
     css_code = '''
     @import url("theme.css");
     .btn { color: red; }
@@ -15,7 +15,7 @@ def test_css_analyzer_rules_classes_imports(tmp_path):
     css_file = tmp_path / "example.css"
     css_file.write_text(css_code)
 
-    analyzer = CSSAnalyzer(str(tmp_path), "example.css")
+    analyzer = get_ready_specific_analyzer(str(tmp_path), "example.css")
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
 
@@ -24,10 +24,10 @@ def test_css_analyzer_rules_classes_imports(tmp_path):
     assert "theme.css" in stats["IMPORTED_PACKAGES"]
 
 
-def test_css_analyzer_empty_file(tmp_path):
+def test_css_analyzer_empty_file(tmp_path, get_ready_specific_analyzer):
     css_file = tmp_path / "empty.css"
     css_file.write_text("")
-    analyzer = CSSAnalyzer(str(tmp_path), "empty.css")
+    analyzer = get_ready_specific_analyzer(str(tmp_path), "empty.css")
     report = analyzer.analyze()
     stats = report.statistics.to_dict()
     assert stats["NUMBER_OF_FUNCTIONS"] == 0

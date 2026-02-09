@@ -1,10 +1,14 @@
 from pathlib import Path
+
 from pytest import approx
-from src.core.report import ProjectReport
-from src.core.project_discovery.project_discovery import ProjectLayout
+
 from src.core.analyzer import extract_file_reports
-from src.core.statistic import ProjectStatCollection, FileDomain, FileStatCollection
-from src.core.report.project.project_statistics import ProjectActivityTypeContributions
+from src.core.project_discovery.project_discovery import ProjectLayout
+from src.core.report import ProjectReport
+from src.core.report.project.project_statistics import \
+    ProjectActivityTypeContributions
+from src.core.statistic import (FileDomain, ProjectStatCollection)
+from src.database.api.models import UserConfigModel
 
 
 def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_layout, mock_readme_analysis):
@@ -29,7 +33,7 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_l
 
     make_project_layout(pf)
 
-    frs = extract_file_reports(pf)
+    frs = extract_file_reports(pf, UserConfigModel())
 
     pr_email = ProjectReport(
         file_reports=frs,
@@ -66,16 +70,17 @@ def test_activity_contribution_from_git_project(project_realistic, mock_readme_a
     count the contribution percentage
     """
 
-    my_email = "bob@example.com"
+    uc = UserConfigModel()
+    uc.user_email = "bob@example.com"
 
-    frs = extract_file_reports(project_realistic, email=my_email)
+    frs = extract_file_reports(project_realistic, uc)
 
     pr = ProjectReport(
         file_reports=frs,
         project_path=str(project_realistic.root_path),
         project_name=project_realistic.name,
         project_repo=project_realistic.repo,
-        user_email=my_email,
+        user_email=uc.user_email,
         calculator_classes=[
             ProjectActivityTypeContributions
         ]
@@ -84,8 +89,7 @@ def test_activity_contribution_from_git_project(project_realistic, mock_readme_a
     # Adjusted to include uncontributed files in case of use for semantic analysis
     # All activty type contributions should remain the same however
     assert frs is not None and len(frs) == 7
-    contrib_flags = [f.get_value(
-        FileStatCollection.CONTRIBUTED_TO.value) for f in frs]
+    contrib_flags = [f.is_info_file is False for f in frs]
     assert contrib_flags.count(True) == 5
     assert contrib_flags.count(False) == 2
 
@@ -103,6 +107,10 @@ def test_activity_contribution_from_git_project(project_realistic, mock_readme_a
     # 4 / 8 CODE
     # 2 / 8 TEST
     # 2 / 8 DOC
+
+    assert contr[FileDomain.CODE] == approx(4/8)
+    assert contr[FileDomain.TEST] == approx(2/8)
+    assert contr[FileDomain.DOCUMENTATION] == approx(2/8)
 
     assert contr[FileDomain.CODE] == approx(4/8)
     assert contr[FileDomain.TEST] == approx(2/8)

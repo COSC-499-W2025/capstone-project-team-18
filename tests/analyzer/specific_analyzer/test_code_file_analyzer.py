@@ -1,11 +1,15 @@
 """
 Tests for CodeFileAnalyzer (coding language detection and file domain).
 """
-from src.core.analyzer import CodeFileAnalyzer
-from src.core.statistic import FileStatCollection, CodingLanguage, FileDomain
+
+import shutil
+
+import pytest
+
+from src.core.statistic import CodingLanguage, FileDomain, FileStatCollection
 
 
-def test_determines_correct_coding_language(tmp_path, create_temp_file):
+def test_determines_correct_coding_language(tmp_path, create_temp_file, get_ready_specific_analyzer):
     file_extensions_to_test = (
         (CodingLanguage.PYTHON, ".py"),
         (CodingLanguage.JAVA, ".java"),
@@ -17,18 +21,18 @@ def test_determines_correct_coding_language(tmp_path, create_temp_file):
 
     for value, extension in file_extensions_to_test:
         path = create_temp_file("temp" + extension, "", tmp_path)
-        report = CodeFileAnalyzer(path[0], path[1]).analyze()
+        report = get_ready_specific_analyzer(path[0], path[1]).analyze()
         assert report.get_value(
             FileStatCollection.CODING_LANGUAGE.value) == value
 
 
-def test_unkown_coding_language(tmp_path, create_temp_file):
+def test_unkown_coding_language(tmp_path, create_temp_file, get_ready_specific_analyzer):
     path = create_temp_file("temp" + ".xyx", "", tmp_path)
-    report = CodeFileAnalyzer(path[0], path[1]).analyze()
+    report = get_ready_specific_analyzer(path[0], path[1]).analyze()
     assert report.get_value(FileStatCollection.CODING_LANGUAGE.value) is None
 
 
-def test_file_domain_is_not_test(tmp_path, create_temp_file):
+def test_file_domain_is_not_test(tmp_path, create_temp_file, get_ready_specific_analyzer):
     filenames = ["intestine_analysis.py",
                  "testsaver.java", "protest_action.ts",
                  "latest_testresults.py", "unit_testdata_loader.py"]
@@ -36,26 +40,41 @@ def test_file_domain_is_not_test(tmp_path, create_temp_file):
     for filename in filenames:
         file = create_temp_file(
             filename, "print('Hello, world!')", path=tmp_path)
-        report = CodeFileAnalyzer(file[0], file[1]).analyze()
+        report = get_ready_specific_analyzer(file[0], file[1]).analyze()
 
         assert report.get_value(
             FileStatCollection.TYPE_OF_FILE.value) == FileDomain.CODE
 
 
-def test_file_domain_is_test_by_filename(tmp_path, create_temp_file):
-    filenames = ["test_example.py", "example_test.py", "hello_test_example",
-                 "sam_testing.py", "utils.test.py", "api-test-get-requests.js"]
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "test_example.py",
+        "example_test.py",
+        "hello_test_example.py",
+        "sam_testing.py",
+        "utils.test.py",
+        "api-test-get-requests.js",
+    ],
+)
+def test_file_domain_is_test_by_filename(
+    filename,
+    tmp_path,
+    create_temp_file,
+    get_ready_specific_analyzer,
+):
+    file = create_temp_file(
+        filename, "print('Hello, world!')", path=tmp_path
+    )
+    report = get_ready_specific_analyzer(file[0], file[1]).analyze()
 
-    for filename in filenames:
-        file = create_temp_file(
-            filename, "print('Hello, world!')", path=tmp_path)
-        report = CodeFileAnalyzer(file[0], file[1]).analyze()
-
-        assert report.get_value(
-            FileStatCollection.TYPE_OF_FILE.value) == FileDomain.TEST
+    assert (
+        report.get_value(FileStatCollection.TYPE_OF_FILE.value)
+        == FileDomain.TEST
+    )
 
 
-def test_file_domain_is_test_by_path(tmp_path, create_temp_file):
+def test_file_domain_is_test_by_path(tmp_path, create_temp_file, get_ready_specific_analyzer):
     directory_names = ["tests", "test", "Test"]
 
     for name in directory_names:
@@ -63,7 +82,9 @@ def test_file_domain_is_test_by_path(tmp_path, create_temp_file):
         target_dir.mkdir()
 
         file = create_temp_file("hello_world.py", "", path=target_dir)
-        report = CodeFileAnalyzer(file[0], file[1]).analyze()
+        report = get_ready_specific_analyzer(file[0], file[1]).analyze()
 
         assert report.get_value(
             FileStatCollection.TYPE_OF_FILE.value) == FileDomain.TEST
+
+        shutil.rmtree(target_dir)

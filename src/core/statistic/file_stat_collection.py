@@ -127,9 +127,3 @@ class FileStatCollection(Enum):
         description="the coding language of the file",
         expected_type=CodingLanguage
     )
-
-    CONTRIBUTED_TO = FileStatisticTemplate(
-        name="CONTRIBUTED_TO",
-        description="whether or not user has contributed to a file",
-        expected_type=bool
-    )
