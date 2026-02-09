@@ -5,6 +5,7 @@ with the analyzer class structure.
 
 from multiprocessing import Pool, cpu_count
 from git import Repo
+from typing import Optional
 from pathlib import Path
 
 from src.core.report.file_report import FileReport
