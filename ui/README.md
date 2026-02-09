@@ -69,7 +69,7 @@ It is recommended to use two terminal windows:
 1. One running the FastAPI backend
 2. One running the Electron UI
 
-The Electron UI will display whether it is Connected ✅ or Disconnected ❌ from the backend based on live HTTP requests. 
+The Electron UI will display whether it is Connected ✅ or Disconnected ❌ from the backend using a lightweight `GET /ping` check, decoupled from database-backed endpoints. 
 
 ---
 
@@ -85,9 +85,11 @@ Ctrl + C
 The Electron UI uses Vitest for unit testing instead of Pytest. These tests are frontend-only and do not require the FastAPI backend to be running.
 
 ### 7.1 What is Tested:
-- API client behavior (URL construction, environment handling)
-- Correct endpoint calls (e.g. /projects)
-- Error handling for non-200 HTTP responses
+- API client behavior (URL construction, base URL normalization)
+- Correct endpoint calls (`/projects`, `/projects/{project_name}`, `/skills`, `/ping`)
+- URL encoding for route parameters (e.g. project names with spaces)
+- Error handling for non-200 HTTP responses, including actionable error messages
+- Backend connectivity checks independent of database state
 
 ### 7.2 How The Tests Work:
 - Tests run in a Node/Vitest environment, not in a browser
