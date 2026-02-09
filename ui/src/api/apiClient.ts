@@ -52,19 +52,17 @@ export const api = {
    */
   
 ping: async (): Promise<boolean> => {
-  try {
-    const base = getApiBaseUrl();
-    const res = await fetch(`${base}/projects`);
-    return res.ok;
-  } catch {
-    return false;
-  }
-},
+    try {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base}/ping`);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
 
   getProjects: () => getJson<any>("/projects"),
-
+  getSkills: () => getJson<any>("/skills"),
   getProject: (Name: string | number) =>
     getJson<any>(`/projects/${encodeURIComponent(String(Name))}`),
-
-  getSkills: () => getJson<any>("/skills")
 };

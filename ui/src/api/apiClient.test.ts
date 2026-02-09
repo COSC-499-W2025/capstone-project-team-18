@@ -49,3 +49,43 @@ describe("apiClient", () => {
     await expect(api.getProjects()).rejects.toThrow("API request failed (500)");
   });
 });
+
+it("encodes project_name in /projects/:project_name URL", async () => {
+  fetchMock.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ project_name: "My Project" }),
+  });
+
+  await api.getProject("My Project");
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/projects/My%20Project"
+  );
+});
+
+it("ping calls /ping", async () => {
+  fetchMock.mockResolvedValueOnce({ ok: true });
+
+  const ok = await api.ping();
+
+  expect(ok).toBe(true);
+  expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/ping");
+});
+
+it("includes status and URL in error message", async () => {
+  fetchMock.mockResolvedValueOnce({
+    ok: false,
+    status: 404,
+    text: async () => "Not Found",
+  });
+
+  try {
+    await api.getProject("missing");
+    throw new Error("Expected getProject to throw");
+  } catch (e: any) {
+    expect(String(e.message)).toContain("API request failed (404)");
+    expect(String(e.message)).toContain(
+      "http://127.0.0.1:8000/projects/missing"
+    );
+  }
+});
