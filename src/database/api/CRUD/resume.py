@@ -53,3 +53,14 @@ def load_resume(session: Session, resume_id: int) -> Optional[Resume]:
         return None
 
     return deserialize_resume(model)
+
+def get_resume_model_by_id(session: Session, resume_id: int) -> Optional[ResumeModel]:
+    """
+    Get the ResumeModel directly ie not deserialized to domain object
+    """
+    statement = (
+        select(ResumeModel)
+        .where(ResumeModel.id == resume_id)
+        .options(selectinload(ResumeModel.items))  # pyright: ignore
+    )
+    return session.exec(statement).first()
