@@ -4,7 +4,6 @@ with the analyzer class structure.
 """
 
 from multiprocessing import Pool, cpu_count
-from git import Repo
 from typing import Optional
 from pathlib import Path
 
@@ -30,29 +29,19 @@ logger = get_logger(__name__)
 
 
 def single_file_analysis(
-    args
+    file,
+        project_name,
+        user_config,
+        project_context,
+        relative_path
 ) -> Optional[FileReport]:
     """
     Method to anlayze a single file. Grabs appropriate analyzer, checks if it should be included
     only as `INFO_FILE` and returns the analyzed fileReport.
     """
-    (
-        root_path,
-        file,
-        repo_path,
-        email,
-        github,
-        language_filter,
-        project_name,
-    ) = args
 
     analyzer = get_appropriate_analyzer(
-        root_path,
-        str(file),
-        Repo(repo_path) or None,
-        email,
-        github,
-        language_filter,
+        user_config, project_context, relative_path
     )
 
     if not analyzer.should_analyze_file():
@@ -88,19 +77,17 @@ def extract_file_reports(
 
     args = [
         (
-            str(project_file.root_path),
             file,
-            project_file.repo.working_tree_dir if project_file.repo else None,
-            email,
-            github,
-            language_filter,
             project_file.name,
+            user_config,
+            project_file,
+            str(file)
         )
         for file in project_files
     ]
 
     with Pool(processes=workers) as pool:
-        results = pool.map(single_file_analysis, args)
+        results = pool.starmap(single_file_analysis, args)
 
     return [r for r in results if r is not None]
 
