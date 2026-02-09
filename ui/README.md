@@ -112,4 +112,21 @@ npx vitest run
 - Unit tests (Vitest): should mock network calls (`fetch`) and not depend on the backend.
 - Integration/End-to-end tests (optional later): can be added separately if we want to validate real backend + UI flows.
 
+# 8. Troubleshooting
+
+
+### 8.1 Electron refuses to launch or shows `SingletonLock` errors
+
+If Electron crashes or is force-stopped, it may leave behind a stale
+singleton lock file and refuse to relaunch.
+
+If you see errors like: `Failed to create ... SingletonLock: File exists`
+
+Run the following to reset Electron, then restart the UI:
+
+```bash
+pkill -f Electron
+rm -f "$HOME/Library/Application Support/electron-vite-react/SingletonLock"
+npm run dev
+```
 ---

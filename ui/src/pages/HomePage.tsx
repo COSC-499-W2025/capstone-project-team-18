@@ -81,12 +81,16 @@ export default function HomePage() {
 
       <pre
         style={{
-          background: "#f6f6f6",
+          background: "#1f1f1f",
+          color: "#e6e6e6",
           padding: 14,
           borderRadius: 10,
           maxHeight: 450,
           overflow: "auto",
-          margin: 0
+          margin: 0,
+          fontSize: 14,
+        lineHeight: 1.5,
+        border: "1px solid #2a2a2a" 
         }}
       >
         {output ? JSON.stringify(output, null, 2) : "Click an endpoint to load data…"}
