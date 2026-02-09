@@ -6,6 +6,8 @@
 
 **[Week 2, Jan. 12 – 18](#week-2-jan-12--18)**
 
+**[Week 3, Jan. 19 – 25](#week-3-jan-19--25)**
+
 ---
 
 ## Week 1, Jan. 05 – 11
@@ -37,3 +39,14 @@ Here are the PRs that I reviewed this week:
 - [#351 Decouple Start Miner Logic from the CLI and make Service Outline, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/351#pullrequestreview-3675793062)
 - [#355 Initialize API, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/355)
 - [#363 Error thrown by logging.py if not ran in the src directory, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/363)
+
+## Week 3, Jan. 19 – 25
+
+### Peer Eval
+
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/alex/week3.png)
+
+### Recap
+
+I continued to work on the database config changes that are necessary for Milestone 2. The changes that are needed are very complicated, so I did not complete all of them in one week. I worked on adding some of the changes from [Issue 361](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/361). I also worked on implementing some new tests for the changes. I will have a deeper explanation of these changes once I've completed them; I spent a lot of time having to figure out _how_ the database needs to change, so I will hopefully be implementing more of the changes in the next week or two.
+

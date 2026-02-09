@@ -41,6 +41,30 @@ I reviewed the following PRs:
 ### Summary
 
 As talked about last week these weeks were focused on big architercure changes the portfolio system and an entire DB rework. Moving forward, look to start getting specific requirements for Milestone #2 done. I will do this by levelaging these new changes.
+## Week 3 01/19-01/25
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week3_log.png)
+
+### Coding Tasks
+
+This week my PR's focused adding robustness to our system for the upcoming API. This included making sure that the start_miner function could handle project level errors instead of just erroring out, making sure that the miner would only mine to the project level, and simplifying the passing of data in our code (PR #378). Also, I created a entire new class system to handle portfolios. This ensure that we have a system to update, incrementaly add, and resolve conflicts with our portfilo objects.
+
+- [PR #378 Robust start_miner_service](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/378)
+- [PR #383 Portfolio Class Sytem](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/383)
+
+### Testing Tasks
+
+I added tests for each of my PRs and apated existing tests to deal with the movement of logic.
+
+### Review Tasks
+
+I reviewed the following PRs
+- [PR #381 ML-based contribution pattern analysis for commit classification, work patterns, and collaboration roles](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/381)
+- [PR #377 Alembic hotfix, created initial revision file for the database](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/377)
+
+### Summary
+
+This week focused on big sweeping architecure additions and changes. However, with this new changes, it should be really easy to create endpoints for our API. Next week will focus on getting endpoints developed.
 
 ## Week 2 01/12 - 01/18
 

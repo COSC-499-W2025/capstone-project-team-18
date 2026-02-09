@@ -2,11 +2,27 @@
 
 ## Table of Contents
 
+**[T2 Week 3, Jan 19 - 25](#t2-week-2-jan-19--jan-25)**
+
 **[T2 Week 2, Jan 12 - 18](#t2-week-2-jan-12--jan-18)**
 
 **[Week 1, Jan 05 - 11](#week-1-jan-05---11)**
 
 ---
+
+## T2 Week 3, Jan 19 - 25
+
+### Peer Eval
+
+![Peer Eval](/logs/log_images/personal_log_imgs/Erem/erem_t2_week3_log.png)
+
+### Recap
+This week was mainly about closing out and landing my ML contribution analysis work, plus reviewing teammate PRs. I finished up and merged PR [#360: ML-based contribution pattern analysis for commit classification, work patterns, and collaboration roles](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/381) which adds ML-based contribution pattern analysis at the ProjectReport level, and delievers on part of Milestone #2 requirement #25	"Incorporate evidence of success (e.g., metrics, feedback, evaluation) for a given project".
+
+The feature classifies commit messages using BART zero-shot (bart-large-mnli) into commit types, clusters commit timing with DBSCAN to label work cadence patterns (consistent, burst, sprint-based, sporadic), and infers a collaboration role (leader, core contributor, specialist, occasional, solo) based on contribution share, team size, and commit mix. I also made sure the implementation behaves well in real usage by lazy-loading and caching models, degrading cleanly to heuristics when ML is disabled or unavailable, and tightening up ProjectReport initialization order (calling super().__init__() before building stats). Alongside the feature work, I added unit tests for each analyzer and integration coverage for end-to-end statistics generation, and updated dependencies needed for transformers and scikit-learn.
+
+On the review side, I reviewed Sam’s PR [Robust start_miner_service #378](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/378) and reviewed Priyansh’s work [Improve README insights stability and CLI output formatting and adding docstrings #380](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/380).
+
 
 ## T2 Week 2, Jan 12 - 18
 

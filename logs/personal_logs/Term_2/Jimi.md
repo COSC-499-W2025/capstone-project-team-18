@@ -4,6 +4,7 @@
 
 **[Week 1, Jan. 05 - 11](#week-1-jan-05---11)**
 **[Week 2, Jan. 12 - 18](#week-1-jan-12---18)**
+**[Week 3, Jan. 19 - 25](#week-1-jan-19---25)**
 
 ---
 
@@ -49,4 +50,37 @@ I reviewed [#351](https://github.com/COSC-499-W2025/capstone-project-team-18/pul
 
 ### Next Week
 
-Next week will bring the first stages of the frontend and 'inference' from the newly compiuted insights in the ML models. Additionally, we will need to integrate the API to tie togther the current analysis with the ability for the user to fetch information whether through a direct API call or a User Interface.
+Next week will bring the first stages of the frontend and 'inference' from the newly computed insights in the ML models. Additionally, we will need to integrate the API to tie togther the current analysis with the ability for the user to fetch information whether through a direct API call or a User Interface.
+
+## Week 3, Jan. 19 - 25
+
+### Peer Eval
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/jimi/jimi_week2_log.png)
+
+
+### Recap
+
+Last week we worked on the frontend connection which included API integration, a new Portfolio class system, API integration and improvements on service includes ML analysis and other key requirements.
+
+### This Week
+
+This week we first met to create varying teams such as ML, system analysis, database & frontend. With each person leading a single group and also being a part of many, there was proper division of the work. No major issues in terms of development or progress were encountered this week.
+
+### Coding Tasks
+
+I focused on resolving some fixes and adding smoe key requirements. This included adjusting the behaviour for files which are not contributed to and can be found in [#391](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/391).
+The second feature was a key requirement to recognize and not reaanalyze duplicate files. This was resolved using a `MD5` hash value and a database check. This is found at [#393](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/393)
+
+### Testing Tasks
+
+Tests were added and debugged primarly for the last feature in PR **#393**. This was as multiple tests had to be added to ensure correct access to the database, proper table creation with the additnoal row and ensure duplicates were checked across many edge cases (uncontributed files etc...).  Beyond that, tests were done and reviewed for the `INFO_FILES` change in **#391**, which simply checked that fileReports were being generated correctly and prior functionality was unaffected.
+
+### Reviewing Tasks
+
+I reviewed [#380](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/388) which was changes needed improve on the ML insights on project tone and themes done by Priyansh. I additionally reviewed [#388](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/356) which was the initializatino of the Electron-based UI and integration with the current FastAPI setup.
+
+
+### Next Week
+Next week will further connect the frontend and backend by allowing for near-complete integration utlizing API calls. Additonally, the UI will be customized to further include more customization and the varying required pages.
+
