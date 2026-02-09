@@ -7,9 +7,10 @@ import pytest
 from src.utils.pathing_utils import unzip_file
 from src.core.analyzer import extract_file_reports
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
-from src.core.statistic import ProjectStatCollection, FileStatCollection
+from src.core.statistic import ProjectStatCollection
 from src.core.report import ProjectReport
 from src.core.report.project.project_statistics import ProjectTotalContributionPercentage
+from src.database.api.models import UserConfigModel
 
 
 @pytest.fixture
@@ -36,10 +37,8 @@ def test_verify_accurate_contribution_percentage(
     Verify total contribution percentage for different user emails.
     """
     file_reports = extract_file_reports(
-        project_file=discovered_project,
-        email=email,
-        github=None,
-        language_filter=None,
+        discovered_project,
+        UserConfigModel(user_email=email)
     )
 
     project_report = ProjectReport(
@@ -90,7 +89,10 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
         repo=repo
     )
 
-    fr = extract_file_reports(project_files, "charlie@example.com")
+    user_config = UserConfigModel()
+    user_config.user_email = "charlie@example.com"
+
+    fr = extract_file_reports(project_files, user_config)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),
@@ -100,8 +102,7 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
                        calculator_classes=[ProjectTotalContributionPercentage])
 
     # Charlie contributed 0% since not in any file reports
-    contrib_flags = [f.get_value(
-        FileStatCollection.CONTRIBUTED_TO.value) for f in fr]
+    contrib_flags = [f.is_info_file is False for f in fr]
     assert contrib_flags.count(True) == 0
     assert contrib_flags.count(False) == 2
 
@@ -130,7 +131,10 @@ def test_total_contribution_percentage_single_file_full_contribution(tmp_path: P
         repo=repo
     )
 
-    fr = extract_file_reports(project_files, "alice@example.com")
+    user_config = UserConfigModel()
+    user_config.user_email = "alice@example.com"
+
+    fr = extract_file_reports(project_files, user_config)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),
@@ -173,7 +177,10 @@ def test_total_contribution_percentage_three_way_split(tmp_path: Path, mock_read
         repo=repo
     )
 
-    fr = extract_file_reports(project_files, "alice@example.com")
+    user_config = UserConfigModel()
+    user_config.user_email = "alice@example.com"
+
+    fr = extract_file_reports(project_files, user_config)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),

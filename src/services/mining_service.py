@@ -3,7 +3,8 @@ This file holds the main service, the miner.
 """
 
 import tempfile
-from sqlalchemy.orm import Session
+from typing import Optional
+from sqlmodel import SQLModel, Session
 from dataclasses import dataclass
 from pydantic import BaseModel
 
@@ -11,10 +12,10 @@ from src.utils.pathing_utils import unzip_file_bytes
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
 from src.core.analyzer import extract_file_reports
 from src.core.report import ProjectReport
-from src.database.base import get_engine, Base
-from src.database.utils.database_modify import create_row
+from src.database.core.base import get_engine
+from src.database.api.CRUD.projects import save_project_report
 from src.infrastructure.log.logging import get_logger
-from src.services.preferences.preference_service import UserConfig
+from src.database.api.models import UserConfigModel as UserConfig
 from src.utils.errors import (
     NoDiscoveredProjects,
     MissingStartMinerConsent,
@@ -87,9 +88,7 @@ def _analyze_project_files(
 
     file_reports = extract_file_reports(
         project_file=project_layout,
-        email=user_config.email,
-        github=user_config.github,
-        language_filter=user_config.language_filter
+        user_config=user_config
     )
 
     logger.debug("File reports for project %s file_reports",
@@ -105,12 +104,12 @@ def _analyze_project_files(
         project_path=str(project_layout.root_path),
         project_repo=project_layout.repo,
         file_reports=file_reports,
-        user_email=user_config.email,
+        user_email=user_config.user_email,
         user_github=user_config.github
     )
 
 
-def _save_project_report_to_db(project_report: list[ProjectReport]) -> None:
+def _save_project_report_to_db(project_report: list[ProjectReport], user_config_id: Optional[int]) -> None:
     """
     Saves many ProjectReports and their corresponding FileReports
     to the database.
@@ -122,23 +121,11 @@ def _save_project_report_to_db(project_report: list[ProjectReport]) -> None:
     engine = get_engine()
 
     # Create tables if they do not exist
-    Base.metadata.create_all(engine)
+    SQLModel.metadata.create_all(engine)
 
     with Session(engine) as session:
         for pr in project_report:
-
-            # Save File Reports
-            file_report_rows = []
-            for fr in pr.file_reports:
-                file_report = create_row(fr)
-                file_report_rows.append(file_report)
-
-            # Create project_report row and configure FK relations
-            project_row = create_row(pr)
-            project_row.file_reports.extend(file_report_rows)
-
-            # Insert all of the rows into the database
-            session.add_all([project_row])
+            save_project_report(session, pr, user_config_id)
             session.commit()
 
 
@@ -222,7 +209,7 @@ def start_miner_service(
                 error_message=str(e)
             ))
 
-    _save_project_report_to_db(project_reports)
+    _save_project_report_to_db(project_reports, None)
 
     success = len(project_errors) == 0
     return MinerResults(project_errors=project_errors,

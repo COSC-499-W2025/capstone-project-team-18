@@ -63,7 +63,7 @@ class ProjectReport(BaseReport):
         self.github = user_github
         self.sub_dirs = self._get_sub_dirs()
         self.contributed_to = any(
-            fr.get_value(FileStatCollection.CONTRIBUTED_TO.value) is True for fr in self.file_reports)
+            fr.is_info_file is False for fr in self.file_reports)
 
         self.project_statistics = StatisticIndex()
 
