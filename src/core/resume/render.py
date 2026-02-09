@@ -5,6 +5,9 @@ from pathlib import Path
 import tempfile
 from typing import TYPE_CHECKING, Union
 from pdflatex import PDFLaTeX
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from src.core.resume.resume import Resume, ResumeItem
@@ -70,7 +73,12 @@ class PDFRenderer(ResumeRender):
 
             pdfLaTeX = PDFLaTeX.from_texfile(str(tex_path))
             pdfLaTeX.set_interaction_mode()
-            pdf, _, _ = pdfLaTeX.create_pdf()
+            try:
+                pdf, _, _ = pdfLaTeX.create_pdf(keep_pdf_file=True)
+            except FileNotFoundError:
+                logger.error("There is a problem with your TeX Live installation.\n"
+                             "Run which pdflatex in your terminal to see if TeX Live is properly installed.\n"
+                             "If nothing is shown, visit https://www.tug.org/texlive/ for installation instructions")
 
         return pdf
 

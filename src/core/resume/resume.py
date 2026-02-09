@@ -65,10 +65,11 @@ class Resume:
         return render.render(self)
 
     def to_pdf(self, filepath='resume.pdf'):
-        if not filepath[-4:] == '.pdf':
-            filepath = 'resume.pdf'
+        path = Path(filepath)
+        if path.suffix.lower() != ".pdf":
+            filepath = str(path.with_suffix(".pdf"))
             logger.info(
-                "Incorrect filename format has been replaced by resume.pdf")
+                "Incorrect filename format: %s has been replaced by resume.pdf", path)
 
         pdf = self.export(PDFRenderer())
 
