@@ -8,7 +8,12 @@ from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
 from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
 from src.core.statistic.skills import SkillMapper
-from src.core.ML.models.contribution_analysis import generate_signature, build_signature_facts
+from src.core.ML.models.contribution_analysis import (
+    generate_signature,
+    build_signature_facts,
+    generate_project_summary,
+    build_project_summary_facts,
+)
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
