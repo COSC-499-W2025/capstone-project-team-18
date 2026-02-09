@@ -28,35 +28,52 @@ export default function App() {
 
         <nav style={{ display: "flex", gap: 8 }}>
           <NavLink
-            to="/"
-            end
-            style={({ isActive }) => ({
-              ...linkStyle,
-              background: isActive ? "#f3f3f3" : "transparent"
+          to="/"
+          end
+          style={({ isActive }) => ({
+            padding: "8px 14px",
+            borderRadius: 12,
+            textDecoration: "none",
+            color: isActive ? "#fff" : "#ccc",
+            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+            transition: "all 0.2s ease",
+            display: "inline-block",
             })}
-          >
-            Home
-          </NavLink>
+            >
+              Home
+              </NavLink>
 
           <NavLink
-            to="/projects"
-            style={({ isActive }) => ({
-              ...linkStyle,
-              background: isActive ? "#f3f3f3" : "transparent"
+          to="/projects"
+          end
+          style={({ isActive }) => ({
+            padding: "8px 14px",
+            borderRadius: 12,
+            textDecoration: "none",
+            color: isActive ? "#fff" : "#ccc",
+            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+            transition: "all 0.2s ease",
+            display: "inline-block",
             })}
-          >
-            Projects
-          </NavLink>
+            >
+              Projects
+              </NavLink>
 
           <NavLink
-            to="/skills"
-            style={({ isActive }) => ({
-              ...linkStyle,
-              background: isActive ? "#f3f3f3" : "transparent"
+          to="/skills"
+          end
+          style={({ isActive }) => ({
+            padding: "8px 14px",
+            borderRadius: 12,
+            textDecoration: "none",
+            color: isActive ? "#fff" : "#ccc",
+            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+            transition: "all 0.2s ease",
+            display: "inline-block",
             })}
-          >
-            Skills
-          </NavLink>
+            >
+              Skills
+              </NavLink>
         </nav>
       </header>
 

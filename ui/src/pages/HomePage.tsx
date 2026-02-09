@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { api, getApiBaseUrl } from "../api/apiClient";
 
 /**
- * Home = landing page
- * Keeps the quick connectivity checks + JSON viewer.
+ * Home = landing page with API connection status and quick test buttons
  */
 export default function HomePage() {
   const [connected, setConnected] = useState<boolean | null>(null);
