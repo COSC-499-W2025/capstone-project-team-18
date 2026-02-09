@@ -45,10 +45,8 @@ def single_file_analysis(
     )
 
     if not analyzer.should_analyze_file():
-        if analyzer.is_info_file():
-            return analyzer.create_info_file()
         logger.info("Skipping file %s in project %s", file, project_name)
-        return None
+        return analyzer.create_info_file()
 
     try:
         return analyzer.analyze()

@@ -5,6 +5,7 @@ from src.core.analyzer import analyzer_util
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.report.file_report import FileReport
 from src.core.statistic import StatisticIndex
+from src.database.api.models import UserConfigModel
 
 
 class DummyAnalyzer:
@@ -25,20 +26,19 @@ class DummyAnalyzer:
         return FileReport(StatisticIndex(), self.relative_path)
 
 
-def sequential_extract_file_reports(project_file: ProjectLayout) -> list[FileReport]:
+def sequential_extract_file_reports(
+    project_file: ProjectLayout,
+    user_config: UserConfigModel,
+) -> list[FileReport]:
     reports = []
 
     for file in project_file.file_paths:
         result = analyzer_util.single_file_analysis(
-            (
-                str(project_file.root_path),
-                file,
-                project_file.repo.working_tree_dir if project_file.repo else None,
-                None,
-                None,
-                None,
-                project_file.name,
-            )
+            file,
+            project_file.name,
+            user_config,
+            project_file,
+            str(file)
         )
         if result is not None:
             reports.append(result)
@@ -56,14 +56,14 @@ def test_extract_file_reports_parallel_speedup(project_realistic, monkeypatch):
     )
 
     def fake_get_appropriate_analyzer(
-            _root_path,
-            relative_path,
-            _repo,
-            _email,
-            _github,
-            _language_filter,
+        _user_config,
+        _project_context,
+        relative_path,
     ):
         return DummyAnalyzer(relative_path)
+
+    user_config = UserConfigModel()
+    user_config.user_email = "charlie@example.com"
 
     monkeypatch.setattr(
         analyzer_util,
@@ -74,11 +74,11 @@ def test_extract_file_reports_parallel_speedup(project_realistic, monkeypatch):
     monkeypatch.setattr(analyzer_util, "cpu_count", lambda: 4)
 
     start = time.perf_counter()
-    sequential_reports = sequential_extract_file_reports(project)
+    sequential_reports = sequential_extract_file_reports(project, user_config)
     sequential_time = time.perf_counter() - start
 
     start = time.perf_counter()
-    parallel_reports = analyzer_util.extract_file_reports(project)
+    parallel_reports = analyzer_util.extract_file_reports(project, user_config)
     parallel_time = time.perf_counter() - start
 
     # Speed up in testing showed as 2.77
