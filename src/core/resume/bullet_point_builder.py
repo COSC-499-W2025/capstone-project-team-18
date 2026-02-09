@@ -7,9 +7,12 @@ str bullet points
 """
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import List, Protocol, Any
-from src.core.statistic import ProjectStatCollection, StatisticTemplate, CodingLanguage, FileDomain
+from typing import Any, List, Protocol
+
+from src.core.statistic import (CodingLanguage, FileDomain,
+                                ProjectStatCollection, StatisticTemplate)
 from src.utils.data_processing import float_to_percent
 
 
@@ -65,7 +68,7 @@ class ActivityTypeContributionBulletPoint(BulletPoint):
         if len(fd_str) <= 1:
             return []
 
-        return [f"During the project, I split my contributions between following acitivity types: {", ".join(fd_str)}"]
+        return [f"During the project, I split my contributions between following acitivity types: {', '.join(fd_str)}"]
 
 
 class WeightedSkillsBulletPoint(BulletPoint):
@@ -194,37 +197,47 @@ class GitCommitPercentageBulletPoint(BulletPoint):
 
         return to_return
 
+
 class ContributionPatternBulletPoint(BulletPoint):
     """Create bullets from contribution-pattern statistics."""
+
     def generate(self, report: ProjectReport) -> List[str]:
         bullets: List[str] = []
 
-        role_desc = report.get_value(ProjectStatCollection.ROLE_DESCRIPTION.value)
+        role_desc = report.get_value(
+            ProjectStatCollection.ROLE_DESCRIPTION.value)
         if role_desc:
             bullets.append(role_desc)
 
-        work_pattern = report.get_value(ProjectStatCollection.WORK_PATTERN.value)
-        activity = report.get_value(ProjectStatCollection.ACTIVITY_METRICS.value) or {}
+        work_pattern = report.get_value(
+            ProjectStatCollection.WORK_PATTERN.value)
+        activity = report.get_value(
+            ProjectStatCollection.ACTIVITY_METRICS.value) or {}
         commits_per_week = activity.get("avg_commits_per_week")
         if work_pattern and commits_per_week is not None:
             bullets.append(
                 f"Maintained a {str(work_pattern).replace('_', ' ')} cadence with {commits_per_week:.1f} commits/week"
             )
         elif work_pattern:
-            bullets.append(f"Work pattern: {str(work_pattern).replace('_', ' ')}")
+            bullets.append(
+                f"Work pattern: {str(work_pattern).replace('_', ' ')}")
 
-        commit_dist = report.get_value(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
+        commit_dist = report.get_value(
+            ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
         if commit_dist:
-            top = sorted(commit_dist.items(), key=lambda kv: kv[1], reverse=True)
+            top = sorted(commit_dist.items(),
+                         key=lambda kv: kv[1], reverse=True)
             if top:
                 primary = f"{top[0][0]} ({top[0][1]:.0f}%)"
                 if len(top) > 1 and top[1][1] > 0:
                     secondary = f"{top[1][0]} ({top[1][1]:.0f}%)"
-                    bullets.append(f"Primary contribution focus: {primary}; Secondary: {secondary}")
+                    bullets.append(
+                        f"Primary contribution focus: {primary}; Secondary: {secondary}")
                 else:
                     bullets.append(f"Primary contribution focus: {primary}")
 
         return bullets
+
 
 class BulletPointBuilder:
     def __init__(self):

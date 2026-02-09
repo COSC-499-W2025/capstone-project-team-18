@@ -2,11 +2,14 @@
 The entry point for the ArtifactMiner program.
 """
 
-from src.database.utils.db_migrate import run_migrations
+from src.database import get_engine
+from sqlmodel import SQLModel
 
 
 def main():
-    run_migrations()
+
+    engine = get_engine()
+    SQLModel.metadata.create_all(engine)
 
     from src.interface.cli.cli import ArtifactMiner
     try:

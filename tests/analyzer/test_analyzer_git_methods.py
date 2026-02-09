@@ -1,16 +1,16 @@
-from pathlib import Path
+import datetime
 import shutil
 import tempfile
-from git import Repo
-import datetime
+from pathlib import Path
 
 import pytest
+from git import Repo
 
-from src.core.analyzer import CodeFileAnalyzer, get_appropriate_analyzer
+from src.core.analyzer import CodeFileAnalyzer
 from src.core.statistic import FileStatCollection
 
 
-def test_is_git_repo_true_and_false(tmp_path: Path):
+def test_is_git_repo_true_and_false(tmp_path: Path, get_ready_specific_analyzer):
     # Repo case
     repo_dir = tmp_path / "RepoProject"
     repo_dir.mkdir()
@@ -25,7 +25,7 @@ def test_is_git_repo_true_and_false(tmp_path: Path):
     repo.index.add([str(file_path.relative_to(repo_dir))])
     repo.index.commit("Initial commit")
 
-    analyzer = get_appropriate_analyzer(
+    analyzer = get_ready_specific_analyzer(
         str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
 
     assert analyzer.is_git_tracked is True
@@ -35,12 +35,12 @@ def test_is_git_repo_true_and_false(tmp_path: Path):
     nonrepo_dir.mkdir()
     nr_file = nonrepo_dir / "nr.py"
     nr_file.write_text("print('no git')\n")
-    analyzer_nr = get_appropriate_analyzer(
+    analyzer_nr = get_ready_specific_analyzer(
         str(nonrepo_dir), str(nr_file.relative_to(nonrepo_dir)))
     assert analyzer_nr.is_git_tracked is False
 
 
-def test_get_file_commit_percentage_two_authors(tmp_path: Path):
+def test_get_file_commit_percentage_two_authors(tmp_path: Path, get_ready_specific_analyzer):
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
     try:
         project_dir = Path(temp_dir) / "ContribProject"
@@ -68,7 +68,7 @@ def test_get_file_commit_percentage_two_authors(tmp_path: Path):
         repo.index.commit("Bob creates 5 lines")
 
         # Analyzer for the file
-        analyzer = get_appropriate_analyzer(
+        analyzer = get_ready_specific_analyzer(
             str(project_dir), str(file_path.relative_to(project_dir)), repo)
 
         assert isinstance(analyzer, CodeFileAnalyzer)
@@ -95,7 +95,7 @@ def test_get_file_commit_percentage_two_authors(tmp_path: Path):
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_file_not_comitted_in_git_repo(tmp_path: Path):
+def test_file_not_comitted_in_git_repo(tmp_path: Path, get_ready_specific_analyzer):
     """
     Test that if there is a file in a git repo that has not been committed yet,
     the _get_file_commit_percentage method returns None and does not create
@@ -123,7 +123,7 @@ def test_file_not_comitted_in_git_repo(tmp_path: Path):
         cfg.set_value("user", "name", "Charlie")
         cfg.set_value("user", "email", "charlie@example.com")
 
-    analyzer = get_appropriate_analyzer(
+    analyzer = get_ready_specific_analyzer(
         str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
 
     assert analyzer.is_git_tracked is False
@@ -134,7 +134,7 @@ def test_file_not_comitted_in_git_repo(tmp_path: Path):
         FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) is None
 
 
-def test_git_file_has_local_changes(tmp_path: Path):
+def test_git_file_has_local_changes(tmp_path: Path, get_ready_specific_analyzer):
     """
     Test that if there is a file in a git repo that has local changes,
     the is_git_tracked attribute is still True
@@ -166,7 +166,7 @@ def test_git_file_has_local_changes(tmp_path: Path):
     # make local changes to the file
     file_path.write_text("print('modified content')\n")
 
-    analyzer = get_appropriate_analyzer(
+    analyzer = get_ready_specific_analyzer(
         str(repo_dir), str(file_path.relative_to(repo_dir)), repo, email="dana@example.com")
 
     assert analyzer.is_git_tracked is True
@@ -175,7 +175,7 @@ def test_git_file_has_local_changes(tmp_path: Path):
         FileStatCollection.PERCENTAGE_LINES_COMMITTED.value) == 50.0
 
 
-def test_earliest_commit_and_last_commit(tmp_path: Path):
+def test_earliest_commit_and_last_commit(tmp_path: Path, get_ready_specific_analyzer):
     """
     This test creates commits in a git repo with different
     authored and commit dates to ensure that the eariliest
@@ -207,7 +207,7 @@ def test_earliest_commit_and_last_commit(tmp_path: Path):
     repo.index.commit("Third commit",
                       author_date="2023-01-03 10:00:00")
 
-    analyzer = get_appropriate_analyzer(
+    analyzer = get_ready_specific_analyzer(
         str(repo_dir), str(file_path.relative_to(repo_dir)), repo)
 
     fr = analyzer.analyze()
@@ -221,7 +221,7 @@ def test_earliest_commit_and_last_commit(tmp_path: Path):
     assert last_date == datetime.datetime(2023, 1, 3, 10, 0, 0)
 
 
-def test_github_account_commit(tmp_path: Path):
+def test_github_account_commit(tmp_path: Path, get_ready_specific_analyzer):
     temp_dir = tempfile.mkdtemp(dir=str(tmp_path))
     try:
         project_dir = Path(temp_dir) / "ContribProject"
@@ -259,7 +259,7 @@ def test_github_account_commit(tmp_path: Path):
         repo.index.commit("Bob creates an extra line with noreply email")
 
         # Analyzer for the file
-        analyzer = get_appropriate_analyzer(
+        analyzer = get_ready_specific_analyzer(
             str(project_dir), str(file_path.relative_to(project_dir)), repo)
 
         assert isinstance(analyzer, CodeFileAnalyzer)

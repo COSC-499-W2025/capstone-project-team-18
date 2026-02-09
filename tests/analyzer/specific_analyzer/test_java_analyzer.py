@@ -5,8 +5,9 @@ from src.core.analyzer import JavaAnalyzer
 from src.core.statistic import FileStatCollection
 
 
-def test_JavaAnalyzer(tmp_path, resource_dir):
-    report = JavaAnalyzer(str(resource_dir), "example_java.java").analyze()
+def test_JavaAnalyzer(tmp_path, resource_dir, get_ready_specific_analyzer):
+    report = get_ready_specific_analyzer(
+        str(resource_dir), "example_java.java").analyze()
 
     number_of_functions = report.get_value(
         FileStatCollection.NUMBER_OF_FUNCTIONS.value)

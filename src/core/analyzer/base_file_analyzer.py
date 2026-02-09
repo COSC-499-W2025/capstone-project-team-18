@@ -1,22 +1,26 @@
 import datetime
 from pathlib import Path
-from typing import Optional
-from git import GitCommandError, Repo
+from git import GitCommandError
 import hashlib
 
 # database imports are needed for duplicate files checks
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy import select, inspect
-from src.database.base import get_engine
+from src.database import get_engine
 from src.database.models import FileReportTable
 
 
 from src.core.report.file_report import FileReport
-from src.core.statistic import Statistic, StatisticIndex, FileStatCollection, LANGUAGE_EXTENSIONS
+from src.database.api.models import UserConfigModel as UserConfig
+from src.core.project_discovery.project_discovery import ProjectLayout
+from src.core.statistic import Statistic, StatisticIndex, FileStatCollection
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
+
+user_config: UserConfig
+project_context: ProjectLayout
 
 
 class BaseFileAnalyzer:
@@ -46,22 +50,18 @@ class BaseFileAnalyzer:
         - FILE_SIZE_BYTES
     """
 
-    def __init__(self,
-                 path_to_top_level_project: str,
-                 relative_path: str,
-                 repo: Optional[Repo] = None,
-                 email: Optional[str] = None,
-                 github: Optional[str] = None,
-                 language_filter: Optional[list[str]] = None
-                 ):
+    def __init__(self, user_config: UserConfig, project_context: ProjectLayout, relative_path: str):
 
-        self.path_to_top_level_project = path_to_top_level_project
+        self.path_to_top_level_project = str(project_context.root_path)
         self.relative_path = relative_path
-        self.filepath = f"{path_to_top_level_project}/{relative_path}"
-        self.repo = repo
-        self.email = email
-        self.github = github
-        self.language_filter = language_filter
+        self.filepath = f"{self.path_to_top_level_project}/{relative_path}"
+
+        self.project_name = project_context.name
+        self.repo = project_context.repo
+
+        self.email = user_config.user_email
+        self.github = user_config.github
+
         self.stats = StatisticIndex()
         self.blame_info = None
         self.is_git_tracked = self.file_in_git_repo()
@@ -87,15 +87,6 @@ class BaseFileAnalyzer:
                 f"File not tracked by git or git error: {e}")
             return False
 
-    def is_info_file(self) -> bool:
-        if self.language_filter:
-            if not self._matches_language_filter():
-                return False
-            else:
-                return True
-        else:
-            return True
-
     def create_info_file(self) -> FileReport:
         """
         This is a method that is used to create a fileReport object with no stats and only
@@ -105,10 +96,14 @@ class BaseFileAnalyzer:
             fileReport: Only runs in the case of should_analyze_file() -> False.
         """
 
-        stats = [Statistic(FileStatCollection.CONTRIBUTED_TO.value, False)]
+        stats = []
         self.stats.extend(stats)
 
-        return FileReport(statistics=self.stats, filepath=self.relative_path)
+        return FileReport(statistics=self.stats,
+                          filepath=self.relative_path,
+                          file_hash=b"",
+                          project_name=self.project_name,
+                          is_info_file=True)
 
     def should_analyze_file(self) -> bool:
         """
@@ -123,11 +118,6 @@ class BaseFileAnalyzer:
         Returns:
             bool: True if the file should be included, False otherwise.
         """
-
-       # Check language filter
-        if self.language_filter:
-            if not self._matches_language_filter():
-                return False
 
         if not self.is_git_tracked or not self.email or not self.repo:
             return True
@@ -251,8 +241,7 @@ class BaseFileAnalyzer:
 
         stats = [
             Statistic(FileStatCollection.FILE_SIZE_BYTES.value,
-                      metadata.st_size),
-            Statistic(FileStatCollection.CONTRIBUTED_TO.value, True),
+                      metadata.st_size)
         ]
 
         if self.is_git_tracked:
@@ -299,4 +288,8 @@ class BaseFileAnalyzer:
         """
         self._process()
 
-        return FileReport(statistics=self.stats, filepath=self.relative_path)
+        return FileReport(statistics=self.stats,
+                          filepath=self.relative_path,
+                          file_hash=b"",
+                          project_name=self.project_name,
+                          is_info_file=False)

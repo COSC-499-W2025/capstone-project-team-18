@@ -11,12 +11,12 @@ from src.interface.api.routers.projects import router as projects
 from src.interface.api.routers.resume import router as resume
 from src.interface.api.routers.portfolio import router as portfolio
 from src.interface.api.routers.skills import router as skills
-from src.interface.api.routers.privacy import router as privacy
+from src.interface.api.routers.user_config import router as user_config
 
 __all__ = [
     "projects",
     "resume",
     "portfolio",
     "skills",
-    "privacy",
+    "user_config",
 ]
