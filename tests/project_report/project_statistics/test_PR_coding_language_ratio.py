@@ -1,11 +1,11 @@
 from pathlib import Path
-from src.core.statistic import ProjectStatCollection, CodingLanguage
-from src.core.analyzer import get_appropriate_analyzer
+
 from src.core.report import ProjectReport
 from src.core.report.project.project_statistics import CodingLanguageRatio
+from src.core.statistic import CodingLanguage, ProjectStatCollection
 
 
-def test_coding_ratio_in_normal_project(tmp_path):
+def test_coding_ratio_in_normal_project(tmp_path, get_ready_specific_analyzer):
     """
     Tests that we have approiate coding ratio
     of files
@@ -34,7 +34,8 @@ def test_coding_ratio_in_normal_project(tmp_path):
         path = tmp_path / file
         Path(path).write_text("")
 
-        reports.append(get_appropriate_analyzer(str(tmp_path), file).analyze())
+        reports.append(get_ready_specific_analyzer(
+            str(tmp_path), file).analyze())
 
     project_report = ProjectReport(
         reports, calculator_classes=[CodingLanguageRatio])
@@ -42,4 +43,5 @@ def test_coding_ratio_in_normal_project(tmp_path):
     coding_language_ratio = project_report.get_value(
         ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
 
+    assert len(coding_language_ratio) == len(expected_ratio)
     assert len(coding_language_ratio) == len(expected_ratio)

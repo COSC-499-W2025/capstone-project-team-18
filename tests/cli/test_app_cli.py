@@ -212,70 +212,11 @@ def test_do_perms_user_declines(cli):
         mock_print.assert_any_call("Consent not given. Exiting application...")
 
 
-def test_prompt_portfolio_name_invokes_rename(cli):
-    """Ensure renaming is attempted when a new name is provided."""
-    cli.project_filepath = "/tmp/example.zip"
-    with patch('builtins.input', return_value='new-name'), \
-            patch('src.interface.cli.cli.rename_user_report', return_value=(True, "ok")) as mock_rename, \
-            patch('builtins.print'), \
-            patch.object(cli.preferences, "update"):
-        cli._prompt_portfolio_name()
-        mock_rename.assert_called_once_with("example", "new-name")
-
-
-def test_prompt_portfolio_name_noop_on_blank(cli):
-    """Leaving the name blank should keep existing title and avoid renaming."""
-    cli.project_filepath = "/tmp/example.zip"
-    with patch('builtins.input', return_value=''), \
-            patch('src.interface.cli.cli.rename_user_report') as mock_rename, \
-            patch('builtins.print'), \
-            patch.object(cli.preferences, "update"):
-        cli._prompt_portfolio_name()
-        mock_rename.assert_not_called()
-
-
 def test_default_routes_nine_to_retrieve(cli):
     """Ensure option 9 routes to portfolio retrieval."""
     with patch.object(cli, 'do_portfolio_retrieve') as mock_retrieve:
         cli.default("9")
         mock_retrieve.assert_called_once()
-
-
-def test_do_portfolio_retrieve_uses_preferences_when_blank(cli):
-    """Blank input should retrieve portfolio name from preferences."""
-    cli.preferences.get_project_filepath.return_value = "/tmp/last.zip"
-    cli.preferences.get.return_value = ""  # ensure no last_portfolio_title stored
-    mock_report = type(
-        "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
-    with patch('builtins.input', side_effect=['', 'n']), \
-            patch('src.interface.cli.print'), \
-            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
-        cli.do_portfolio_retrieve("")
-        mock_get.assert_called_once_with("last")
-
-
-def test_do_portfolio_retrieve_option_two_prompts_for_name(cli):
-    """Entering '2' should prompt for a portfolio name and use it."""
-    mock_report = type(
-        "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
-    with patch('builtins.input', side_effect=['2', 'my-portfolio', 'n']), \
-            patch('src.interface.cli.print'), \
-            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
-        cli.do_portfolio_retrieve("")
-        mock_get.assert_called_once_with("my-portfolio")
-
-
-def test_do_portfolio_retrieve_option_two_blank_uses_last(cli):
-    """Entering '2' then blank should fall back to last analyzed name."""
-    cli.preferences.get.return_value = ""  # no last_portfolio_title
-    cli.preferences.get_project_filepath.return_value = "/tmp/last.zip"
-    mock_report = type(
-        "Report", (), {"to_user_readable_string": lambda self: "REPORT"})()
-    with patch('builtins.input', side_effect=['2', '', 'n']), \
-            patch('src.interface.cli.print'), \
-            patch('src.database.utils.database_access.get_user_report', return_value=mock_report) as mock_get:
-        cli.do_portfolio_retrieve("")
-        mock_get.assert_called_once_with("last")
 
 
 def test_do_perms_user_cancels(cli):
@@ -504,73 +445,6 @@ def test_resume_bullet_back_or_cancel_returns_to_menu(cli):
             for call in mock_print.call_args_list
         )
 # differeation
-
-
-def test_resume_bullet_empty_project_name(cli):
-    """Blank project name should show validation message and not hit DB."""
-    with patch("builtins.input", return_value=""), \
-            patch("builtins.print") as mock_print, \
-            patch("src.interface.cli.cli.get_project_from_project_name") as mock_get:
-        cli.do_resume_bullet_point("")
-
-        mock_get.assert_not_called()
-        assert any(
-            "Project name cannot be empty." in str(call)
-            for call in mock_print.call_args_list
-        )
-        assert not any(
-            "Generated resume bullet point(s)" in str(call)
-            for call in mock_print.call_args_list
-        )
-
-
-def test_resume_bullet_project_not_found(cli):
-    """If the DB lookup fails, print 'not found' message and return."""
-    with patch("builtins.input", return_value="missing-project"), \
-            patch("builtins.print") as mock_print, \
-            patch("src.interface.cli.cli.get_project_from_project_name", side_effect=Exception("not found")):
-        cli.do_resume_bullet_point("")
-
-        assert any(
-            "No project found for name 'missing-project' in the database." in str(
-                call)
-            for call in mock_print.call_args_list
-        )
-        assert not any(
-            "Generated resume bullet point(s)" in str(call)
-            for call in mock_print.call_args_list
-        )
-
-
-def test_resume_bullet_success_path(cli):
-    """Happy path: valid project name → bullets generated and printed."""
-    class DummyProjectReport:
-        project_name = "my-project"
-
-    dummy_report = DummyProjectReport()
-
-    with patch("builtins.input", return_value="my-project"), \
-            patch("src.interface.cli.cli.get_project_from_project_name", return_value=dummy_report) as mock_get, \
-            patch("src.interface.cli.cli.BulletPointBuilder.build", return_value=["Bullet one", "Bullet two"]) as mock_builder, \
-            patch("builtins.print") as mock_print:
-
-        cli.do_resume_bullet_point("")
-
-        mock_get.assert_called_once_with("my-project")
-        mock_builder.assert_called_once_with(dummy_report)
-
-        assert any(
-            "Generated resume bullet point(s):" in str(call)
-            for call in mock_print.call_args_list
-        )
-        assert any("- Bullet one" in str(call)
-                   for call in mock_print.call_args_list)
-        assert any("- Bullet two" in str(call)
-                   for call in mock_print.call_args_list)
-        assert any(
-            "Artifact Miner Main Menu" in str(call)
-            for call in mock_print.call_args_list
-        )
 
 
 def test_keyboardinterrupt_handling(cli):

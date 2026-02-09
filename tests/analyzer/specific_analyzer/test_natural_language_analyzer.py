@@ -2,28 +2,29 @@
 Tests for NaturalLanguageAnalyzer.
 """
 
-from src.core.analyzer import NaturalLanguageAnalyzer, get_appropriate_analyzer
-from src.core.statistic import FileStatCollection, FileDomain
-from src.core.ML.models.readme_analysis import keyphrase_extraction, readme_insights
+from src.core.ML.models.readme_analysis import (keyphrase_extraction,
+                                                readme_insights)
+from src.core.statistic import FileDomain, FileStatCollection
 
 
-def _readme_report(tmp_path, create_temp_file, monkeypatch, filename, content):
+def _readme_report(tmp_path, create_temp_file, monkeypatch, filename, content, get_ready_specific_analyzer):
     def fake_extract(text, top_n):
         return ["REST API"] if "REST" in text else ["Key Phrase"]
 
     # Stub model calls so tests are fast and do not download large models.
     monkeypatch.setattr(
         keyphrase_extraction, "_extract_with_keybert", fake_extract)
+
     def _fake_classifier(_text, _labels, multi_label=False):
         return {"labels": ["Professional"], "scores": [0.99]}
 
     monkeypatch.setattr(readme_insights, "_get_classifier",
                         lambda: _fake_classifier)
     root, name = create_temp_file(filename, content, tmp_path)
-    return NaturalLanguageAnalyzer(root, name).analyze()
+    return get_ready_specific_analyzer(root, name).analyze()
 
 
-def test_NaturalLanguageAnalyzer_core_stats(tmp_path, create_temp_file):
+def test_NaturalLanguageAnalyzer_core_stats(tmp_path, create_temp_file, get_ready_specific_analyzer):
     content = (
         "# Welcome"
         "\n"
@@ -46,7 +47,7 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path, create_temp_file):
 
     root, name = create_temp_file(
         "test_NaturalLanguageAnalyzer_core_stats.md", content, tmp_path)
-    report = NaturalLanguageAnalyzer(root, name).analyze()
+    report = get_ready_specific_analyzer(root, name).analyze()
 
     REAL_WORD_COUNT = 83
     REAL_ALPHA_NUMERIC_CHARACTER_COUNT = 356
@@ -67,7 +68,7 @@ def test_NaturalLanguageAnalyzer_core_stats(tmp_path, create_temp_file):
     assert REAL_TYPE_OF_FILE == measured_type_of_file
 
 
-def test_create_with_analysis_natural_language_md(tmp_path, create_temp_file):
+def test_create_with_analysis_natural_language_md(tmp_path, create_temp_file, get_ready_specific_analyzer):
     """Test natural language analysis for Markdown files."""
     content = (
         "# Test Document\n\n"
@@ -79,7 +80,7 @@ def test_create_with_analysis_natural_language_md(tmp_path, create_temp_file):
     )
 
     root, name = create_temp_file("test.md", content, tmp_path)
-    analyzer = get_appropriate_analyzer(root, name)
+    analyzer = get_ready_specific_analyzer(root, name)
     file_report = analyzer.analyze()
 
     # Test that natural language statistics are present
@@ -101,12 +102,12 @@ def test_create_with_analysis_natural_language_md(tmp_path, create_temp_file):
         FileStatCollection.DATE_CREATED.value) is not None
 
 
-def test_natural_language_file_with_only_words(tmp_path, create_temp_file):
+def test_natural_language_file_with_only_words(tmp_path, create_temp_file, get_ready_specific_analyzer):
     """Test natural language analysis with words but no sentence punctuation."""
     content = "just some words without any punctuation marks"
 
     root, name = create_temp_file("words_only.md", content, tmp_path)
-    analyzer = get_appropriate_analyzer(root, name)
+    analyzer = get_ready_specific_analyzer(root, name)
     file_report = analyzer.analyze()
 
     # Should not crash due to division by zero protection
@@ -118,7 +119,7 @@ def test_natural_language_file_with_only_words(tmp_path, create_temp_file):
     assert sentence_count == 0  # No punctuation
 
 
-def test_natural_language_statistics_comprehensive(tmp_path, create_temp_file):
+def test_natural_language_statistics_comprehensive(tmp_path, create_temp_file, get_ready_specific_analyzer):
     """Test comprehensive natural language statistics measurement."""
     content = (
         "This is a comprehensive test document. "
@@ -130,7 +131,7 @@ def test_natural_language_statistics_comprehensive(tmp_path, create_temp_file):
     )
 
     create_temp_file("comprehensive.md", content, tmp_path)
-    analyzer = get_appropriate_analyzer(str(tmp_path), "comprehensive.md")
+    analyzer = get_ready_specific_analyzer(str(tmp_path), "comprehensive.md")
     file_report = analyzer.analyze()
 
     # Test all natural language statistics are present and reasonable
@@ -150,7 +151,7 @@ def test_natural_language_statistics_comprehensive(tmp_path, create_temp_file):
     assert sentence_count > 0
 
 
-def test_readme_keyphrase_extraction(tmp_path, create_temp_file, monkeypatch):
+def test_readme_keyphrase_extraction(tmp_path, create_temp_file, monkeypatch, get_ready_specific_analyzer):
     report = _readme_report(
         tmp_path,
         create_temp_file,
@@ -158,9 +159,11 @@ def test_readme_keyphrase_extraction(tmp_path, create_temp_file, monkeypatch):
         "README.md",
         "# Project X\nA REST API built with FastAPI and PostgreSQL. "
         "Includes OAuth authentication and Docker deployment.",
+        get_ready_specific_analyzer
     )
     keyphrases = report.get_value(FileStatCollection.README_KEYPHRASES.value)
     tone = report.get_value(FileStatCollection.README_TONE.value)
     assert isinstance(keyphrases, list)
     assert len(keyphrases) > 0
+    assert tone == "Professional"
     assert tone == "Professional"
