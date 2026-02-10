@@ -61,7 +61,7 @@ class UserReport(BaseReport):
 
     def generate_resume(self, email: Optional[str], github: Optional[str]) -> Resume:
         """
-        Generates a Resume object based on the ResumeItem
+        Generates a Resume object based on the ProjectBlock
         that are generated from the ProjectReports. As well
         as adding skills from the User Statistics.
         """

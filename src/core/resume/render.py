@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.core.resume.resume import Resume, ResumeItem
+    from src.core.resume.resume import Resume, ProjectBlock
 
 
 class ResumeRender(ABC):
@@ -95,7 +95,7 @@ class ResumeLatexRenderer(ResumeRender):
 \pdfgentounicode=1
 
 % --- Custom Commands ---
-\newcommand{\resumeItem}[1]{
+\newcommand{\ProjectBlock}[1]{
   \item\small{
     {#1 \vspace{-2pt}}
   }
@@ -116,8 +116,8 @@ class ResumeLatexRenderer(ResumeRender):
     \end{tabular*}\vspace{-7pt}
 }
 
-\newcommand{\resumeItemListStart}{\begin{itemize}}
-\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+\newcommand{\ProjectBlockListStart}{\begin{itemize}}
+\newcommand{\ProjectBlockListEnd}{\end{itemize}\vspace{-5pt}}
 \newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
 \newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
 """
@@ -168,10 +168,10 @@ class ResumeLatexRenderer(ResumeRender):
                 rf"{{{date}}}"
             )
 
-            tex.append(r"\resumeItemListStart")
+            tex.append(r"\ProjectBlockListStart")
             for b in item.bullet_points:
-                tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
-            tex.append(r"\resumeItemListEnd")
+                tex.append(rf"\ProjectBlock{{{latex_escape(b)}}}")
+            tex.append(r"\ProjectBlockListEnd")
 
         tex.append(r"\resumeSubHeadingListEnd")
         tex.append("")

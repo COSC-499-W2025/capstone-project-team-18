@@ -2,7 +2,7 @@
 Tests the Resume class and its methods.
 """
 
-from src.core.resume.resume import Resume, ResumeItem
+from src.core.resume.resume import Resume, ProjectBlock
 from src.core.statistic import Statistic, ProjectStatCollection
 from datetime import date
 from src.core.report import UserReport
@@ -11,7 +11,7 @@ from datetime import datetime
 
 def test_add_item():
     resume = Resume()
-    item = ResumeItem(
+    item = ProjectBlock(
         title="Software Engineer",
         frameworks=[],
         bullet_points=["Developed features", "Fixed bugs"],
@@ -25,7 +25,7 @@ def test_add_item():
 
 def test_generate_resume():
     resume = Resume()
-    item = ResumeItem(
+    item = ProjectBlock(
         title="Software Engineer",
         frameworks=[],
         bullet_points=["Developed features", "Fixed bugs"],
@@ -48,7 +48,7 @@ def test_projectreport_can_create_resume(project_report_from_stats):
     statistics = []
     report = project_report_from_stats(statistics)
     resume_item = report.generate_resume_item()
-    assert isinstance(resume_item, ResumeItem)
+    assert isinstance(resume_item, ProjectBlock)
 
     assert resume_item.title == "TESTING ONLY SHOULD SEE THIS IN PYTEST"
 

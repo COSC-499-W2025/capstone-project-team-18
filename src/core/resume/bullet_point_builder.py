@@ -1,9 +1,9 @@
 """
 This file contains all the logic for the building
 the bullet points in the resume. Each bullet point
-is described as a 'BulletRule'. The BulletPointBuilder
-class will compile all these rules and return a list of
-str bullet points
+is described with '[Component]BulletRule'. The
+BulletPointBuilder class will compile all of the
+bullet points and return a list[str] of bullet points
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ class ProjectReport(Protocol):
 
 
 class BulletPoint(ABC):
-    """Interface for all bullet rules."""
+    """Interface for all bullet points."""
 
     @abstractmethod
     def generate(self, report: ProjectReport) -> List[str]:

@@ -4,8 +4,8 @@ them into domain classes
 """
 
 from src.core.report import FileReport, ProjectReport
-from src.core.resume.resume import Resume, ResumeItem
-from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
+from src.core.resume.resume import Resume, ProjectBlock
+from src.database.api.models import FileReportModel, ProjectReportModel, ProjectBlockModel, ResumeModel
 from src.core.statistic import StatisticIndex, FileStatCollection, ProjectStatCollection, deserialize, Statistic, WeightedSkills
 from src.infrastructure.log.logging import get_logger
 
@@ -74,14 +74,14 @@ def deserialize_project_report(project_report_model: ProjectReportModel) -> Proj
 
 
 def deserialize_resume_item(
-    model: ResumeItemModel
-) -> ResumeItem:
+    model: ProjectBlockModel
+) -> ProjectBlock:
     frameworks = [
         WeightedSkills(skill_name=fw, weight=1.0)
         for fw in model.frameworks
     ]
 
-    return ResumeItem(
+    return ProjectBlock(
         title=model.title,
         frameworks=frameworks,
         bullet_points=model.bullet_points,

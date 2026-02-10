@@ -14,7 +14,7 @@ def save_project_report(
 ) -> ProjectReportModel:
     """
     Save a ProjectReport domain object along with all its FileReports
-    and generated ResumeItems into the database. DOES NOT COMMIT THE
+    and generated ProjectBlocks into the database. DOES NOT COMMIT THE
     SESSION! YOU MUST COMMIT.
 
     Args:
@@ -52,7 +52,7 @@ def get_project_report_by_name(
 ) -> Optional[ProjectReport]:
     """
     Retrieve a ProjectReportModel by its project_name, including
-    related FileReports and ResumeItems.
+    related FileReports and ProjectBlocks.
 
     Args:
         session: SQLModel Session

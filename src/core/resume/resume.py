@@ -12,10 +12,10 @@ from src.core.resume.render import *
 
 
 @dataclass
-class ResumeItem:
+class ProjectBlock:
     """
     A single item for paragraph in resume. It is
-    a single project
+    a single project.
     """
 
     title: str
@@ -29,20 +29,32 @@ class ResumeItem:
         self.frameworks = sorted(self.frameworks, reverse=True)[:3]
 
 
+@dataclass
+class ResumeMetadata:
+    """
+    Tells us if and when a resume
+    has been modified to any degree
+    """
+    last_generated: date | None
+    last_modified: date | None
+
+
 class Resume:
     """
     This is the main resume class that holds all the
     resume items and can generate a formatted resume.
 
     Attributes:
-        items (list[ResumeItem]): A list of resume items.
+        items (list[ProjectBlock]): A list of resume items.
         skills (list[str]): A list of skills.
 
     """
 
-    items: list[ResumeItem]
+    items: list[ProjectBlock]
+    metadata: ResumeMetadata
 
-    def __init__(self, email: Optional[str] = None, github: Optional[str] = None, weight_skills: Optional[list[WeightedSkills]] = None):
+    def __init__(self, metadata: ResumeMetadata, email: Optional[str] = None, github: Optional[str] = None, weight_skills: Optional[list[WeightedSkills]] = None):
+        self.metadata = metadata
         self.items = []
         self.email = email if email else None
         self.github = github if github else None
@@ -55,7 +67,7 @@ class Resume:
             for weighted_skill in weight_skills[:7]:
                 self.skills.append(weighted_skill.skill_name)
 
-    def add_item(self, item: ResumeItem):
+    def add_item(self, item: ProjectBlock):
         self.items.append(item)
 
     def export(self, render: ResumeRender) -> str:

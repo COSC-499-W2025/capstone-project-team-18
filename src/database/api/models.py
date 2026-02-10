@@ -71,10 +71,10 @@ class ResumeModel(SQLModel, table=True):
         default_factory=lambda: datetime.now())
 
     # Relationship
-    items: List["ResumeItemModel"] = Relationship(back_populates="resume")
+    items: List["ProjectBlockModel"] = Relationship(back_populates="resume")
 
 
-class ResumeItemModel(SQLModel, table=True):
+class ProjectBlockModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
     resume_id: Optional[int] = Field(

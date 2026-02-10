@@ -1,6 +1,6 @@
 '''
 To follow a similar structure to our Portfolio
-class, the attributes of ResumeItem will TODO FINISH DOCSTRING
+class, the attributes of ProjectBlock will TODO FINISH DOCSTRING
 '''
 from dataclasses import dataclass
 from typing import Optional, TypeVar, Generic

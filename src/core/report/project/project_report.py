@@ -12,7 +12,7 @@ from src.core.report.base_report import BaseReport
 from src.core.report.file_report import FileReport
 from src.core.statistic import StatisticIndex, ProjectStatCollection, FileStatCollection
 from src.core.resume.bullet_point_builder import BulletPointBuilder
-from src.core.resume.resume import ResumeItem
+from src.core.resume.resume import ProjectBlock
 
 
 class ProjectReport(BaseReport):
@@ -131,9 +131,9 @@ class ProjectReport(BaseReport):
         root = Path(self.project_path)
         return {p.name for p in root.rglob('*') if p.is_dir()}
 
-    def generate_resume_item(self) -> ResumeItem:
+    def generate_resume_item(self) -> ProjectBlock:
         """
-        Generates a `ResumeItem` from the project report statistics.
+        Generates a `ProjectBlock` from the project report statistics.
 
         Args:
             title: Title of the resume item
@@ -152,7 +152,7 @@ class ProjectReport(BaseReport):
 
         bullet_points = self.bullet_builder.build(self)
 
-        return ResumeItem(
+        return ProjectBlock(
             title=self.project_name,
             frameworks=frameworks if frameworks else [],
             bullet_points=bullet_points,

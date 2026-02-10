@@ -6,7 +6,7 @@ from datetime import date
 import pytest
 from sqlmodel import Session
 
-from src.core.resume.resume import Resume, ResumeItem
+from src.core.resume.resume import Resume, ProjectBlock
 from src.core.statistic import WeightedSkills
 from src.database.api.CRUD.resume import save_resume, load_resume
 
@@ -22,7 +22,7 @@ def create_sample_resume() -> Resume:
         ],
     )
 
-    item = ResumeItem(
+    item = ProjectBlock(
         title="Test Project",
         frameworks=[
             WeightedSkills("Python", 10),
@@ -99,7 +99,7 @@ def test_resume_with_multiple_items(temp_db):
 
     for i in range(3):
         resume.add_item(
-            ResumeItem(
+            ProjectBlock(
                 title=f"Project {i}",
                 frameworks=[WeightedSkills("Python", 5)],
                 bullet_points=[f"Did thing {i}"],
