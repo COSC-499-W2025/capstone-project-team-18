@@ -64,6 +64,8 @@ class PDFRenderer(ResumeRender):
     """
 
     def render(self, resume) -> bytes:
+        pdf = b""
+
         with tempfile.TemporaryDirectory() as tmpdir:
             tex_path = Path(tmpdir) / "helper.tex"
             tex_path.write_text(

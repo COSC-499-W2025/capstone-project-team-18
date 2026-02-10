@@ -11,7 +11,7 @@
 	},
 
     "remoteEnv": {
-        "PYTHONPATH": "${containerWorkspaceFolder}"
+        "PYTHONPATH": "${containerWorkspaceFolder}/miner"
     },
 
     // The extensions installed in the resulting VSCode Version
@@ -26,7 +26,7 @@
             "settings": {
                 "python.analysis.autoSearchPaths": false,
                 "python.analysis.extraPaths": [
-                    "${workspaceFolder}"
+                    "${containerWorkspaceFolder}/miner"
                 ],
                 "files.trimTrailingWhitespace": true,
                 "autoDocstring.docstringFormat": "sphinx",

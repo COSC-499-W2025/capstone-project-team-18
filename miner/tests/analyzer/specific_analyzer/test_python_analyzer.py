@@ -2,17 +2,16 @@
 Tests for PythonAnalyzer.
 """
 import shutil
-from src.core.analyzer import PythonAnalyzer
 from src.core.statistic import FileStatCollection, FileDomain
 
 
-def test_PythonAnalyzer_core_stats(tmp_path, get_ready_specific_analyzer):
+def test_PythonAnalyzer_core_stats(tmp_path, get_ready_specific_analyzer, resource_dir):
     target_dir = tmp_path / "example_python"
     target_dir.mkdir()
 
     target_file = str(target_dir) + "/example_python.py"
 
-    shutil.copyfile(src="./tests/resources/example_python.py",
+    shutil.copyfile(src=str(resource_dir / "example_python.py"),
                     dst=target_file)
 
     report = get_ready_specific_analyzer(

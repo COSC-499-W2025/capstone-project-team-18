@@ -72,8 +72,8 @@ def test_extract_file_reports_returns_project(tmp_path, create_temp_file):
     )
 
 
-def test_created_modifiyed_and_accessed_dates(tmp_path, project_context_from_root):
-    unzip_file("tests/resources/mac_projects.zip", str(tmp_path))
+def test_created_modifiyed_and_accessed_dates(tmp_path, project_context_from_root, resource_dir):
+    unzip_file(str(resource_dir / "mac_projects.zip"), str(tmp_path))
 
     file_path = tmp_path / "Projects" / "ProjectA" / "a_1.txt"
 

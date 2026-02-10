@@ -2,7 +2,6 @@
 The entry point for the ArtifactMiner program.
 """
 
-from src.database.utils.db_migrate import run_migrations
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -17,7 +16,8 @@ def init_system() -> tuple[bool, str]:
     # Setup db (handled separately)
     # Setup ML warm-up
     try:
-        from src.core.ML.models.contribution_analysis.summary_generator import _load_model
+        from src.core.ML.models.contribution_analysis.summary_generator import \
+            _load_model
 
         model, tokenizer = _load_model()
         if model is None or tokenizer is None:
@@ -34,8 +34,7 @@ def init_system() -> tuple[bool, str]:
 
 
 def main():
-    run_migrations()
-    _, startup_message = init_system()
+    startup_message = init_system()
     print(startup_message)
 
     from src.interface.cli.cli import ArtifactMiner

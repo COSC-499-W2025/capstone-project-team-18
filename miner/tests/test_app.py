@@ -6,7 +6,6 @@ More detailed tests will be in their respective modules.
 import pytest
 
 from src.interface.cli.cli_service_handler import start_miner_cli
-from src.core.report import ProjectReport
 from src.utils.errors import NoDiscoveredProjects, ErrorCode
 
 
@@ -26,12 +25,12 @@ def mock_engine(monkeypatch, blank_db):
     yield blank_db
 
 
-def test_app_runs(mock_engine, mock_readme_analysis):
+def test_app_runs(mock_engine, mock_readme_analysis, resource_dir):
     """
     Test that the main app function runs without errors.
     """
     # Use a sample zipped file path for testing
-    sample_zipped_file = "./tests/resources/mac_projects.zip"
+    sample_zipped_file = str(resource_dir / "mac_projects.zip")
     sample_email = "bob@example.com"
 
     start_miner_cli(sample_zipped_file, sample_email)
@@ -47,27 +46,27 @@ def test_app_runs(mock_engine, mock_readme_analysis):
     # assert isinstance(project_b, ProjectReport)
 
 
-def test_app_runs_empty_zip(mock_readme_analysis):
+def test_app_runs_empty_zip(mock_readme_analysis, resource_dir):
     """
     Test that the main app function raises ValueError
     for a zip file that contains one empty folder.
     """
     # Use a sample zipped file path for testing
-    sample_zipped_file = "./tests/resources/empty_project.zip"
+    sample_zipped_file = str(resource_dir / "empty_project.zip")
     sample_email = "bob@example.com"
 
     with pytest.raises(NoDiscoveredProjects):
         start_miner_cli(sample_zipped_file, sample_email)
 
 
-def test_app_runs_git_repo_wrong_email(mock_readme_analysis):
+def test_app_runs_git_repo_wrong_email(mock_readme_analysis, resource_dir):
     """
     Test that the main app function raises ValueError
     for a zip file that contains a git project with
     the wrong email.
     """
     # Use a sample zipped file path for testing
-    sample_zipped_file = "./tests/resources/sample_git_project_one_author.zip"
+    sample_zipped_file = resource_dir / "sample_git_project_one_author.zip"
     sample_email = "spencer@example.com"
 
     miner_results = start_miner_cli(sample_zipped_file, sample_email)
