@@ -3,6 +3,7 @@ This file holds top level functions for interacting
 with the analyzer class structure.
 """
 
+import os
 from multiprocessing import Pool, cpu_count
 from typing import Optional
 from pathlib import Path
@@ -26,6 +27,17 @@ from src.infrastructure.log.logging import get_logger
 from src.database.api.models import UserConfigModel as UserConfig
 
 logger = get_logger(__name__)
+
+
+def _parallel_file_analysis_enabled() -> bool:
+    """
+    Guard parallel analysis behind an explicit opt-in.
+
+    Multiprocessing can stall after heavy ML libraries/models are initialized
+    in the parent process (fork + thread/lock state). Defaulting to sequential
+    avoids deadlocks in interactive CLI runs.
+    """
+    return os.environ.get("ARTIFACT_MINER_PARALLEL_FILE_ANALYSIS", "0") == "1"
 
 
 def single_file_analysis(
@@ -71,8 +83,6 @@ def extract_file_reports(
     # Given a single project for a user and the project's structure return a list with each fileReport
     project_files = project_file.file_paths
 
-    workers = max(1, cpu_count() - 1)
-
     args = [
         (
             file,
@@ -84,8 +94,24 @@ def extract_file_reports(
         for file in project_files
     ]
 
-    with Pool(processes=workers) as pool:
-        results = pool.starmap(single_file_analysis, args)
+    if not _parallel_file_analysis_enabled():
+        logger.info(
+            "Parallel file analysis disabled; using sequential mode for project %s",
+            project_file.name,
+        )
+        results = [single_file_analysis(*arg) for arg in args]
+        return [r for r in results if r is not None]
+
+    workers = max(1, cpu_count() - 1)
+    try:
+        with Pool(processes=workers) as pool:
+            results = pool.starmap(single_file_analysis, args)
+    except Exception as exc:
+        logger.warning(
+            "Parallel file analysis unavailable (%s); falling back to sequential",
+            exc,
+        )
+        results = [single_file_analysis(*arg) for arg in args]
 
     return [r for r in results if r is not None]
 

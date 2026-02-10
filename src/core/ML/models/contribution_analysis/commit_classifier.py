@@ -1,5 +1,5 @@
 import os
-from transformers import pipeline
+from src.core.ML.models.model_runtime import get_zero_shot_pipeline
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -36,6 +36,15 @@ _LABEL_MAP = {
 }
 
 
+def _batch_size() -> int:
+    """Read commit classification batch size from env with a safe default."""
+    raw = os.environ.get("ARTIFACT_MINER_COMMIT_CLASSIFIER_BATCH_SIZE", "16")
+    try:
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return 16
+
+
 def _get_commit_classifier():
     """Return cached zero-shot classifier for commit messages."""
     global _CLASSIFIER_PIPELINE, _CLASSIFIER_FAILED
@@ -54,10 +63,10 @@ def _get_commit_classifier():
                 "ARTIFACT_MINER_COMMIT_CLASSIFIER_MODEL",
                 "facebook/bart-large-mnli"
             )
-            _CLASSIFIER_PIPELINE = pipeline(
-                "zero-shot-classification",
-                model=model_name
-            )
+            _CLASSIFIER_PIPELINE = get_zero_shot_pipeline(model_name)
+            if _CLASSIFIER_PIPELINE is None:
+                _CLASSIFIER_FAILED = True
+                return None
             logger.info(f"Loaded commit classifier: {model_name}")
         except Exception:
             logger.exception("Failed to initialize commit classifier")
@@ -91,40 +100,67 @@ class CommitClassifier:
             "unknown": 0
         }
 
+        prepared_messages: list[str] = []
         for msg in messages:
             if not msg or not msg.strip():
                 counts["unknown"] += 1
                 continue
 
-            try:
-                # Use first line of commit message, truncated to model's input limit
-                # BART tokenizer can handle ~1024 tokens; 256 chars provides a safe margin for tokenization
-                # and captures essential commit message as commits are typically <100 chars
-                first_line = msg.split('\n')[0].strip()[:_MAX_COMMIT_MESSAGE_LENGTH]  # Truncate for model
-
-                result = self.model(
-                    first_line,
-                    _COMMIT_LABELS,
-                    multi_label=False
-                )
-
-                # Map label to category
-                top_label = result["labels"][0]
-                top_score = result["scores"][0]
-
-                # Reject low-confidence predictions to avoid misclassification
-                # Threshold of 0.3 gives a stable balance of precision vs coverage
-                if top_score < _MIN_CONFIDENCE_THRESHOLD:  # Low confidence threshold hit
-                    counts["unknown"] += 1
-                else:
-                    category = _LABEL_MAP.get(top_label, "unknown")
-                    counts[category] += 1
-
-            except Exception as e:
-                logger.warning(f"Failed to classify commit: {e}")
+            first_line = msg.split('\n')[0].strip()[:_MAX_COMMIT_MESSAGE_LENGTH]
+            if not first_line:
                 counts["unknown"] += 1
+                continue
+            prepared_messages.append(first_line)
+
+        if not prepared_messages:
+            return counts
+
+        size = _batch_size()
+        for start in range(0, len(prepared_messages), size):
+            batch = prepared_messages[start:start + size]
+            try:
+                results = self.model(
+                    batch,
+                    _COMMIT_LABELS,
+                    multi_label=False,
+                    batch_size=size,
+                )
+                if isinstance(results, dict):
+                    results = [results]
+
+                if len(results) != len(batch):
+                    raise ValueError(
+                        f"Unexpected result size: got {len(results)}, expected {len(batch)}"
+                    )
+
+                for result in results:
+                    self._apply_ml_result(counts, result)
+            except Exception as e:
+                logger.warning(f"Failed to classify commit batch: {e}")
+                fallback = self._fallback_classify(batch)
+                for key, value in fallback.items():
+                    counts[key] += value
 
         return counts
+
+    def _apply_ml_result(self, counts: dict[str, int], result: dict) -> None:
+        """
+        Update output counts from a single zero-shot inference result payload.
+        """
+        labels = result.get("labels") or []
+        scores = result.get("scores") or []
+        if not labels or not scores:
+            counts["unknown"] += 1
+            return
+
+        top_label = labels[0]
+        top_score = scores[0]
+        if top_score < _MIN_CONFIDENCE_THRESHOLD:
+            counts["unknown"] += 1
+            return
+
+        category = _LABEL_MAP.get(top_label, "unknown")
+        counts[category] += 1
 
     def _fallback_classify(self, messages: list[str]) -> dict[str, int]:
         """Fallback rule-based classification when ML model unavailable."""

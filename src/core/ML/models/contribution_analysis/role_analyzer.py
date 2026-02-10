@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from transformers import pipeline
+from src.core.ML.models.model_runtime import get_zero_shot_pipeline
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -51,10 +51,10 @@ def _get_role_classifier():
                 "ARTIFACT_MINER_ROLE_CLASSIFIER_MODEL",
                 "facebook/bart-large-mnli"
             )
-            _ROLE_CLASSIFIER = pipeline(
-                "zero-shot-classification",
-                model=model_name
-            )
+            _ROLE_CLASSIFIER = get_zero_shot_pipeline(model_name)
+            if _ROLE_CLASSIFIER is None:
+                _ROLE_CLASSIFIER_FAILED = True
+                return None
             logger.info(f"Loaded role classifier: {model_name}")
         except Exception:
             logger.exception("Failed to initialize role classifier")

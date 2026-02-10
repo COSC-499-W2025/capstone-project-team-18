@@ -5,6 +5,7 @@ import re
 from time import perf_counter
 from typing import Any
 
+from src.core.ML.models.model_runtime import cuda_available, get_causal_lm
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 
@@ -94,23 +95,9 @@ def _get_model_name() -> str:
     if override:
         return override
 
-    if _cuda_available():
+    if cuda_available():
         return "microsoft/Phi-3-mini-4k-instruct"
     return "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-
-
-def _cuda_available() -> bool:
-    """
-    Return whether CUDA is available, without requiring torch at import time.
-    """
-    try:
-        import torch
-    except ImportError:
-        return False
-    try:
-        return bool(torch.cuda.is_available())
-    except Exception:
-        return False
 
 
 def _load_model():
@@ -135,27 +122,13 @@ def _load_model():
         return _MODEL, _TOKENIZER
 
     try:
-        import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-    except ImportError:
-        logger.info("ML dependencies are not installed; skipping project summary model load")
-        _MODEL_FAILED = True
-        return None, None
-
-    try:
         load_start = perf_counter()
         model_name = _get_model_name()
         logger.info("Loading project summary model: %s", model_name)
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-        use_cuda = torch.cuda.is_available()
-        dtype = torch.float16 if use_cuda else torch.float32
-        device_map = "auto" if use_cuda else "cpu"
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=dtype,
-            device_map=device_map,
-            low_cpu_mem_usage=True,
-        )
+        model, tokenizer = get_causal_lm(model_name)
+        if model is None or tokenizer is None:
+            _MODEL_FAILED = True
+            return None, None
         _MODEL = model
         _TOKENIZER = tokenizer
         load_seconds = perf_counter() - load_start

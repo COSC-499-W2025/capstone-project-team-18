@@ -3,6 +3,7 @@ import hashlib
 import re
 from typing import Iterable
 
+from src.core.ML.models.model_runtime import get_zero_shot_pipeline
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
@@ -142,11 +143,12 @@ def _get_classifier():
         return None
     if _ZSC_PIPELINE is None:
         try:
-            from transformers import pipeline
             model_name = os.environ.get(
                 "ARTIFACT_MINER_ZSC_MODEL", "facebook/bart-large-mnli")
-            _ZSC_PIPELINE = pipeline(
-                "zero-shot-classification", model=model_name)
+            _ZSC_PIPELINE = get_zero_shot_pipeline(model_name)
+            if _ZSC_PIPELINE is None:
+                _ZSC_FAILED = True
+                return None
         except Exception:
             logger.exception("Failed to initialize zero-shot classifier")
             _ZSC_FAILED = True

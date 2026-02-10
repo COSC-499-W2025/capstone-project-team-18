@@ -3,7 +3,7 @@ This file holds the main service, the miner.
 """
 
 import tempfile
-from typing import Optional
+from typing import Optional, Callable
 from sqlmodel import SQLModel, Session
 from dataclasses import dataclass
 from pydantic import BaseModel
@@ -44,7 +44,7 @@ class MinerResults():
 
 def _discover_projects_from_file(
     zipped_bytes: bytes,
-    zipped_format: str
+    zipped_format: str,
 ) -> list[ProjectLayout]:
     """
     Unzips the files form a user uploaded zip
@@ -132,7 +132,8 @@ def _save_project_report_to_db(project_report: list[ProjectReport], user_config_
 def start_miner_service(
     zipped_bytes: bytes,
     zipped_format: str,
-    user_config: UserConfig
+    user_config: UserConfig,
+    progress_callback: Optional[Callable[[str, int, int, str], None]] = None,
 ) -> MinerResults:
     """
     This is the defacto function to start the miner function
@@ -175,13 +176,23 @@ def start_miner_service(
         raise NoDiscoveredProjects(
             "The analyzer found no projects to analyze.")
 
+    if progress_callback:
+        progress_callback("start", 0, len(projects_discovered), "")
+        # Emit completed pre-analysis stages after initialization so CLI
+        # progress bars can account for unzip/discovery work.
+        progress_callback("unzip", 1, 1, "")
+        progress_callback("discovery", 1, 1, "")
+
     # For every discovered project, try to analyze the project
     # If an error occurs, catch it for that project to be returned
     # and move on
     project_reports = []
     project_errors = []
 
-    for layout in projects_discovered:
+    total_projects = len(projects_discovered)
+    for i, layout in enumerate(projects_discovered, start=1):
+        if progress_callback:
+            progress_callback("analysis", i, total_projects, layout.name)
         try:
             report = _analyze_project_files(layout, user_config)
             project_reports.append(report)
@@ -209,9 +220,13 @@ def start_miner_service(
                 error_message=str(e)
             ))
 
+    if progress_callback:
+        progress_callback("saving", 1, 1, "")
     _save_project_report_to_db(project_reports, None)
 
     success = len(project_errors) == 0
+    if progress_callback:
+        progress_callback("complete", 1, 1, "")
     return MinerResults(project_errors=project_errors,
                         success=success,
                         project_reports=project_reports)

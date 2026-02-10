@@ -4,10 +4,8 @@ import hashlib
 import re
 from typing import Any
 
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
+from src.core.ML.models.model_runtime import cuda_available, get_causal_lm
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.contribution_analysis.summary_constants import (
     SUMMARY_STYLE_EXAMPLE,
@@ -42,7 +40,7 @@ def _get_model_name() -> str:
     if override:
         return override
 
-    if torch.cuda.is_available():
+    if cuda_available():
         return "microsoft/Phi-3-mini-4k-instruct"
 
     # CPU-friendly default (smaller, faster, lower memory)
@@ -68,18 +66,10 @@ def _load_model():
     try:
         model_name = _get_model_name()
         logger.info("Loading signature model: %s", model_name)
-
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-        use_cuda = torch.cuda.is_available()
-        dtype = torch.float16 if use_cuda else torch.float32
-        device_map = "auto" if use_cuda else "cpu"
-
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=dtype,
-            device_map=device_map,
-            low_cpu_mem_usage=True,
-        )
+        model, tokenizer = get_causal_lm(model_name)
+        if model is None or tokenizer is None:
+            _MODEL_FAILED = True
+            return None, None
 
         _MODEL = model
         _TOKENIZER = tokenizer

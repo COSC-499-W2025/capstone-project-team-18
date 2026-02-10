@@ -224,7 +224,25 @@ class ArtifactMiner(cmd.Cmd):
             print("\n" + self.options)
             return
 
+        # Normalize + validate filepath every run to prevent stale preferences
+        # from causing confusing file-not-found errors.
+        normalized_path = normalize_path(self.project_filepath)
+        filepath_error = is_valid_filepath_to_zip(normalized_path)
+        if filepath_error != 0:
+            print("\nError: Configured filepath is not currently valid.")
+            if filepath_error == 1:
+                print(f"Path is not a file: {normalized_path}")
+            elif filepath_error == 2:
+                print(f"Path is not a supported archive (.zip/.7z/.tar.gz/.gz): {normalized_path}")
+            elif filepath_error == 3:
+                print(f"File does not exist: {normalized_path}")
+            print("Use option (2) Set filepath and provide a full path.")
+            print("\n" + self.options)
+            return
+        self.project_filepath = normalized_path
+
         print(f"\nBeginning analysis of: {self.project_filepath}")
+        print("Note: First ML run may take several minutes to download models once.")
 
         # Show advanced configuration being used
         prefs = self.preferences.load_preferences()

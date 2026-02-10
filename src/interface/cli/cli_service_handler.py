@@ -43,10 +43,20 @@ def start_miner_cli(
     """
 
     # Keep ML enabled in CLI, but silence model loading noise/progress bars.
-    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
-    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-    os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
-    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    # Use a writable cache root in sandboxed/test environments.
+    os.environ.setdefault("HF_HOME", "/tmp/huggingface")
+    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+    os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+    os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    offline = os.environ.get("ARTIFACT_MINER_HF_OFFLINE", "0")
+    os.environ.setdefault("HF_HUB_OFFLINE", offline)
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", offline)
+    try:
+        from huggingface_hub.utils import disable_progress_bars
+        disable_progress_bars()
+    except Exception:
+        pass
     # Silence noisy warnings from ML stack (e.g., UMAP/BERTopic) in CLI output.
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
@@ -81,7 +91,8 @@ def start_miner_cli(
             consent=True,
             github=github,
             user_email=email,
-        )
+        ),
+        progress_callback=progress_callback,
     )
 
     if miner_results.success is False:
