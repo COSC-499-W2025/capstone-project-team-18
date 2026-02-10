@@ -2,7 +2,13 @@
 The entry point for the ArtifactMiner program.
 """
 
+from sqlmodel import SQLModel
+
+from src.core.ML.models.contribution_analysis.summary_generator import \
+    _load_model
+from src.database import get_engine
 from src.infrastructure.log.logging import get_logger
+from src.interface.cli.cli import ArtifactMiner
 
 logger = get_logger(__name__)
 
@@ -14,10 +20,13 @@ def init_system() -> tuple[bool, str]:
     and ML warm-up.
     """
     # Setup db (handled separately)
+
+    engine = get_engine()
+    SQLModel.metadata.create_all(engine)
+
     # Setup ML warm-up
     try:
-        from src.core.ML.models.contribution_analysis.summary_generator import \
-            _load_model
+
 
         model, tokenizer = _load_model()
         if model is None or tokenizer is None:
@@ -34,10 +43,10 @@ def init_system() -> tuple[bool, str]:
 
 
 def main():
-    startup_message = init_system()
+    _, startup_message = init_system()
     print(startup_message)
 
-    from src.interface.cli.cli import ArtifactMiner
+
     try:
         ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
 
