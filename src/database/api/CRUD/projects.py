@@ -1,7 +1,9 @@
-from sqlmodel import Session, select
+from datetime import datetime
 from typing import Optional
-from sqlmodel import Session
-from src.database.api.models import ProjectReportModel
+
+from sqlmodel import Session, select
+
+from src.database.api.models import ProjectReportModel, FileReportModel
 from src.core.report import ProjectReport
 from src.database.core.model_serializer import serialize_project_report, serialize_file_report
 from src.database.core.model_deserializer import deserialize_project_report
@@ -26,15 +28,38 @@ def save_project_report(
         The saved ProjectReportModel instance
     """
 
-    project_model = serialize_project_report(project_report, user_config_id)
+    incoming_project_model = serialize_project_report(project_report, user_config_id)
 
     file_models = [serialize_file_report(fr)
                    for fr in project_report.file_reports]
-    project_model.file_reports = file_models
 
-    session.add(project_model)
+    existing_project = get_project_report_model_by_name(
+        session, incoming_project_model.project_name
+    )
+    if existing_project is None:
+        incoming_project_model.file_reports = file_models
+        session.add(incoming_project_model)
+        return incoming_project_model
 
-    return project_model
+    # Upsert behavior: update existing project row and replace file reports.
+    existing_project.user_config_used = incoming_project_model.user_config_used
+    existing_project.statistic = incoming_project_model.statistic
+    existing_project.last_updated = datetime.now()
+
+    existing_file_reports = session.exec(
+        select(FileReportModel).where(
+            FileReportModel.project_name == existing_project.project_name
+        )
+    ).all()
+    for existing_file in existing_file_reports:
+        session.delete(existing_file)
+    session.flush()
+
+    for file_model in file_models:
+        file_model.project_name = existing_project.project_name
+        session.add(file_model)
+
+    return existing_project
 
 
 def get_project_report_model_by_name(

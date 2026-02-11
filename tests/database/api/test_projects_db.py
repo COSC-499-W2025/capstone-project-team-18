@@ -3,7 +3,12 @@ Tests CRUD for the ProjectReport object
 """
 
 from sqlmodel import Session
-from src.database.api.CRUD.projects import get_project_report_by_name
+from src.database.api.CRUD.projects import (
+    get_project_report_by_name,
+    get_project_report_model_by_name,
+    save_project_report,
+)
+from src.core.report import ProjectReport
 from src.core.statistic import FileStatCollection
 from src.core.statistic.statistic_models import FileDomain
 
@@ -37,3 +42,20 @@ def test_get_nonexistent_project_returns_none(temp_db):
     with Session(temp_db) as session:
         project = get_project_report_by_name(session, "NonexistentProject")
         assert project is None
+
+
+def test_save_project_report_upserts_existing_project(temp_db, fr1):
+    # Reuse fr1 payload but force it to belong to the existing project name.
+    fr1.project_name = "Project1"
+    updated_project = ProjectReport(file_reports=[fr1], project_name="Project1")
+
+    with Session(temp_db) as session:
+        save_project_report(session, updated_project, user_config_id=42)
+        session.commit()
+
+    with Session(temp_db) as session:
+        model = get_project_report_model_by_name(session, "Project1")
+        assert model is not None
+        assert model.user_config_used == 42
+        assert len(model.file_reports) == 1
+        assert model.file_reports[0].file_path == "file1.py"

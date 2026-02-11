@@ -2,10 +2,16 @@ import json
 import os
 import hashlib
 import re
+from time import perf_counter
 from typing import Any
 
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.ML.models.model_runtime import cuda_available, get_causal_lm
+from src.core.ML.models.llama_cpp_runtime import (
+    llama_cpp_enabled,
+    resolve_llama_cpp_model_path,
+    llama_cpp_generate_json_object,
+)
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.contribution_analysis.summary_constants import (
     SUMMARY_STYLE_EXAMPLE,
@@ -84,6 +90,82 @@ def _facts_hash(facts: dict[str, Any]) -> str:
     """Create a stable cache key for a facts payload."""
     serialized = json.dumps(facts, sort_keys=True, ensure_ascii=True)
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _cache_enabled() -> bool:
+    """Allow disabling summary cache for strict per-run ML generation checks."""
+    return os.environ.get("ARTIFACT_MINER_SUMMARY_CACHE_DISABLE", "0") != "1"
+
+
+def _env_int(name: str, default: int) -> int:
+    """Read integer env var safely."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    """Read float env var safely."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _llama_cpp_max_tokens() -> int:
+    """
+    Keep user-summary generation bounded so CLI remains responsive.
+    """
+    return max(64, min(180, _env_int("ARTIFACT_MINER_SIGNATURE_LLAMA_MAX_TOKENS", 112)))
+
+
+def _llama_cpp_max_retries() -> int:
+    """
+    Keep retries low; repaired fallback now handles many malformed outputs.
+    """
+    return max(0, min(2, _env_int("ARTIFACT_MINER_SIGNATURE_LLAMA_MAX_RETRIES", 1)))
+
+
+def _llama_cpp_max_seconds() -> float:
+    """Upper budget for user-summary llama-cpp generation attempts."""
+    return max(10.0, _env_float("ARTIFACT_MINER_SIGNATURE_LLAMA_MAX_SEC", 75.0))
+
+
+def _llama_cpp_model_path() -> str | None:
+    """Resolve GGUF model path for user summary generation."""
+    return resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_SIGNATURE_MODEL_PATH")
+
+
+def _build_llama_cpp_prompt(facts: dict[str, Any]) -> str:
+    """
+    Build strict structured prompt for llama-cpp summary generation.
+    """
+    prompt_facts = dict(facts)
+    prompt_facts.pop("project_names", None)
+    prompt_facts.pop("tags", None)
+    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
+    return (
+        "TASK: USER_SUMMARY\n"
+        "Return exactly one JSON object with this schema:\n"
+        '{"summary":"string"}\n'
+        "Hard constraints:\n"
+        "- 2 to 6 sentences.\n"
+        "- 30 to 140 words.\n"
+        "- Narrative prose only (no lists or bullets).\n"
+        "- Use only the facts in the payload.\n"
+        "- Mention at least one concrete stack term from top_skills/top_languages/tools when available.\n"
+        "- Do not mention project names, company names, or being an assistant.\n"
+        "- Do not include any key besides summary.\n"
+        "- Output must be valid JSON and nothing else.\n\n"
+        f"FACTS_JSON: {facts_json}"
+    )
 
 
 def _build_prompt(facts: dict[str, Any], strict: bool = False, include_example: bool = True) -> str:
@@ -180,6 +262,11 @@ def _tokenize_words(text: str) -> list[str]:
 def _split_sentences(text: str) -> list[str]:
     """Split free-form text into sentence-like chunks."""
     return [s.strip() for s in re.split(r"[.!?]+", text) if s.strip()]
+
+
+def _sentence_count(text: str) -> int:
+    """Count sentence-like segments using punctuation boundaries."""
+    return len(_split_sentences(text))
 
 
 def _jaccard_similarity(a: set[str], b: set[str]) -> float:
@@ -328,7 +415,7 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     word_count = len(summary.split())
     if word_count < 30 or word_count > 140:
         return False, f"word_count={word_count}"
-    sentence_count = summary.count(".")
+    sentence_count = _sentence_count(summary)
     if not (2 <= sentence_count <= 6):
         return False, f"sentence_count={sentence_count}"
 
@@ -347,6 +434,70 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     if _has_redundant_repetition(summary):
         return False, "redundant_repetition"
     return True, "ok"
+
+
+def _llama_cpp_response_valid(response: dict[str, Any], facts: dict[str, Any]) -> tuple[bool, str]:
+    """Validate structured llama-cpp response payload."""
+    if not isinstance(response, dict):
+        return False, "not_object"
+
+    if set(response.keys()) != {"summary"}:
+        return False, "invalid_keys"
+
+    summary = response.get("summary")
+    if not isinstance(summary, str):
+        return False, "missing_summary"
+
+    repaired = _repair_summary_with_grounded_fallback(summary, facts)
+    if not repaired:
+        return False, "empty_summary"
+    response["summary"] = repaired
+    return _is_valid_summary(repaired, facts)
+
+
+def _generate_signature_with_llama_cpp(facts: dict[str, Any]) -> str | None:
+    """
+    Generate signature summary via local llama-cpp GGUF model.
+    """
+    if not llama_cpp_enabled():
+        return None
+    if not ml_extraction_allowed():
+        return None
+    if os.environ.get("ARTIFACT_MINER_DISABLE_SIGNATURE_MODEL") == "1":
+        return None
+
+    model_path = _llama_cpp_model_path()
+    if not model_path:
+        logger.warning("llama-cpp enabled but no signature GGUF model path could be resolved")
+        return None
+    started_at = perf_counter()
+    response = llama_cpp_generate_json_object(
+        model_path=model_path,
+        prompt=_build_llama_cpp_prompt(facts),
+        validator=lambda payload: _llama_cpp_response_valid(payload, facts),
+        max_retries=_llama_cpp_max_retries(),
+        max_tokens=_llama_cpp_max_tokens(),
+        temperature=0.0,
+        top_p=0.95,
+        max_total_seconds=_llama_cpp_max_seconds(),
+    )
+    if not response:
+        logger.warning(
+            "llama-cpp signature generation failed validation/response (elapsed=%.1fs)",
+            perf_counter() - started_at,
+        )
+        return None
+
+    summary = response.get("summary")
+    if not isinstance(summary, str):
+        return None
+
+    repaired = _repair_summary_with_grounded_fallback(summary, facts)
+    if not repaired:
+        return None
+    ok, _reason = _is_valid_summary(repaired, facts)
+    logger.info("llama-cpp signature generation finished in %.1fs", perf_counter() - started_at)
+    return repaired if ok else None
 
 
 def _has_redundant_repetition(summary: str) -> bool:
@@ -503,6 +654,66 @@ def _build_professional_fallback(facts: dict[str, Any]) -> str | None:
     return summary if summary else None
 
 
+def _validated_fallback_summary(facts: dict[str, Any], *, context: str) -> str | None:
+    """Build and validate deterministic fallback summary."""
+    fallback_summary = _build_professional_fallback(facts)
+    if not fallback_summary:
+        return None
+    is_ok, reason = _is_valid_summary(fallback_summary, facts)
+    if not is_ok:
+        logger.warning("Fallback summary rejected%s (%s): %s", context, reason, fallback_summary[:200])
+        return None
+    return fallback_summary
+
+
+def _repair_summary_with_grounded_fallback(summary: str | None, facts: dict[str, Any]) -> str | None:
+    """
+    Normalize and salvage borderline ML output before final validation.
+
+    If the output is substantially malformed (very short/list-like/anchor-missing),
+    use a grounded deterministic fallback sentence set to keep output stable.
+    """
+    normalized = _normalize_summary(summary or "")
+    normalized = _remove_invalid_sentences(normalized, facts.get("project_names", []))
+    normalized = _polish_summary(normalized)
+    normalized = _trim_to_sentences(normalized, max_sentences=6)
+
+    if not normalized:
+        return _validated_fallback_summary(facts, context=" after empty ML output")
+
+    is_ok, reason = _is_valid_summary(normalized, facts)
+    if is_ok:
+        return normalized
+
+    fallback_summary = _validated_fallback_summary(facts, context=" after ML validation failure")
+    if not fallback_summary:
+        return normalized
+
+    short_or_malformed = (
+        reason.startswith("word_count=")
+        or reason.startswith("sentence_count=")
+        or reason in {
+            "list_like",
+            "no_skill_language_tool_anchor",
+            "mentions_project_name",
+            "example_overlap",
+            "redundant_repetition",
+        }
+    )
+    if short_or_malformed:
+        return fallback_summary
+
+    merged = f"{normalized.rstrip('.')} {fallback_summary}"
+    merged = _normalize_summary(merged)
+    merged = _remove_invalid_sentences(merged, facts.get("project_names", []))
+    merged = _polish_summary(merged)
+    merged = _trim_to_sentences(merged, max_sentences=6)
+    merged_ok, _merged_reason = _is_valid_summary(merged, facts)
+    if merged_ok:
+        return merged
+    return fallback_summary
+
+
 def generate_signature(facts: dict[str, Any]) -> str | None:
     """
     Generate a dynamic developer signature using a local LLM.
@@ -512,24 +723,40 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         return None
 
     cache_key = _facts_hash(facts)
-    if cache_key in _CACHE:
+    if _cache_enabled() and cache_key in _CACHE:
         logger.info("Signature summary cache hit")
         return _CACHE[cache_key]
+
+    llama_cpp_summary = _generate_signature_with_llama_cpp(facts)
+    if llama_cpp_summary:
+        if _cache_enabled():
+            _CACHE[cache_key] = llama_cpp_summary
+        logger.info("Signature summary generated successfully via llama-cpp")
+        return llama_cpp_summary
+
+    if llama_cpp_enabled():
+        logger.warning("llama-cpp signature generation unavailable or invalid")
+        if _ml_required():
+            return None
+        fallback_summary = _validated_fallback_summary(facts, context="")
+        if fallback_summary:
+            if _cache_enabled():
+                _CACHE[cache_key] = fallback_summary
+            logger.info("Signature summary generated from deterministic fallback")
+            return fallback_summary
+        return None
 
     model, tokenizer = _load_model()
     if model is None or tokenizer is None:
         logger.warning("Signature summary skipped: model not available")
         if _ml_required():
             return None
-        fallback_summary = _build_professional_fallback(facts)
-        if not fallback_summary:
-            return None
-        is_ok, reason = _is_valid_summary(fallback_summary, facts)
-        if is_ok:
-            _CACHE[cache_key] = fallback_summary
+        fallback_summary = _validated_fallback_summary(facts, context="")
+        if fallback_summary:
+            if _cache_enabled():
+                _CACHE[cache_key] = fallback_summary
             logger.info("Signature summary generated from deterministic fallback")
             return fallback_summary
-        logger.warning("Fallback summary rejected (%s): %s", reason, fallback_summary[:200])
         return None
 
     prompt = _build_prompt(facts, strict=False, include_example=True)
@@ -549,15 +776,13 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         decoded = tokenizer.decode(output[0], skip_special_tokens=True)
         if "Summary:" in decoded:
             decoded = decoded.split("Summary:", 1)[-1].strip()
-        summary = _normalize_summary(decoded)
-        summary = _remove_invalid_sentences(summary, facts.get("project_names", []))
-        summary = _polish_summary(summary)
-        summary = _trim_to_sentences(summary, max_sentences=6)
+        summary = _repair_summary_with_grounded_fallback(decoded, facts)
 
         if summary:
             is_ok, reason = _is_valid_summary(summary, facts)
             if is_ok:
-                _CACHE[cache_key] = summary
+                if _cache_enabled():
+                    _CACHE[cache_key] = summary
                 logger.info("Signature summary generated successfully")
                 return summary
             logger.warning("Summary rejected by validator (%s): %s", reason, summary[:200])
@@ -579,15 +804,13 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         decoded = tokenizer.decode(output[0], skip_special_tokens=True)
         if "Summary:" in decoded:
             decoded = decoded.split("Summary:", 1)[-1].strip()
-        summary = _normalize_summary(decoded)
-        summary = _remove_invalid_sentences(summary, facts.get("project_names", []))
-        summary = _polish_summary(summary)
-        summary = _trim_to_sentences(summary, max_sentences=6)
+        summary = _repair_summary_with_grounded_fallback(decoded, facts)
 
         if summary:
             is_ok, reason = _is_valid_summary(summary, facts)
             if is_ok:
-                _CACHE[cache_key] = summary
+                if _cache_enabled():
+                    _CACHE[cache_key] = summary
                 logger.info("Signature summary generated successfully (strict pass)")
                 return summary
             logger.warning("Summary rejected after strict pass (%s): %s", reason, summary[:200])
@@ -595,29 +818,23 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             logger.warning("Summary rejected after strict pass: empty output")
         if _ml_required():
             return None
-        fallback_summary = _build_professional_fallback(facts)
-        if not fallback_summary:
-            return None
-        is_ok, reason = _is_valid_summary(fallback_summary, facts)
-        if is_ok:
-            _CACHE[cache_key] = fallback_summary
+        fallback_summary = _validated_fallback_summary(facts, context=" after ML failure")
+        if fallback_summary:
+            if _cache_enabled():
+                _CACHE[cache_key] = fallback_summary
             logger.info("Signature summary generated from deterministic fallback after ML rejection")
             return fallback_summary
-        logger.warning("Fallback summary rejected after ML failure (%s): %s", reason, fallback_summary[:200])
         return None
     except Exception:
         logger.exception("Signature generation failed")
         if _ml_required():
             return None
-        fallback_summary = _build_professional_fallback(facts)
-        if not fallback_summary:
-            return None
-        is_ok, reason = _is_valid_summary(fallback_summary, facts)
-        if is_ok:
-            _CACHE[cache_key] = fallback_summary
+        fallback_summary = _validated_fallback_summary(facts, context=" after exception")
+        if fallback_summary:
+            if _cache_enabled():
+                _CACHE[cache_key] = fallback_summary
             logger.info("Signature summary generated from deterministic fallback after exception")
             return fallback_summary
-        logger.warning("Fallback summary rejected after exception (%s): %s", reason, fallback_summary[:200])
         return None
 
 

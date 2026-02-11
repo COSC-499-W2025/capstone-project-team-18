@@ -13,6 +13,7 @@ from src.core.ML.models.contribution_analysis import (
     build_signature_facts,
     generate_project_summary,
     build_project_summary_facts,
+    configure_project_summary_run,
 )
 from src.infrastructure.log.logging import get_logger
 
@@ -676,6 +677,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """
         if not getattr(user_report, "project_reports", None):
             return []
+
+        configure_project_summary_run(len(user_report.project_reports))
 
         lines: list[str] = []
         for pr in user_report.project_reports:
