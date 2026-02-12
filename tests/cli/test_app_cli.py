@@ -289,6 +289,20 @@ def test_do_begin_without_consent(cli):
         assert cli.cmd_history[0] == "begin"
         mock_start.assert_not_called()
 
+
+def test_prompt_portfolio_name_non_empty_no_crash_when_rename_unavailable(cli):
+    """Entering a custom portfolio name should not crash the CLI."""
+    cli.project_filepath = "/tmp/projects-multi-test.zip"
+
+    with patch('builtins.input', return_value='x'), \
+            patch('builtins.print'):
+        cli._prompt_portfolio_name()
+
+    cli.preferences.update.assert_called_with(
+        "last_portfolio_title", "projects-multi-test"
+    )
+
+
 # Command Routing Tests
 
 

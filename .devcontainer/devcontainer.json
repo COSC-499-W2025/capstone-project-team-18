@@ -2,8 +2,12 @@
 
     "name": "capstoneProjectDevContainer",
 
-    // Build the devcontainer from the Dockerfile
-    "build": {"dockerfile": "../Dockerfile"},
+    // Run workspace + ML services together.
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "workspace",
+    "workspaceFolder": "/workspaces/capstone-project-team-18",
+    "runServices": ["workspace", "llm-server", "ml-server"],
+    "shutdownAction": "stopCompose",
 
     // The features we should have. This ensures we have the gitbub CLI
 	"features": {
@@ -11,7 +15,12 @@
 	},
 
     "remoteEnv": {
-        "PYTHONPATH": "${containerWorkspaceFolder}"
+        "PYTHONPATH": "${containerWorkspaceFolder}",
+        "ARTIFACT_MINER_USE_LLAMA_CPP": "1",
+        "ARTIFACT_MINER_LLAMA_CPP_SERVER_URL": "http://llm-server:8000",
+        "ARTIFACT_MINER_LLAMA_CPP_SERVER_MODEL": "local-llm",
+        "ARTIFACT_MINER_ZERO_SHOT_SERVER_URL": "http://ml-server:8001",
+        "ARTIFACT_MINER_ZERO_SHOT_SERVER_REQUIRED": "1"
     },
 
     // The extensions installed in the resulting VSCode Version

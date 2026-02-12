@@ -7,6 +7,8 @@ from __future__ import annotations
 import json
 import os
 import threading
+import urllib.error
+import urllib.request
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable
@@ -70,6 +72,9 @@ def llama_cpp_enabled() -> bool:
     if explicit is not None:
         return _truthy(explicit)
 
+    if _llama_cpp_server_url():
+        return True
+
     # Auto-enable when a GGUF file is discoverable locally.
     return resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_MODEL_PATH") is not None
 
@@ -98,7 +103,15 @@ def resolve_llama_cpp_model_path(model_env_var: str) -> str | None:
     if explicit_global_configured:
         return explicit_global_configured
 
-    return _auto_discovered_model_path()
+    discovered = _auto_discovered_model_path()
+    if discovered:
+        return discovered
+
+    # HTTP-server mode has no local GGUF path in the caller process.
+    if _llama_cpp_server_url():
+        return _llama_cpp_server_model_name()
+
+    return None
 
 
 def _env_int(name: str, default: int) -> int:
@@ -126,6 +139,78 @@ def _env_bool(name: str, default: bool) -> bool:
     if raw is None:
         return default
     return _truthy(raw)
+
+
+def _llama_cpp_server_url() -> str | None:
+    raw = os.environ.get("ARTIFACT_MINER_LLAMA_CPP_SERVER_URL")
+    if not raw:
+        return None
+    value = raw.strip().rstrip("/")
+    if not value:
+        return None
+    return value
+
+
+def _llama_cpp_server_model_name() -> str:
+    raw = os.environ.get("ARTIFACT_MINER_LLAMA_CPP_SERVER_MODEL")
+    if raw and raw.strip():
+        return raw.strip()
+    return "local-llm"
+
+
+def _llama_cpp_server_timeout_seconds() -> float:
+    return max(1.0, _env_float("ARTIFACT_MINER_LLAMA_CPP_SERVER_TIMEOUT_SEC", 45.0))
+
+
+def _generate_raw_completion_from_server(
+    prompt: str,
+    *,
+    max_tokens: int,
+    temperature: float,
+    top_p: float,
+    stop: list[str] | None = None,
+) -> str | None:
+    server_url = _llama_cpp_server_url()
+    if not server_url:
+        return None
+
+    payload: dict[str, Any] = {
+        "model": _llama_cpp_server_model_name(),
+        "prompt": prompt,
+        "max_tokens": max(16, int(max_tokens)),
+        "temperature": max(0.0, float(temperature)),
+        "top_p": max(0.0, min(1.0, float(top_p))),
+    }
+    if stop:
+        payload["stop"] = stop
+
+    headers = {"Content-Type": "application/json"}
+    api_key = os.environ.get("ARTIFACT_MINER_LLAMA_CPP_SERVER_API_KEY")
+    if api_key and api_key.strip():
+        headers["Authorization"] = f"Bearer {api_key.strip()}"
+
+    body = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url=f"{server_url}/v1/completions",
+        data=body,
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=_llama_cpp_server_timeout_seconds()) as response:
+            raw_body = response.read().decode("utf-8", errors="replace")
+        parsed = json.loads(raw_body)
+        choices = parsed.get("choices", [])
+        if not choices:
+            return None
+        text = choices[0].get("text", "")
+        if not isinstance(text, str):
+            return None
+        return text.strip()
+    except (urllib.error.URLError, OSError, TimeoutError, json.JSONDecodeError):
+        logger.debug("llama-cpp HTTP server generation failed", exc_info=True)
+        return None
 
 
 def _load_model(model_path: str) -> Any | None:
@@ -201,8 +286,18 @@ def _generate_raw_completion(
     stop: list[str] | None = None,
 ) -> str | None:
     """
-    Generate plain text from a local GGUF model via llama-cpp.
+    Generate plain text from llama-cpp backend (HTTP server or local GGUF).
     """
+    server_url = _llama_cpp_server_url()
+    if server_url:
+        return _generate_raw_completion_from_server(
+            prompt=prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            stop=stop,
+        )
+
     model = _load_model(model_path)
     if model is None:
         return None

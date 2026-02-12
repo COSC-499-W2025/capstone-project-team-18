@@ -374,11 +374,19 @@ class ArtifactMiner(cmd.Cmd):
                 self.preferences.update("last_portfolio_title", default_title)
             return
 
-        raise ValueError("Deprecation")
-        success, message = rename_user_report(default_title, new_title)
-        print(message)
-        if success and hasattr(self.preferences, "update") and callable(getattr(self.preferences, "update", None)):
-            self.preferences.update("last_portfolio_title", new_title)
+        if new_title == default_title:
+            print(f"Keeping existing portfolio name '{default_title}'")
+            if hasattr(self.preferences, "update") and callable(getattr(self.preferences, "update", None)):
+                self.preferences.update("last_portfolio_title", default_title)
+            return
+
+        # Portfolio rename persistence was deprecated and can no longer be applied
+        # safely here. Keep the generated title instead of crashing the CLI.
+        print(
+            f"Portfolio rename is currently unavailable; keeping existing portfolio name '{default_title}'"
+        )
+        if hasattr(self.preferences, "update") and callable(getattr(self.preferences, "update", None)):
+            self.preferences.update("last_portfolio_title", default_title)
 
     def do_login(self, arg):
         '''Configure user login credentials'''

@@ -1,0 +1,72 @@
+services:
+  workspace:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/capstone-project-team-18:cached
+
+  llm-server:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.llm-server
+    command:
+      - python3
+      - -m
+      - llama_cpp.server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --model
+      - /models/phi-4-mini-q4_k_m.gguf
+      - --model_alias
+      - local-llm
+    volumes:
+      - ../models:/models:ro
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/models', timeout=2)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+
+  ml-server:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.ml-server
+    working_dir: /workspaces/capstone-project-team-18
+    command:
+      - python3
+      - -m
+      - uvicorn
+      - src.infrastructure.ml_server.zero_shot_server:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8001"
+    volumes:
+      - ..:/workspaces/capstone-project-team-18:cached
+      - ../.hf_cache:/hf_cache
+    environment:
+      - HF_HOME=/hf_cache
+      - TRANSFORMERS_CACHE=/hf_cache
+      - ARTIFACT_MINER_ZSC_MODEL=facebook/bart-large-mnli
+      - ARTIFACT_MINER_ZSC_PRELOAD=1
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=2)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s

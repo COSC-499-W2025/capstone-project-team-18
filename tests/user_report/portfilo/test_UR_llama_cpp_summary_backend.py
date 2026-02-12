@@ -1,3 +1,5 @@
+import json
+
 from src.core.ML.models import llama_cpp_runtime as lcr
 from src.core.ML.models.contribution_analysis import summary_generator as sg
 from src.core.ML.models.contribution_analysis import project_summary_generator as psg
@@ -147,6 +149,63 @@ def test_llama_cpp_auto_detects_local_gguf(monkeypatch, tmp_path):
     resolved = lcr.resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_SIGNATURE_MODEL_PATH")
     assert resolved == str(gguf_path.resolve())
     assert lcr.llama_cpp_enabled() is True
+
+
+def test_llama_cpp_enabled_with_server_url_without_local_gguf(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("ARTIFACT_MINER_USE_LLAMA_CPP", raising=False)
+    monkeypatch.delenv("ARTIFACT_MINER_LLAMA_CPP_MODEL_PATH", raising=False)
+    monkeypatch.setenv("ARTIFACT_MINER_LLAMA_CPP_SERVER_URL", "http://llm-server:8000")
+    monkeypatch.delenv("ARTIFACT_MINER_LLAMA_CPP_SERVER_MODEL", raising=False)
+
+    resolved = lcr.resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_SIGNATURE_MODEL_PATH")
+    assert resolved == "local-llm"
+    assert lcr.llama_cpp_enabled() is True
+
+
+def test_llama_cpp_server_generation_uses_http_api(monkeypatch):
+    class _FakeHTTPResponse:
+        def __init__(self, payload: str):
+            self._payload = payload
+
+        def read(self) -> bytes:
+            return self._payload.encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, _exc_type, _exc, _tb):
+            return False
+
+    captured = {}
+
+    def _fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["timeout"] = timeout
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeHTTPResponse('{"choices":[{"text":"{\\"summary\\": \\"ready\\"}"}]}')
+
+    monkeypatch.setenv("ARTIFACT_MINER_LLAMA_CPP_SERVER_URL", "http://llm-server:8000")
+    monkeypatch.delenv("ARTIFACT_MINER_LLAMA_CPP_SERVER_MODEL", raising=False)
+    monkeypatch.setattr(lcr, "_load_model", lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        AssertionError("local GGUF load should not run in HTTP-server mode")
+    ))
+    monkeypatch.setattr(lcr.urllib.request, "urlopen", _fake_urlopen)
+
+    payload = lcr.llama_cpp_generate_json_object(
+        model_path="ignored-in-http-mode",
+        prompt="test prompt",
+        validator=lambda data: (
+            isinstance(data.get("summary"), str),
+            "missing_summary",
+        ),
+        max_retries=0,
+    )
+
+    assert payload == {"summary": "ready"}
+    assert captured["url"] == "http://llm-server:8000/v1/completions"
+    assert captured["body"]["model"] == "local-llm"
+    assert captured["body"]["prompt"] == "test prompt"
 
 
 def test_signature_generator_repairs_short_llama_output(monkeypatch):
