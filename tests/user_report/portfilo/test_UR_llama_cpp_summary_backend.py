@@ -1093,6 +1093,186 @@ def test_project_summary_generator_require_ml_rejects_short_llama_output(monkeyp
     assert output is None
 
 
+def test_project_summary_generator_retries_structural_llama_output_before_fallback(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_USE_LLAMA_CPP", "1")
+    monkeypatch.setenv("ARTIFACT_MINER_LLAMA_CPP_MODEL_PATH", "/tmp/fake.gguf")
+    monkeypatch.delenv("ARTIFACT_MINER_PROJECT_SUMMARY_REQUIRE_ML", raising=False)
+    monkeypatch.setattr(psg, "ml_extraction_allowed", lambda: True)
+    monkeypatch.setattr(psg, "_load_model", lambda: (_ for _ in ()).throw(AssertionError("HF path should not run")))
+    monkeypatch.setattr(
+        psg,
+        "llama_cpp_generate_json_object",
+        lambda **_kwargs: {"summary": "TouristHelperApp supports itinerary planning and nearby recommendations."},
+    )
+
+    rewritten = (
+        "The project focused on itinerary planning and nearby recommendations for travelers. "
+        "It was implemented with Android libraries and primarily written in Java. "
+        "I contributed through code and test changes across core mobile workflows."
+    )
+    monkeypatch.setattr(psg, "llama_cpp_generate_text", lambda **_kwargs: rewritten)
+    psg._CACHE.clear()
+
+    output = psg.generate_project_summary(_project_facts())
+
+    assert output is not None
+    assert "TouristHelperApp supports itinerary planning and nearby recommendations." not in output
+    assert "implemented" in output.lower()
+    assert "contributed" in output.lower()
+    ok, reason = psg._is_valid_summary(output, _project_facts())
+    assert ok, reason
+
+
+def test_project_summary_repair_aligns_activity_percentages_to_facts():
+    facts = psg.build_project_summary_facts(
+        project_name="llm-eval-lab",
+        goal_terms=["llm evaluation"],
+        frameworks=["statistics"],
+        languages=["Python"],
+        role="core_contributor",
+        commit_focus="feature",
+        commit_pct=None,
+        line_pct=None,
+        activity_breakdown=[("documentation", 72.0), ("code", 28.0)],
+        role_description=None,
+    )
+    summary = (
+        "llm-eval-lab focuses on evaluating generative AI LLMs with Python and statistics frameworks. "
+        "The project primarily uses documentation (72%) and code development (27%)."
+    )
+
+    repaired = psg._repair_summary(summary, facts)
+
+    assert "27%" not in repaired
+    assert "28%" in repaired
+
+
+def test_project_summary_repair_preserves_ml_phrasing_and_aligns_dynamic_activity_percentages():
+    facts = psg.build_project_summary_facts(
+        project_name="fastapi-orders-service",
+        goal_terms=["python service architecture"],
+        frameworks=["FastAPI"],
+        languages=["Python"],
+        role="core_contributor",
+        commit_focus="feature",
+        commit_pct=42.86,
+        line_pct=None,
+        activity_breakdown=[("code", 42.86), ("documentation", 39.29), ("test", 18.0), ("config", 0.01)],
+        role_description=None,
+    )
+    summary = (
+        "The fastapi-orders-service project aims to develop a Python service architecture using the FastAPI framework. "
+        "Contributions were spread across code (40%), documentation (35%), test (20%), and config (5%) updates."
+    )
+
+    repaired = psg._repair_summary(summary, facts)
+
+    assert "Contributions were spread across" in repaired
+    assert "code (43%)" in repaired
+    assert "documentation (39%)" in repaired
+    assert "test (18%)" in repaired
+    assert "config (1%)" in repaired
+
+
+def test_project_summary_repair_injects_missing_third_activity_percentage():
+    facts = psg.build_project_summary_facts(
+        project_name="fastapi-orders-service",
+        goal_terms=["python service architecture"],
+        frameworks=["FastAPI"],
+        languages=["Python"],
+        role="core_contributor",
+        commit_focus="feature",
+        commit_pct=42.86,
+        line_pct=None,
+        activity_breakdown=[("code", 42.86), ("documentation", 39.29), ("test", 18.0)],
+        role_description=None,
+    )
+    summary = (
+        "The fastapi-orders-service project aims to develop a Python service architecture using the FastAPI framework. "
+        "Efforts are distributed among coding (42.86%), documentation (39%), and testing activities."
+    )
+
+    repaired = psg._repair_summary(summary, facts)
+
+    assert "coding (43%)" in repaired
+    assert "documentation (39%)" in repaired
+    assert "testing (18%)" in repaired
+
+
+def test_project_summary_repair_does_not_tag_generic_development_word():
+    facts = psg.build_project_summary_facts(
+        project_name="data-insights-pipeline",
+        goal_terms=["analysis pipeline", "sql workflows"],
+        frameworks=["matplotlib"],
+        languages=["Python"],
+        role="core_contributor",
+        commit_focus="feature",
+        commit_pct=None,
+        line_pct=None,
+        activity_breakdown=[("code", 62.0), ("documentation", 38.0)],
+        role_description=None,
+    )
+    summary = (
+        "The data-insights-pipeline project aims to create a Python-based analysis pipeline integrating SQL workflows and utilizing matplotlib for visualization. "
+        "Key contributions involve coding (62%) with significant documentation (38%) efforts complementing the development process."
+    )
+
+    repaired = psg._repair_summary(summary, facts)
+
+    assert "coding (62%)" in repaired.lower()
+    assert "documentation (38%)" in repaired.lower()
+    assert "development (62%)" not in repaired.lower()
+
+
+def test_project_summary_repair_removes_conflicting_generic_contribution_percentage():
+    facts = psg.build_project_summary_facts(
+        project_name="bayesian-scRNAseq-label-transfer",
+        goal_terms=["transfer labels", "cell ontogeny analysis"],
+        frameworks=[],
+        languages=["R"],
+        role=None,
+        commit_focus=None,
+        commit_pct=96.0,
+        line_pct=None,
+        activity_breakdown=[("code", 97.0), ("documentation", 3.0)],
+        role_description=None,
+    )
+    summary = (
+        "The bayesian-scRNAseq-label-transfer project aims to transfer labels from a reference dataset for cell ontogeny analysis using R. "
+        "It focuses on coding (97%), with 96% of contributions dedicated there and the remaining 3% in documentation (3%)."
+    )
+
+    repaired = psg._repair_summary(summary, facts)
+
+    assert "coding (97%)" in repaired
+    assert "documentation (3%)" in repaired
+    assert "96% of contributions" not in repaired.lower()
+
+
+def test_project_summary_repair_removes_duplicate_effort_percentage_before_activity():
+    facts = psg.build_project_summary_facts(
+        project_name="COSC310Group",
+        goal_terms=["student records"],
+        frameworks=["tkinter", "pytest"],
+        languages=["Python"],
+        role=None,
+        commit_focus=None,
+        commit_pct=None,
+        line_pct=None,
+        activity_breakdown=[("code", 58.0), ("test", 39.0)],
+        role_description=None,
+    )
+    summary = (
+        "The COSC310Group project aims to develop a Python application using tkinter for managing student records, with pytest as a framework. "
+        "Team members contributed 58% of their efforts coding (58%) functionalities related to student information management."
+    )
+
+    repaired = psg._repair_summary(summary, facts)
+
+    assert "coding (58%)" in repaired.lower()
+    assert "58% of their efforts" not in repaired.lower()
+
+
 def test_signature_generator_logs_llama_rejection_reason(monkeypatch):
     monkeypatch.setenv("ARTIFACT_MINER_USE_LLAMA_CPP", "1")
     monkeypatch.setenv("ARTIFACT_MINER_LLAMA_CPP_MODEL_PATH", "/tmp/fake.gguf")
@@ -1136,3 +1316,27 @@ def test_signature_generator_logs_llama_rejection_reason(monkeypatch):
         )
     )
     assert any("llama-cpp signature generation failed validation/response" in line for line in warnings)
+
+
+def test_signature_validator_diagnostics_logs_mixed_person_details(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_DIAGNOSTICS", "1")
+    infos: list[str] = []
+
+    def _capture_info(message, *args, **_kwargs):
+        rendered = message % args if args else str(message)
+        infos.append(rendered)
+
+    monkeypatch.setattr(sg.logger, "info", _capture_info)
+    summary = (
+        "Entry-to-mid-level software contributor focused on DevOps and platform reliability with Python workflows. "
+        "I deliver measurable outcomes through reliable implementation across release and service operations. "
+        "You collaborate effectively with stakeholders to improve team execution quality and delivery cadence."
+    )
+
+    ok, reason = sg._is_valid_summary(summary, _signature_facts())
+
+    assert not ok
+    assert reason == "mixed_person_voice"
+    assert any("Signature validator rejected summary (reason=mixed_person_voice" in line for line in infos)
+    assert any("Signature validator mixed-person details" in line for line in infos)

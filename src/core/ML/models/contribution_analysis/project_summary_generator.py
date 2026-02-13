@@ -339,6 +339,28 @@ def _build_llama_cpp_plain_prompt(facts: dict[str, Any]) -> str:
     )
 
 
+def _build_llama_cpp_structural_retry_prompt(facts: dict[str, Any], draft_summary: str, rejection_reason: str) -> str:
+    """
+    Build a rewrite prompt for structurally invalid summaries (too short/one sentence).
+    """
+    facts_json = json.dumps(facts, ensure_ascii=True)
+    return (
+        "TASK: PROJECT_SUMMARY_REWRITE\n"
+        "Rewrite DRAFT_SUMMARY into a professional 2 to 3 sentence project summary.\n"
+        "Hard constraints:\n"
+        "- 20 to 130 words.\n"
+        "- Keep only information grounded in FACTS_JSON and DRAFT_SUMMARY.\n"
+        "- Cover goals, stack, and contribution.\n"
+        "- Do not invent tools, percentages, roles, or outcomes.\n"
+        "- No bullet points.\n"
+        "- Return only the rewritten summary text.\n\n"
+        f"REJECTION_REASON: {rejection_reason}\n\n"
+        f"FACTS_JSON: {facts_json}\n\n"
+        f"DRAFT_SUMMARY: {draft_summary}\n\n"
+        "Rewritten summary:"
+    )
+
+
 def _extract_summary_from_payload(payload: Any) -> str | None:
     """
     Extract summary text from tolerant payload shapes.
@@ -437,6 +459,258 @@ def _normalize_summary(text: str) -> str:
     cleaned = re.sub(r"\b(\d{1,3})\.\s+(\d{1,3})\s*%", r"\1.\2%", cleaned)
     cleaned = re.sub(r"\b(\d{1,3})\s+%", r"\1%", cleaned)
     return " ".join(cleaned.split())
+
+
+def _align_summary_percentages(summary: str, facts: dict[str, Any]) -> str:
+    """
+    Align percentage mentions in summary text with canonical fact values.
+
+    This preserves model wording but ensures displayed percentages are consistent
+    with stats used elsewhere (e.g., resume section).
+    """
+    if not summary:
+        return summary
+
+    updated = summary
+
+    commit_pct = _normalize_percentage(facts.get("commit_pct"))
+    if isinstance(commit_pct, (int, float)):
+        commit_str = f"{int(round(float(commit_pct)))}%"
+        updated = re.sub(
+            r"(?i)(\bcommits?\b[^.?!%]{0,20}?)(\d{1,3}(?:\.\d+)?)\s*%",
+            lambda m: f"{m.group(1)}{commit_str}",
+            updated,
+        )
+        updated = re.sub(
+            r"(?i)(\d{1,3}(?:\.\d+)?)\s*%\s*(?:of\s+)?(commits?\b)",
+            lambda m: f"{commit_str} {m.group(2)}",
+            updated,
+        )
+        updated = re.sub(
+            r"(?i)(\bcommits?\b\s*[:\-]?\s*)(\d{1,3}(?:\.\d+)?)\s*%",
+            lambda m: f"{m.group(1)}{commit_str}",
+            updated,
+        )
+
+    line_pct = _normalize_percentage(facts.get("line_pct"))
+    if isinstance(line_pct, (int, float)):
+        line_str = f"{int(round(float(line_pct)))}%"
+        updated = re.sub(
+            r"(?i)(\blines?\b[^.?!%]{0,20}?)(\d{1,3}(?:\.\d+)?)\s*%",
+            lambda m: f"{m.group(1)}{line_str}",
+            updated,
+        )
+        updated = re.sub(
+            r"(?i)(\d{1,3}(?:\.\d+)?)\s*%\s*(?:of\s+)?(lines?\b)",
+            lambda m: f"{line_str} {m.group(2)}",
+            updated,
+        )
+        updated = re.sub(
+            r"(?i)(\blines?\b\s*[:\-]?\s*)(\d{1,3}(?:\.\d+)?)\s*%",
+            lambda m: f"{m.group(1)}{line_str}",
+            updated,
+        )
+
+    def _domain_aliases(domain_text: str) -> list[str]:
+        base = domain_text.strip().lower()
+        aliases = {base}
+        if base.endswith("e"):
+            aliases.add(base[:-1] + "ing")
+        else:
+            aliases.add(base + "ing")
+        if base == "code":
+            # Keep aliases specific to contribution activity; avoid broad
+            # nouns like "development" that can appear in general prose.
+            aliases.update({"coding"})
+        if base == "test":
+            aliases.update({"testing", "tests", "qa"})
+        if base == "documentation":
+            aliases.update({"docs", "documenting"})
+        # Prefer exact/base activity terms before variants.
+        ordered = [base]
+        for alias in sorted(aliases):
+            if alias != base:
+                ordered.append(alias)
+        return ordered
+
+    for domain, pct in facts.get("activity_breakdown", []):
+        domain_text = str(domain or "").strip().lower()
+        if not domain_text:
+            continue
+        pct_str = f"{int(round(float(pct)))}%"
+
+        # Normalize mentions like "coding (42.86%)" / "testing activities" to include
+        # the canonical percentage from facts while preserving surrounding ML phrasing.
+        replaced = False
+        for alias in _domain_aliases(domain_text):
+            alias_pattern = re.escape(alias)
+            qualifier_pattern = r"(?:development|work|changes?|activities?|tasks?)"
+
+            def _replace_phrase_percent(match: re.Match[str]) -> str:
+                nonlocal replaced
+                phrase = match.group(1)
+                replaced = True
+                return f"{phrase} ({pct_str})"
+
+            # Replace existing percentages bound to an activity phrase
+            # (e.g., "code development (27%)", "testing activities (20%)").
+            updated, phrase_count = re.subn(
+                rf"(?i)\b({alias_pattern}(?:\s+{qualifier_pattern})?)\b\s*\(\s*\d{{1,3}}(?:\.\d+)?%\s*\)",
+                _replace_phrase_percent,
+                updated,
+                count=1,
+            )
+            if phrase_count > 0:
+                break
+
+            def _attach_or_replace(match: re.Match[str]) -> str:
+                nonlocal replaced
+                token = match.group(1)
+                replaced = True
+                return f"{token} ({pct_str})"
+
+            updated, count = re.subn(
+                rf"(?i)\b({alias_pattern})\b(?:\s*\(\s*\d{{1,3}}(?:\.\d+)?%\s*\))?",
+                _attach_or_replace,
+                updated,
+                count=1,
+            )
+            if count > 0:
+                break
+
+    return updated
+
+
+def _dedupe_percentage_mentions(summary: str, facts: dict[str, Any]) -> str:
+    """
+    Remove redundant repeated percentage annotations for the same metric.
+
+    Keeps the first percentage mention for each canonical metric/activity and
+    strips later duplicate parenthetical percentages to avoid noisy repetition.
+    """
+    if not summary:
+        return summary
+
+    updated = summary
+    seen: set[str] = set()
+
+    def _domain_aliases(domain_text: str) -> list[str]:
+        base = domain_text.strip().lower()
+        aliases = {base}
+        if base.endswith("e"):
+            aliases.add(base[:-1] + "ing")
+        else:
+            aliases.add(base + "ing")
+        if base == "code":
+            aliases.update({"coding"})
+        if base == "test":
+            aliases.update({"testing", "tests", "qa"})
+        if base == "documentation":
+            aliases.update({"docs", "documenting"})
+        ordered = [base]
+        for alias in sorted(aliases):
+            if alias != base:
+                ordered.append(alias)
+        return ordered
+
+    # Activity metrics
+    for domain, _pct in facts.get("activity_breakdown", []):
+        canonical = str(domain or "").strip().lower()
+        if not canonical:
+            continue
+        qualifier_pattern = r"(?:development|work|changes?|activities?|tasks?)"
+        for alias in _domain_aliases(canonical):
+            alias_pattern = re.escape(alias)
+
+            def _dedupe_activity(match: re.Match[str]) -> str:
+                phrase = match.group(1)
+                pct = match.group(2)
+                key = f"activity:{canonical}"
+                if key in seen:
+                    return phrase
+                seen.add(key)
+                return f"{phrase} ({pct}%)"
+
+            updated = re.sub(
+                rf"(?i)\b({alias_pattern}(?:\s+{qualifier_pattern})?)\b\s*\(\s*(\d{{1,3}}(?:\.\d+)?)%\s*\)",
+                _dedupe_activity,
+                updated,
+            )
+
+    # Commits metric
+    def _dedupe_commits_forward(match: re.Match[str]) -> str:
+        pct = match.group(1)
+        metric = match.group(2)
+        key = "metric:commits"
+        if key in seen:
+            return metric
+        seen.add(key)
+        return f"{pct}% {metric}"
+
+    updated = re.sub(
+        r"(?i)(\d{1,3}(?:\.\d+)?)\s*%\s*(?:of\s+)?(commits?\b)",
+        _dedupe_commits_forward,
+        updated,
+    )
+
+    def _dedupe_lines_forward(match: re.Match[str]) -> str:
+        pct = match.group(1)
+        metric = match.group(2)
+        key = "metric:lines"
+        if key in seen:
+            return metric
+        seen.add(key)
+        return f"{pct}% {metric}"
+
+    updated = re.sub(
+        r"(?i)(\d{1,3}(?:\.\d+)?)\s*%\s*(?:of\s+)?(lines?\b)",
+        _dedupe_lines_forward,
+        updated,
+    )
+
+    return updated
+
+
+def _normalize_contribution_percentage_noise(summary: str, facts: dict[str, Any]) -> str:
+    """
+    Remove conflicting/duplicate generic contribution percentages when activity
+    percentages are already grounded in the sentence.
+    """
+    if not summary:
+        return summary
+
+    updated = summary
+    activity = [(str(k).strip().lower(), float(v)) for k, v in facts.get("activity_breakdown", []) if str(k).strip()]
+    if not activity:
+        return updated
+
+    # Normalize common noisy constructions while preserving activity percentages.
+    updated = re.sub(
+        r"(?i)\bcontributed\s+\d{1,3}%\s+of\s+(?:their\s+)?(?:contributions?|efforts?|work)\s+",
+        "contributed through ",
+        updated,
+    )
+    updated = re.sub(
+        r"(?i)\bwith\s+\d{1,3}%\s+of\s+(?:their\s+)?(?:contributions?|efforts?|work)\s+",
+        "with ",
+        updated,
+    )
+    updated = re.sub(
+        r"(?i)\b\d{1,3}%\s+of\s+(?:their\s+)?(?:contributions?|efforts?|work)\b",
+        "",
+        updated,
+    )
+
+    # Remove duplicated "remaining X%" when activity phrase already has "(X%)".
+    updated = re.sub(
+        r"(?i)\bthe\s+remaining\s+\d{1,3}%\s+in\s+((?:code|coding|test|testing|documentation|docs)\s*\(\s*\d{1,3}%\s*\))",
+        r"\1",
+        updated,
+    )
+
+    updated = re.sub(r"\s{2,}", " ", updated).strip()
+    updated = re.sub(r"\s+,", ",", updated)
+    return updated
 
 
 def _is_list_like(text: str) -> bool:
@@ -688,6 +962,9 @@ def _repair_summary(summary: str | None, facts: dict[str, Any]) -> str:
     Repair malformed ML output so validation failures are rare and predictable.
     """
     normalized = _normalize_summary(summary or "")
+    normalized = _align_summary_percentages(normalized, facts)
+    normalized = _dedupe_percentage_mentions(normalized, facts)
+    normalized = _normalize_contribution_percentage_noise(normalized, facts)
     normalized = _trim_to_max_sentences(
         normalized,
         max_sentences=4 if _ml_required() else 3,
@@ -774,6 +1051,17 @@ def _llama_cpp_response_valid(response: dict[str, Any], facts: dict[str, Any]) -
     return _is_valid_summary(repaired, facts)
 
 
+def _should_retry_structural_with_llama(reason: str) -> bool:
+    """Retry with an ML rewrite when failure is likely recoverable via reshaping."""
+    if reason in {"list_like", "dangling_numeric_fragment"}:
+        return True
+    if reason.startswith("sentence_count="):
+        return True
+    if reason.startswith("word_count="):
+        return True
+    return False
+
+
 def _generate_project_summary_with_llama_cpp(facts: dict[str, Any]) -> str | None:
     """
     Generate project summary via local llama-cpp GGUF model.
@@ -835,6 +1123,37 @@ def _generate_project_summary_with_llama_cpp(facts: dict[str, Any]) -> str | Non
 
     repaired = _repair_summary(summary_text, facts)
     ok, reason = _is_valid_summary(repaired, facts)
+    if not ok and _should_retry_structural_with_llama(reason):
+        retry_max_seconds = max(5.0, min(14.0, _llama_cpp_max_total_seconds() / 2.0))
+        rewrite_text = llama_cpp_generate_text(
+            model_path=model_path,
+            prompt=_build_llama_cpp_structural_retry_prompt(facts, summary_text, reason),
+            max_retries=0,
+            max_tokens=max(56, min(132, _llama_cpp_max_tokens() + 16)),
+            temperature=0.0,
+            top_p=0.95,
+            max_total_seconds=retry_max_seconds,
+        )
+        rewritten = _extract_summary_from_raw_text(rewrite_text) if rewrite_text else None
+        if rewritten:
+            repaired_retry = _repair_summary(rewritten, facts)
+            retry_ok, retry_reason = _is_valid_summary(repaired_retry, facts)
+            if retry_ok:
+                logger.info(
+                    "Project summary structural rewrite retry accepted for %s (initial_reason=%s)",
+                    project_name,
+                    reason,
+                )
+                repaired = repaired_retry
+                ok = True
+            else:
+                logger.info(
+                    "Project summary structural rewrite retry rejected for %s (initial_reason=%s, retry_reason=%s)",
+                    project_name,
+                    reason,
+                    retry_reason,
+                )
+
     if not ok:
         logger.warning(
             "llama-cpp project summary still invalid for %s (%s, elapsed=%.1fs)",
@@ -958,7 +1277,7 @@ def build_project_summary_facts(
     """Build compact facts payload for ML summary generation."""
     normalized_activity: list[tuple[str, float]] = []
     if activity_breakdown:
-        for domain, pct in activity_breakdown[:3]:
+        for domain, pct in activity_breakdown:
             normalized_pct = _normalize_percentage(pct)
             if normalized_pct is None:
                 continue
