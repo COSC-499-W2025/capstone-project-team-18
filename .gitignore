@@ -83,3 +83,7 @@ ui/*.log
 *.db
 src/database/schema.sql
 src/database/example.py
+
+# Local ML artifacts / caches
+models/*.gguf
+.hf_cache/

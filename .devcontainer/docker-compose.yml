@@ -12,19 +12,17 @@ services:
       context: ..
       dockerfile: .devcontainer/Dockerfile.llm-server
     command:
-      - python3
-      - -m
-      - llama_cpp.server
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8000"
-      - --model
-      - /models/phi-4-mini-q4_k_m.gguf
-      - --model_alias
-      - local-llm
+      - /usr/local/bin/start_llm_server.sh
     volumes:
-      - ../models:/models:ro
+      - ../models:/models
+      - ../.hf_cache:/hf_cache
+    environment:
+      - HF_HOME=/hf_cache
+      - TRANSFORMERS_CACHE=/hf_cache
+      - ARTIFACT_MINER_LLAMA_CPP_SERVER_MODEL=local-llm
+      - ARTIFACT_MINER_LLAMA_CPP_HF_REPO_ID=microsoft/Phi-4-mini-instruct-gguf
+      - ARTIFACT_MINER_LLAMA_CPP_HF_FILENAME=Phi-4-mini-instruct-Q4_K_M.gguf
+      - HF_TOKEN=${HF_TOKEN:-}
     restart: unless-stopped
     healthcheck:
       test:

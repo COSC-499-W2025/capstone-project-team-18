@@ -10,4 +10,7 @@ ENV FORCE_CMAKE=1 \
     CMAKE_ARGS="-DGGML_NATIVE=OFF"
 
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir --no-binary=llama-cpp-python "llama-cpp-python[server]==0.3.16"
+    && pip install --no-cache-dir --no-binary=llama-cpp-python "llama-cpp-python[server]==0.3.16" huggingface_hub
+
+COPY .devcontainer/start_llm_server.sh /usr/local/bin/start_llm_server.sh
+RUN chmod +x /usr/local/bin/start_llm_server.sh

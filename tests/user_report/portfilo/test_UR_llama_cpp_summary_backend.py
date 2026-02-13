@@ -880,6 +880,90 @@ def test_signature_validator_rejects_generic_resume_tone(monkeypatch):
     assert reason == "generic_resume_tone"
 
 
+def test_signature_validator_rejects_rewritten_prefix_artifact(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    summary = (
+        "Rewritten with entry-level proficiency focused primarily on DevOps practices using Python and React. "
+        "Recent work delivered measurable outcomes through reliable implementation across release workflows and platform operations. "
+        "I communicate technical tradeoffs clearly to engineering and business stakeholders."
+    )
+
+    ok, reason = sg._is_valid_summary(summary, _signature_facts())
+
+    assert not ok
+    assert reason == "prompt_echo"
+
+
+def test_signature_validator_rejects_labelled_noise_artifact(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    summary = (
+        "Version 2: Entry-to-mid-level software contributor focused on DevOps and platform operations with Python and React. "
+        "Recent work delivered measurable outcomes through reliable implementation across release workflows. "
+        "I communicate technical tradeoffs clearly to engineering and business stakeholders."
+    )
+
+    ok, reason = sg._is_valid_summary(summary, _signature_facts())
+
+    assert not ok
+    assert reason in {"prompt_echo", "noise_artifact"}
+
+
+def test_signature_validator_rejects_instructional_noise_artifact(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    summary = (
+        "Entry-to-mid-level software contributor focused on DevOps and platform operations with Python and React. "
+        "Please ensure the summary highlights measurable outcomes through reliable implementation across release workflows. "
+        "I communicate technical tradeoffs clearly to engineering and business stakeholders."
+    )
+
+    ok, reason = sg._is_valid_summary(summary, _signature_facts())
+
+    assert not ok
+    assert reason == "noise_artifact"
+
+
+def test_signature_validator_rejects_second_person_profile_voice(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    summary = (
+        "As an Entry-level student contributor with a steady cadence, I focus on DevOps and am actively learning Python for Web Development. "
+        "My emerging interest lies in Data Engineering delivering measurable outcomes through reliable implementation. "
+        "Your entry-level experience as a dedicated Student Contributor has centered around the dynamic field of DevOps while steadily honing your skills through consistent engagement over time."
+    )
+
+    ok, reason = sg._is_valid_summary(summary, _signature_facts())
+
+    assert not ok
+    assert reason == "noise_artifact"
+
+
+def test_signature_validator_rejects_mixed_person_voice(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    summary = (
+        "Entry-to-mid-level software contributor focused on DevOps and platform reliability. "
+        "I deliver measurable outcomes through reliable implementation across release workflows and service operations. "
+        "Your profile demonstrates consistent growth across engineering initiatives and stakeholder communication."
+    )
+
+    ok, reason = sg._is_valid_summary(summary, _signature_facts())
+
+    assert not ok
+    assert reason == "second_person_tone"
+
+
+def test_signature_validator_rejects_meta_narration(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    summary = (
+        "Entry-to-mid-level software contributor focused on DevOps and platform operations with Python and React. "
+        "Recent work delivered measurable outcomes through reliable implementation and steady execution across release workflows. "
+        "This summary highlights profile strengths in communication and growth across engineering initiatives."
+    )
+
+    ok, reason = sg._is_valid_summary(summary, _signature_facts())
+
+    assert not ok
+    assert reason == "noise_artifact"
+
+
 def test_signature_validator_rejects_meta_summary_marker(monkeypatch):
     monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
     summary = (
@@ -918,6 +1002,26 @@ def test_signature_validator_accepts_professional_delivery_language(monkeypatch)
 
     ok, reason = sg._is_valid_summary(summary, _signature_facts())
 
+    assert ok, reason
+
+
+def test_signature_repair_injects_delivery_signal_when_missing(monkeypatch):
+    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    facts = _signature_facts()
+    summary = (
+        "Entry-to-mid-level software contributor focused on backend systems and platform architecture with Python and FastAPI. "
+        "Recent work centers on analytics workflows, stakeholder communication, and platform coordination across engineering initiatives. "
+        "Core strengths include Python, FastAPI, and React while expanding applied machine learning depth through portfolio work."
+    )
+    initial_ok, initial_reason = sg._is_valid_summary(summary, facts)
+    assert not initial_ok
+    assert initial_reason == "missing_delivery_signal"
+
+    repaired = sg._repair_summary_with_grounded_fallback(summary, facts, allow_fallback=False)
+
+    assert repaired is not None
+    assert sg._has_delivery_or_outcome_signal(repaired)
+    ok, reason = sg._is_valid_summary(repaired, facts)
     assert ok, reason
 
 
