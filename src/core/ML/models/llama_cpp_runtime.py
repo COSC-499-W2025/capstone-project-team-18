@@ -141,6 +141,19 @@ def _env_bool(name: str, default: bool) -> bool:
     return _truthy(raw)
 
 
+def _diagnostics_enabled() -> bool:
+    """Enable detailed llama-cpp attempt diagnostics via env."""
+    return _truthy(os.environ.get("ARTIFACT_MINER_LLAMA_CPP_DIAGNOSTICS"))
+
+
+def _preview_text(value: str, *, limit: int = 220) -> str:
+    """Return a compact single-line preview for diagnostics logs."""
+    text = " ".join(str(value).split())
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit].rstrip()}..."
+
+
 def _llama_cpp_server_url() -> str | None:
     raw = os.environ.get("ARTIFACT_MINER_LLAMA_CPP_SERVER_URL")
     if not raw:
@@ -373,6 +386,7 @@ def llama_cpp_generate_json_object(
     attempts = max(1, int(max_retries) + 1)
     started_at = perf_counter()
     last_error = "invalid_json"
+    diagnostics = _diagnostics_enabled()
 
     for attempt in range(attempts):
         if max_total_seconds is not None and (perf_counter() - started_at) > float(max_total_seconds):
@@ -401,21 +415,73 @@ def llama_cpp_generate_json_object(
         )
         if not raw:
             last_error = "empty_response"
+            if diagnostics:
+                logger.info(
+                    "llama-cpp JSON attempt %d/%d failed (reason=%s)",
+                    attempt + 1,
+                    attempts,
+                    last_error,
+                )
             continue
 
         payload = _extract_json_object(raw)
         if payload is None:
             last_error = "invalid_json"
+            if diagnostics:
+                logger.info(
+                    "llama-cpp JSON attempt %d/%d failed (reason=%s, raw_chars=%d, raw_preview=%r)",
+                    attempt + 1,
+                    attempts,
+                    last_error,
+                    len(raw),
+                    _preview_text(raw),
+                )
             continue
 
         if validator is None:
+            if diagnostics:
+                logger.info(
+                    "llama-cpp JSON attempt %d/%d succeeded without validator (keys=%s)",
+                    attempt + 1,
+                    attempts,
+                    sorted(payload.keys()),
+                )
             return payload
 
         is_valid, reason = validator(payload)
         if is_valid:
+            if diagnostics:
+                summary = payload.get("summary")
+                summary_words = len(summary.split()) if isinstance(summary, str) else 0
+                logger.info(
+                    "llama-cpp JSON attempt %d/%d passed validator (keys=%s, summary_words=%d)",
+                    attempt + 1,
+                    attempts,
+                    sorted(payload.keys()),
+                    summary_words,
+                )
             return payload
         last_error = reason
+        if diagnostics:
+            summary = payload.get("summary")
+            summary_words = len(summary.split()) if isinstance(summary, str) else 0
+            summary_preview = _preview_text(summary) if isinstance(summary, str) else ""
+            logger.info(
+                "llama-cpp JSON attempt %d/%d failed validator (reason=%s, keys=%s, summary_words=%d, summary_preview=%r)",
+                attempt + 1,
+                attempts,
+                reason,
+                sorted(payload.keys()),
+                summary_words,
+                summary_preview,
+            )
 
+    if diagnostics:
+        logger.info(
+            "llama-cpp JSON generation exhausted retries (attempts=%d, last_error=%s)",
+            attempts,
+            last_error,
+        )
     return None
 
 

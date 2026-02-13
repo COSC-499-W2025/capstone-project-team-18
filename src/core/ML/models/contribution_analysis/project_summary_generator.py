@@ -433,6 +433,9 @@ def _normalize_summary(text: str) -> str:
     cleaned = text.strip()
     if "Summary:" in cleaned:
         cleaned = cleaned.split("Summary:", 1)[-1].strip()
+    # Fix tokenization artifacts in percentages (e.g., "42. 86%" -> "42.86%").
+    cleaned = re.sub(r"\b(\d{1,3})\.\s+(\d{1,3})\s*%", r"\1.\2%", cleaned)
+    cleaned = re.sub(r"\b(\d{1,3})\s+%", r"\1%", cleaned)
     return " ".join(cleaned.split())
 
 
@@ -448,8 +451,30 @@ def _sentence_count(text: str) -> int:
     This treats `.`, `!`, and `?` as sentence endings and avoids relying on a
     raw period count.
     """
-    parts = [segment.strip() for segment in re.split(r"[.!?]+", text) if segment.strip()]
+    parts = _sentence_segments(text)
     return len(parts)
+
+
+def _sentence_segments(text: str) -> list[str]:
+    """
+    Split text into sentence-like segments without breaking decimal numbers.
+
+    A period between digits (e.g., 42.86) is treated as numeric punctuation,
+    not a sentence boundary.
+    """
+    if not text:
+        return []
+    # Split on punctuation only when the delimiter is not part of a decimal.
+    raw_parts = re.split(r"(?:(?<!\d)\.|\.(?!\d)|[!?])+", text)
+    return [segment.strip() for segment in raw_parts if segment and segment.strip()]
+
+
+def _has_dangling_numeric_fragment(summary: str) -> bool:
+    """
+    Detect truncated numeric fragments (e.g., '(39.') from clipped model output.
+    """
+    stripped = summary.strip()
+    return bool(re.search(r"\(\d{1,3}\.\s*$", stripped))
 
 
 def _summary_mentions_any(summary: str, items: list[str]) -> bool:
@@ -525,13 +550,18 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     """Validate shape and grounding of generated summary."""
     if _is_list_like(summary):
         return False, "list_like"
+    if _has_dangling_numeric_fragment(summary):
+        return False, "dangling_numeric_fragment"
 
+    min_words = 18 if _ml_required() else 20
+    max_words = 150 if _ml_required() else 130
     word_count = len(summary.split())
-    if word_count < 20 or word_count > 130:
+    if word_count < min_words or word_count > max_words:
         return False, f"word_count={word_count}"
 
+    max_sentences = 4 if _ml_required() else 3
     sentence_count = _sentence_count(summary)
-    if not (2 <= sentence_count <= 3):
+    if not (2 <= sentence_count <= max_sentences):
         return False, f"sentence_count={sentence_count}"
 
     goal_terms = facts.get("goal_terms", [])
@@ -561,6 +591,8 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
         bool(contribution_pct_terms) and _summary_mentions_any(summary, contribution_pct_terms)
     )
     if (contribution_text_terms or contribution_pct_terms) and not (has_text_contribution or has_pct_contribution):
+        if _ml_required():
+            return True, "ok_ml_relaxed_contribution"
         return False, "missing_contribution_anchor"
     return True, "ok"
 
@@ -642,7 +674,7 @@ def _grounded_summary_fallback(facts: dict[str, Any]) -> str:
 
 def _trim_to_max_sentences(summary: str, max_sentences: int = 3) -> str:
     """Trim to sentence cap while preserving terminal punctuation."""
-    sentences = [segment.strip() for segment in re.split(r"[.!?]+", summary) if segment.strip()]
+    sentences = _sentence_segments(summary)
     if not sentences:
         return summary
     trimmed = ". ".join(sentences[:max_sentences]).strip()
@@ -656,7 +688,16 @@ def _repair_summary(summary: str | None, facts: dict[str, Any]) -> str:
     Repair malformed ML output so validation failures are rare and predictable.
     """
     normalized = _normalize_summary(summary or "")
-    normalized = _trim_to_max_sentences(normalized, max_sentences=3)
+    normalized = _trim_to_max_sentences(
+        normalized,
+        max_sentences=4 if _ml_required() else 3,
+    )
+
+    # In ML-required mode, never splice deterministic template text into output.
+    if _ml_required():
+        if not normalized:
+            logger.info("Project summary rejected in ML-only mode for %s (reason=empty_normalized)", facts.get("project_name"))
+        return normalized
 
     if not normalized:
         return _grounded_summary_fallback(facts)
@@ -674,6 +715,11 @@ def _repair_summary(summary: str | None, facts: dict[str, Any]) -> str:
         or reason in {"list_like"}
     )
     if structural_failure:
+        logger.info(
+            "Project summary fallback engaged for %s (reason=%s)",
+            facts.get("project_name"),
+            reason,
+        )
         return fallback
 
     repaired = normalized
@@ -690,6 +736,11 @@ def _repair_summary(summary: str | None, facts: dict[str, Any]) -> str:
 
     fallback_ok, _ = _is_valid_summary(fallback, facts)
     if fallback_ok:
+        logger.info(
+            "Project summary fallback engaged for %s (reason=%s)",
+            facts.get("project_name"),
+            reason,
+        )
         return fallback
     return normalized
 

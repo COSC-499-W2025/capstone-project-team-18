@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 import re
 
 from src.core.report import UserReport
@@ -11,6 +12,7 @@ from src.core.statistic.skills import SkillMapper
 from src.core.ML.models.contribution_analysis import (
     generate_signature,
     build_signature_facts,
+    resolve_experience_stage_with_ml,
     generate_project_summary,
     build_project_summary_facts,
     configure_project_summary_run,
@@ -179,7 +181,25 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         )
         activities = self._activity_signals(report, cadence, commit_focus)
         emerging = self._emerging_signals(top_skills, tools, themes, tags)
-        experience_stage = self._infer_experience_stage(report, role)
+        baseline_stage = self._infer_experience_stage(report, role)
+        start_date = report.get_value(UserStatCollection.USER_START_DATE.value)
+        end_date = report.get_value(UserStatCollection.USER_END_DATE.value)
+        active_months: float | None = None
+        if start_date and end_date:
+            active_months = abs((end_date - start_date).days) / 30.0
+        tone_counts = self._project_tone_counts(report)
+        experience_stage = resolve_experience_stage_with_ml(
+            baseline_stage=baseline_stage,
+            project_count=len(getattr(report, "project_reports", []) or []),
+            active_months=active_months,
+            role=role,
+            top_skills=top_skills,
+            top_languages=top_langs,
+            tools=tools,
+            professional_project_count=tone_counts.get("professional", 0),
+            experimental_project_count=tone_counts.get("experimental", 0),
+            educational_project_count=tone_counts.get("educational", 0),
+        )
         project_names = [pr.project_name for pr in report.project_reports if getattr(pr, "project_name", None)]
 
         facts = build_signature_facts(
@@ -210,6 +230,17 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
             )
             return None
         return None
+
+    def _project_tone_counts(self, report: UserReport) -> dict[str, int]:
+        """Aggregate project tones to support stage inference heuristics."""
+        counts: dict[str, int] = {}
+        for pr in report.project_reports:
+            tone = pr.get_value(ProjectStatCollection.PROJECT_TONE.value)
+            if not tone:
+                continue
+            tone_key = str(tone).strip().lower()
+            counts[tone_key] = counts.get(tone_key, 0) + 1
+        return counts
 
     def _dominant_role(self, report: UserReport) -> str | None:
         """Infer the user's dominant collaboration role across projects."""
@@ -699,9 +730,39 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         facts = self._build_project_summary_facts(project_report)
         if not facts:
             return None
+        require_ml = os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_REQUIRE_ML") == "1"
         summary = generate_project_summary(facts)
-        if summary and self._is_summary_well_formed(summary) and self._summary_covers_requirements(summary, facts):
+        project_name = getattr(project_report, "project_name", "unknown-project")
+        is_well_formed = bool(summary and self._is_summary_well_formed(summary))
+        goal_ok = stack_ok = contribution_ok = True
+        covers_requirements = False
+        if summary:
+            goal_ok, stack_ok, contribution_ok = self._summary_requirement_checks(summary, facts)
+            covers_requirements = goal_ok and stack_ok and contribution_ok
+        if (
+            summary
+            and is_well_formed
+            and (require_ml or covers_requirements)
+        ):
             return summary
+
+        if summary:
+            logger.info(
+                (
+                    "Project summary rejected at builder for %s "
+                    "(well_formed=%s, covers_requirements=%s, goal_ok=%s, stack_ok=%s, contribution_ok=%s, require_ml=%s)"
+                ),
+                project_name,
+                is_well_formed,
+                covers_requirements,
+                goal_ok,
+                stack_ok,
+                contribution_ok,
+                require_ml,
+            )
+
+        if require_ml:
+            return None
 
         fallback = self._build_project_summary_deterministic(facts)
         if fallback and self._is_summary_well_formed(fallback) and self._summary_covers_requirements(fallback, facts):
@@ -860,7 +921,13 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
 
     def _is_summary_well_formed(self, summary: str) -> bool:
         """Validate output shape for section rendering."""
-        sentence_count = summary.count(".")
+        sentence_count = len(
+            [
+                segment.strip()
+                for segment in re.split(r"(?:(?<!\d)\.|\.(?!\d)|[!?])+", summary or "")
+                if segment and segment.strip()
+            ]
+        )
         word_count = len(summary.split())
         return 2 <= sentence_count <= 3 and 20 <= word_count <= 160
 
@@ -868,20 +935,79 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """
         Ensure summary reflects available goal, stack, and contribution facts.
         """
+        goal_ok, stack_ok, contribution_ok = self._summary_requirement_checks(summary, facts)
+        return goal_ok and stack_ok and contribution_ok
+
+    def _summary_requirement_checks(self, summary: str, facts: dict) -> tuple[bool, bool, bool]:
+        """
+        Return per-anchor requirement checks for goal, stack, and contribution.
+        """
         lowered = summary.lower()
 
         goal_terms = [str(x).lower() for x in facts.get("goal_terms", []) if str(x).strip()]
-        if goal_terms and not any(term in lowered for term in goal_terms):
-            return False
+        goal_ok = (not goal_terms) or self._goal_anchor_matches(summary, goal_terms)
 
         stack_terms = [str(x).lower() for x in facts.get("frameworks", []) + facts.get("languages", []) if str(x).strip()]
-        if stack_terms and not any(term in lowered for term in stack_terms):
-            return False
+        stack_ok = (not stack_terms) or any(term in lowered for term in stack_terms)
 
         contribution_terms = self._contribution_anchor_terms(facts)
-        if contribution_terms and not any(term in lowered for term in contribution_terms):
+        contribution_ok = (not contribution_terms) or any(term in lowered for term in contribution_terms)
+        return goal_ok, stack_ok, contribution_ok
+
+    def _goal_anchor_matches(self, summary: str, goal_terms: list[str]) -> bool:
+        """
+        Return True when summary reflects at least one goal term with fuzzy matching.
+
+        Goal phrases from README tags/themes are noisy and often paraphrased by ML.
+        We accept exact phrase match or sufficient token overlap with normalized tokens.
+        """
+        lowered = summary.lower()
+        summary_tokens = self._token_set(summary)
+        if not summary_tokens:
             return False
-        return True
+
+        low_signal_goal_tokens = {
+            "project", "goal", "goals", "outcome", "outcomes", "feature", "features",
+            "app", "apps", "application", "applications", "workflow", "workflows",
+            "service", "services", "system", "systems", "product", "products",
+        }
+
+        for raw_term in goal_terms:
+            term = str(raw_term).strip().lower()
+            if not term:
+                continue
+
+            # Keep exact phrase acceptance first for precision.
+            if term in lowered:
+                return True
+
+            raw_tokens = self._token_set(term)
+            if not raw_tokens:
+                continue
+
+            informative = {
+                token for token in raw_tokens
+                if len(token) >= 4 and token not in low_signal_goal_tokens
+            }
+            term_tokens = informative or raw_tokens
+
+            overlap = term_tokens & summary_tokens
+            if not overlap:
+                continue
+
+            # Accept if most informative tokens are present.
+            coverage = len(overlap) / len(term_tokens)
+            if coverage >= 0.5:
+                return True
+
+            # Multi-token phrases often get lightly paraphrased; 2 informative matches is enough.
+            if len(term_tokens) >= 3 and len(overlap) >= 2:
+                return True
+
+            if len(term_tokens) == 1:
+                return True
+
+        return False
 
     def _contribution_anchor_terms(self, facts: dict) -> list[str]:
         """Build normalized anchors to verify contribution coverage."""
@@ -993,7 +1119,24 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         return f"{', '.join(clean[:-1])}, and {clean[-1]}"
 
     def _token_set(self, text: str) -> set[str]:
-        return set(t for t in re.findall(r"[a-z0-9]+", text.lower()) if t)
+        return set(
+            normalized
+            for t in re.findall(r"[a-z0-9]+", text.lower())
+            if (normalized := self._normalize_token(t))
+        )
+
+    def _normalize_token(self, token: str) -> str:
+        """Normalize tokens for forgiving lexical matching (simple singularization)."""
+        cleaned = "".join(ch for ch in token.lower() if ch.isalnum())
+        if not cleaned:
+            return ""
+        if cleaned.endswith("ies") and len(cleaned) > 4:
+            return cleaned[:-3] + "y"
+        if cleaned.endswith("es") and len(cleaned) > 4:
+            return cleaned[:-2]
+        if cleaned.endswith("s") and len(cleaned) > 3:
+            return cleaned[:-1]
+        return cleaned
 
     def _jaccard(self, left: set[str], right: set[str]) -> float:
         if not left or not right:
