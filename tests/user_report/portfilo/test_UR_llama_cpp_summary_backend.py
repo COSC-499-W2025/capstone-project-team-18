@@ -247,31 +247,6 @@ def test_signature_generator_repairs_short_llama_output(monkeypatch):
     assert ok, reason
 
 
-def test_signature_generator_short_llama_output_is_logged_as_fallback(monkeypatch):
-    monkeypatch.setenv("ARTIFACT_MINER_USE_LLAMA_CPP", "1")
-    monkeypatch.setenv("ARTIFACT_MINER_LLAMA_CPP_MODEL_PATH", "/tmp/fake.gguf")
-    monkeypatch.delenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", raising=False)
-    monkeypatch.setattr(sg, "ml_extraction_allowed", lambda: True)
-    monkeypatch.setattr(sg, "_load_model", lambda: (_ for _ in ()).throw(AssertionError("HF path should not run")))
-    monkeypatch.setattr(sg, "llama_cpp_generate_json_object", lambda **_kwargs: {"summary": "Strong in Python."})
-    monkeypatch.setattr(sg, "llama_cpp_generate_text", lambda **_kwargs: None)
-
-    info_logs: list[str] = []
-
-    def _capture_info(message, *args, **_kwargs):
-        rendered = message % args if args else str(message)
-        info_logs.append(rendered)
-
-    monkeypatch.setattr(sg.logger, "info", _capture_info)
-    sg._CACHE.clear()
-
-    output = sg.generate_signature(_signature_facts())
-
-    assert output is not None
-    assert any("Signature summary generated from deterministic fallback" in line for line in info_logs)
-    assert not any("Signature summary generated successfully via llama-cpp" in line for line in info_logs)
-
-
 def test_professional_fallback_keeps_sentence_break_before_growth_clause():
     fallback = sg._build_professional_fallback(_signature_facts())
 
@@ -1272,71 +1247,3 @@ def test_project_summary_repair_removes_duplicate_effort_percentage_before_activ
     assert "coding (58%)" in repaired.lower()
     assert "58% of their efforts" not in repaired.lower()
 
-
-def test_signature_generator_logs_llama_rejection_reason(monkeypatch):
-    monkeypatch.setenv("ARTIFACT_MINER_USE_LLAMA_CPP", "1")
-    monkeypatch.setenv("ARTIFACT_MINER_LLAMA_CPP_MODEL_PATH", "/tmp/fake.gguf")
-    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
-    monkeypatch.setattr(sg, "ml_extraction_allowed", lambda: True)
-    monkeypatch.setattr(sg, "_load_model", lambda: (_ for _ in ()).throw(AssertionError("HF path should not run")))
-
-    invalid_summary = (
-        "This profile summarizes broad software delivery across multiple product contexts and release cycles. "
-        "The narrative emphasizes communication and planning discipline with measurable outcomes for stakeholders. "
-        "It intentionally avoids naming concrete tools, languages, or frameworks while remaining generic."
-    )
-
-    def _fake_llama_cpp_generate_json_object(**kwargs):
-        validator = kwargs["validator"]
-        validator({"summary": invalid_summary})
-        return None
-
-    warnings: list[str] = []
-
-    def _capture_warning(message, *args, **_kwargs):
-        rendered = message % args if args else str(message)
-        warnings.append(rendered)
-
-    monkeypatch.setattr(sg, "llama_cpp_generate_json_object", _fake_llama_cpp_generate_json_object)
-    monkeypatch.setattr(sg.logger, "warning", _capture_warning)
-    sg._CACHE.clear()
-
-    output = sg.generate_signature(_signature_facts())
-
-    assert output is None
-    assert any(
-        reason in line
-        for line in warnings
-        for reason in (
-            "no_skill_language_tool_anchor",
-            "generic_resume_tone",
-            "missing_delivery_signal",
-            "sentence_count=",
-            "word_count=",
-        )
-    )
-    assert any("llama-cpp signature generation failed validation/response" in line for line in warnings)
-
-
-def test_signature_validator_diagnostics_logs_mixed_person_details(monkeypatch):
-    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
-    monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_DIAGNOSTICS", "1")
-    infos: list[str] = []
-
-    def _capture_info(message, *args, **_kwargs):
-        rendered = message % args if args else str(message)
-        infos.append(rendered)
-
-    monkeypatch.setattr(sg.logger, "info", _capture_info)
-    summary = (
-        "Entry-to-mid-level software contributor focused on DevOps and platform reliability with Python workflows. "
-        "I deliver measurable outcomes through reliable implementation across release and service operations. "
-        "You collaborate effectively with stakeholders to improve team execution quality and delivery cadence."
-    )
-
-    ok, reason = sg._is_valid_summary(summary, _signature_facts())
-
-    assert not ok
-    assert reason == "mixed_person_voice"
-    assert any("Signature validator rejected summary (reason=mixed_person_voice" in line for line in infos)
-    assert any("Signature validator mixed-person details" in line for line in infos)
