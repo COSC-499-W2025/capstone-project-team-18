@@ -7,6 +7,7 @@ from keybert import KeyBERT
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
+from src.core.ML.models.readme_analysis.readme_remote_client import remote_extract_keyphrases
 
 _CACHE: dict[str, list[str]] = {}
 _KEYBERT_MODEL = None
@@ -92,7 +93,11 @@ def extract_readme_keyphrases(text: str, top_n: int = _DEFAULT_TOP_N) -> list[st
     if cached is not None:
         return list(cached)
 
-    phrases = _extract_with_keybert(truncated, top_n)
+    remote_phrases = remote_extract_keyphrases(truncated, top_n)
+    if remote_phrases is not None:
+        phrases = remote_phrases
+    else:
+        phrases = _extract_with_keybert(truncated, top_n)
 
     phrases = _dedupe_phrases(phrases)[:top_n]
     if phrases:

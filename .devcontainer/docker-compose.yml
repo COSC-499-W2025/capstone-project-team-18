@@ -6,6 +6,10 @@ services:
     command: sleep infinity
     volumes:
       - ..:/workspaces/capstone-project-team-18:cached
+      - ../.hf_cache:/hf_cache
+    environment:
+      - HF_HOME=/hf_cache
+      - TRANSFORMERS_CACHE=/hf_cache
 
   llm-server:
     build:
@@ -57,6 +61,8 @@ services:
       - TRANSFORMERS_CACHE=/hf_cache
       - ARTIFACT_MINER_ZSC_MODEL=facebook/bart-large-mnli
       - ARTIFACT_MINER_ZSC_PRELOAD=1
+      - ARTIFACT_MINER_README_REMOTE_DISABLE=1
+      - ARTIFACT_MINER_README_PRELOAD=1
     restart: unless-stopped
     healthcheck:
       test:

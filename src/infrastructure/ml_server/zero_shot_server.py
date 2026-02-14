@@ -12,6 +12,8 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from src.core.ML.models.readme_analysis.keyphrase_extraction import extract_readme_keyphrases
+from src.core.ML.models.readme_analysis.readme_insights import extract_readme_themes_bulk
 
 app = FastAPI(title="Artifact Miner ML Server", version="1.0")
 
@@ -34,6 +36,15 @@ def _default_model() -> str:
 
 def _preload_enabled() -> bool:
     return str(os.environ.get("ARTIFACT_MINER_ZSC_PRELOAD", "1")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _readme_preload_enabled() -> bool:
+    return str(os.environ.get("ARTIFACT_MINER_README_PRELOAD", "1")).strip().lower() in {
         "1",
         "true",
         "yes",
@@ -78,11 +89,39 @@ class ZeroShotRequest(BaseModel):
     hypothesis_template: str | None = None
 
 
+class ReadmeKeyphraseRequest(BaseModel):
+    text: str
+    top_n: int = 10
+
+
+class ReadmeThemesBulkRequest(BaseModel):
+    texts: list[str]
+    max_themes: int = 5
+
+
 @app.on_event("startup")
 def preload_default_model() -> None:
     if not _preload_enabled():
         return
     _load_pipeline(_default_model())
+    if _readme_preload_enabled():
+        try:
+            # Trigger KeyBERT/SentenceTransformer initialization in ml-server
+            # so workspace runs do not pay this model cold-start cost.
+            extract_readme_keyphrases(
+                "Service warmup text for README keyphrase extraction.",
+                top_n=3,
+            )
+            extract_readme_themes_bulk(
+                [
+                    "Warmup README document describing setup and architecture.",
+                    "Warmup README document describing implementation and testing.",
+                ],
+                max_themes=3,
+            )
+        except Exception:
+            # Keep server alive even if warmup model init fails.
+            pass
 
 
 @app.get("/health")
@@ -155,3 +194,31 @@ def classify_zero_shot(payload: ZeroShotRequest) -> dict[str, list[dict[str, Any
         })
 
     return {"results": results}
+
+
+@app.post("/v1/readme/keyphrases")
+def readme_keyphrases(payload: ReadmeKeyphraseRequest) -> dict[str, list[str]]:
+    text = str(payload.text or "")
+    top_n = max(1, int(payload.top_n))
+    try:
+        keyphrases = extract_readme_keyphrases(text, top_n=top_n)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"readme_keyphrase_failed:{exc}") from exc
+    return {"keyphrases": [str(item) for item in keyphrases]}
+
+
+@app.post("/v1/readme/themes/bulk")
+def readme_themes_bulk(payload: ReadmeThemesBulkRequest) -> dict[str, list[list[str]]]:
+    texts = [str(item) for item in payload.texts]
+    max_themes = max(1, int(payload.max_themes))
+    try:
+        themes = extract_readme_themes_bulk(texts, max_themes=max_themes)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"readme_themes_failed:{exc}") from exc
+    normalized: list[list[str]] = []
+    for item in themes:
+        if isinstance(item, list):
+            normalized.append([str(term) for term in item])
+        else:
+            normalized.append([])
+    return {"themes": normalized}

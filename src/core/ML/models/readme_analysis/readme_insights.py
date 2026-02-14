@@ -7,6 +7,7 @@ from src.core.ML.models.model_runtime import get_zero_shot_pipeline
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
+from src.core.ML.models.readme_analysis.readme_remote_client import remote_extract_themes_bulk
 
 """
 README insights:
@@ -314,6 +315,10 @@ def extract_readme_themes_bulk(texts: list[str], max_themes: int = 5) -> list[li
     """Extract themes for a README corpus with BERTopic and robust fallbacks."""
     if not texts:
         return []
+
+    remote_themes = remote_extract_themes_bulk(texts, max_themes)
+    if remote_themes is not None:
+        return remote_themes
 
     if len(texts) < 2:
         logger.info("Single README detected; using keyphrase fallback for themes")
