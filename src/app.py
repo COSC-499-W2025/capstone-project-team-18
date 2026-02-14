@@ -12,17 +12,7 @@ logger = get_logger(__name__)
 def _init_db() -> None:
     """
     Initialize database schema at startup.
-
-    Prefer legacy migration hook when present; otherwise fall back to SQLModel
-    table creation used by the API/service startup path.
     """
-    try:
-        from src.database.utils.db_migrate import run_migrations
-        run_migrations()
-        return
-    except ModuleNotFoundError:
-        pass
-
     from sqlmodel import SQLModel
     from src.database.core.base import get_engine
     SQLModel.metadata.create_all(get_engine())
