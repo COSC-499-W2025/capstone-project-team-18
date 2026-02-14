@@ -933,6 +933,54 @@ def _has_mixed_person_voice(summary: str) -> bool:
     return has_first_person and has_second_person
 
 
+def _has_mixed_person_voice_with_you(summary: str) -> bool:
+    """
+    Detect mixed voice when second-person *subject* voice ("you") appears.
+
+    This intentionally ignores possessive-only phrasing ("your profile ...")
+    so those can be classified as second_person_tone when appropriate.
+    """
+    lowered = summary.lower()
+    has_first_person = bool(re.search(r"\b(i|my|me)\b", lowered))
+    has_second_person_you = bool(re.search(r"\byou\b", lowered))
+    return has_first_person and has_second_person_you
+
+
+def _contains_question_like_tone(summary: str) -> bool:
+    """Detect question-like phrasing even when punctuation is normalized."""
+    if "?" in summary:
+        return True
+    question_starters = (
+        "what", "how", "why", "which", "when", "where",
+        "can", "could", "should", "would", "do", "does", "is", "are",
+    )
+    for sentence in _split_sentences(summary):
+        starter = sentence.strip().lower()
+        if starter.startswith(question_starters):
+            return True
+    return False
+
+
+def _log_signature_validation_rejection(reason: str, summary: str) -> None:
+    """Emit validator diagnostics when enabled."""
+    if not _signature_diagnostics_enabled():
+        return
+    logger.info(
+        "Signature validator rejected summary (reason=%s, chars=%d, words=%d)",
+        reason,
+        len(summary or ""),
+        len((summary or "").split()),
+    )
+    if reason == "mixed_person_voice":
+        lowered = (summary or "").lower()
+        logger.info(
+            "Signature validator mixed-person details (has_first_person=%s, has_you=%s, has_your=%s)",
+            bool(re.search(r"\b(i|my|me)\b", lowered)),
+            bool(re.search(r"\byou\b", lowered)),
+            bool(re.search(r"\byour\b", lowered)),
+        )
+
+
 def _contains_summary_artifact_marker(summary: str) -> bool:
     """Detect leaked formatting markers that should never appear in final prose."""
     return bool(re.search(r"\b(?:final\s+)?summary\s*[:\-]", summary.lower()))
@@ -1803,6 +1851,13 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
         return False, "list_like"
     if _contains_prompt_echo(summary):
         return False, "prompt_echo"
+    if _contains_question_like_tone(summary):
+        return False, "question_like_tone"
+    if re.search(r"\byour\s+profile\b", summary.lower()):
+        return False, "second_person_tone"
+    if _has_mixed_person_voice_with_you(summary):
+        _log_signature_validation_rejection("mixed_person_voice", summary)
+        return False, "mixed_person_voice"
     if _contains_noise_artifact(summary):
         return False, "noise_artifact"
     if _contains_summary_artifact_marker(summary):

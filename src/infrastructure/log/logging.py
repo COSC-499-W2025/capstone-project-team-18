@@ -5,8 +5,6 @@ This file handles all logic for logging
 import logging
 from pathlib import Path
 
-from logging.handlers import RotatingFileHandler
-
 # Create a new logfile with timestamp each time the program runs
 
 LOG_FILE = Path(__file__).parent / "app.log"
@@ -22,25 +20,12 @@ def get_logger(name: str, level=logging.INFO):
     """
 
     logger = logging.getLogger(name)
-    logger.setLevel(level)
 
-    # Prevent logs from going to the terminal
+    # Disable logging globally for this application logger factory.
+    logger.handlers.clear()
+    logger.addHandler(logging.NullHandler())
     logger.propagate = False
-
-    # Avoid adding multiple handlers if logger already has them
-    if not logger.handlers:
-
-        fh = RotatingFileHandler(LOG_FILE, maxBytes=5*1024*1024, backupCount=3)
-        fh.setLevel(level)
-
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-
+    logger.setLevel(logging.CRITICAL + 1)
     return logger
 
 
