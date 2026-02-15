@@ -40,6 +40,7 @@ class ArtifactMiner(cmd.Cmd):
             "(8) Delete a Portfolio\n"
             "(9) Retrieve a Portfolio\n"
             "(10) Get resume bullet point\n"
+            "(11) Warm up summary model\n"
 
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
@@ -1207,6 +1208,7 @@ class ArtifactMiner(cmd.Cmd):
             "8": self.do_portfolio_delete,
             "9": self.do_portfolio_retrieve,
             "10": self.do_resume_bullet_point,
+            "11": self.do_warmup,
         }
 
         # Make commands case-insensitive
@@ -1268,4 +1270,13 @@ class ArtifactMiner(cmd.Cmd):
         for bp in bullets:
             print(f"- {bp}")
 
+        print("\n" + self.options)
+
+    def do_warmup(self, arg):
+        """Warm up the local summary model to avoid delays during output."""
+        from src.app import init_system
+
+        print("\nWarming up summary model...")
+        _, status_message = init_system()
+        print(status_message)
         print("\n" + self.options)

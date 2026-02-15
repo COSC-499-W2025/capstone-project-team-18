@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from pathlib import Path
+import tempfile
+from typing import TYPE_CHECKING, Union
+from pdflatex import PDFLaTeX
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from src.core.resume.resume import Resume, ResumeItem
@@ -9,7 +15,7 @@ if TYPE_CHECKING:
 
 class ResumeRender(ABC):
     @abstractmethod
-    def render(self, resume: Resume) -> str: ...
+    def render(self, resume: Resume) -> Union[str, bytes]: ...
 
 
 class TextResumeRenderer(ResumeRender):
@@ -51,7 +57,34 @@ def latex_escape(text: str) -> str:
     return "".join(LATEX_SPECIAL_CHARS.get(c, c) for c in text)
 
 
+class PDFRenderer(ResumeRender):
+    """
+    This class extends the resumeRender and allows for the user to
+    convert the given LaTeX resume to PDF format for unfamiliar users
+    """
+
+    def render(self, resume) -> bytes:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tex_path = Path(tmpdir) / "helper.tex"
+            tex_path.write_text(
+                resume.export(ResumeLatexRenderer()),
+                encoding="utf-8"
+            )
+
+            pdfLaTeX = PDFLaTeX.from_texfile(str(tex_path))
+            pdfLaTeX.set_interaction_mode()
+            try:
+                pdf, _, _ = pdfLaTeX.create_pdf(keep_pdf_file=True)
+            except FileNotFoundError:
+                logger.error("There is a problem with your TeX Live installation.\n"
+                             "Run which pdflatex in your terminal to see if TeX Live is properly installed.\n"
+                             "If nothing is shown, visit https://www.tug.org/texlive/ for installation instructions")
+
+        return pdf
+
 # --- Renderer ---
+
+
 class ResumeLatexRenderer(ResumeRender):
     """
     Generates a stable LaTeX resume using the Jake Gutierrez template.
@@ -63,7 +96,6 @@ class ResumeLatexRenderer(ResumeRender):
 \usepackage{latexsym}
 \usepackage[empty]{fullpage}
 \usepackage{titlesec}
-\usepackage{marvosym}
 \usepackage[usenames,dvipsnames]{color}
 \usepackage{verbatim}
 \usepackage{enumitem}

@@ -99,9 +99,6 @@ def start_miner_cli(
     # Download latex resume to file system
     latex_str = resume.export(ResumeLatexRenderer())
 
-    with open("resume.tex", "w", encoding="utf-8") as f:
-        f.write(latex_str)
-
     # Print the resume items
     resume_CLI_stringify(resume)
 

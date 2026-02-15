@@ -9,6 +9,9 @@ from datetime import date
 from typing import Optional
 from src.core.statistic import WeightedSkills
 from src.core.resume.render import *
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -60,6 +63,18 @@ class Resume:
 
     def export(self, render: ResumeRender) -> str:
         return render.render(self)
+
+    def to_pdf(self, filepath='resume.pdf'):
+        path = Path(filepath)
+        if path.suffix.lower() != ".pdf":
+            filepath = str(path.with_suffix(".pdf"))
+            logger.info(
+                "Incorrect filename format: %s has been replaced by resume.pdf", path)
+
+        pdf = self.export(PDFRenderer())
+
+        with open(filepath, "wb") as file:
+            file.write(pdf)
 
     def __str__(self) -> str:
         return self.export(TextResumeRenderer())
