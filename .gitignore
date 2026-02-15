@@ -80,6 +80,10 @@ ui/.vite/
 # Logs (if any appear later)
 ui/*.log
 
+# database files
 *.db
 src/database/schema.sql
 src/database/example.py
+
+# HF cache
+.hf_cache
