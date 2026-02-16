@@ -139,8 +139,8 @@ class BaseFileAnalyzer:
         """By opening the file to create the hash, we corrupt the `created_at` time.
         To resolve this, we get and store the time prior to hashing
         """
-        metadata = Path(self.filepath).stat()
         try:
+            metadata = Path(self.filepath).stat()
             return datetime.datetime.fromtimestamp(
                 metadata.st_atime)
         except FileNotFoundError:

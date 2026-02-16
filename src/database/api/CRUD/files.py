@@ -5,7 +5,6 @@ from src.core.report.file_report import FileReport
 from src.database.api.models import FileReportModel
 from src.database.core.base import table_exists
 from src.database.core.model_deserializer import deserialize_file_report
-from src.database.core.model_serializer import serialize_file_report
 
 
 def get_file_report_model_by_hash(
@@ -45,11 +44,10 @@ def get_file_report_by_hash(
     return deserialize_file_report(result)
 
 
-def update_file_report_by_hash(
+def delete_file_report_by_hash(
         session: Session,
-        hash: bytes,
-        updated_file_report: FileReport) -> bool:
-    """Update statistics and hash for file that has changed since last analysis
+        hash: bytes) -> bool:
+    """Delete associated FileReport with hash that has changed since last analysis
     DOES NOT COMMIT THE SESSION! YOU MUST COMMIT.
 
     Args:
@@ -71,12 +69,7 @@ def update_file_report_by_hash(
     if current_file_report_model is None:
         return False
 
-    # convert to model and update statistics and hash (other rows remain unchanged)
-    new_file_report_model = serialize_file_report(updated_file_report)
-    current_file_report_model.file_hash = new_file_report_model.file_hash,
-    current_file_report_model.statistic = new_file_report_model.file_statistics
-
-    session.add(current_file_report_model)
+    session.delete(current_file_report_model)
     return True
 
 

@@ -24,7 +24,7 @@ from src.core.analyzer.php_analyzer import PHPAnalyzer
 from src.core.analyzer.python_analyzer import PythonAnalyzer
 from src.core.analyzer.text_file_analyzer import TextFileAnalyzer
 from src.core.analyzer.type_script_analyzer import TypeScriptAnalyzer
-from src.database.api.CRUD.files import get_file_report_by_hash, filepath_exists_in_db
+from src.database.api.CRUD.files import get_file_report_by_hash, filepath_exists_in_db, delete_file_report_by_hash
 from src.database.core.base import get_engine
 from src.infrastructure.log.logging import get_logger
 from src.database.api.models import UserConfigModel as UserConfig
@@ -59,6 +59,9 @@ def single_file_analysis(
                 logger.info("Skipping already analyzed file: %s", file)
                 return get_file_report_by_hash(session, analyzer.hashed_content)
             else:
+                delete_file_report_by_hash(
+                    session, analyzer.hashed_content)
+                session.commit()
                 return analyzer.analyze()
 
     try:
