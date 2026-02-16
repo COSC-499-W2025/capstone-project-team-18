@@ -5,6 +5,7 @@ from git import GitCommandError
 import hashlib
 
 # database imports are needed for duplicate files checks
+from src.core.statistic.statistic_models import LANGUAGE_EXTENSIONS
 from src.database.api.CRUD.files import get_file_report_model_by_hash
 
 
@@ -14,6 +15,7 @@ from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.statistic import Statistic, StatisticIndex, FileStatCollection
 from src.infrastructure.log.logging import get_logger
 from src.database.core.base import get_engine
+from datetime import date
 
 logger = get_logger(__name__)
 
@@ -53,6 +55,7 @@ class BaseFileAnalyzer:
         self.path_to_top_level_project = str(project_context.root_path)
         self.relative_path = relative_path
         self.filepath = f"{self.path_to_top_level_project}/{relative_path}"
+        self.created_at = self.get_created_time()
 
         self.project_name = project_context.name
         self.repo = project_context.repo
@@ -63,7 +66,6 @@ class BaseFileAnalyzer:
         self.stats = StatisticIndex()
         self.blame_info = None
         self.is_git_tracked = self.file_in_git_repo()
-        # will either be used as a check or added to fileReport
         self.hashed_content = self.create_hash()
 
     def file_in_git_repo(self) -> bool:
@@ -133,22 +135,33 @@ class BaseFileAnalyzer:
 
         return False
 
+    def get_created_time(self) -> date:
+        """By opening the file to create the hash, we corrupt the `created_at` time.
+        To resolve this, we get and store the time prior to hashing
+        """
+        metadata = Path(self.filepath).stat()
+        return datetime.datetime.fromtimestamp(
+            metadata.st_atime)
+
     def create_hash(self) -> bytes:
         """
         Create a hash of the file's content. Should only occur in the case of a new file, or
         in the case of a matching existing path in order to check against hash value
 
         Returns:
-            str: A hex representation of the resulting MD5 hash
+            bytes: A hex representation of the resulting MD5 hash
         """
         try:
             with open(self.filepath, "rb") as f:
                 hashed_file = hashlib.file_digest(f, "md5")
 
             # unchanged file with changed email will still result in re-analysis
-            salt = self.email.encode('utf-8')
-            hash = hashed_file + salt
-            return hash.digest()
+            if self.email:
+                salt = self.email.encode('utf-8')
+            else:
+                salt = b'0'
+            hash = hashed_file.digest() + salt
+            return hash
         except FileNotFoundError:
             logger.exception(f"File not found for {self.filepath}")
             return '0x00'
@@ -256,8 +269,8 @@ class BaseFileAnalyzer:
             we treat that as DATE_CREATED
             """
 
-            stats.append(Statistic(FileStatCollection.DATE_CREATED.value, datetime.datetime.fromtimestamp(
-                metadata.st_atime)))
+            stats.append(
+                Statistic(FileStatCollection.DATE_CREATED.value, self.created_at))
             stats.append(Statistic(FileStatCollection.DATE_MODIFIED.value, datetime.datetime.fromtimestamp(
                 metadata.st_mtime)))
 

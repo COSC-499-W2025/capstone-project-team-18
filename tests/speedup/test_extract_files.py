@@ -11,12 +11,17 @@ from src.database.api.models import UserConfigModel
 class DummyAnalyzer:
     def __init__(self, relative_path: str):
         self.relative_path = relative_path
+        self.filepath = "path/dummyFile"
+        self.hashed_content = b'0'
 
     def should_analyze_file(self) -> bool:
         return True
 
     def is_info_file(self) -> bool:
         return False
+
+    def compare_hashes(self) -> bool:
+        return b'0' == b'0'
 
     def create_info_file(self) -> FileReport:
         return FileReport(StatisticIndex(), self.relative_path)
