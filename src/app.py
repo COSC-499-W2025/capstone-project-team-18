@@ -2,7 +2,6 @@
 The entry point for the ArtifactMiner program.
 """
 
-from src.database.utils.db_migrate import run_migrations
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -34,7 +33,6 @@ def init_system() -> tuple[bool, str]:
 
 
 def main():
-    run_migrations()
     _, startup_message = init_system()
     print(startup_message)
 

@@ -58,6 +58,7 @@ src/database/data.db
 src/database/preferences.json
 
 resume.tex
+helper.pdf
 src/classes/database/preferences.json
 src/interface/cli/preferences.json
 .gitignore
