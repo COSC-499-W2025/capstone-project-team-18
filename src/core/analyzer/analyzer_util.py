@@ -52,7 +52,6 @@ def single_file_analysis(
         logger.info("Skipping file %s in project %s", file, project_name)
         return analyzer.create_info_file()
 
-    # TODO: Add check for matching filepath prior to hash and use update DB if path match, but hash fails
     engine = get_engine()
     with Session(engine) as session:
         if filepath_exists_in_db(session, analyzer.filepath):

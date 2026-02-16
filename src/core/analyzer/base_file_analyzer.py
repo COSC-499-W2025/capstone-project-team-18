@@ -140,8 +140,11 @@ class BaseFileAnalyzer:
         To resolve this, we get and store the time prior to hashing
         """
         metadata = Path(self.filepath).stat()
-        return datetime.datetime.fromtimestamp(
-            metadata.st_atime)
+        try:
+            return datetime.datetime.fromtimestamp(
+                metadata.st_atime)
+        except FileNotFoundError:
+            return None
 
     def create_hash(self) -> bytes:
         """
