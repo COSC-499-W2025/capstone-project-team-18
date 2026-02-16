@@ -51,7 +51,7 @@ def get_project_report_by_name(
     project_name: str
 ) -> Optional[ProjectReport]:
     """
-    Retrieve a ProjectReportModel by its project_name, including
+    Retrieve a ProjectReport by its project_name, including
     related FileReports and ResumeItems.
 
     Args:
@@ -59,7 +59,7 @@ def get_project_report_by_name(
         project_name: The project name to query
 
     Returns:
-        ProjectReportModel if found, else None
+        ProjectReport object if found, else None
     """
     result = get_project_report_model_by_name(session, project_name)
 
