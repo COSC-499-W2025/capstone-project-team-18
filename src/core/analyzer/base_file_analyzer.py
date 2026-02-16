@@ -1,14 +1,11 @@
 import datetime
 from pathlib import Path
+from sqlmodel import Session
 from git import GitCommandError
 import hashlib
 
 # database imports are needed for duplicate files checks
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import NoResultFound, MultipleResultsFound
-from sqlalchemy import select, inspect
-from src.database import get_engine
-from src.database.models import FileReportTable
+from src.database.api.CRUD.files import get_file_report_model_by_hash
 
 
 from src.core.report.file_report import FileReport
@@ -16,6 +13,7 @@ from src.database.api.models import UserConfigModel as UserConfig
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.statistic import Statistic, StatisticIndex, FileStatCollection
 from src.infrastructure.log.logging import get_logger
+from src.database.core.base import get_engine
 
 logger = get_logger(__name__)
 
@@ -171,27 +169,10 @@ class BaseFileAnalyzer:
 
         engine = get_engine()
         with Session(engine) as session:
-            inspector = inspect(engine)
-            if inspector.has_table('file_report'):
-                try:
-                    # check if filepath and hash exist and match within the DB
-                    _ = session.execute(
-                        select(FileReportTable)
-                        .where(FileReportTable.filepath == self.filepath, FileReportTable.file_hash == self.hashed_content, )
-                        # should result in the only existing column
-                    ).scalars().one()
-                    logger.exception(
-                        f"{self.filepath} already exists and hasn't changes since last analysis")
-                    return True  # true if no exception thrown
-
-                # Each project name should be unique, throw error if 0 rows or > 1 rows are returned
-                except MultipleResultsFound:
-                    logger.error(
-                        f'Error: Multiple filepaths found with name "{self.filepath}. Should not be possible under current updates"')
-                    return True
-                except NoResultFound:
-                    return False
-            return False  # false if database hasn't been created yet
+            return (
+                get_file_report_model_by_hash(
+                    session, self.hashed_content) is not None
+            )
 
     def _matches_language_filter(self) -> bool:
         """
