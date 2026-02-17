@@ -11,7 +11,7 @@ def get_file_report_model_by_hash(
         session: Session,
         hash: bytes
 ) -> Optional[FileReportModel]:
-    if not table_exists('filereportmodel'):
+    if not table_exists('filereportmodel', session.get_bind()):
         return None
 
     statement = select(FileReportModel).where(
@@ -33,7 +33,7 @@ def get_file_report_by_hash(
     Returns:
         FileReport object if found, else None
     """
-    if not table_exists('filereportmodel'):
+    if not table_exists('filereportmodel', session.get_bind()):
         return None
 
     result = get_file_report_model_by_hash(session, hash)
@@ -57,7 +57,7 @@ def delete_file_report_by_hash(
     Returns:
         True if a record was deleted, False if not found.
     """
-    if not table_exists('filereportmodel'):
+    if not table_exists('filereportmodel', session.get_bind()):
         return False
 
     statement = select(FileReportModel).where(
@@ -78,7 +78,7 @@ def filepath_exists_in_db(
         filepath: str
 ) -> bool:
     """Lightwight check for filepath in database to be checked prior to hashing"""
-    if not table_exists('filereportmodel'):
+    if not table_exists('filereportmodel', session.get_bind()):
         return False
 
     statement = select(FileReportModel).where(

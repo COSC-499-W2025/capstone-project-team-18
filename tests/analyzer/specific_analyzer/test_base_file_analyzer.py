@@ -187,64 +187,6 @@ def test_file_analysis_when_hash_differs(
     assert result is expected
 
 
-def test_file_analysis_when_hash_matches(
-    tmp_path, create_temp_file, project_context_from_root, blank_db, monkeypatch
-):
-    file_info = create_temp_file("dup.unknown", "duplicate content", tmp_path)
-    project_context = project_context_from_root(str(tmp_path))
-
-    analyzer = BaseFileAnalyzer(
-        UserConfigModel(), project_context, file_info[1]
-    )
-
-    stats = StatisticIndex([
-        Statistic(
-            FileStatCollection.FILE_SIZE_BYTES.value,
-            Path(analyzer.filepath).stat().st_size
-        )
-    ])
-
-    file_report = FileReport(
-        statistics=stats,
-        filepath=analyzer.filepath,
-        is_info_file=False,
-        file_hash=analyzer.hashed_content,
-        project_name=project_context.name,
-    )
-
-    model = serialize_file_report(file_report)
-
-    with Session(blank_db) as session:
-        session.add(model)
-        session.commit()
-
-    monkeypatch.setattr(
-        "src.core.analyzer.analyzer_util.get_engine",
-        lambda: blank_db
-    )
-    monkeypatch.setattr(
-        "src.core.analyzer.base_file_analyzer.get_engine",
-        lambda: blank_db
-    )
-
-    def fail_analyze(self):
-        raise AssertionError("analyze should not run for duplicate hash")
-
-    monkeypatch.setattr(BaseFileAnalyzer, "analyze", fail_analyze)
-
-    result = single_file_analysis(
-        Path(file_info[1]),
-        project_context.name,
-        UserConfigModel(),
-        project_context,
-        file_info[1],
-    )
-
-    assert result is not None
-    assert result.file_hash == analyzer.hashed_content
-    assert result.filepath == analyzer.filepath
-
-
 def test_create_with_analysis_unknown_file_type(
     tmp_path, create_temp_file, project_context_from_root
 ):

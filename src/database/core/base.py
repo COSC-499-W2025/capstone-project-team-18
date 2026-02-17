@@ -25,6 +25,8 @@ def get_engine():
     return ENGINE_CACHE
 
 
-def table_exists(table_name: str) -> bool:
-    inspector = inspect(get_engine())
+def table_exists(table_name: str, engine=None) -> bool:
+    if engine is None:
+        engine = get_engine()
+    inspector = inspect(engine)
     return inspector.has_table(table_name)
