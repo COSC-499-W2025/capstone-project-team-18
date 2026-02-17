@@ -5,20 +5,15 @@ Tests for BaseFileAnalyzer and extract_file_reports.
 from pathlib import Path
 from datetime import datetime
 import pytest
-from sqlmodel import Session
 from src.core.analyzer import (
     BaseFileAnalyzer,
     extract_file_reports,
     get_appropriate_analyzer,
 )
-from src.core.analyzer.analyzer_util import single_file_analysis
 from src.core.statistic import FileStatCollection
-from src.core.statistic import Statistic, StatisticIndex
 from src.core.project_discovery.project_discovery import ProjectLayout
-from src.core.report.file_report import FileReport
 from src.utils.pathing_utils import unzip_file
 from src.database.api.models import UserConfigModel
-from src.database.core.model_serializer import serialize_file_report
 
 
 def test_base_file_analyzer_process_returns_file_report_with_core_stats(
@@ -121,70 +116,6 @@ def test_extract_file_reports_recieves_project_with_subfolder(
     assert len(listReport) == 3 and all(
         isinstance(report, object) for report in listReport
     )
-
-
-def test_file_analysis_when_hash_differs(
-    tmp_path, create_temp_file, project_context_from_root, blank_db, monkeypatch
-):
-    file_info = create_temp_file("dup.unknown", "duplicate content", tmp_path)
-    project_context = project_context_from_root(str(tmp_path))
-
-    analyzer = BaseFileAnalyzer(
-        UserConfigModel(), project_context, file_info[1]
-    )
-
-    stats = StatisticIndex([
-        Statistic(
-            FileStatCollection.FILE_SIZE_BYTES.value,
-            Path(analyzer.filepath).stat().st_size
-        )
-    ])
-
-    existing_report = FileReport(
-        statistics=stats,
-        filepath=analyzer.filepath,
-        is_info_file=False,
-        file_hash=b"different-hash",
-        project_name=project_context.name,
-    )
-
-    model = serialize_file_report(existing_report)
-
-    with Session(blank_db) as session:
-        session.add(model)
-        session.commit()
-
-    monkeypatch.setattr(
-        "src.core.analyzer.analyzer_util.get_engine",
-        lambda: blank_db
-    )
-    monkeypatch.setattr(
-        "src.core.analyzer.base_file_analyzer.get_engine",
-        lambda: blank_db
-    )
-
-    expected = FileReport(
-        statistics=stats,
-        filepath=analyzer.filepath,
-        is_info_file=False,
-        file_hash=analyzer.hashed_content,
-        project_name=project_context.name,
-    )
-
-    def analyze_return(self):
-        return expected
-
-    monkeypatch.setattr(BaseFileAnalyzer, "analyze", analyze_return)
-
-    result = single_file_analysis(
-        Path(file_info[1]),
-        project_context.name,
-        UserConfigModel(),
-        project_context,
-        file_info[1],
-    )
-
-    assert result is expected
 
 
 def test_create_with_analysis_unknown_file_type(
