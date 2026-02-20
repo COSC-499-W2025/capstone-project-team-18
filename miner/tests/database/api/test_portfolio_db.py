@@ -1,10 +1,11 @@
-from sqlmodel import Session
+from sqlmodel import Session, select
 import pytest
 from src.core.portfolio.portfolio import Portfolio, PortfolioMetadata
 from src.core.portfolio.sections.portfolio_section import PortfolioSection
 from src.core.portfolio.sections.block.block import Block
 from src.core.portfolio.sections.block.block_content import TextBlock, TextListBlock
-from src.database.api.CRUD.portfolio import save_portfolio, load_portfolio
+from src.database.api.models import BlockModel
+from src.database.api.CRUD.portfolio import save_portfolio, load_portfolio, update_portfolio_block, get_portfolio_block
 
 
 @pytest.fixture()
@@ -97,3 +98,70 @@ def test_load_nonexistent_portfolio_returns_none(temp_db):
     with Session(temp_db) as session:
         result = load_portfolio(session, 99999)
         assert result is None
+
+
+def test_crud_update_block_content(temp_db, mock_portfolio):
+    """Verify that updating a block via CRUD persists and handles conflicts."""
+    with Session(temp_db) as session:
+        # Initial save of our fixture
+        portfolio_model = save_portfolio(session, mock_portfolio)
+        session.commit()
+        pid = portfolio_model.id
+
+        assert pid
+
+        # Update the 'Intro Section' -> 'tag_1' (TextBlock)
+        new_text = "Persisted Goodbye World"
+        update_portfolio_block(
+            session,
+            portfolio_id=pid,
+            section_tag="intro_1",
+            block_tag="tag_1",
+            text=new_text
+        )
+        session.commit()
+
+        # Reload and verify
+        loaded = load_portfolio(session, pid)
+        assert loaded
+        block = loaded.sections[0].blocks_by_tag["tag_1"]
+        assert block.current_content.text == new_text  # type: ignore
+        assert block.metadata.last_user_edit_at is not None
+
+
+def test_crud_update_resolves_conflict(temp_db, mock_portfolio):
+    """Verify that a user update via CRUD clears a conflict state in the DB."""
+    with Session(temp_db) as session:
+        # 1. Setup: Save the initial conflicted state
+        portfolio_model = save_portfolio(session, mock_portfolio)
+        session.commit()
+        pid = portfolio_model.id
+
+        assert pid is not None
+
+        # 2. Act: Apply update to the conflicted block
+        # Section 'skills_1' block 'tag_2' starts in conflict in the fixture
+        update_portfolio_block(
+            session,
+            portfolio_id=pid,
+            section_tag="skills_1",
+            block_tag="tag_2",
+            items=["Clean", "State"]
+        )
+        session.commit()
+
+        block = get_portfolio_block(session, pid, "skills_1", "tag_2")
+
+        assert block is not None
+        assert block.is_in_conflict() is False
+        assert block.metadata.conflict_content is None
+        assert block.current_content is not None
+        assert block.current_content.raw_value(
+        ) == ["Clean", "State"]  # type: ignore
+
+        # Verify the database model directly as a secondary check
+        # (Optional, but good for peace of mind regarding the raw JSON)
+        stmt = select(BlockModel).where(BlockModel.tag == "tag_2")
+        db_block = session.exec(stmt).first()
+        assert db_block.in_conflict is False  # type: ignore
+        assert db_block.current_content == ["Clean", "State"]  # type: ignore
