@@ -12,13 +12,14 @@ class PortfolioMetadata:
     project_ids_include: list[int]
 
     def __init__(self,
-                 project_ids: list[int],
+                 project_ids: list[int] = [],
                  creation_date: Optional[datetime] = None,
                  last_updated_at: Optional[datetime] = None,
                  ):
 
         self.creation_time = creation_date or datetime.now()
         self.last_updated_at = last_updated_at or datetime.now()
+        self.project_ids_include = project_ids
 
 
 class Portfolio:
@@ -30,10 +31,12 @@ class Portfolio:
 
     metadata: PortfolioMetadata
     sections: list[PortfolioSection]
+    title: str
 
-    def __init__(self, sections: Optional[list[PortfolioSection]] = None, metadata: Optional[PortfolioMetadata] = None):
+    def __init__(self, sections: Optional[list[PortfolioSection]] = None, metadata: Optional[PortfolioMetadata] = None, title: str = "My Portfolio"):
         self.sections = sections or []
         self.metadata = metadata or PortfolioMetadata([])
+        self.title = title
         pass
 
     def render(self) -> str:

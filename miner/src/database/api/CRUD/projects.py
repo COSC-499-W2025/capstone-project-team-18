@@ -3,7 +3,7 @@ from typing import Optional
 from sqlmodel import Session
 from src.database.api.models import ProjectReportModel
 from src.core.report import ProjectReport
-from src.database.core.model_serializer import serialize_project_report, serialize_file_report
+from src.database.core.model_serializer import serialize_project_report
 from src.database.core.model_deserializer import deserialize_project_report
 
 
@@ -27,10 +27,6 @@ def save_project_report(
     """
 
     project_model = serialize_project_report(project_report, user_config_id)
-
-    file_models = [serialize_file_report(fr)
-                   for fr in project_report.file_reports]
-    project_model.file_reports = file_models
 
     session.add(project_model)
 

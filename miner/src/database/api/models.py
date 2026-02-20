@@ -4,7 +4,7 @@ returnable types for FastAPI
 """
 
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, JSON, LargeBinary
@@ -99,3 +99,54 @@ class ResumeItemModel(SQLModel, table=True):
 
     # Relationship
     resume: Optional[ResumeModel] = Relationship(back_populates="items")
+
+
+class BlockModel(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    section_id: Optional[int] = Field(
+        default=None, foreign_key="portfoliosectionmodel.id")
+
+    tag: str
+    content_type: str
+
+    # Metadata
+    last_generated_at: Optional[datetime] = None
+    last_user_edit_at: Optional[datetime] = None
+    in_conflict: bool = Field(default=False)
+
+    # Content as JSON
+    current_content: Any = Field(sa_column=Column(JSON))
+    conflict_content: Optional[Any] = Field(
+        sa_column=Column(JSON), default=None)
+
+    section: Optional["PortfolioSectionModel"] = Relationship(
+        back_populates="blocks")
+
+
+class PortfolioSectionModel(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    portfolio_id: Optional[int] = Field(
+        default=None, foreign_key="portfoliomodel.id")
+
+    section_id: str
+    title: str
+    order: int = 0
+    block_order: List[str] = Field(sa_column=Column(JSON), default=[])
+
+    portfolio: Optional["PortfolioModel"] = Relationship(
+        back_populates="sections")
+    blocks: List["BlockModel"] = Relationship(back_populates="section")
+
+
+class PortfolioModel(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+
+    # Metadata fields
+    creation_time: datetime = Field(default_factory=datetime.now)
+    last_updated_at: datetime = Field(default_factory=datetime.now)
+    project_ids_include: List[int] = Field(sa_column=Column(JSON), default=[])
+
+    # Relationships
+    sections: List["PortfolioSectionModel"] = Relationship(
+        back_populates="portfolio")
