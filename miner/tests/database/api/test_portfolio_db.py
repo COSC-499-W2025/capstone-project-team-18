@@ -27,7 +27,7 @@ def mock_portfolio() -> Portfolio:
 
     return Portfolio(
         sections=[section_one, section_two],
-        metadata=PortfolioMetadata(project_ids=[101, 102])
+        metadata=PortfolioMetadata(project_ids=["A", "B"])
     )
 
 
@@ -44,7 +44,7 @@ def test_save_portfolio_persists_to_db(temp_db, mock_portfolio):
         # Verify it exists in the DB
         loaded = load_portfolio(session, portfolio_model.id)
         assert loaded is not None
-        assert loaded.metadata.project_ids_include == [101, 102]
+        assert loaded.metadata.project_ids_include == ["A", "B"]
 
 
 def test_load_portfolio_reconstructs_hierarchy(temp_db, mock_portfolio):

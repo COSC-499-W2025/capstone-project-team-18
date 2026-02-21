@@ -145,7 +145,7 @@ class PortfolioModel(SQLModel, table=True):
     # Metadata fields
     creation_time: datetime = Field(default_factory=datetime.now)
     last_updated_at: datetime = Field(default_factory=datetime.now)
-    project_ids_include: List[int] = Field(sa_column=Column(JSON), default=[])
+    project_ids_include: List[str]
 
     # Relationships
     sections: List["PortfolioSectionModel"] = Relationship(
