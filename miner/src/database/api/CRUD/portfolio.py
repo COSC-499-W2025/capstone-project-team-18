@@ -185,6 +185,7 @@ def update_portfolio_from_domain(session: Session, portfolio_id: int, domain_por
         .options(joinedload(PortfolioModel.sections)  # type: ignore
                  .joinedload(PortfolioSectionModel.blocks))  # type: ignore
     )
+
     portfolio_model = session.exec(statement).unique().first()
 
     if not portfolio_model:
