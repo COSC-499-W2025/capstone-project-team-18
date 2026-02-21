@@ -8,6 +8,7 @@ from src.core.report import UserReport
 from src.core.portfolio.portfolio import Portfolio
 from src.utils.errors import KeyNotFoundError
 from src.core.portfolio.portfolio import merge_portfolios
+from src.database.api.CRUD.portfolio import update_portfolio_from_domain
 from src.database import (
     get_project_report_by_name,
     get_engine,
@@ -27,7 +28,10 @@ def _create_portfolio(project_names: list[str], portfolio_title: Optional[str]) 
 
     with Session(get_engine()) as session:
         for pid in project_names:
-            prs.append(get_project_report_by_name(session, pid))
+            pr = get_project_report_by_name(session, pid)
+            if pr is None:
+                raise KeyNotFoundError(f"No project report with key {pid}")
+            prs.append(pr)
 
     portfolio = UserReport(project_reports=prs,
                            report_name="").generate_portfolio()
@@ -80,7 +84,8 @@ def update_portfolio(portfolio_id: int) -> PortfolioModel:
         merged_portfolio = merge_portfolios(
             existing_portfolio, updated_portfolio)
 
-        portfolio_model = save_portfolio(session, merged_portfolio)
+        portfolio_model = update_portfolio_from_domain(
+            session, portfolio_id, merged_portfolio)
         session.commit()
         session.refresh(portfolio_model)
 

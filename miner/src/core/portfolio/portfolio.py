@@ -51,7 +51,7 @@ class Portfolio:
 
 def merge_portfolios(existing: Portfolio, generated: Portfolio) -> Portfolio:
     """
-    Merge two portfolios. Merge on the existing object.
+    Merges two portfolios. The existing one was generated previously
     """
 
     # Merge the sections together
