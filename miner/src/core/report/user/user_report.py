@@ -11,19 +11,6 @@ from src.core.statistic import (
     UserStatCollection,
 )
 from src.core.resume.resume import Resume
-from src.core.portfolio.builder.concrete_builders import (
-    UserSummarySectionBuilder,
-    UserSkillsSectionBuilder,
-    UserCodingLanguageRatioSectionBuilder,
-    UserGenericStatisticsSectionBuilder,
-    ChronologicalProjectsSectionBuilder,
-    ProjectSummariesSectionBuilder,
-    ProjectTagsSectionBuilder,
-    ProjectThemesSectionBuilder,
-    ProjectTonesSectionBuilder,
-    ProjectActivityMetricsSectionBuilder,
-    ProjectCommitFocusSectionBuilder,
-)
 from src.core.portfolio.builder.build_system import PortfolioBuilder
 
 
@@ -92,6 +79,19 @@ class UserReport(BaseReport):
         Generate a portfolio using the portfolio builder system.
         This delegates to concrete builders for flexible, modular portfolio generation.
         """
+        from src.core.portfolio.builder.concrete_builders import (
+            UserSummarySectionBuilder,
+            UserSkillsSectionBuilder,
+            UserCodingLanguageRatioSectionBuilder,
+            UserGenericStatisticsSectionBuilder,
+            ChronologicalProjectsSectionBuilder,
+            ProjectSummariesSectionBuilder,
+            ProjectTagsSectionBuilder,
+            ProjectThemesSectionBuilder,
+            ProjectTonesSectionBuilder,
+            ProjectActivityMetricsSectionBuilder,
+            ProjectCommitFocusSectionBuilder,
+        )
 
         builder = PortfolioBuilder()
 

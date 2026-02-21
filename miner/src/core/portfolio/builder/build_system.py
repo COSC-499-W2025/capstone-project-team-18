@@ -4,9 +4,10 @@ structure is very similar
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.core.report import UserReport
 
-from src.core.report import UserReport
 from src.core.portfolio.portfolio import Portfolio
 from src.core.portfolio.sections.portfolio_section import PortfolioSection, merge_section
 from src.core.portfolio.sections.block.block import Block
