@@ -17,7 +17,7 @@ function isNotFoundError(msg: string) {
 export default function ProjectDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams(); 
-  const projectName = id ? decodeURIComponent(id) : "";
+  const projectName = id ?? "";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

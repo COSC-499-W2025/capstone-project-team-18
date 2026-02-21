@@ -6,6 +6,11 @@
   "author": "草鞋没号 <308487730@qq.com>",
   "license": "MIT",
   "private": true,
+
+  "engines": {
+    "node": ">= 20.0.0"
+  },
+
   "debug": {
     "env": {
       "VITE_DEV_SERVER_URL": "http://127.0.0.1:7777/"
@@ -13,7 +18,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 npx electron .\"",
+    "dev": "vite",
     "dev:web": "vite",
     "build": "tsc && vite build && electron-builder",
     "preview": "vite preview",

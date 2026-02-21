@@ -1,16 +1,8 @@
-import type { CSSProperties } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import SkillsPage from "./pages/SkillsPage";
-
-const linkStyle: CSSProperties = {
-  padding: "6px 10px",
-  borderRadius: 8,
-  textDecoration: "none",
-  color: "inherit"
-};
 
 export default function App() {
   return (

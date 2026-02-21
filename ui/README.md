@@ -12,12 +12,13 @@ This document outlines the complete local setup process for running and testing 
 - Windows (WSL recommended)
 
 ### Required Software:
-- **Python 3.12+**
-- **Node.js 20+** (includes npm)
+- **Python 3.13 recommended** (3.12 supported/newer versions may have dependency compatibility issues)
+- **Node.js 20.0.0+** (required; enforced via `ui/package.json` engines field)
 
 ### Verify installations:
 ```bash
 python3 --version
+which python3   # should point to your system Python before creating venv
 node -v
 npm -v
 ```
@@ -28,8 +29,10 @@ npm -v
 ### 2.1 Installing Backend Dependencies:
 From the repository root run:
 ```bash
-1. python3 -m pip install --upgrade pip
-2. python3 -m pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate  # Windows (PowerShell): .venv\Scripts\Activate.ps1
+python3 -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
 ---
@@ -37,7 +40,7 @@ From the repository root run:
 ### 2.2 Running the FastAPI Server:
 From the repository root run:
 ```bash
-python3 -m fastapi dev ./src/interface/api/api.py
+python3 -m uvicorn src.interface.api.api:app --reload --reload-dir src
 ```
 
 # 3. Electron UI Setup
@@ -45,8 +48,8 @@ python3 -m fastapi dev ./src/interface/api/api.py
 ### 3.1 Installing UI Dependencies
 From the repository root run:
 ```bash
-1. cd ui
-2. npm install
+cd ui
+npm install
 ```
 
 ### 3.2 Running Electron UI
@@ -54,15 +57,43 @@ From the `ui/` directory run:
 ```bash
 npm run dev
 ```
+Vite will print `http://localhost:5173` for the web renderer. For the Electron app, use the Electron window that opens when running npm run dev.
 
 ---
 
 # 4. Running UI Tests
-From the repository root run:
+
+The Electron UI uses Vitest for unit testing instead of Pytest. These tests are frontend-only and do not require the FastAPI backend to be running.
+
+### 4.1 What is Tested:
+- API client behavior (URL construction, base URL normalization)
+- Correct endpoint calls (`/projects`, `/projects/{project_name}`, `/skills`, `/ping`)
+- URL encoding for route parameters (e.g. project names with spaces)
+- Error handling for non-200 HTTP responses, including actionable error messages
+- Backend connectivity checks independent of database state
+
+### 4.2 How The Tests Work:
+- Tests run in a Node/Vitest environment, not in a browser
+- `fetch` is mocked using Vitest (`vi.fn()`), so no real HTTP requests are made
+- Environment variables (e.g. `VITE_API_BASE_URL`) are injected manually per test
+- This keeps UI tests fast, deterministic, and independent from the backend
+
+### 4.3 Running UI Tests Locally:
+From the `ui/` directory run:
 ```bash
-cd ui
 npx vitest run
 ```
+
+### 4.4 Running Tests in GitHub Actions:
+UI tests are also executed automatically on pull requests via GitHub Actions. The workflow installs dependencies using npm ci (based on package-lock.json) and runs:
+```bash
+npx vitest run
+```
+### 4.5 Future Tests (Guideline):
+- Unit tests (Vitest): should mock network calls (`fetch`) and not depend on the backend.
+- Integration/End-to-end tests (optional later): can be added separately if we want to validate real backend + UI flows.
+
+---
 
 # 5. Helpful Tips
 It is recommended to use two terminal windows:
@@ -80,42 +111,9 @@ Ctrl + C
 ```
 ---
 
-# 7. Running UI Tests
+# 7. Troubleshooting
 
-The Electron UI uses Vitest for unit testing instead of Pytest. These tests are frontend-only and do not require the FastAPI backend to be running.
-
-### 7.1 What is Tested:
-- API client behavior (URL construction, base URL normalization)
-- Correct endpoint calls (`/projects`, `/projects/{project_name}`, `/skills`, `/ping`)
-- URL encoding for route parameters (e.g. project names with spaces)
-- Error handling for non-200 HTTP responses, including actionable error messages
-- Backend connectivity checks independent of database state
-
-### 7.2 How The Tests Work:
-- Tests run in a Node/Vitest environment, not in a browser
-- `fetch` is mocked using Vitest (`vi.fn()`), so no real HTTP requests are made
-- Environment variables (e.g. `VITE_API_BASE_URL`) are injected manually per test
-- This keeps UI tests fast, deterministic, and independent from the backend
-
-### 7.3 Running UI Tests Locally:
-From the `ui/` directory run:
-```bash
-npx vitest run
-```
-
-### 7.4 Running Tests in GitHub Actions:
-UI tests are also executed automatically on pull requests via GitHub Actions. The workflow installs dependencies using npm ci (based on package-lock.json) and runs:
-```bash
-npx vitest run
-```
-### 7.5 Future Tests (Guideline):
-- Unit tests (Vitest): should mock network calls (`fetch`) and not depend on the backend.
-- Integration/End-to-end tests (optional later): can be added separately if we want to validate real backend + UI flows.
-
-# 8. Troubleshooting
-
-
-### 8.1 Electron refuses to launch or shows `SingletonLock` errors
+### 7.1 Electron refuses to launch or shows `SingletonLock` errors
 
 If Electron crashes or is force-stopped, it may leave behind a stale
 singleton lock file and refuse to relaunch.
@@ -129,11 +127,47 @@ pkill -f Electron
 rm -f "$HOME/Library/Application Support/electron-vite-react/SingletonLock"
 npm run dev
 ```
+
+### 7.2 Unexpected token 'H' ... is not valid JSON
+If you see an error like:  
+`Uncaught (in promise) SyntaxError: Unexpected token 'H', "HTTP/1.1 4"... is not valid JSON`, this usually means the UI attempted to parse a non-JSON HTTP response.
+
+Common causes:
+1. The FastAPI backend is not running
+2. The UI is pointing to the wrong backend URL or port.
+3. The backend returned an HTML error page (e.g., 404/500) instead of JSON.
+
+Fix:
+1. Ensure the backend is running:
+```bash
+python3 -m uvicorn src.interface.api.api:app --reload --reload-dir src
+```
+2. Confirm the backend responds with: `http://127.0.0.1:8000/ping`
+3. If VITE_API_BASE_URL is defined (e.g., in ui/.env), ensure it matches the backend URL.
+Otherwise, the UI defaults to `http://127.0.0.1:8000`.
+
+You can also verify the actual request target by opening Electron DevTools → Network tab and inspecting the /ping request URL.
+
+### 7.3 spawn Unknown system error -8 when running npm run dev
+If Electron fails to launch with an error similar to: `Error: spawn Unknown system error -8`, this is typically caused by corrupted node_modules, Electron cache issues, or a mismatched Node version.
+
+Fix:
+1. From the ui/ directory run:
+```bash
+rm -rf node_modules package-lock.json
+npm cache verify   # or: npm cache clean --force
+npm install
+npm run dev
+```
+2. Ensure you are running Node 20.0.0 or newer
+```bash
+node -v
+```
 ---
 
-# 9. TODO / Future Improvements
+# 8. TODO / Future Improvements
 
-### 9.1 Content Security Policy (CSP) Hardening
+### 8.1 Content Security Policy (CSP) Hardening
 
 During development, Electron may log a warning about an insecure or missing
 Content Security Policy (CSP), often due to the use of Vite hot module
