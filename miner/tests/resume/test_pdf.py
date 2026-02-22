@@ -1,8 +1,8 @@
+import os
 from datetime import date
+from pathlib import Path
 
 from src.core.resume.resume import Resume, ResumeItem
-from pathlib import Path
-import os
 
 
 def test_pdf_extraction():
@@ -22,3 +22,6 @@ def test_pdf_extraction():
     assert filepath.is_file()
 
     os.remove(filepath)
+
+    # Helper pdf is created, delete it
+    os.remove("helper.pdf")

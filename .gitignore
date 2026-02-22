@@ -54,14 +54,14 @@ test_unzip_extract/*
 
 
 #database
-src/database/data.db
-src/database/preferences.json
+miner/src/database/data.db
+miner/src/database/preferences.json
 
 resume.tex
-src/classes/database/preferences.json
-src/interface/cli/preferences.json
+miner/src/classes/database/preferences.json
+miner/src/interface/cli/preferences.json
 .gitignore
-src/infrastructure/log/*.log
+miner/src/infrastructure/log/*.log
 
 # =====================
 # Electron / UI (Node)
@@ -79,7 +79,10 @@ ui/.vite/
 
 # Logs (if any appear later)
 ui/*.log
+*.log
 
 *.db
-src/database/schema.sql
-src/database/example.py
+miner/src/database/schema.sql
+miner/src/database/example.py
+miner/src/infrastructure/log/*
+miner/src/infrastructure/log/app.log
