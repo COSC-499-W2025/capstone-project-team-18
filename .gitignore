@@ -86,3 +86,5 @@ miner/src/database/schema.sql
 miner/src/database/example.py
 miner/src/infrastructure/log/*
 miner/src/infrastructure/log/app.log
+
+.hf_cache/
