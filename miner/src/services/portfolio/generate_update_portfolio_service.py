@@ -2,7 +2,8 @@
 Generation service for a portfolio.
 """
 from typing import Optional
-from sqlmodel import Session
+from sqlmodel import Session, select
+from sqlalchemy.orm import joinedload
 
 from src.core.report import UserReport
 from src.core.portfolio.portfolio import Portfolio
@@ -14,7 +15,8 @@ from src.database import (
     get_engine,
     save_portfolio,
     load_portfolio,
-    PortfolioModel
+    PortfolioModel,
+    PortfolioSectionModel
 )
 
 
@@ -69,9 +71,22 @@ def generate_and_save_portfolio(project_names: list[str], portfolio_title: Optio
     with Session(get_engine()) as session:
         portfolio_model = save_portfolio(session, portfolio)
         session.commit()
-        session.refresh(portfolio_model)
 
-    return portfolio_model
+        statement = (
+            select(PortfolioModel)
+            .where(PortfolioModel.id == portfolio_model.id)
+            .options(
+                joinedload(PortfolioModel.sections)  # type: ignore
+                .joinedload(PortfolioSectionModel.blocks)  # type: ignore
+            )
+        )
+
+        fully_loaded_portfolio = session.exec(statement).unique().first()
+
+    if fully_loaded_portfolio is None:
+        raise Exception("Unkown exception was thrown while loading portoflio")
+
+    return fully_loaded_portfolio
 
 
 def update_portfolio(portfolio_id: int) -> PortfolioModel:

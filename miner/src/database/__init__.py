@@ -6,7 +6,16 @@ from .api.CRUD.projects import save_project_report, get_project_report_by_name, 
 from .api.CRUD.user_config import get_most_recent_user_config, save_user_config
 from .api.CRUD.portfolio import get_portfolio_block, load_portfolio, save_portfolio, update_portfolio_block
 
-from .api.models import UserConfigModel, ProjectReportModel, FileReportModel, ResumeItemModel, ResumeModel, PortfolioModel
+from .api.models import (
+    UserConfigModel,
+    ProjectReportModel,
+    FileReportModel,
+    ResumeItemModel,
+    ResumeModel,
+    PortfolioModel,
+    PortfolioSectionModel,
+    BlockModel
+)
 
 from .core.base import get_engine
 
@@ -28,6 +37,8 @@ __all__ = [
     "ResumeItemModel",
     "ResumeModel",
     "PortfolioModel",
+    "PortfolioSectionModel",
+    "BlockModel",
 
     "get_engine"
 ]
