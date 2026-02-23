@@ -1,10 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import shutil
+import tempfile
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import SQLModel
 from typing import Optional
 from datetime import datetime
 
 from src.interface.api.routers.util import get_session
 from src.database.api.CRUD.projects import get_project_report_model_by_name
+from src.services.mining_service import start_miner_service
+from src.database.api.models import UserConfigModel as UserConfig
 
 router = APIRouter(
     prefix="/projects",
@@ -19,10 +25,52 @@ class ProjectReportResponse(SQLModel):
     created_at: datetime
     last_updated: datetime
 
+class UploadProjectResponse(SQLModel):
+    message: str
+    portfolio_name: str
 
-@router.post("/upload")
-def upload_project():
-    return {"message": "Project uploaded"}
+
+@router.post("/upload", response_model=UploadProjectResponse)
+def upload_project(
+    file: UploadFile = File(...),
+    email: Optional[str] = None,
+    session=Depends(get_session)
+):
+    """Upload a zipped project file for analysis."""
+    if not file.filename.endswith(".zip"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only .zip files are supported"
+        )
+
+    try:
+        file_bytes = file.file.read()
+        portfolio_name = os.path.splitext(file.filename)[0]
+
+        user_config = UserConfig(
+            consent=True,
+            user_email=email,
+        )
+
+        start_miner_service(
+            zipped_bytes=file_bytes,
+            zipped_format=".zip",
+            user_config=user_config
+        )
+
+        return UploadProjectResponse(
+            message="Project uploaded and analyzed successfully",
+            portfolio_name=portfolio_name
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process project: {str(e)}"
+        )
 
 
 @router.get("")
