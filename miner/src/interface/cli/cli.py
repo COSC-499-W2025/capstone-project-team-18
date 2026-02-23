@@ -1,0 +1,1282 @@
+"""
+This file contains the command line interface (CLI) for the Artifact Miner application.
+"""
+
+import cmd
+import re
+import sys
+from tqdm import tqdm
+from pathlib import Path
+from datetime import datetime
+from typing import Optional
+from src.interface.cli.cli_service_handler import start_miner_cli
+from src.core.resume.bullet_point_builder import BulletPointBuilder
+from src.utils.pathing_utils import is_valid_filepath_to_zip, normalize_path
+from src.interface.cli.user_preferences import UserPreferences
+
+
+class ArtifactMiner(cmd.Cmd):
+    def __init__(self):
+        super().__init__()
+
+        # Default user consent to false, and empty pathfile
+        self.user_consent = False
+        self.project_filepath = ''
+
+        # Initialize preferences system FIRST
+        self.preferences = UserPreferences()
+
+        # Config for CLI
+        self.options = (
+            "=== Artifact Miner Main Menu ===\n"
+            "Choose one of the following options:\n"
+            "(1) Permissions\n"
+            "(2) Set filepath\n"
+            "(3) Begin Artifact Miner\n"
+            "(4) Configure Email for Git Stats\n"
+            "(5) User Login (Name & Password)\n"
+            "(6) Configure preferences\n"
+            "(7) View current preferences\n"
+            "(8) Delete a Portfolio\n"
+            "(9) Retrieve a Portfolio\n"
+            "(10) Get resume bullet point\n"
+            "(11) Warm up summary model\n"
+
+            "Type 'back' or 'cancel' to return to this main menu\n"
+            "Type help or ? to list commands\n"
+        )
+        self.prompt = '(PAF) '
+        self.ruler = '-'  # overwrite default separator line ('=')
+        self.cmd_history = []  # will store the user's previous 3 commands
+
+        # Update user login
+        self.user_name = ''
+        self.user_password = ''
+
+        # Update with user input
+        self.project_filepath = ''  # Will be overwritten with user input
+        self.user_consent = False  # Milestone #1- Requirement #1, #4
+        self.user_email = ''  # will be user's Git-associated email
+
+        # Load existing preferences after initializing preferences system
+        self._load_existing_preferences()
+
+        title = 'Project Artifact Miner'
+        print(f'\n{title}')
+        print(self.ruler * len(self.options.splitlines()[0]), "\n")
+        print(self.options)
+
+        # Show preferences file location
+        print(
+            f"Preferences stored in: {self.preferences.get_preferences_file_path()}")
+
+    def _load_existing_preferences(self):
+        """Load existing preferences and set instance variables."""
+        prefs = self.preferences.load_preferences()
+
+        # Set instance variables from preferences
+        self.user_consent = prefs.get('consent', False)
+        self.project_filepath = prefs.get('project_filepath', '')
+        self.user_email = prefs.get('user_email', '')
+        self.user_name = prefs.get('user_name', '')
+        self.user_password = prefs.get('user_password', '')
+
+        if self.preferences.preferences_file.exists():
+            print(
+                f"Loaded preferences from: {self.preferences.get_preferences_file_path()}")
+        else:
+            print(
+                f"Created new preferences file at: {self.preferences.get_preferences_file_path()}")
+
+    def do_perms(self, arg):
+        '''
+        Provides consent statement. User may enter Y/N to agree or disagree.
+        '''
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "perms")
+
+        # TODO: agreement doesn't print properly if the terminal isn't wide enough
+        agreement = (
+            "Do you consent to this program accessing all files and/or folders"
+            "\nin the filepath you provide and (if applicable) permission to use"
+            "\nthe files and/or folders in 3rd party software?\n"
+            "(Y/N) or type 'back'/'cancel' to return to main menu: "
+        )
+        while True:
+            answer = input(agreement).strip()
+
+            # Check for cancel/back
+            if answer.lower() == 'cancel':
+                if self._handle_cancel_input(answer, "main"):
+                    print("\n" + self.options)
+                    return
+            elif answer.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            # Handle exit/quit first
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            answer = answer.upper()
+            if answer == 'Y':  # user consents
+                self.user_consent = True
+                # Save consent to preferences
+                success = self.preferences.update_consent(True)
+                if success:
+                    print("\nThank you for consenting. Consent saved to preferences.")
+                else:
+                    print("\nConsent recorded but failed to save to preferences file.")
+                print("\n" + self.options)
+                break
+
+            elif answer == 'N':  # user doesn't consent
+                self.user_consent = False
+                self.preferences.update_consent(False)
+                print("Consent not given. Exiting application...")
+                return True  # tells cmdloop() to exit
+
+            else:  # invalid input from user
+                # Make sure this matches your actual error message
+                print("Invalid response. Please enter 'Y', 'N', 'back', or 'cancel'.")
+
+    def do_filepath(self, arg):
+        '''User specifies the project's filepath'''
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "filepath")
+
+        # Show current filepath if exists
+        current_path = self.preferences.get_project_filepath()
+        if current_path:
+            print(f"Current filepath: {current_path}")
+
+        while True:
+            prompt = "Paste or type the full filepath to your zipped project folder: (or 'back' to return to previous step /'cancel' to return to main menu): "
+            answer = input(prompt).strip()
+
+            # Handle exit/quit first
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            # Check for cancel/back
+            if answer.lower() == 'cancel':
+                self.project_filepath = ''
+                if self._handle_cancel_input(answer, "main"):
+                    print("\n" + self.options)
+                    return
+            elif answer.lower() == 'back':
+                self.project_filepath = ''
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            # Normalize the user input path
+            normalized_path = normalize_path(answer)
+
+            # Validate the normalized filepath
+            error_code = is_valid_filepath_to_zip(normalized_path)
+            if error_code == 0:
+                break  # Valid filepath found, exit the loop
+            elif error_code == 1:
+                print("\nError: The provided filepath is invalid. Please try again.\n")
+            elif error_code == 2:
+                print(
+                    "\nError: The provided filepath does not point to a zip file. Please try again.\n")
+            elif error_code == 3:
+                print(
+                    "\nError: The provided filepath does not exist. Please try again.\n")
+
+        # Process the filepath
+        self.project_filepath = normalized_path
+        # Save filepath to preferences
+        success = self.preferences.update_project_filepath(normalized_path)
+        print("\nFilepath successfully received and saved to preferences")
+        if not success:
+            print("Warning: Failed to save filepath to preferences file.")
+        print(self.project_filepath)
+        print("\n" + self.options)
+
+    def do_begin(self, arg):
+        '''Begin the mining process. User must give consent and provide filepath prior.'''
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "begin")
+
+        if not self.user_consent:
+            print(
+                "\nError: Missing consent. Type perms or 1 to read user permission agreement.")
+            print("\n" + self.options)
+            return
+
+        # Use filepath from preferences if not set in instance variable
+        if not self.project_filepath:
+            self.project_filepath = self.preferences.get_project_filepath()
+
+        if not self.project_filepath:
+            print("\nError: No project filepath configured. Please set a filepath first.")
+            print("\n" + self.options)
+            return
+
+        print(f"\nBeginning analysis of: {self.project_filepath}")
+
+        # Show advanced configuration being used
+        prefs = self.preferences.load_preferences()
+        start_time, end_time = self.preferences.get_date_range()
+        ignored_files = self.preferences.get_files_to_ignore()
+        languages = prefs.get('languages_to_include', [])
+
+        if start_time or end_time:
+            print(
+                f"Date filtering: {start_time or 'Any'} to {end_time or 'Any'}")
+        if ignored_files:
+            print(f"Ignoring file types: {', '.join(ignored_files)}")
+        if languages:
+            print(f"Language filter: {', '.join(languages)}")
+
+        # Create a single progress bar for the entire process
+        progress_bar = None
+
+        def progress_callback(stage: str, current: int, total: int, item_name: str = ""):
+            """
+            Callback for tqdm progress updates.
+
+            Args:
+                stage: Current stage (e.g., "unzip", "discovery", "analysis", "saving")
+                current: Current item number
+                total: Total items
+                item_name: Name of current item being processed
+            """
+            nonlocal progress_bar
+
+            if stage == "start":
+                # Initialize progress bar with total steps
+                # 1 step for unzip, 1 for discovery, total projects for analysis, 1 for saving
+                total_steps = 1 + 1 + total + 1
+                progress_bar = tqdm(
+                    total=total_steps,
+                    desc="Processing",
+                    unit="step",
+                    bar_format='{desc}: {percentage:3.0f}%|{bar}|',
+                    leave=True  # Keep the bar visible after completion
+                )
+
+            elif stage == "unzip":
+                if progress_bar:
+                    progress_bar.set_description("Unzipping")
+                    progress_bar.update(1)
+
+            elif stage == "discovery":
+                if progress_bar:
+                    progress_bar.set_description("Discovering")
+                    progress_bar.update(1)
+
+            elif stage == "analysis":
+                if progress_bar:
+                    progress_bar.set_description(
+                        f"Analyzing ({current}/{total})")
+                    if current > 0:  # Don't update on initial call
+                        progress_bar.update(1)
+
+            elif stage == "saving":
+                if progress_bar:
+                    progress_bar.set_description("Saving")
+                    progress_bar.update(1)
+
+            elif stage == "complete":
+                if progress_bar:
+                    progress_bar.set_description("✓ Complete")
+                    progress_bar.refresh()  # Force final update to show ✓ Complete
+                    progress_bar.close()
+                    print()  # Add blank line after progress bar
+
+            elif stage == "stop":
+                if progress_bar:
+                    progress_bar.set_description("X Error! ")
+                    progress_bar.refresh()
+                    progress_bar.close()
+                    print()  # Add blank line after stopping
+
+        try:
+            # Call start_miner with progress callback
+            start_miner_cli(self.project_filepath, self.user_email, github=None,
+                            progress_callback=progress_callback)
+        except Exception as e:
+            progress_callback("stop", 0, 0, "")
+
+            print("We ran into an error while proccessing: ")
+            print(e)
+
+            return
+
+        # Let the user rename the newly created portfolio if desired
+        self._prompt_portfolio_name()
+
+        prompt = "\n Would you like to continue analyzing? (Y/N)"
+        answer = input(prompt).strip()
+
+        if answer in ['Y', 'y', 'Yes', 'yes']:
+            print("\n" + self.options)
+        else:
+            return self.do_exit(arg)
+
+    def _prompt_portfolio_name(self):
+        """
+        Prompt the user to optionally rename the most recently created portfolio.
+        Keeps the existing name (zipped folder stem) if left blank.
+        """
+        if not self.project_filepath:
+            return
+
+        default_title = Path(self.project_filepath).stem
+        prompt = f"Enter a name for your portfolio (leave blank to keep '{default_title}'): "
+        new_title = input(prompt).strip()
+
+        if new_title.lower() in ['exit', 'quit']:
+            return self.do_exit("")
+
+        # Check for cancel / back
+        if new_title.lower() == 'cancel':
+            if self._handle_cancel_input(new_title, "main"):
+                print("\n" + self.options)
+                return
+        elif new_title.lower() == 'back':
+            return
+
+        if not new_title:
+            print(f"Keeping existing portfolio name '{default_title}'")
+            # Track last portfolio title for retrieval
+            if hasattr(self.preferences, "update") and callable(getattr(self.preferences, "update", None)):
+                self.preferences.update("last_portfolio_title", default_title)
+            return
+
+        raise ValueError("Deprecation")
+        success, message = rename_user_report(default_title, new_title)
+        print(message)
+        if success and hasattr(self.preferences, "update") and callable(getattr(self.preferences, "update", None)):
+            self.preferences.update("last_portfolio_title", new_title)
+
+    def do_login(self, arg):
+        '''Configure user login credentials'''
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "login")
+
+        # Show current credentials if they exist
+        current_name, current_password, current_email = self.preferences.get_credentials()
+        if current_name:
+            print(f"Current user: {current_name}")
+            print("Password: [hidden]")
+
+        print("\nEnter your login credentials:")
+
+        # Get username with retry loop
+        while True:
+            name = input(
+                "Enter your name: (or 'back' to return to previous step /'cancel' to return to main menu): ").strip()
+
+            # Check for cancel / back
+            if name.lower() == 'cancel':
+                if self._handle_cancel_input(name, "main"):
+                    print("\n" + self.options)
+                    return
+            elif name.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            # Handle exit/quit
+            if name.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            if name:
+                break
+            print("Name cannot be empty. Please try again.")
+
+        # Get password with retry loop
+        while True:
+            password = input(
+                "Enter your password: (or 'back' to return to previous step /'cancel' to return to main menu): ").strip()
+
+            # Check for back / cancel
+            if password.lower() == 'cancel':
+                if self._handle_cancel_input(password, "main"):
+                    print("\n" + self.options)
+                    return
+            elif password.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            # Handle exit/quit first
+            if password.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+            if password:
+                break
+            print("Password cannot be empty. Please try again.")
+
+        # Save credentials
+        self.user_name = name
+        self.user_password = password
+        success = self.preferences.update_credentials(
+            name, password, self.user_email)
+
+        if success:
+            print(f"\nLogin credentials saved successfully!")
+            print(f"User: {name}")
+            print("Password: [hidden]")
+        else:
+            print("Warning: Failed to save credentials to preferences file.")
+
+        print("\n" + self.options)
+
+    def do_preferences(self, arg):
+        '''Advanced preferences configuration submenu'''
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "preferences")
+
+        while True:
+            print("\n=== Preferences Configuration ===")
+            print("(1) Configure Date Range Filtering")
+            print("(2) Configure Files to Ignore")
+            print("(3) Configure Language Filter")
+            print("(4) Configure Max Project Tags")
+            print("(5) Reset to Defaults")
+            print("(6) Back to Main Menu")
+
+            choice = input(
+                "\nSelect option (1-6), or 'exit'/'quit' to close app): ").strip()
+
+            # User enters exit/quit
+            if choice.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            # Check for cancel / back
+            if choice.lower() == 'cancel':
+                if self._handle_cancel_input(choice, "main"):
+                    print("\n" + self.options)
+                    return
+            elif choice.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            if choice == "1":
+                self._configure_date_range()
+            elif choice == "2":
+                self._configure_files_to_ignore()
+            elif choice == "3":
+                self._configure_language_filter()
+            elif choice == "4":
+                self._configure_max_project_tags()
+            elif choice == "5":
+                self._reset_preferences()
+            elif choice == "6":
+                print("\n" + self.options)
+                return
+            else:
+                print("Invalid choice. Please select 1-6.")
+
+    def do_view(self, arg):
+        '''Display current preferences and configuration'''
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "view")
+
+        while True:
+            print("\n=== Current Configuration ===")
+            prefs = self.preferences.load_preferences()
+
+            print(
+                f"User Consent: {'✓ Granted' if prefs.get('consent') else '✗ Not granted'}")
+            print(
+                f"Project Filepath: {prefs.get('project_filepath') or 'Not set'}")
+            print(f"User Name: {prefs.get('user_name') or 'Not set'}")
+            print(f"User Email: {prefs.get('user_email') or 'Not set'}")
+            print(f"Date Range: {self.preferences.get_date_range_display()}")
+
+            # Files to ignore
+            ignored_files = prefs.get('files_to_ignore', [])
+            if ignored_files:
+                print(f"Ignored Extensions: {', '.join(ignored_files)}")
+            else:
+                print("Ignored Extensions: None")
+
+            # Language filter
+            languages = prefs.get('languages_to_include', [])
+            if languages:
+                print(f"Language Filter: {', '.join(languages)}")
+            else:
+                print("Language Filter: All languages")
+
+            max_project_tags = prefs.get("max_project_tags", 8)
+            print(f"Max Project Tags: {max_project_tags}")
+
+            print(f"Last Updated: {prefs.get('last_updated', 'Never')}")
+            print(
+                f"Preferences File: {self.preferences.get_preferences_file_path()}")
+
+            # Prompt user for next action
+            prompt = "\nPress '6' to configure preferences, or 'back'/'cancel' to return to main menu: "
+            user_input = input(prompt).strip()
+
+            # Check if user wants to cancel
+            if user_input.lower() == 'cancel':
+                if self._handle_cancel_input(user_input, "main"):
+                    print("\n" + self.options)
+                    break
+            elif user_input.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            # Handle exit/quit
+            if user_input.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            # Check if user wants to go to preferences
+            if user_input == '6':
+                return self.do_preferences(arg)
+
+            # Invalid input
+            print(
+                "Invalid input. Press '6' for preferences or 'back'/'cancel' to return.")
+
+    def do_portfolio_delete(self, arg):
+        '''Delete a previously generated portfolio/user report'''
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "delete")
+
+        print("\n=== Delete Portfolio ===")
+        print("You can delete a portfolio by:")
+        print("  1. Select from list of existing portfolios")
+        print("  2. Enter portfolio name (or press Enter to use preferences)")
+
+        while True:
+            user_input = input(
+                "\nEnter your choice (1-2) or portfolio name (or 'back' to return to previous step /'cancel' to return to main menu): ").strip()
+
+            # Handle exit/quit FIRST
+            if user_input.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            # Handle cancel
+            if user_input.lower() == 'cancel':
+                if self._handle_cancel_input(user_input, "main"):
+                    print("\n" + self.options)
+                    return
+            elif user_input.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            # Option 1: List existing portfolios
+            if user_input == "1":
+                selected_portfolio = self._list_and_select_portfolio()
+                if selected_portfolio is None:
+                    continue  # User cancelled or no portfolios found
+                user_input = selected_portfolio
+            # Option 2 or empty: use input as portfolio name or get from preferences
+            elif user_input == "2" or not user_input:
+                user_input = self.preferences.get_project_filepath()
+                if not user_input:
+                    print("No filepath in preferences. Please enter a portfolio name.")
+                    continue
+                # Extract portfolio name from filepath
+                from pathlib import Path
+                user_input = Path(user_input).stem
+                print(f"Using portfolio from preferences: {user_input}")
+            # Otherwise, user_input is the portfolio name
+
+            # Get portfolio info before deleting
+            from src.core.report import UserReport
+            found, info = UserReport.get_portfolio_info(user_input)
+
+            if not found:
+                print(f"\n✗ Portfolio '{user_input}' not found in database")
+                retry = input("Try again? (Y/N): ").strip().lower()
+                if retry != 'y':
+                    break
+                continue
+
+            # Show what will be deleted
+            print(f"\nFound portfolio: {info['title']}")
+            print(f"Associated projects: {info['project_count']}")
+
+            # Confirm deletion
+            confirm = input(
+                "\nAre you sure you want to delete this portfolio? (Y/N): ").strip().lower()
+
+            # Handle exit/quit during confirmation
+            if confirm in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            if confirm != 'y':
+                print("Deletion cancelled")
+                print("\n" + self.options)
+                return
+
+            # Perform deletion using database_modify function
+            success, message = UserReport.delete_portfolio(user_input)
+
+            if success:
+                print(f"\n✓ {message}")
+            else:
+                print(f"\n✗ {message}")
+                retry = input("Try again? (Y/N): ").strip().lower()
+                if retry != 'y':
+                    break
+                continue
+
+            print("\n" + self.options)
+            return
+
+    def do_portfolio_retrieve(self, arg):
+        '''Retrieve and display a stored portfolio'''
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "retrieve")
+
+        while True:
+
+            print("\n=== Retrieve Portfolio ===")
+            print("You can retrieve a portfolio by:")
+            print("  1. Select from list of existing portfolios")
+            print("  2. Enter portfolio name (or leave blank to use last analyzed)")
+
+            user_input = input(
+                "\nEnter your choice (1-2), portfolio name, or leave blank for last analyzed (or 'back' to return to previous step /'cancel' to return to main menu): "
+            ).strip()
+
+            # Handle exit/quit
+            if user_input.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            # Handle cancel (returns to main menu, preserves history)
+            if user_input.lower() == 'cancel':
+                if self._handle_cancel_input(user_input, "main"):
+                    print("\n" + self.options)
+                    return
+
+            # Handle back (returns to previous in history)
+            if user_input.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            portfolio_name = user_input
+
+            if user_input == "1":
+                selected = self._list_and_select_portfolio()
+
+                # Check if user cancelled/backed from list selection
+                if selected is None:
+                    continue  # Stay in retrieve loop
+
+                elif selected is None:
+                    continue
+                portfolio_name = selected
+            elif user_input == "2":
+                portfolio_name = input("Enter portfolio name: ").strip()
+
+                if portfolio_name.lower() in ['exit', 'quit']:
+                    return self.do_exit(arg)
+
+                # Handle cancel from portfolio name input
+                if portfolio_name.lower() == 'cancel':
+                    if self._handle_cancel_input(portfolio_name, "main"):
+                        print("\n" + self.options)
+                        return
+
+                # Handle back from portfolio name input
+                if portfolio_name.lower() == 'back':
+                    continue  # Return to retrieve menu
+
+                if not portfolio_name:
+                    # Fall back to last analyzed just like blank input
+                    last_title = self.preferences.get(
+                        "last_portfolio_title", "")
+                    if last_title:
+                        portfolio_name = last_title
+                        print(
+                            f"Using last analyzed portfolio: {portfolio_name}")
+                    else:
+                        pref_path = self.preferences.get_project_filepath()
+                        if not pref_path:
+                            print("Portfolio name cannot be empty.")
+                            continue
+                        portfolio_name = Path(pref_path).stem
+                        print(
+                            f"Using last analyzed portfolio: {portfolio_name}")
+
+            elif user_input == "":
+                # Try last stored portfolio title first (honors renames)
+                last_title = self.preferences.get("last_portfolio_title", "")
+                if last_title:
+                    portfolio_name = last_title
+                    print(f"Using last analyzed portfolio: {portfolio_name}")
+                else:
+                    pref_path = self.preferences.get_project_filepath()
+                    if not pref_path:
+                        print(
+                            "No stored filepath in preferences. Please enter a portfolio name.")
+                        continue
+                    portfolio_name = Path(pref_path).stem
+                    print(f"Using last analyzed portfolio: {portfolio_name}")
+
+            try:
+                raise ValueError("Deprecation")
+                from src.database.utils.database_access import get_user_report
+                from src.interface.cli.print_resume_and_portfolio import portfolio_CLI_stringify
+                report = get_user_report(portfolio_name)
+                portfolio_CLI_stringify(report)
+                print("\n" + self.options)
+
+                # Ask if user wants to retrieve another
+                another = input(
+                    "\nRetrieve another portfolio? (Y/N): ").strip().lower()
+                if another == 'y':
+                    continue  # Loop back to retrieve menu
+                else:
+                    print("\n" + self.options)
+                    return
+
+            except Exception:
+                print(
+                    f"\n✗ Portfolio '{portfolio_name}' not found in database")
+                retry = input("Try again? (Y/N): ").strip().lower()
+                if retry == 'y':
+                    continue  # Stay in retrieve menu
+                if retry != 'y':
+                    print("\n" + self.options)
+                    return
+
+    def _list_and_select_portfolio(self) -> Optional[str]:
+        """
+        List all existing portfolios and let user select one to delete.
+
+        Returns:
+            str: The title of selected portfolio, or None if cancelled
+        """
+        from src.core.report import UserReport
+
+        portfolios = UserReport.list_all_portfolios()
+
+        if not portfolios:
+            print("\nNo portfolios found in database.")
+            return None
+
+        # Display portfolios
+        print("\n=== Existing Portfolios ===")
+        for idx, portfolio in enumerate(portfolios, 1):
+            print(f"({idx}) {portfolio['title']}")
+            print(f"    Projects: {portfolio['project_count']}")
+            print()
+
+        # Let user select
+        while True:
+            choice = input(
+                f"Select portfolio (1-{len(portfolios)}), 'back'/'cancel' to return, or 'exit'/'quit' to close app: ").strip()
+
+            # Handle exit/quit first
+            if choice.lower() in ['exit', 'quit']:
+                self.do_exit("")
+                return None
+
+            # Handle cancel (return to main menu)
+            if choice.lower() == 'cancel':
+                self._handle_cancel_input(choice, "main")
+                return None
+
+            # Handle back (return to retrieve menu)
+            if choice.lower() == 'back':
+                return None
+
+            # Validate selection
+            try:
+                idx = int(choice)
+                if 1 <= idx <= len(portfolios):
+                    selected = portfolios[idx - 1]
+                    return selected['title']
+                else:
+                    print(
+                        f"Please enter a number between 1 and {len(portfolios)}")
+            except ValueError:
+                print(
+                    "Invalid input. Please enter a number, 'back', 'cancel', 'exit', or 'quit'.")
+
+    def _configure_date_range(self):
+        '''Configure date filtering for files'''
+        print("\nConfigure date range for file filtering (YYYY-MM-DD format)")
+
+        while True:  # Outer loop to retry on invalid date ranges
+            start_date = None
+            end_date = None
+
+            while True:
+                start_input = input(
+                    "Enter start date (or 'skip' for no limit): ").strip()
+
+                # Handle exit/quit
+                if start_input.lower() in ['exit', 'quit']:
+                    return self.do_exit("")
+
+                # User enters back / cancel
+                if start_input.lower() == 'cancel' or start_input.lower() == 'back':
+                    if self._handle_cancel_input(start_input, "preferences"):
+                        return
+
+                if start_input.lower() == 'skip':
+                    start_date = None
+                    break
+
+                if self._parse_date_input(start_input):
+                    start_date = start_input
+                    break
+                print("Invalid date format. Use YYYY-MM-DD")
+
+            while True:
+                end_input = input(
+                    "Enter end date (or 'skip' for no limit): ").strip()
+
+                # Handle exit/quit
+                if end_input.lower() in ['exit', 'quit']:
+                    return self.do_exit("")
+
+                # User enters back / cancel
+                if end_input.lower() == 'cancel' or end_input.lower() == 'back':
+                    if self._handle_cancel_input(end_input, "preferences"):
+                        return
+
+                if end_input.lower() == 'skip':
+                    end_date = None
+                    break
+
+                if self._parse_date_input(end_input):
+                    end_date = end_input
+                    break
+                print("Invalid date format. Use YYYY-MM-DD")
+
+            # Validate date range logic: start must be before end
+            if start_date and end_date:
+                start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+
+                # start_dt > end_dt and not start_dt >= end_dt  so that if user
+                # only wants to analyze files for a single given date, they can.
+                if start_dt > end_dt:
+                    print("\n✗ Error: Start date must be earlier than end date.")
+                    print(f"   Start: {start_date}")
+                    print(f"   End: {end_date}")
+                    print("   Please try again.\n")
+                    continue  # Loop back to ask for dates again
+
+            # If gotten here, dates are valid, save and exit
+            raise ValueError("Deprecation")
+            success = self.preferences.update_date_range(start_date, end_date)
+            if success:
+                print("✓ Date range configuration saved")
+                if start_date and end_date:
+                    print(
+                        f"   Filtering files between {start_date} and {end_date}")
+                elif start_date:
+                    print(f"   Filtering files after {start_date}")
+                elif end_date:
+                    print(f"   Filtering files before {end_date}")
+                else:
+                    print("   No date filtering applied")
+            else:
+                print("✗ Failed to save date range configuration")
+
+            break  # Exit the outer loop after successful save
+
+    def _configure_files_to_ignore(self):
+        '''Configure file extensions to ignore'''
+        print("\nConfigure file extensions to ignore during analysis")
+        print("Enter extensions separated by commas (e.g., .log, .tmp, .cache)")
+
+        current = self.preferences.get_files_to_ignore()
+        if current:
+            print(f"Current ignored extensions: {', '.join(current)}")
+
+        extensions_input = input(
+            "Extensions to ignore (or 'clear' to remove all): ").strip()
+
+        # User enters back / cancel
+        if extensions_input.lower() == 'cancel' or extensions_input.lower() == 'back':
+            if self._handle_cancel_input(extensions_input, "preferences"):
+                return
+
+        # Handle exit/quit
+        if extensions_input.lower() in ['exit', 'quit']:
+            self.do_exit("")
+            return
+
+        if extensions_input.lower() == 'clear':
+            extensions = []
+        else:
+            extensions = [ext.strip()
+                          for ext in extensions_input.split(',') if ext.strip()]
+            # Ensure extensions start with dot
+            extensions = [ext if ext.startswith(
+                '.') else f'.{ext}' for ext in extensions]
+
+        success = self.preferences.update_files_to_ignore(extensions)
+        if success:
+            if extensions:
+                print(f"✓ Now ignoring: {', '.join(extensions)}")
+            else:
+                print("✓ Cleared all ignored extensions")
+        else:
+            print("✗ Failed to save file ignore configuration")
+
+    def _configure_language_filter(self):
+        '''Configure programming language filtering'''
+        print("\n=== Language Filtering ===")
+        print("Filter analysis by programming languages")
+        print(
+            "Common languages: Python, Java, JavaScript, C++, C#, Ruby, Go, PHP, TypeScript")
+
+        current = self.preferences.get("languages_to_include", [])
+        if current:
+            print(f"Currently filtering for: {', '.join(current)}")
+        else:
+            print("Currently analyzing all languages")
+
+        print("\nOptions:")
+        print("  - Enter language names separated by commas")
+        print("  - Type 'clear' to remove the filter (analyze all languages)")
+        print("  - Type 'back' or 'cancel' to return")
+
+        languages_input = input(
+            "\nLanguages to analyze (or 'back'/'cancel'): ").strip()
+
+        # Handle cancel
+        if languages_input.lower() == 'cancel' or languages_input.lower() == 'back':
+            if self._handle_cancel_input(languages_input, "preferences"):
+                return
+
+        # Handle exit/quit
+        if languages_input.lower() in ['exit', 'quit']:
+            return self.do_exit("")
+
+        if languages_input.lower() == 'clear':
+            languages = []
+            message = "✓ Language filter removed - now analyzing all languages"
+        else:
+            # Parse and normalize language names
+            languages = [lang.strip().title()
+                         for lang in languages_input.split(',') if lang.strip()]
+            message = f"✓ Now filtering for: {', '.join(languages)}"
+
+        success = self.preferences.update("languages_to_include", languages)
+        if success:
+            print(message)
+        else:
+            print("✗ Failed to save language filter configuration")
+
+    def _configure_max_project_tags(self):
+        '''Configure max number of project tags to display'''
+        print("\n=== Project Tag Display Limit ===")
+        current = self.preferences.get("max_project_tags", 8)
+        print(f"Current max project tags: {current}")
+        print("Enter a positive integer (or 'back'/'cancel' to return)")
+
+        user_input = input("Max project tags to display: ").strip()
+
+        # Handle cancel/back
+        if user_input.lower() in ['cancel', 'back']:
+            if self._handle_cancel_input(user_input, "preferences"):
+                return
+
+        # Handle exit/quit
+        if user_input.lower() in ['exit', 'quit']:
+            return self.do_exit("")
+
+        if not user_input.isdigit() or int(user_input) <= 0:
+            print("✗ Invalid number. Please enter a positive integer.")
+            return
+
+        success = self.preferences.update("max_project_tags", int(user_input))
+        if success:
+            print(f"✓ Max project tags set to {user_input}")
+        else:
+            print("✗ Failed to save max project tags configuration")
+
+    def _reset_preferences(self):
+        '''Reset all preferences to defaults'''
+        confirm = input(
+            "Reset ALL preferences to defaults? This cannot be undone. (Y/N): ").strip()
+
+        # User enters back /cancel
+        if confirm.lower() == 'cancel' or confirm.lower() == 'back':
+            if self._handle_cancel_input(confirm, "preferences"):
+                return
+
+        # Handle exit/quit
+        if confirm.lower() in ['exit', 'quit']:
+            return self.do_exit("")
+
+        if confirm.lower() == 'y':
+            # User enters back /cancel
+            if self._handle_cancel_input(confirm, "preferences"):
+                return
+
+            success = self.preferences.reset()
+            if success:
+                print("✓ All preferences reset to defaults")
+                # Reload instance variables
+                self._load_existing_preferences()
+            else:
+                print("✗ Failed to reset preferences")
+        else:
+            print("Reset cancelled")
+
+    def _parse_date_input(self, date_str: str) -> bool:
+        '''Validate date input format (YYYY-MM-DD)'''
+        try:
+            datetime.strptime(date_str, '%Y-%m-%d')
+            return True
+        except ValueError:
+            return False
+
+    def update_history(self, cmd_history: list, cmd: str):
+        '''
+        We will track the user's history (entered commands) so that they can go back if they wish.
+        This function updated the `cmd_history` list to do so.
+        '''
+        if len(cmd_history) == 3:  # only track their 3 most recent commands
+            cmd_history.pop(0)  # remove the oldest item (first item)
+        cmd_history.append(cmd)  # add new command to the end
+
+        return cmd_history
+
+    def _handle_cancel_input(self, user_input, menu_location):
+        '''
+        Helper method to check if user wants to cancel or go back.
+        - 'cancel': Returns to main menu, preserves history
+        - 'back': Returns to previous menu in history
+        Returns True if cancel was triggered, False otherwise.
+        '''
+        user_input_lower = user_input.strip().lower()
+
+        if user_input_lower == 'cancel':
+            # Cancel returns to main menu without modifying history
+            print(f"\nCancelled operation.")
+            print(f"Returning to main menu.")
+            return True
+
+        return False
+
+    def do_back(self, arg):
+        '''Return to the previous screen using command history'''
+
+        # Check if there's a previous command to return to
+        if len(self.cmd_history) > 0:
+            previous_cmd = self.cmd_history[-1]
+            print(f"\nReturning to {previous_cmd} menu.")
+
+            match previous_cmd:
+                case "perms":
+                    return self.do_perms("from_back")
+                case "filepath":
+                    return self.do_filepath("from_back")
+                case "begin":
+                    return self.do_begin("from_back")
+                case "email":
+                    return self.do_email("from_back")
+                case "login":
+                    return self.do_login("from_back")
+                case "preferences":
+                    return self.do_preferences("from_back")
+                case "view":
+                    return self.do_view("from_back")
+                case "delete":
+                    return self.do_portfolio_delete("from_back")
+                case "retrieve":
+                    return self.do_portfolio_retrieve("from_back")
+                case "resume_bullet_point":
+                    return self.do_resume_bullet_point("from_back")
+        else:
+            print("\n", self.options)
+
+    def do_email(self, arg):
+        '''
+        Add an email to the user's configuration such that inidividual contributions can be measured in a Git-tracked project
+        '''
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "email")
+
+        # Show current email if exists
+        current_email = self.preferences.get('user_email')
+        if current_email:
+            print(f"Current email: {current_email}\n")
+
+        prompt = "By providing your email, you give consent for the application to analyze all information stored by Git. \n" \
+            "If you don't wish to consent, enter 'x' to revoke permissions\n" \
+            "Enter the email you use for your Git/GitHub account: "
+        answer = input(prompt).strip()
+
+        # Check if user wants to cancel
+        if answer.lower() == 'cancel':
+            if self._handle_cancel_input(answer, "main"):
+                print("\n" + self.options)
+                return
+        elif answer.lower() == 'back':
+            # Pop current menu from history before calling do_back
+            if len(self.cmd_history) > 0:
+                self.cmd_history.pop()
+            return self.do_back(arg)
+
+        # Handle exit/quit
+        if answer.lower() in ['exit', 'quit']:
+            return self.do_exit(arg)
+
+        while (not self.is_valid_email(answer)):
+            prompt = "Please enter a valid email: (or 'back' / 'cancel' to return): "
+            answer = input(prompt).strip()
+
+            # Check if user wants to cancel
+            if answer.lower() == 'cancel':
+                if self._handle_cancel_input(answer, "main"):
+                    print("\n" + self.options)
+                    return
+            elif answer.lower() == 'back':
+                # Pop current menu from history before calling do_back
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+            # User entered exit
+            if answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+        # Process the email
+        if (answer.lower() == 'x'):
+            self.user_email = ''
+            success = self.preferences.update_user_email('')
+            print("\nEmail successfully revoked and saved to preferences")
+        else:
+            self.user_email = answer
+            # Save email to preferences
+            success = self.preferences.update_user_email(answer)
+            print("\nEmail successfully received and saved to preferences")
+            print(self.user_email)
+        if not success:
+            print("Warning: Failed to save email to preferences file.")
+        print("\n" + self.options)
+
+    def is_valid_email(self, email: str) -> bool:
+        """Email validation helper method."""
+        EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(EMAIL_REGEX, email) or email.lower() == 'x')
+
+    def default(self, line):
+        '''
+        Overwrite the `default()` function so that our program
+        accepts, for example, either '1' or 'perms' as input to
+        call the `do_perms()` function.
+        '''
+        commands = {
+            "1": self.do_perms,
+            "2": self.do_filepath,
+            "3": self.do_begin,
+            "4": self.do_email,
+            "5": self.do_login,
+            "6": self.do_preferences,
+            "7": self.do_view,
+            "8": self.do_portfolio_delete,
+            "9": self.do_portfolio_retrieve,
+            "10": self.do_resume_bullet_point,
+            "11": self.do_warmup,
+        }
+
+        # Make commands case-insensitive
+        func = commands.get(line.strip().lower())
+        if func:
+            return func("")
+        else:
+            print(f"Unknown command: {line}. Type 'help' or '?' for options.")
+
+    def do_exit(self, arg):
+        '''Exits the program.'''
+        print("\nThank you for using Artifact Miner! Exiting the program...")
+        sys.exit(0)
+
+    def do_resume_bullet_point(self, arg):
+        """Retrieve and print a resume bullet point for a stored project."""
+
+        # Only update history if NOT coming from back command
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "resume_bullet_point")
+
+        print("\n=== Get Resume Bullet Point ===")
+        user_input = input(
+            "Enter the project name (folder name / ProjectReport.project_name, or 'back'/'cancel' to return): ").strip()
+
+        # Handle exit/quit
+        if user_input.lower() in ['exit', 'quit']:
+            return self.do_exit(arg)
+
+        # Handle back/cancel
+        if user_input.lower() == 'cancel':
+            if self._handle_cancel_input(user_input, "main"):
+                print("\n" + self.options)
+                return
+        elif user_input.lower() == 'back':
+            # Pop current menu from history before calling do_back
+            if len(self.cmd_history) > 0:
+                self.cmd_history.pop()
+            return self.do_back(arg)
+
+        if not user_input:
+            print("Project name cannot be empty.")
+            print("\n" + self.options)
+            return
+
+        raise ValueError("Deprecation")
+        try:
+            project_report = get_project_from_project_name(user_input)
+        except Exception:
+            print(
+                f"\nNo project found for name '{user_input}' in the database.")
+            print("\n" + self.options)
+            return
+
+        # Build resume bullet(s) from the ProjectReport
+        bullets = BulletPointBuilder().build(project_report)
+
+        print("\nGenerated resume bullet point(s):\n")
+        for bp in bullets:
+            print(f"- {bp}")
+
+        print("\n" + self.options)
+
+    def do_warmup(self, arg):
+        """Warm up the local summary model to avoid delays during output."""
+        from src.app import init_system
+
+        print("\nWarming up summary model...")
+        _, status_message = init_system()
+        print(status_message)
+        print("\n" + self.options)
