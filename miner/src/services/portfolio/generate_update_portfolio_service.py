@@ -20,8 +20,14 @@ from src.database import (
 
 def _create_portfolio(project_names: list[str], portfolio_title: Optional[str]) -> Portfolio:
     """
-    Create a new portfolio objects with the provided project names and title.
-    A new portfolio will be generated with the most up to date project information.
+    Create a brand new portoflio object with the provided projects and with
+    the passed in title. This portfolio will have all deafult, system, sections
+    with the most up to date information
+
+    :param project_names: List of all project names to include in the resulting portoflio
+    :type project_names: list[str]
+    :param portfolio_title: The title of the portfolio. Will deafult if not provided.
+    :type portfolio_title: Optional[str]
     """
 
     prs = []
@@ -49,6 +55,13 @@ def generate_and_save_portfolio(project_names: list[str], portfolio_title: Optio
     This service will generate a brand new portfolio based on the project_ids
     passed. The portfolio will be given the title passed in, or it will default
     to a placeholder title.
+
+    :param project_names: List of project names
+    :type project_names: list[str]
+    :param portfolio_title: Title of the portoflio
+    :type portfolio_title: Optional[str]
+    :return: Returns a portoflio model of what was saved
+    :rtype: PortfolioModel
     """
 
     portfolio = _create_portfolio(project_names, portfolio_title)
@@ -63,9 +76,15 @@ def generate_and_save_portfolio(project_names: list[str], portfolio_title: Optio
 
 def update_portfolio(portfolio_id: int) -> PortfolioModel:
     """
-    Updates a portfolio with the most current project information
+    Updates/Refreshes a portfolio with the most current project information
     blocks will enter conflict mode if user changes conflict with
     the system changes
+
+    :param portfolio_id: The Id of the portfolio to referesh
+    :type portfolio_id: int
+    :raises KeyNotFoundError: Can't find the specific portoflio id
+    :return: A model of the updated portoflio.
+    :rtype: PortfolioModel
     """
     portfolio_model = None
 
