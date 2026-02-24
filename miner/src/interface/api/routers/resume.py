@@ -4,11 +4,11 @@ from typing import List, Optional
 from datetime import datetime, date
 
 from src.interface.api.routers.util import get_session
+from src.interface.api.routers.user_config import get_user_config_safe
 from src.database import (
     ResumeModel,
     ResumeItemModel,
     UserConfigModel,
-    get_most_recent_user_config,
     get_project_report_by_name
 )
 from src.database.api.CRUD.resume import save_resume, load_resume, get_resume_model_by_id
@@ -74,14 +74,7 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
             status_code=400, detail="At least one project name is required")
 
     # Get user config
-    user_config = None
-    if request.user_config_id:
-        user_config = session.get(UserConfigModel, request.user_config_id)
-        if not user_config:
-            raise HTTPException(
-                status_code=404, detail=f"No user config found with id {request.user_config_id}")
-    else:
-        user_config = get_most_recent_user_config(session)
+    user_config = get_user_config_safe(session, request.user_config_id)
 
     # Get projects as domain objects
     project_reports = []
@@ -106,7 +99,6 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
 
         # Save using serialize_resume
         resume_model = save_resume(session, resume_domain)
-
         session.commit()
 
         return resume_model
