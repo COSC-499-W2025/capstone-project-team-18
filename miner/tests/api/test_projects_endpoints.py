@@ -53,15 +53,28 @@ class TestUploadProject:
             _, kwargs = mock_miner.call_args
             assert kwargs["user_config"].user_email == "test@example.com"
 
-    def test_upload_non_zip_rejected(self, client):
-        """Test that non-zip files return 400"""
+    def test_upload_7z_supported(self, client):
+        """Test that .7z files are accepted"""
+        with patch('src.interface.api.routers.projects.start_miner_service') as mock_miner:
+            mock_miner.return_value = MagicMock(success=True, project_errors=[])
+
+            response = client.post(
+                "/projects/upload",
+                files={"file": ("project.7z", io.BytesIO(b"fake7z"), "application/x-7z-compressed")}
+            )
+
+            assert response.status_code == 200
+            assert response.json()["portfolio_name"] == "project"
+
+    def test_upload_unsupported_format_rejected(self, client):
+        """Test that unsupported file formats return 400"""
         response = client.post(
             "/projects/upload",
-            files={"file": ("project.tar.gz", io.BytesIO(b"content"), "application/gzip")}
+            files={"file": ("project.rar", io.BytesIO(b"content"), "application/x-rar")}
         )
 
         assert response.status_code == 400
-        assert "zip" in response.json()["detail"].lower()
+        assert "unsupported" in response.json()["detail"].lower()
 
     def test_upload_no_file_returns_422(self, client):
         """Test that missing file body returns 422"""
@@ -93,3 +106,16 @@ class TestUploadProject:
 
             assert response.status_code == 500
             assert "failed to process" in response.json()["detail"].lower()
+
+    def test_upload_custom_portfolio_name(self, client):
+        """Test that a custom portfolio_name overrides the filename"""
+        with patch('src.interface.api.routers.projects.start_miner_service') as mock_miner:
+            mock_miner.return_value = MagicMock(success=True, project_errors=[])
+
+            response = client.post(
+                "/projects/upload?portfolio_name=My+Custom+Portfolio",
+                files={"file": ("project.zip", io.BytesIO(b"PK\x03\x04fake"), "application/zip")}
+            )
+
+            assert response.status_code == 200
+            assert response.json()["portfolio_name"] == "My Custom Portfolio"

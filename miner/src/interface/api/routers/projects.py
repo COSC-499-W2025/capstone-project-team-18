@@ -11,12 +11,16 @@ from src.interface.api.routers.util import get_session
 from src.database.api.CRUD.projects import get_project_report_model_by_name
 from src.services.mining_service import start_miner_service
 from src.database.api.models import UserConfigModel as UserConfig
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/projects",
     tags=["projects"],
 )
 
+SUPPORTED_FORMATS = [".tar.gz", ".gz", ".7z", ".zip"]
 
 class ProjectReportResponse(SQLModel):
     project_name: str
@@ -34,18 +38,31 @@ class UploadProjectResponse(SQLModel):
 def upload_project(
     file: UploadFile = File(...),
     email: Optional[str] = None,
+    portfolio_name: Optional[str] = None,
     session=Depends(get_session)
 ):
     """Upload a zipped project file for analysis."""
-    if not file.filename.endswith(".zip"):
+    filename = file.filename or ""
+    matched_format = next(
+        (fmt for fmt in SUPPORTED_FORMATS if filename.endswith(fmt)), None
+    )
+
+    if not matched_format:
         raise HTTPException(
             status_code=400,
-            detail="Only .zip files are supported"
+            detail=f"Unsupported file type. Supported formats: {', '.join(SUPPORTED_FORMATS)}"
         )
 
     try:
         file_bytes = file.file.read()
-        portfolio_name = os.path.splitext(file.filename)[0]
+
+        # Use provided portfolio_name, otherwise derive from filename
+        if not portfolio_name:
+            portfolio_name = filename
+            for fmt in SUPPORTED_FORMATS:
+                if portfolio_name.endswith(fmt):
+                    portfolio_name = portfolio_name[: -len(fmt)]
+                    break
 
         user_config = UserConfig(
             consent=True,
@@ -54,7 +71,7 @@ def upload_project(
 
         start_miner_service(
             zipped_bytes=file_bytes,
-            zipped_format=".zip",
+            zipped_format=matched_format,
             user_config=user_config
         )
 
@@ -64,9 +81,11 @@ def upload_project(
         )
 
     except ValueError as e:
+        logger.warning("Invalid input during project upload: %s", str(e))
         raise HTTPException(status_code=422, detail=str(e))
 
     except Exception as e:
+        logger.error("Unexpected error during project upload: %s", str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Failed to process project: {str(e)}"
