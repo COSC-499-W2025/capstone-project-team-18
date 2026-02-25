@@ -251,6 +251,8 @@ class BaseFileAnalyzer:
 
             stats.append(
                 Statistic(FileStatCollection.DATE_CREATED.value, self.created_at))
+            stats.append(Statistic(FileStatCollection.DATE_MODIFIED.value, datetime.datetime.fromtimestamp(
+                metadata.st_mtime)))
 
         self.stats.extend(stats)
 
