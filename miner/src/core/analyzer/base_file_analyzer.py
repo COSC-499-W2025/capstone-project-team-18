@@ -52,6 +52,7 @@ class BaseFileAnalyzer:
 
         self.email = user_config.user_email
         self.github = user_config.github
+        self.ml_consent = user_config.ml_consent
 
         self.stats = StatisticIndex()
         self.blame_info = None

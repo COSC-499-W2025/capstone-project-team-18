@@ -73,9 +73,15 @@ class FileStatCollection(Enum):
         expected_type=int,
     )
 
-    README_KEYPHRASES = FileStatisticTemplate(
-        name="README_KEYPHRASES",
-        description="key phrases extracted from README content",
+    README_TOOL_KEYPHRASES = FileStatisticTemplate(
+        name="README_TOOL_KEYPHRASES",
+        description="tool key phrases extracted from README content",
+        expected_type=list[str],
+    )
+
+    README_TASK_KEYPHRASES = FileStatisticTemplate(
+        name="README_TASK_KEYPHRASES",
+        description="task key phrases extracted from README content",
         expected_type=list[str],
     )
 

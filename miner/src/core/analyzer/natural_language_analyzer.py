@@ -3,9 +3,9 @@ from pathlib import Path
 
 from src.core.statistic import Statistic, FileStatCollection, FileDomain
 from src.core.analyzer.text_file_analyzer import TextFileAnalyzer
-from src.core.ML.models.readme_analysis.keyphrase_extraction import extract_readme_keyphrases
-from src.core.ML.models.readme_analysis.readme_insights import classify_readme_tone
+from src.core.ML.models.azure_model import AzureFoundryManager, EXTRACTION_PROMPT, ReadmeKeywordOutput
 from src.infrastructure.log.logging import get_logger
+
 
 logger = get_logger(__name__)
 
@@ -47,26 +47,27 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         ]
 
         filename = Path(self.filepath).name.lower()
-        if filename.startswith("readme"):
-            keyphrases = extract_readme_keyphrases(self.text_content)
-            if keyphrases:
-                stats.append(
-                    Statistic(FileStatCollection.README_KEYPHRASES.value,
-                              keyphrases)
+        if filename.startswith("readme") and self.ml_consent:
+
+            foundry = AzureFoundryManager()
+
+            try:
+                readme_extraction = foundry.process_request(
+                    user_input=self.text_content,
+                    system_prompt=EXTRACTION_PROMPT,
+                    response_model=ReadmeKeywordOutput
                 )
 
-            tone = classify_readme_tone(self.text_content)
-            if tone:
+                # Pass the variables parsed from the data
+                stats.append(Statistic(
+                    FileStatCollection.README_TOOL_KEYPHRASES.value, readme_extraction.tool_keywords))
+                stats.append(Statistic(
+                    FileStatCollection.README_TASK_KEYPHRASES.value, readme_extraction.task_keywords))
                 stats.append(
-                    Statistic(FileStatCollection.README_TONE.value, tone)
-                )
+                    Statistic(FileStatCollection.README_TONE.value, readme_extraction.tone))
 
-            if not keyphrases or not tone:
-                logger.info(
-                    "README insights for %s: keyphrases=%d tone=%s",
-                    self.relative_path,
-                    len(keyphrases),
-                    tone or "None",
-                )
+            except:
+                # Either a internal server error or a failed validation. Either way move on without statistics
+                pass
 
         self.stats.extend(stats)
