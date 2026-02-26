@@ -8,6 +8,14 @@ from src.core.statistic import StatisticIndex
 from src.database.api.models import UserConfigModel
 
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def mock_analyzer_db_engine(monkeypatch, blank_db):
+    monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
+
+
 class DummyAnalyzer:
     def __init__(self, relative_path: str):
         self.relative_path = relative_path
