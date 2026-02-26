@@ -5,6 +5,9 @@ import re
 from time import perf_counter
 from typing import Any
 
+from pydantic import BaseModel
+
+from src.core.ML.models.azure_openai_runtime import azure_chat_parse, azure_openai_enabled
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.ML.models.model_runtime import cuda_available, get_causal_lm
 from src.core.ML.models.llama_cpp_runtime import (
@@ -24,6 +27,15 @@ from src.core.ML.models.contribution_analysis.summary_constants import (
 )
 
 logger = get_logger(__name__)
+
+
+class _SignatureResponse(BaseModel):
+    summary: str
+
+
+class _StageResponse(BaseModel):
+    stage: str
+    confidence: float
 
 _MODEL = None
 _TOKENIZER = None
@@ -368,6 +380,41 @@ def resolve_experience_stage_with_ml(
     """
     baseline = _normalize_stage_label(baseline_stage) or "early-career"
     if not _stage_classifier_enabled():
+        return baseline
+    if azure_openai_enabled() and ml_extraction_allowed():
+        stage_facts: dict[str, Any] = {
+            "baseline_stage": baseline,
+            "project_count": int(project_count or 0),
+            "active_months": round(float(active_months), 1) if active_months is not None else None,
+            "role": role or "",
+            "top_skills": (top_skills or [])[:4],
+            "top_languages": (top_languages or [])[:4],
+            "tools": (tools or [])[:4],
+            "tone_counts": {
+                "professional": int(professional_project_count or 0),
+                "experimental": int(experimental_project_count or 0),
+                "educational": int(educational_project_count or 0),
+            },
+        }
+        response = azure_chat_parse(
+            system_prompt="Classify career stage from structured profile facts. Return strict JSON.",
+            user_prompt=(
+                "Pick one stage from student, early-career, experienced.\n"
+                "Confidence is 0..1.\n"
+                f"FACTS_JSON: {json.dumps(stage_facts, ensure_ascii=True)}"
+            ),
+            response_model=_StageResponse,
+            schema_name="experience_stage",
+            max_tokens=80,
+            temperature=0.0,
+        )
+        if response:
+            normalized = _normalize_stage_label(response.stage)
+            if normalized and response.confidence >= _stage_classifier_min_confidence():
+                stage_levels = {"student": 0, "early-career": 1, "experienced": 2}
+                if normalized in stage_levels and baseline in stage_levels:
+                    if abs(stage_levels[normalized] - stage_levels[baseline]) <= 1:
+                        return normalized
         return baseline
     if not llama_cpp_enabled() or not ml_extraction_allowed():
         return baseline
@@ -1944,6 +1991,49 @@ def _llama_cpp_response_valid(response: dict[str, Any], facts: dict[str, Any]) -
     return _is_valid_summary(repaired, facts)
 
 
+def _generate_signature_with_azure_openai(facts: dict[str, Any]) -> str | None:
+    """Generate signature summary via Azure OpenAI structured outputs."""
+    if not azure_openai_enabled() or not ml_extraction_allowed():
+        return None
+    if os.environ.get("ARTIFACT_MINER_DISABLE_SIGNATURE_MODEL") == "1":
+        return None
+
+    prompt_facts = dict(facts)
+    prompt_facts.pop("project_names", None)
+    prompt_facts.pop("tags", None)
+    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
+    system_prompt = (
+        "You write concise professional portfolio summaries. "
+        "Return strict JSON matching the provided schema."
+    )
+    user_prompt = (
+        "Task: write a first-person developer summary using only FACTS_JSON.\n"
+        "Constraints:\n"
+        "- Exactly 3 sentences.\n"
+        "- 36 to 92 words total.\n"
+        "- Mention at least one skill, language, or tool from facts.\n"
+        "- Include delivery/outcome wording.\n"
+        "- Do not mention project names.\n"
+        f"FACTS_JSON: {facts_json}"
+    )
+    response = azure_chat_parse(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        response_model=_SignatureResponse,
+        schema_name="signature_summary",
+        max_tokens=180,
+        temperature=0.0,
+    )
+    if response is None:
+        logger.warning("[TASK=USER_SUMMARY] Azure generation returned no structured response")
+        return None
+    repaired = _repair_summary_with_grounded_fallback(response.summary, facts, allow_fallback=False)
+    ok, reason = _is_valid_summary(repaired, facts)
+    if not ok:
+        logger.warning("[TASK=USER_SUMMARY] Azure output rejected by validator (reason=%s)", reason)
+    return repaired if ok else None
+
+
 def _generate_signature_with_llama_cpp(facts: dict[str, Any]) -> str | None:
     """
     Generate signature summary via local llama-cpp GGUF model.
@@ -2535,6 +2625,23 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
     if _cache_enabled() and cache_key in _CACHE:
         logger.info("Signature summary cache hit")
         return _CACHE[cache_key]
+
+    if azure_openai_enabled():
+        azure_summary = _generate_signature_with_azure_openai(facts)
+        if azure_summary:
+            if _cache_enabled():
+                _CACHE[cache_key] = azure_summary
+            logger.info("[TASK=USER_SUMMARY] Generated successfully via Azure OpenAI")
+            return azure_summary
+        if _ml_required():
+            return None
+        fallback_summary = _validated_fallback_summary(facts, context=" after Azure generation failure")
+        if fallback_summary:
+            if _cache_enabled():
+                _CACHE[cache_key] = fallback_summary
+            logger.info("[TASK=USER_SUMMARY] Generated from deterministic fallback")
+            return fallback_summary
+        return None
 
     llama_cpp_summary = _generate_signature_with_llama_cpp(facts)
     if llama_cpp_summary:

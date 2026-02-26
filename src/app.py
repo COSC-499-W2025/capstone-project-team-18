@@ -4,9 +4,14 @@ The entry point for the ArtifactMiner program.
 
 import os
 
+from dotenv import load_dotenv
 from src.infrastructure.log.logging import get_logger
+from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
 
 logger = get_logger(__name__)
+
+# Load local developer environment overrides (e.g., Azure keys in .env).
+load_dotenv()
 
 
 def _init_db() -> None:
@@ -43,6 +48,18 @@ def init_system() -> tuple[bool, str]:
         )
 
         loaded_components: list[str] = []
+
+        if azure_openai_enabled():
+            loaded_components.append("azure openai provider")
+            if _get_commit_classifier() is not None:
+                loaded_components.append("commit classifier")
+            if _get_role_classifier() is not None:
+                loaded_components.append("role classifier")
+            if get_readme_tone_classifier() is not None:
+                loaded_components.append("README tone classifier")
+            message = f"ML warmup complete: {', '.join(loaded_components)} ready."
+            logger.info(message)
+            return True, message
 
         if llama_cpp_enabled() and ml_extraction_allowed():
             signature_path = resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_SIGNATURE_MODEL_PATH")

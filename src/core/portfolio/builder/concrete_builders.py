@@ -951,7 +951,10 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         stack_ok = (not stack_terms) or any(term in lowered for term in stack_terms)
 
         contribution_terms = self._contribution_anchor_terms(facts)
-        contribution_ok = (not contribution_terms) or any(term in lowered for term in contribution_terms)
+        if not self._has_strong_contribution_signals(facts):
+            contribution_ok = True
+        else:
+            contribution_ok = (not contribution_terms) or any(term in lowered for term in contribution_terms)
         return goal_ok, stack_ok, contribution_ok
 
     def _goal_anchor_matches(self, summary: str, goal_terms: list[str]) -> bool:
@@ -1049,6 +1052,35 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 terms.extend([t for t in domain_tokens if len(t) >= 4 and t not in stopwords])
 
         return [t for t in terms if t]
+
+    def _has_strong_contribution_signals(self, facts: dict) -> bool:
+        """
+        Require contribution anchors only when contribution facts are strong.
+        """
+        if facts.get("role_description") or facts.get("role") or facts.get("commit_focus"):
+            return True
+        if isinstance(facts.get("commit_pct"), (int, float)) or isinstance(facts.get("line_pct"), (int, float)):
+            return True
+        activity = facts.get("activity_breakdown", []) or []
+        if not activity:
+            return False
+        return not self._is_docs_only_activity(activity)
+
+    def _is_docs_only_activity(self, activity_breakdown: list[tuple[str, float]]) -> bool:
+        """
+        Treat mostly-documentation activity as sparse contribution signals.
+        """
+        doc_tokens = {"documentation", "docs", "readme", "doc"}
+        non_doc_pct = 0.0
+        for domain, pct in activity_breakdown:
+            tokens = self._token_set(str(domain))
+            is_doc = bool(tokens & doc_tokens)
+            if not is_doc:
+                try:
+                    non_doc_pct += float(pct)
+                except (TypeError, ValueError):
+                    non_doc_pct += 0.0
+        return non_doc_pct <= 20.0
 
     def _compose_contribution_sentence(
         self,

@@ -5,6 +5,9 @@ import re
 from time import perf_counter
 from typing import Any
 
+from pydantic import BaseModel
+
+from src.core.ML.models.azure_openai_runtime import azure_chat_parse, azure_openai_enabled
 from src.core.ML.models.model_runtime import cuda_available, get_causal_lm
 from src.core.ML.models.llama_cpp_runtime import (
     llama_cpp_enabled,
@@ -16,6 +19,10 @@ from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+class _ProjectSummaryResponse(BaseModel):
+    summary: str
 
 _MODEL = None
 _TOKENIZER = None
@@ -170,23 +177,23 @@ def _llama_cpp_max_tokens() -> int:
     """
     Keep project-summary generation tightly bounded for CLI responsiveness.
     """
-    default = 72 if _fast_mode_enabled() else 120
-    return max(48, min(160, _env_int("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_TOKENS", default)))
+    default = 120 if _fast_mode_enabled() else 160
+    return max(64, min(220, _env_int("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_TOKENS", default)))
 
 
 def _llama_cpp_max_retries() -> int:
     """
     Default to one attempt in fast mode; fallback/repair handles malformed text.
     """
-    default = 0 if _fast_mode_enabled() else 1
-    return max(0, min(2, _env_int("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_RETRIES", default)))
+    default = 1 if _fast_mode_enabled() else 2
+    return max(0, min(3, _env_int("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_RETRIES", default)))
 
 
 def _llama_cpp_max_total_seconds() -> float:
     """Per-project upper budget for llama-cpp generation attempts."""
     if _LLAMA_CPP_PER_PROJECT_MAX_OVERRIDE_SECONDS is not None:
         return _LLAMA_CPP_PER_PROJECT_MAX_OVERRIDE_SECONDS
-    default = 30.0 if _fast_mode_enabled() else 70.0
+    default = 45.0 if _fast_mode_enabled() else 90.0
     return max(8.0, _env_float("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_SEC", default))
 
 
@@ -194,7 +201,7 @@ def _llama_cpp_run_budget_seconds() -> float:
     """Total run-time budget for llama-cpp project summaries across a CLI run."""
     if _LLAMA_CPP_RUN_BUDGET_OVERRIDE_SECONDS is not None:
         return _LLAMA_CPP_RUN_BUDGET_OVERRIDE_SECONDS
-    default = 120.0 if _fast_mode_enabled() else 240.0
+    default = 180.0 if _fast_mode_enabled() else 300.0
     return max(30.0, _env_float("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_RUN_BUDGET_SEC", default))
 
 
@@ -708,6 +715,45 @@ def _normalize_contribution_percentage_noise(summary: str, facts: dict[str, Any]
         updated,
     )
 
+    def _domain_aliases(domain_text: str) -> list[str]:
+        base = domain_text.strip().lower()
+        aliases = {base}
+        if base.endswith("e"):
+            aliases.add(base[:-1] + "ing")
+        else:
+            aliases.add(base + "ing")
+        if base == "code":
+            aliases.update({"coding"})
+        if base == "test":
+            aliases.update({"testing", "tests", "qa"})
+        if base == "documentation":
+            aliases.update({"docs", "documenting"})
+        return [a for a in sorted(aliases) if a]
+
+    # Remove duplicate parenthetical percentages like:
+    # "72% ... documentation (72%) and 28% ... coding (28%)"
+    # while keeping one grounded percentage mention per activity.
+    sentence_parts = re.split(r"([.?!])", updated)
+    for idx in range(0, len(sentence_parts), 2):
+        sentence = sentence_parts[idx]
+        if not sentence or "%" not in sentence:
+            continue
+        revised = sentence
+        for domain, pct in activity:
+            pct_str = f"{int(round(float(pct)))}"
+            pct_re = re.escape(pct_str)
+            for alias in _domain_aliases(domain):
+                alias_re = re.escape(alias)
+                # If sentence already has "<pct>% ... <alias>", drop trailing "(<pct>%)" on that alias.
+                if re.search(rf"(?i)\b{pct_re}%[^.?!]{{0,80}}\b{alias_re}\b", revised):
+                    revised = re.sub(
+                        rf"(?i)\b({alias_re})\b\s*\(\s*{pct_re}(?:\.0+)?%\s*\)",
+                        r"\1",
+                        revised,
+                    )
+        sentence_parts[idx] = revised
+    updated = "".join(sentence_parts)
+
     updated = re.sub(r"\s{2,}", " ", updated).strip()
     updated = re.sub(r"\s+,", ",", updated)
     return updated
@@ -820,6 +866,49 @@ def _percentage_anchor_terms(value: float | int | None) -> list[str]:
     return [f"{whole}%", f"{whole} percent", str(whole)]
 
 
+def _is_docs_only_contribution(activity_breakdown: list[tuple[str, float]] | None) -> bool:
+    """
+    Return True when contribution activity is effectively documentation-only.
+    """
+    if not activity_breakdown:
+        return False
+    doc_tokens = {"documentation", "docs", "readme", "doc"}
+    non_doc_pct = 0.0
+    for domain, pct in activity_breakdown:
+        domain_text = str(domain or "").strip().lower()
+        domain_tokens = set(_normalized_tokens(domain_text))
+        is_doc = bool(domain_tokens & doc_tokens)
+        if not is_doc:
+            try:
+                non_doc_pct += float(pct)
+            except (TypeError, ValueError):
+                non_doc_pct += 0.0
+    return non_doc_pct <= 20.0
+
+
+def _has_strong_contribution_signals(facts: dict[str, Any]) -> bool:
+    """
+    Decide whether contribution anchors should be strictly required.
+
+    Keep strict checks when we have reliable contribution facts (role, focus,
+    percentages, or role description). Relax only for sparse/docs-only projects.
+    """
+    if facts.get("role_description"):
+        return True
+    if facts.get("role"):
+        return True
+    if facts.get("commit_focus"):
+        return True
+    if _normalize_percentage(facts.get("commit_pct")) is not None:
+        return True
+    if _normalize_percentage(facts.get("line_pct")) is not None:
+        return True
+    activity_breakdown = facts.get("activity_breakdown", [])
+    if activity_breakdown and not _is_docs_only_contribution(activity_breakdown):
+        return True
+    return False
+
+
 def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     """Validate shape and grounding of generated summary."""
     if _is_list_like(summary):
@@ -865,6 +954,8 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
         bool(contribution_pct_terms) and _summary_mentions_any(summary, contribution_pct_terms)
     )
     if (contribution_text_terms or contribution_pct_terms) and not (has_text_contribution or has_pct_contribution):
+        if not _has_strong_contribution_signals(facts):
+            return True, "ok_sparse_contribution_signals"
         if _ml_required():
             return True, "ok_ml_relaxed_contribution"
         return False, "missing_contribution_anchor"
@@ -1062,6 +1153,50 @@ def _should_retry_structural_with_llama(reason: str) -> bool:
     return False
 
 
+def _generate_project_summary_with_azure_openai(facts: dict[str, Any]) -> str | None:
+    """Generate project summary via Azure OpenAI structured output."""
+    if not azure_openai_enabled() or not ml_extraction_allowed():
+        return None
+    if os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") == "1":
+        return None
+
+    project_name = str(facts.get("project_name") or "unknown-project")
+    facts_json = json.dumps(facts, ensure_ascii=True)
+    response = azure_chat_parse(
+        system_prompt=(
+            "You write grounded project summaries from structured facts only. "
+            "Return strict JSON."
+        ),
+        user_prompt=(
+            "Task: write a project summary.\n"
+            "Constraints:\n"
+            "- 2 to 3 sentences.\n"
+            "- Mention goal, stack (framework/language), and contribution details.\n"
+            "- Keep output factual and concise.\n"
+            f"FACTS_JSON: {facts_json}"
+        ),
+        response_model=_ProjectSummaryResponse,
+        schema_name="project_summary",
+        max_tokens=220,
+        temperature=0.0,
+    )
+    if response is None:
+        logger.warning(
+            "[TASK=PROJECT_SUMMARY][PROJECT=%s] Azure generation returned no structured response",
+            project_name,
+        )
+        return None
+    repaired = _repair_summary(response.summary, facts)
+    ok, reason = _is_valid_summary(repaired, facts)
+    if not ok:
+        logger.warning(
+            "[TASK=PROJECT_SUMMARY][PROJECT=%s] Azure output rejected by validator (reason=%s)",
+            project_name,
+            reason,
+        )
+    return repaired if ok else None
+
+
 def _generate_project_summary_with_llama_cpp(facts: dict[str, Any]) -> str | None:
     """
     Generate project summary via local llama-cpp GGUF model.
@@ -1183,6 +1318,7 @@ def generate_project_summary(facts: dict[str, Any]) -> str | None:
         return _CACHE[cache_key]
 
     def _use_deterministic_fallback(context: str) -> str | None:
+        project_name = str(facts.get("project_name") or "unknown-project")
         if _ml_required():
             return None
         fallback_summary = _validated_fallback_summary(facts, context=context)
@@ -1190,8 +1326,20 @@ def generate_project_summary(facts: dict[str, Any]) -> str | None:
             return None
         if _cache_enabled():
             _CACHE[cache_key] = fallback_summary
-        logger.info("Project summary generated from deterministic fallback")
+        logger.info("[TASK=PROJECT_SUMMARY][PROJECT=%s] Generated from deterministic fallback", project_name)
         return fallback_summary
+
+    if azure_openai_enabled():
+        azure_summary = _generate_project_summary_with_azure_openai(facts)
+        if azure_summary:
+            if _cache_enabled():
+                _CACHE[cache_key] = azure_summary
+            logger.info(
+                "[TASK=PROJECT_SUMMARY][PROJECT=%s] Generated successfully via Azure OpenAI",
+                str(facts.get("project_name") or "unknown-project"),
+            )
+            return azure_summary
+        return _use_deterministic_fallback(" after Azure generation failure")
 
     llama_cpp_summary = _generate_project_summary_with_llama_cpp(facts)
     if llama_cpp_summary:

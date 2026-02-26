@@ -3,6 +3,9 @@ import hashlib
 import re
 from typing import Iterable
 
+from pydantic import BaseModel
+
+from src.core.ML.models.azure_openai_runtime import azure_chat_parse, azure_openai_enabled
 from src.core.ML.models.model_runtime import get_zero_shot_pipeline
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
@@ -94,6 +97,14 @@ _THEME_SHORT_ALLOWLIST = {
     "ml",
     "ai",
 }
+
+
+class _ReadmeThemesResponse(BaseModel):
+    themes: list[str]
+
+
+class _ReadmeToneResponse(BaseModel):
+    tone: str
 
 def _clean_theme_terms(terms: list[str]) -> list[str]:
     """Filter URL-like and low-signal tokens from theme terms."""
@@ -315,6 +326,32 @@ def extract_readme_themes_bulk(texts: list[str], max_themes: int = 5) -> list[li
     """Extract themes for a README corpus with BERTopic and robust fallbacks."""
     if not texts:
         return []
+    if azure_openai_enabled():
+        results: list[list[str]] = []
+        for text in texts:
+            if not text or not text.strip():
+                results.append([])
+                continue
+            response = azure_chat_parse(
+                system_prompt=(
+                    "Extract concise technical themes from README content. "
+                    "Return strict JSON."
+                ),
+                user_prompt=(
+                    f"Return up to {int(max(1, max_themes))} short themes, no duplicates.\n"
+                    f"README_TEXT:\n{text}"
+                ),
+                response_model=_ReadmeThemesResponse,
+                schema_name="readme_themes",
+                max_tokens=180,
+                temperature=0.0,
+            )
+            if response is None:
+                logger.warning("[TASK=README_THEMES] Azure generation returned no structured response for one README")
+                results.append([])
+                continue
+            results.append(_clean_theme_terms(response.themes)[:max_themes])
+        return results
 
     remote_themes = remote_extract_themes_bulk(texts, max_themes)
     if remote_themes is not None:
@@ -374,6 +411,28 @@ def classify_readme_tone(text: str) -> str | None:
     """Return the dominant tone label or None if unclassified."""
     if not text or not text.strip():
         logger.info("Skipping README tone classification for empty text")
+        return None
+    if azure_openai_enabled():
+        response = azure_chat_parse(
+            system_prompt="Classify README tone. Return strict JSON.",
+            user_prompt=(
+                "Classify tone as exactly one of: Professional, Educational, Experimental.\n"
+                f"README_TEXT:\n{text}"
+            ),
+            response_model=_ReadmeToneResponse,
+            schema_name="readme_tone",
+            max_tokens=48,
+            temperature=0.0,
+        )
+        if response:
+            normalized = str(response.tone).strip().lower()
+            mapping = {
+                "professional": "Professional",
+                "educational": "Educational",
+                "experimental": "Experimental",
+            }
+            return mapping.get(normalized)
+        logger.warning("[TASK=README_TONE] Azure generation returned no structured response")
         return None
 
     classifier = _get_classifier()

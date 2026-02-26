@@ -3,6 +3,9 @@ import os
 from typing import Iterable
 import re
 
+from pydantic import BaseModel
+
+from src.core.ML.models.azure_openai_runtime import azure_chat_parse, azure_openai_enabled
 from keybert import KeyBERT
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
@@ -17,6 +20,10 @@ _MAX_TEXT_CHARS = 20000
 _DEFAULT_TOP_N = 10
 
 logger = get_logger(__name__)
+
+
+class _KeyphraseResponse(BaseModel):
+    keyphrases: list[str]
 
 
 def _hash_text(text: str) -> str:
@@ -80,6 +87,29 @@ def _extract_with_keybert(text: str, top_n: int) -> list[str]:
         return []
 
 
+def _extract_with_azure_openai(text: str, top_n: int) -> list[str]:
+    if not azure_openai_enabled() or not ml_extraction_allowed():
+        return []
+    response = azure_chat_parse(
+        system_prompt=(
+            "Extract concise, high-signal technical keyphrases from README text. "
+            "Return strict JSON."
+        ),
+        user_prompt=(
+            f"Return up to {int(max(1, top_n))} keyphrases, each 1-3 words, no duplicates.\n"
+            f"README_TEXT:\n{text[:_MAX_TEXT_CHARS]}"
+        ),
+        response_model=_KeyphraseResponse,
+        schema_name="readme_keyphrases",
+        max_tokens=220,
+        temperature=0.0,
+    )
+    if response is None:
+        logger.warning("[TASK=README_KEYPHRASES] Azure generation returned no structured response")
+        return []
+    return response.keyphrases
+
+
 def extract_readme_keyphrases(text: str, top_n: int = _DEFAULT_TOP_N) -> list[str]:
     """Extract and cache README keyphrases, truncating long inputs."""
     if not text or not text.strip():
@@ -93,11 +123,14 @@ def extract_readme_keyphrases(text: str, top_n: int = _DEFAULT_TOP_N) -> list[st
     if cached is not None:
         return list(cached)
 
-    remote_phrases = remote_extract_keyphrases(truncated, top_n)
-    if remote_phrases is not None:
-        phrases = remote_phrases
+    if azure_openai_enabled():
+        phrases = _extract_with_azure_openai(truncated, top_n)
     else:
-        phrases = _extract_with_keybert(truncated, top_n)
+        remote_phrases = remote_extract_keyphrases(truncated, top_n)
+        if remote_phrases is not None:
+            phrases = remote_phrases
+        else:
+            phrases = _extract_with_keybert(truncated, top_n)
 
     phrases = _dedupe_phrases(phrases)[:top_n]
     if phrases:
