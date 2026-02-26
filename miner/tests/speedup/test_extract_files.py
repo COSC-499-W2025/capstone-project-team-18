@@ -83,6 +83,8 @@ def test_extract_file_reports_parallel_speedup(project_realistic, monkeypatch):
         "get_appropriate_analyzer",
         fake_get_appropriate_analyzer,
     )
+    monkeypatch.setattr(analyzer_util, "filepath_exists_in_db",
+                        lambda *_args, **_kwargs: False)
     monkeypatch.setattr(analyzer_util, "Pool", mp_dummy.Pool)
     monkeypatch.setattr(analyzer_util, "cpu_count", lambda: 4)
 
