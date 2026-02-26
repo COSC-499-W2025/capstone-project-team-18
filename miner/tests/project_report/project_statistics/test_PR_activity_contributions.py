@@ -1,14 +1,20 @@
 from pathlib import Path
 
+import pytest
 from pytest import approx
 
-from src.core.analyzer import extract_file_reports
+from src.core.analyzer import extract_file_reports, analyzer_util
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.report import ProjectReport
 from src.core.report.project.project_statistics import \
     ProjectActivityTypeContributions
 from src.core.statistic import (FileDomain, ProjectStatCollection)
 from src.database.api.models import UserConfigModel
+
+
+@pytest.fixture(autouse=True)
+def mock_analyzer_db_engine(monkeypatch, blank_db):
+    monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
 
 
 def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_layout, mock_readme_analysis):

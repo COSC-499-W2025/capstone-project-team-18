@@ -9,11 +9,33 @@ from src.core.analyzer import (
     BaseFileAnalyzer,
     extract_file_reports,
     get_appropriate_analyzer,
+    analyzer_util,
 )
 from src.core.statistic import FileStatCollection
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.utils.pathing_utils import unzip_file
 from src.database.api.models import UserConfigModel
+
+
+@pytest.fixture(autouse=True)
+def mock_analyzer_db_engine(monkeypatch, blank_db):
+    monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
+
+
+@pytest.fixture(autouse=True, scope="function")
+def mock_engine(monkeypatch, blank_db):
+    """
+    Tells start_miner to use our fake_get_engine function
+    rather than the real get_engine() function
+    """
+
+    def fake_get_engine():
+        return blank_db
+
+    monkeypatch.setattr(
+        "src.services.mining_service.get_engine", fake_get_engine)
+
+    yield blank_db
 
 
 def test_base_file_analyzer_process_returns_file_report_with_core_stats(
