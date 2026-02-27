@@ -1,18 +1,16 @@
 from fastapi import APIRouter,  Depends, HTTPException
 from sqlmodel import SQLModel
 from typing import List, Optional
-from datetime import datetime, date
+import datetime
 
 from src.interface.api.routers.util import get_session
 from src.interface.api.routers.user_config import get_user_config_safe
 from src.database import (
-    ResumeModel,
-    ResumeItemModel,
-    UserConfigModel,
     get_project_report_by_name
 )
 from src.database.api.CRUD.resume import save_resume, load_resume, get_resume_model_by_id
 from src.core.report.user.user_report import UserReport
+from datetime import date
 
 router = APIRouter(
     prefix="/resume",
@@ -20,14 +18,40 @@ router = APIRouter(
 )
 
 # ---------- Request/Response Models ----------
+
+
 class GenerateResumeRequest(SQLModel):
     """Request model for generating a resume"""
     project_names: List[str]
     user_config_id: Optional[int] = None
 
-class EditResumeRequest(SQLModel):
+
+class EditResumeMetadataRequest(SQLModel):
     """Request model for editing a resume"""
     email: Optional[str] = None
+    github_username: Optional[str] = None
+
+
+class EditBulletPointRequest(SQLModel):
+    resume_id: int
+    item_index: int
+    new_content: str
+
+    # Are we adding a new bullet?
+    append: bool
+
+    # If not appending, need what index we are overwritting
+    bullet_point_index: Optional[int]
+
+
+class EditResumeItemMetadataRequest(SQLModel):
+    resume_id: int
+    item_index: int
+
+    start_date: datetime.date
+    end_date: datetime.date
+    title: str
+
 
 class ResumeItemResponse(SQLModel):
     """Response model for a resume item"""
@@ -40,6 +64,7 @@ class ResumeItemResponse(SQLModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
 
+
 class ResumeResponse(SQLModel):
     """Response model for a resume with items"""
     id: Optional[int] = None
@@ -47,8 +72,8 @@ class ResumeResponse(SQLModel):
     github: Optional[str] = None
     skills: List[str]
     items: List[ResumeItemResponse] = []
-    created_at: Optional[datetime]
-    last_updated: Optional[datetime]
+    created_at: Optional[datetime.datetime]
+    last_updated: Optional[datetime.datetime]
 
 
 # ---------- Resume API Endpoints ----------
@@ -109,10 +134,10 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
             status_code=500, detail=f"Failed to generate resume: {str(e)}")
 
 
-@router.post("/{resume_id}/edit", response_model=ResumeResponse)
-def edit_resume(
+@router.post("/{resume_id}/edit/metadata", response_model=ResumeResponse)
+def edit_resume_metadata(
     resume_id: int,
-    request: EditResumeRequest,
+    request: EditResumeMetadataRequest,
     session=Depends(get_session)
 ):
     """Edit an existing resume."""
@@ -130,6 +155,9 @@ def edit_resume(
         if request.email is not None:
             resume_domain.email = request.email
 
+        if request.github_username is not None:
+            resume_domain.github = request.github_username
+
         # Save updated (uses serialize_resume)
         updated_model = save_resume(session, resume_domain)
         updated_model.id = resume_id
@@ -142,3 +170,110 @@ def edit_resume(
         session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to edit resume: {str(e)}")
+
+
+@router.post("/{resume_id}/edit/bullet_point", response_model=ResumeResponse)
+def edit_resume_item_bullet_point(
+    resume_id: int,
+    request: EditBulletPointRequest,
+    session=Depends(get_session)
+):
+    """Edit or append a bullet point to a specific resume item."""
+
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404, detail=f"No resume found with id {resume_id}")
+
+    if request.item_index < 0 or request.item_index >= len(resume_model.items):
+        raise HTTPException(
+            status_code=400, detail=f"Invalid item_index {request.item_index}. Out of bounds."
+        )
+
+    resume_item = resume_model.items[request.item_index]
+
+    # Copy the bullet points to ensure SQLAlchemy detects the JSON mutation
+    updated_bullets = list(resume_item.bullet_points)
+
+    if request.append:
+        updated_bullets.append(request.new_content)
+    else:
+        # Validate bullet_point_index for overwrite
+        if request.bullet_point_index is None:
+            raise HTTPException(
+                status_code=400, detail="bullet_point_index must be provided if not appending."
+            )
+        if request.bullet_point_index < 0 or request.bullet_point_index >= len(updated_bullets):
+            raise HTTPException(
+                status_code=400, detail=f"Invalid bullet_point_index {request.bullet_point_index}."
+            )
+
+        updated_bullets[request.bullet_point_index] = request.new_content
+
+    try:
+        # Apply changes
+        resume_item.bullet_points = updated_bullets
+        resume_item.last_updated = datetime.datetime.now()
+        resume_model.last_updated = datetime.datetime.now()
+
+        session.add(resume_item)
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return resume_model
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to edit bullet point: {str(e)}")
+
+
+@router.post("/{resume_id}/edit/resume_item", response_model=ResumeResponse)
+def edit_resume_item(
+    resume_id: int,
+    request: EditResumeItemMetadataRequest,  # Corrected request model here
+    session=Depends(get_session)
+):
+    """Edit the metadata (dates, title) of a specific resume item."""
+
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404, detail=f"No resume found with id {resume_id}")
+
+    # Validate item_index bounds
+    if request.item_index < 0 or request.item_index >= len(resume_model.items):
+        raise HTTPException(
+            status_code=400, detail=f"Invalid item_index {request.item_index}. Out of bounds."
+        )
+
+    resume_item = resume_model.items[request.item_index]
+
+    try:
+        # Apply changes
+        if resume_item.title:
+            resume_item.title = request.title
+
+        if resume_item:
+            resume_item.start_date = request.start_date
+
+        if resume_item:
+            resume_item.end_date = request.end_date
+
+        resume_item.last_updated = datetime.datetime.now()
+        resume_model.last_updated = datetime.datetime.now()
+
+        session.add(resume_item)
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return resume_model
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to edit resume item: {str(e)}")

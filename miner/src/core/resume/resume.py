@@ -61,7 +61,7 @@ class Resume:
     def add_item(self, item: ResumeItem):
         self.items.append(item)
 
-    def export(self, render: ResumeRender) -> str:
+    def export(self, render: ResumeRender) -> str | bytes:
         return render.render(self)
 
     def to_pdf(self, filepath='resume.pdf'):
@@ -71,10 +71,10 @@ class Resume:
             logger.info(
                 "Incorrect filename format: %s has been replaced by resume.pdf", path)
 
-        pdf = self.export(PDFRenderer())
+        pdf: bytes = self.export(PDFRenderer())  # type: ignore
 
         with open(filepath, "wb") as file:
             file.write(pdf)
 
     def __str__(self) -> str:
-        return self.export(TextResumeRenderer())
+        return self.export(TextResumeRenderer())  # type: ignore
