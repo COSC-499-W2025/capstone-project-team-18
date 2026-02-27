@@ -3,9 +3,15 @@ import hashlib
 import re
 from typing import Iterable
 
+from pydantic import BaseModel
+
+from src.core.ML.models.azure_foundry_manager import AzureFoundryManager
+from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
+from src.core.ML.models.model_runtime import get_zero_shot_pipeline
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
+from src.core.ML.models.readme_analysis.readme_remote_client import remote_extract_themes_bulk
 
 """
 README insights:
@@ -93,6 +99,26 @@ _THEME_SHORT_ALLOWLIST = {
     "ai",
 }
 
+
+class ReadmeThemesOutput(BaseModel):
+    themes: list[str]
+
+
+class ReadmeToneOutput(BaseModel):
+    tone: str
+
+
+README_THEMES_PROMPT = """
+Extract concise technical themes from README content.
+Return strict JSON.
+"""
+
+
+README_TONE_PROMPT = """
+Classify README tone. Return strict JSON.
+Tone must be exactly one of: Professional, Educational, Experimental.
+"""
+
 def _clean_theme_terms(terms: list[str]) -> list[str]:
     """Filter URL-like and low-signal tokens from theme terms."""
     cleaned: list[str] = []
@@ -142,11 +168,12 @@ def _get_classifier():
         return None
     if _ZSC_PIPELINE is None:
         try:
-            from transformers import pipeline
             model_name = os.environ.get(
                 "ARTIFACT_MINER_ZSC_MODEL", "facebook/bart-large-mnli")
-            _ZSC_PIPELINE = pipeline(
-                "zero-shot-classification", model=model_name)
+            _ZSC_PIPELINE = get_zero_shot_pipeline(model_name)
+            if _ZSC_PIPELINE is None:
+                _ZSC_FAILED = True
+                return None
         except Exception:
             logger.exception("Failed to initialize zero-shot classifier")
             _ZSC_FAILED = True
@@ -312,6 +339,34 @@ def extract_readme_themes_bulk(texts: list[str], max_themes: int = 5) -> list[li
     """Extract themes for a README corpus with BERTopic and robust fallbacks."""
     if not texts:
         return []
+    if azure_openai_enabled():
+        foundry = AzureFoundryManager()
+        results: list[list[str]] = []
+        for text in texts:
+            if not text or not text.strip():
+                results.append([])
+                continue
+            response = foundry.process_request(
+                system_prompt=README_THEMES_PROMPT,
+                user_input=(
+                    f"Return up to {int(max(1, max_themes))} short themes, no duplicates.\n"
+                    f"README_TEXT:\n{text}"
+                ),
+                response_model=ReadmeThemesOutput,
+                schema_name="readme_themes",
+                max_tokens=180,
+                temperature=0.0,
+            )
+            if response is None:
+                logger.warning("[TASK=README_THEMES] Azure generation returned no structured response for one README")
+                results.append([])
+                continue
+            results.append(_clean_theme_terms(response.themes)[:max_themes])
+        return results
+
+    remote_themes = remote_extract_themes_bulk(texts, max_themes)
+    if remote_themes is not None:
+        return remote_themes
 
     if len(texts) < 2:
         logger.info("Single README detected; using keyphrase fallback for themes")
@@ -367,6 +422,26 @@ def classify_readme_tone(text: str) -> str | None:
     """Return the dominant tone label or None if unclassified."""
     if not text or not text.strip():
         logger.info("Skipping README tone classification for empty text")
+        return None
+    if azure_openai_enabled():
+        foundry = AzureFoundryManager()
+        response = foundry.process_request(
+            system_prompt=README_TONE_PROMPT,
+            user_input=f"README_TEXT:\n{text}",
+            response_model=ReadmeToneOutput,
+            schema_name="readme_tone",
+            max_tokens=48,
+            temperature=0.0,
+        )
+        if response:
+            normalized = str(response.tone).strip().lower()
+            mapping = {
+                "professional": "Professional",
+                "educational": "Educational",
+                "experimental": "Experimental",
+            }
+            return mapping.get(normalized)
+        logger.warning("[TASK=README_TONE] Azure generation returned no structured response")
         return None
 
     classifier = _get_classifier()

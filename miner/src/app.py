@@ -2,15 +2,33 @@
 The entry point for the ArtifactMiner program.
 """
 
-from sqlmodel import SQLModel
+import os
+import sys
+from pathlib import Path
 
-from src.core.ML.models.contribution_analysis.summary_generator import \
-    _load_model
-from src.database import get_engine
+from dotenv import load_dotenv
+
+# Allow running `python miner/src/app.py` without manually setting PYTHONPATH.
+_PKG_ROOT = Path(__file__).resolve().parents[1]
+if str(_PKG_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PKG_ROOT))
+
 from src.infrastructure.log.logging import get_logger
-from src.interface.cli.cli import ArtifactMiner
+from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
 
 logger = get_logger(__name__)
+
+# Load local developer environment overrides (e.g., Azure keys in .env).
+load_dotenv()
+
+
+def _init_db() -> None:
+    """
+    Initialize database schema at startup.
+    """
+    from sqlmodel import SQLModel
+    from src.database.core.base import get_engine
+    SQLModel.metadata.create_all(get_engine())
 
 
 def init_system() -> tuple[bool, str]:
@@ -19,34 +37,110 @@ def init_system() -> tuple[bool, str]:
     session start for the system. This includes both database configuration
     and ML warm-up.
     """
-    # Setup db (handled separately)
+    if os.environ.get("ARTIFACT_MINER_WARMUP_MODELS", "1") == "0":
+        message = "ML warmup disabled via env variable."
+        logger.info(message)
+        return False, message
 
-    engine = get_engine()
-    SQLModel.metadata.create_all(engine)
-
-    # Setup ML warm-up
     try:
+        from src.core.ML.models.contribution_analysis.summary_generator import _load_model as load_signature_model
+        from src.core.ML.models.contribution_analysis.project_summary_generator import _load_model as load_project_model
+        from src.core.ML.models.contribution_analysis.commit_classifier import _get_commit_classifier
+        from src.core.ML.models.contribution_analysis.role_analyzer import _get_role_classifier
+        from src.core.ML.models.readme_analysis.readme_insights import _get_classifier as get_readme_tone_classifier
+        from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
+        from src.core.ML.models.llama_cpp_runtime import (
+            llama_cpp_enabled,
+            resolve_llama_cpp_model_path,
+            warmup_llama_cpp_model,
+        )
 
+        loaded_components: list[str] = []
 
-        model, tokenizer = _load_model()
-        if model is None or tokenizer is None:
-            message = "Summary model not available or disabled."
+        if azure_openai_enabled():
+            loaded_components.append("azure openai provider")
+            if _get_commit_classifier() is not None:
+                loaded_components.append("commit classifier")
+            if _get_role_classifier() is not None:
+                loaded_components.append("role classifier")
+            if get_readme_tone_classifier() is not None:
+                loaded_components.append("README tone classifier")
+            message = f"ML warmup complete: {', '.join(loaded_components)} ready."
+            logger.info(message)
+            return True, message
+
+        if llama_cpp_enabled() and ml_extraction_allowed():
+            signature_path = resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_SIGNATURE_MODEL_PATH")
+            project_path = resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_PROJECT_MODEL_PATH")
+
+            if not signature_path:
+                logger.warning("llama-cpp enabled but no signature GGUF model path could be resolved")
+            if not project_path:
+                logger.warning("llama-cpp enabled but no project-summary GGUF model path could be resolved")
+
+            if (
+                signature_path
+                and
+                os.environ.get("ARTIFACT_MINER_DISABLE_SIGNATURE_MODEL") != "1"
+                and warmup_llama_cpp_model(signature_path)
+            ):
+                loaded_components.append("signature summary (llama-cpp)")
+
+            if project_path and project_path == signature_path:
+                if (
+                    os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") != "1"
+                    and "signature summary (llama-cpp)" in loaded_components
+                ):
+                    loaded_components.append("project summary (llama-cpp)")
+                elif (
+                    os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") != "1"
+                    and warmup_llama_cpp_model(project_path)
+                ):
+                    loaded_components.append("project summary (llama-cpp)")
+            elif (
+                project_path
+                and
+                os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") != "1"
+                and warmup_llama_cpp_model(project_path)
+            ):
+                loaded_components.append("project summary (llama-cpp)")
+        else:
+            signature_model, signature_tokenizer = load_signature_model()
+            if signature_model is not None and signature_tokenizer is not None:
+                loaded_components.append("signature summary")
+
+            project_model, project_tokenizer = load_project_model()
+            if project_model is not None and project_tokenizer is not None:
+                loaded_components.append("project summary")
+
+        if _get_commit_classifier() is not None:
+            loaded_components.append("commit classifier")
+
+        if _get_role_classifier() is not None:
+            loaded_components.append("role classifier")
+
+        if get_readme_tone_classifier() is not None:
+            loaded_components.append("README tone classifier")
+
+        if not loaded_components:
+            message = "ML warmup skipped: summary models are unavailable or disabled."
             logger.info(message)
             return False, message
 
-        message = "Summary model loaded and ready."
+        message = f"ML warmup complete: {', '.join(loaded_components)} ready."
         logger.info(message)
         return True, message
     except Exception:
-        logger.exception("Summary model warmup failed")
-        return False, "Summary model warmup failed."
+        logger.exception("ML warmup failed")
+        return False, "ML warmup failed."
 
 
 def main():
+    _init_db()
     _, startup_message = init_system()
     print(startup_message)
 
-
+    from src.interface.cli.cli import ArtifactMiner
     try:
         ArtifactMiner().cmdloop()  # create an ArtifactMiner obj w/out a reference
 
