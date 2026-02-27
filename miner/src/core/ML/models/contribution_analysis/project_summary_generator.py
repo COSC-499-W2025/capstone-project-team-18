@@ -763,11 +763,186 @@ def _normalize_contribution_percentage_noise(summary: str, facts: dict[str, Any]
                         r"\1",
                         revised,
                     )
+                # Normalize "<activity> NN%" to canonical value.
+                revised = re.sub(
+                    rf"(?i)\b({alias_re})\s+\d{{1,3}}(?:\.\d+)?%",
+                    rf"\1 {pct_str}%",
+                    revised,
+                )
+
+                # Normalize awkward placement/duplication:
+                # "coding (28%) efforts (27.78%)" -> "coding efforts (28%)"
+                revised = re.sub(
+                    rf"(?i)\b({alias_re})\s*\(\s*{pct_re}(?:\.0+)?%\s*\)\s+(efforts?)\s*\(\s*\d{{1,3}}(?:\.\d+)?%\s*\)",
+                    rf"\1 \2 ({pct_str}%)",
+                    revised,
+                )
+                revised = re.sub(
+                    rf"(?i)\b({alias_re})\s*\(\s*{pct_re}(?:\.0+)?%\s*\)\s+(efforts?)\b",
+                    rf"\1 \2 ({pct_str}%)",
+                    revised,
+                )
+                revised = re.sub(
+                    rf"(?i)\b({alias_re}\s+efforts?\s*\(\s*{pct_re}(?:\.0+)?%\s*\))\s*\(\s*\d{{1,3}}(?:\.\d+)?%\s*\)",
+                    r"\1",
+                    revised,
+                )
+
+                # Collapse duplicate "decimal + rounded" percentage forms:
+                # "61.54% to coding (62%)" -> "62% to coding"
+                revised = re.sub(
+                    rf"(?i)(?<![\d.])\d{{1,3}}(?:\.\d+)?%\s+to\s+({alias_re})\s*\(\s*{pct_re}(?:\.0+)?%\s*\)",
+                    rf"{pct_str}% to \1",
+                    revised,
+                )
+                # "coding (28%) accounts for 27.78%" -> "coding (28%)"
+                revised = re.sub(
+                    rf"(?i)\b({alias_re}\s*\(\s*{pct_re}(?:\.0+)?%\s*\))\s*,?\s*accounts?\s+for\s+\d{{1,3}}(?:\.\d+)?%",
+                    r"\1",
+                    revised,
+                )
+                # "documentation (72%), comprising 72.22% of the activity" -> "documentation (72%)"
+                revised = re.sub(
+                    rf"(?i)\b({alias_re}\s*\(\s*{pct_re}(?:\.0+)?%\s*\))\s*,?\s*comprising\s+\d{{1,3}}(?:\.\d+)?%\s+of\s+(?:the\s+)?activity",
+                    r"\1",
+                    revised,
+                )
+                # "with a commitment of 61.54% to coding (62%)" -> "with a commitment of 62% to coding"
+                revised = re.sub(
+                    rf"(?i)\bwith\s+a\s+commitment\s+of\s+(?<![\d.])\d{{1,3}}(?:\.\d+)?%\s+to\s+({alias_re})\s*\(\s*{pct_re}(?:\.0+)?%\s*\)",
+                    rf"with a commitment of {pct_str}% to \1",
+                    revised,
+                )
+
+        # Drop immediate duplicate trailing percentage after efforts phrase.
+        revised = re.sub(
+            r"(?i)\b(efforts?\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\))\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\)",
+            r"\1",
+            revised,
+        )
         sentence_parts[idx] = revised
     updated = "".join(sentence_parts)
 
+    # Final canonicalization pass for decimal percentages tied to activities.
+    for domain, pct in activity:
+        pct_str = f"{int(round(float(pct)))}"
+        for alias in _domain_aliases(domain):
+            alias_re = re.escape(alias)
+            # "61.62% to coding" -> "62% to coding"
+            updated = re.sub(
+                rf"(?i)(?<![\d.])\d{{1,3}}\.\d+%\s+to\s+({alias_re})\b",
+                rf"{pct_str}% to \g<1>",
+                updated,
+            )
+            # "coding accounts for 27.78%" -> "coding accounts for 28%"
+            updated = re.sub(
+                rf"(?i)\b({alias_re}\b[^.?!]{{0,20}}accounts?\s+for\s+)\d{{1,3}}\.\d+%",
+                rf"\g<1>{pct_str}%",
+                updated,
+            )
+            # "coding ... comprising 27.78% of the activity" -> canonical value.
+            updated = re.sub(
+                rf"(?i)\b({alias_re}\b[^.?!]{{0,20}}comprising\s+)\d{{1,3}}\.\d+%(\s+of\s+(?:the\s+)?activity)",
+                rf"\g<1>{pct_str}%\g<2>",
+                updated,
+            )
+
+    # Drop redundant "comprising NN% of the activity" clause when activity
+    # already has a parenthetical percentage in the same phrase.
+    updated = re.sub(
+        r"(?i)\b((?:coding|code|documentation|docs|testing|test)\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\))\s*,?\s*comprising\s+\d{1,3}(?:\.\d+)?%\s+of\s+(?:the\s+)?activity",
+        r"\1",
+        updated,
+    )
+
+    # Global cleanup for decimal cases that can be fragmented by sentence split.
+    updated = re.sub(
+        r"(?i)\b((?:coding|code|documentation|docs|testing|test)\s+efforts?\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\))\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\)",
+        r"\1",
+        updated,
+    )
+    updated = re.sub(
+        r"(?i)\b((?:coding|code|documentation|docs|testing|test))\s*\(\s*(\d{1,3}(?:\.\d+)?)%\s*\)\s+(efforts?)\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\)",
+        r"\1 \3 (\2%)",
+        updated,
+    )
+    # Remove "while <activity> ... <decimal>%" if canonical "(NN%)" is already present.
+    updated = re.sub(
+        r"(?i)\bwhile\s+((?:coding|code|documentation|docs|testing|test)\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\))\s+accounts?\s+for\s+\d{1,3}(?:\.\d+)?%",
+        r"while \1",
+        updated,
+    )
+    # Remove duplicate decimal "% to <activity>" when canonical "(NN%)" already exists for that activity.
+    updated = re.sub(
+        r"(?i)(?<![\d.])\d{1,3}(?:\.\d+)?%\s+to\s+((?:coding|code|documentation|docs|testing|test))\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\)",
+        r"\1",
+        updated,
+    )
+    # Drop orphan percentage inserted between two activity phrases.
+    updated = re.sub(
+        r"(?i)\b((?:coding|code|documentation|docs|testing|test)\s*\(\s*\d{1,3}(?:\.\d+)?%\s*\))\s+\d{1,3}(?:\.\d+)?%\s+and\b",
+        r"\1 and",
+        updated,
+    )
+
+    # Improve readability for paired activity phrasing.
+    activity_pct: dict[str, str] = {}
+    for domain, pct in activity:
+        key = str(domain or "").strip().lower()
+        pct_str = f"{int(round(float(pct)))}%"
+        if key in {"code", "coding"}:
+            activity_pct["coding"] = pct_str
+        elif key in {"documentation", "docs", "documenting"}:
+            activity_pct["documentation"] = pct_str
+        elif key in {"test", "testing", "tests", "qa"}:
+            activity_pct["testing"] = pct_str
+    if "coding" in activity_pct and "documentation" in activity_pct:
+        updated = re.sub(
+            r"(?i)\bcoding\s+\d{1,3}(?:\.\d+)?%\s+and\s+documentation\b",
+            f"coding {activity_pct['coding']} and documentation {activity_pct['documentation']}",
+            updated,
+        )
+
+    # Collapse accidental immediate duplicate percentages.
+    updated = re.sub(r"(?i)\b(\d{1,3}(?:\.\d+)?%)\s+\1\b", r"\1", updated)
+    updated = re.sub(
+        r"(?i)\b((?:coding|code|documentation|docs|testing|test))\s+(\d{1,3}(?:\.\d+)?%)\s+\d{1,3}(?:\.\d+)?%",
+        r"\1 \2",
+        updated,
+    )
+
     updated = re.sub(r"\s{2,}", " ", updated).strip()
     updated = re.sub(r"\s+,", ",", updated)
+    return updated
+
+
+def _remove_percentage_brackets(summary: str) -> str:
+    """
+    Remove parenthetical percentage formatting, e.g.:
+    "documentation (72%)" -> "72% documentation"
+    """
+    if not summary:
+        return summary
+
+    updated = summary
+    # Keep wording stable: convert "coding (62%)" -> "coding 62%" without
+    # moving percentages in front of arbitrary phrases.
+    updated = re.sub(
+        r"(?i)\b(coding|code|documentation|docs|testing|test|commits?|lines?)\s*\(\s*(\d{1,3}(?:\.\d+)?)%\s*\)",
+        r"\1 \2%",
+        updated,
+    )
+    # Remove leftover parenthetical percentages if any remain.
+    updated = re.sub(r"\(\s*(\d{1,3}(?:\.\d+)?)%\s*\)", r"\1%", updated)
+    # Guard against malformed reorder artifacts.
+    updated = re.sub(r"(?i)\b(the project)\s+\d{1,3}(?:\.\d+)?%\s+(emphas\w+)", r"\1 \2", updated)
+    # Collapse "documentation 38% 38%"-style duplication.
+    updated = re.sub(
+        r"(?i)\b((?:coding|code|documentation|docs|testing|test)\s+\d{1,3}(?:\.\d+)?%)\s+\d{1,3}(?:\.\d+)?%",
+        r"\1",
+        updated,
+    )
+    updated = re.sub(r"\s{2,}", " ", updated).strip()
     return updated
 
 
@@ -1068,6 +1243,7 @@ def _repair_summary(summary: str | None, facts: dict[str, Any]) -> str:
     normalized = _align_summary_percentages(normalized, facts)
     normalized = _dedupe_percentage_mentions(normalized, facts)
     normalized = _normalize_contribution_percentage_noise(normalized, facts)
+    normalized = _remove_percentage_brackets(normalized)
     normalized = _trim_to_max_sentences(
         normalized,
         max_sentences=4 if _ml_required() else 3,
