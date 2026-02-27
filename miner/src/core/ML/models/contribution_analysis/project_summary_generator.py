@@ -22,6 +22,11 @@ from src.infrastructure.log.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _project_summary_diagnostics_enabled() -> bool:
+    raw = os.environ.get("ARTIFACT_MINER_SUMMARY_DIAGNOSTICS", "0")
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
 class ProjectSummaryOutput(BaseModel):
     summary: str
 
@@ -462,7 +467,12 @@ def _build_prompt(facts: dict[str, Any], strict: bool = False) -> str:
         "Do not use bullet points."
     )
     if strict:
-        must = facts.get("goal_terms", [])[:1] + facts.get("frameworks", [])[:1] + facts.get("languages", [])[:1]
+        must = (
+            facts.get("goal_terms", [])[:1]
+            + facts.get("frameworks", [])[:1]
+            + facts.get("languages", [])[:1]
+            + facts.get("stack_hints", [])[:1]
+        )
         must_text = ", ".join([str(x) for x in must if x])
         if must_text:
             base += f" You MUST mention at least one of these terms verbatim: {must_text}."
@@ -478,6 +488,25 @@ def _normalize_summary(text: str) -> str:
     cleaned = re.sub(r"\b(\d{1,3})\.\s+(\d{1,3})\s*%", r"\1.\2%", cleaned)
     cleaned = re.sub(r"\b(\d{1,3})\s+%", r"\1%", cleaned)
     return " ".join(cleaned.split())
+
+
+def _repair_tech_token_formatting(summary: str) -> str:
+    """Fix common tokenizer artifacts in technology names."""
+    if not summary:
+        return summary
+    fixed = summary
+    replacements = (
+        ("Next. js", "Next.js"),
+        ("next. js", "next.js"),
+        ("Node. js", "Node.js"),
+        ("node. js", "node.js"),
+        ("React. js", "React.js"),
+        ("react. js", "react.js"),
+    )
+    for bad, good in replacements:
+        fixed = fixed.replace(bad, good)
+    fixed = re.sub(r"\b([A-Za-z]+)\.\s+(js|ts)\b", r"\1.\2", fixed)
+    return fixed
 
 
 def _align_summary_percentages(summary: str, facts: dict[str, Any]) -> str:
@@ -720,6 +749,19 @@ def _normalize_contribution_percentage_noise(summary: str, facts: dict[str, Any]
         updated,
     )
 
+    # Collapse repetitive contribution phrasing such as:
+    # "focuses on coding and testing, with a significant emphasis on code development".
+    updated = re.sub(
+        r"(?i)\bfocus(?:es|ed)?\s+on\s+coding\s+and\s+testing,\s+with\s+a\s+significant\s+emphasis\s+on\s+code\s+development\b",
+        "focuses on coding and testing",
+        updated,
+    )
+    updated = re.sub(
+        r"(?i)\bfocus(?:es|ed)?\s+on\s+code\s+and\s+testing,\s+with\s+a\s+significant\s+emphasis\s+on\s+code\s+development\b",
+        "focuses on coding and testing",
+        updated,
+    )
+
     # Remove duplicated "remaining X%" when activity phrase already has "(X%)".
     updated = re.sub(
         r"(?i)\bthe\s+remaining\s+\d{1,3}%\s+in\s+((?:code|coding|test|testing|documentation|docs)\s*\(\s*\d{1,3}%\s*\))",
@@ -914,6 +956,145 @@ def _normalize_contribution_percentage_noise(summary: str, facts: dict[str, Any]
     updated = re.sub(r"\s{2,}", " ", updated).strip()
     updated = re.sub(r"\s+,", ",", updated)
     return updated
+
+
+def _strip_all_percentages(summary: str) -> str:
+    """Remove all percentage mentions for cases where contribution ratios are unavailable."""
+    if not summary:
+        return summary
+    cleaned = re.sub(r"(?i)\b\d{1,3}(?:\.\d+)?\s*%", "", summary)
+    cleaned = re.sub(r"(?i)\b\d{1,3}(?:\.\d+)?\s*percent\b", "", cleaned)
+    cleaned = re.sub(r"\(\s*\)", "", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    cleaned = re.sub(r"\s+,", ",", cleaned)
+    return cleaned
+
+
+def _percentages_allowed_in_summary(facts: dict[str, Any]) -> bool:
+    """
+    Gate percentage mentions to avoid inventing contribution ratios.
+
+    Percentages are considered reliable only when explicit contribution metrics
+    are present (commit or line percentages), or an explicit allow flag is set.
+    """
+    explicit = facts.get("allow_percentages")
+    if isinstance(explicit, bool):
+        return explicit
+    return (
+        _normalize_percentage(facts.get("commit_pct")) is not None
+        or _normalize_percentage(facts.get("line_pct")) is not None
+    )
+
+
+def _min_activity_pct_for_summary() -> float:
+    """Minimum activity percentage to mention in project summary prose."""
+    return max(0.0, min(25.0, _env_float("ARTIFACT_MINER_PROJECT_SUMMARY_MIN_ACTIVITY_PCT", 5.0)))
+
+
+def _resume_visible_activity_domains(facts: dict[str, Any]) -> set[str]:
+    """
+    Mirror resume visibility logic for activity percentages:
+    - include only activity domains above threshold
+    - require at least two visible domains
+    """
+    threshold = _min_activity_pct_for_summary()
+    raw = facts.get("activity_breakdown", []) or []
+    visible: list[str] = []
+    for domain, pct in raw:
+        value = _normalize_percentage(pct)
+        if value is None:
+            continue
+        if float(value) > threshold:
+            visible.append(str(domain or "").strip().lower())
+    if len(visible) < 2:
+        return set()
+    return set(visible)
+
+
+def _remove_non_resume_activity_percentage_mentions(summary: str, facts: dict[str, Any]) -> str:
+    """
+    Keep activity percentages aligned with resume-visible activity split only.
+    """
+    if not summary:
+        return summary
+    activity = [(str(k).strip().lower(), _normalize_percentage(v)) for k, v in facts.get("activity_breakdown", []) if str(k).strip()]
+    if not activity:
+        return summary
+
+    visible_domains = _resume_visible_activity_domains(facts)
+    updated = summary
+
+    def _aliases(domain_text: str) -> list[str]:
+        base = domain_text.strip().lower()
+        aliases = {base}
+        if base.endswith("e"):
+            aliases.add(base[:-1] + "ing")
+        else:
+            aliases.add(base + "ing")
+        if base == "code":
+            aliases.update({"coding"})
+        if base == "test":
+            aliases.update({"testing", "tests", "qa"})
+        if base == "documentation":
+            aliases.update({"docs", "documenting"})
+        return [a for a in sorted(aliases) if a]
+
+    # If resume would not show an activity split, remove all activity percentages.
+    if not visible_domains:
+        for domain, _pct in activity:
+            for alias in _aliases(domain):
+                alias_re = re.escape(alias)
+                updated = re.sub(rf"(?i)\b\d{{1,3}}(?:\.\d+)?%\s+{alias_re}\b", alias, updated)
+                updated = re.sub(rf"(?i)\b{alias_re}\s+\d{{1,3}}(?:\.\d+)?%\b", alias, updated)
+                updated = re.sub(rf"(?i)\b{alias_re}\s*\(\s*\d{{1,3}}(?:\.\d+)?%\s*\)", alias, updated)
+        updated = re.sub(r"\s{2,}", " ", updated).strip()
+        updated = re.sub(r"\s+,", ",", updated)
+        updated = re.sub(r",\s*,", ", ", updated)
+        updated = re.sub(r",\s*\.", ".", updated)
+        return updated
+
+    for domain, pct in activity:
+        if domain in visible_domains:
+            continue
+        for alias in _aliases(domain):
+            alias_re = re.escape(alias)
+            # Remove "3% documentation" / "documentation 3%" / "documentation (3%)"
+            updated = re.sub(rf"(?i)\b\d{{1,3}}(?:\.\d+)?%\s+{alias_re}\b", "", updated)
+            updated = re.sub(rf"(?i)\b{alias_re}\s+\d{{1,3}}(?:\.\d+)?%\b", alias, updated)
+            updated = re.sub(rf"(?i)\b{alias_re}\s*\(\s*\d{{1,3}}(?:\.\d+)?%\s*\)", alias, updated)
+            # Remove list-style fragments: ", and 3% documentation"
+            updated = re.sub(rf"(?i)\s*,?\s*(?:and\s+)?\d{{1,3}}(?:\.\d+)?%\s+{alias_re}\b", "", updated)
+            updated = re.sub(rf"(?i)\s*,?\s*(?:and\s+)?{alias_re}\s*\(\s*\d{{1,3}}(?:\.\d+)?%\s*\)", "", updated)
+
+    updated = re.sub(r"\s{2,}", " ", updated).strip()
+    updated = re.sub(r"\s+,", ",", updated)
+    updated = re.sub(r",\s*,", ", ", updated)
+    updated = re.sub(r",\s*\.", ".", updated)
+    return updated
+
+
+def _activity_breakdown_is_reliable(activity_breakdown: list[tuple[str, float]] | None) -> bool:
+    """
+    Decide whether activity percentages are reliable enough to surface in prose.
+    """
+    if not activity_breakdown:
+        return False
+    values: list[float] = []
+    for _domain, pct in activity_breakdown:
+        normalized = _normalize_percentage(pct)
+        if normalized is None:
+            continue
+        values.append(float(normalized))
+    if not values:
+        return False
+    total = sum(values)
+    # Accept typical percentage distributions (tolerate rounding noise).
+    if not (85.0 <= total <= 110.0):
+        return False
+    # Match resume behavior: only surface activity percentages when at least two
+    # activity domains carry meaningful share (>5%).
+    meaningful = sum(1 for v in values if v > 5.0)
+    return meaningful >= 2
 
 
 def _remove_percentage_brackets(summary: str) -> str:
@@ -1115,7 +1296,7 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
         return False, f"sentence_count={sentence_count}"
 
     goal_terms = facts.get("goal_terms", [])
-    stack_terms = facts.get("frameworks", []) + facts.get("languages", [])
+    stack_terms = facts.get("frameworks", []) + facts.get("languages", []) + facts.get("stack_hints", [])
     contribution_text_terms = []
     contribution_pct_terms = []
     if facts.get("role"):
@@ -1143,6 +1324,10 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     if (contribution_text_terms or contribution_pct_terms) and not (has_text_contribution or has_pct_contribution):
         if not _has_strong_contribution_signals(facts):
             return True, "ok_sparse_contribution_signals"
+        # When percentage prose is intentionally disabled, avoid hard-failing
+        # otherwise solid summaries on strict contribution-anchor matching.
+        if facts.get("allow_percentages") is False:
+            return True, "ok_relaxed_contribution_without_percentages"
         if _ml_required():
             return True, "ok_ml_relaxed_contribution"
         return False, "missing_contribution_anchor"
@@ -1240,14 +1425,21 @@ def _repair_summary(summary: str | None, facts: dict[str, Any]) -> str:
     Repair malformed ML output so validation failures are rare and predictable.
     """
     normalized = _normalize_summary(summary or "")
+    normalized = _repair_tech_token_formatting(normalized)
+    if not _percentages_allowed_in_summary(facts):
+        normalized = _strip_all_percentages(normalized)
     normalized = _align_summary_percentages(normalized, facts)
     normalized = _dedupe_percentage_mentions(normalized, facts)
     normalized = _normalize_contribution_percentage_noise(normalized, facts)
+    normalized = _remove_non_resume_activity_percentage_mentions(normalized, facts)
     normalized = _remove_percentage_brackets(normalized)
+    if not _percentages_allowed_in_summary(facts):
+        normalized = _strip_all_percentages(normalized)
     normalized = _trim_to_max_sentences(
         normalized,
         max_sentences=4 if _ml_required() else 3,
     )
+    normalized = _repair_tech_token_formatting(normalized)
 
     # In ML-required mode, never splice deterministic template text into output.
     if _ml_required():
@@ -1364,7 +1556,19 @@ def _generate_project_summary_with_azure_openai(facts: dict[str, Any]) -> str | 
             project_name,
         )
         return None
+    if _project_summary_diagnostics_enabled():
+        logger.info(
+            "[TASK=PROJECT_SUMMARY][PROJECT=%s] Azure raw summary: %s",
+            project_name,
+            str(response.summary)[:400],
+        )
     repaired = _repair_summary(response.summary, facts)
+    if _project_summary_diagnostics_enabled():
+        logger.info(
+            "[TASK=PROJECT_SUMMARY][PROJECT=%s] Repaired summary: %s",
+            project_name,
+            str(repaired)[:400],
+        )
     ok, reason = _is_valid_summary(repaired, facts)
     if not ok:
         logger.warning(
@@ -1593,6 +1797,7 @@ def build_project_summary_facts(
     goal_terms: list[str],
     frameworks: list[str],
     languages: list[str],
+    stack_hints: list[str] | None,
     role: str | None,
     commit_focus: str | None,
     commit_pct: float | None,
@@ -1614,10 +1819,17 @@ def build_project_summary_facts(
         "goal_terms": goal_terms[:4],
         "frameworks": frameworks[:4],
         "languages": languages[:3],
+        "stack_hints": (stack_hints or [])[:4],
         "role": role,
         "role_description": role_description,
         "commit_focus": commit_focus,
         "commit_pct": _normalize_percentage(commit_pct),
         "line_pct": _normalize_percentage(line_pct),
         "activity_breakdown": normalized_activity,
+        # Only allow percentage prose when explicit user-contribution metrics exist.
+        "allow_percentages": (
+            _normalize_percentage(commit_pct) is not None
+            or _normalize_percentage(line_pct) is not None
+            or _activity_breakdown_is_reliable(normalized_activity)
+        ),
     }

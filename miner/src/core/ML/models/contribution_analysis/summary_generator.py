@@ -57,10 +57,21 @@ Pick one stage from: student, early-career, experienced.
 Confidence must be between 0.0 and 1.0.
 """
 
+USER_SUMMARY_DIVERSITY_REWRITE_PROMPT = """
+Rewrite the user summary using the same facts but with clearly different wording and sentence flow.
+Return strict JSON matching the provided schema.
+Constraints:
+- Exactly 3 sentences.
+- Keep factual meaning aligned with FACTS_JSON.
+- Do not mention project names.
+- Do not include percentages.
+"""
+
 _MODEL = None
 _TOKENIZER = None
 _MODEL_FAILED = False
 _CACHE: dict[str, str] = {}
+_RECENT_USER_SUMMARIES: list[str] = []
 
 _PROMPT_ECHO_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*example\b", re.IGNORECASE),
@@ -178,6 +189,37 @@ def _env_float(name: str, default: float) -> float:
         return float(raw)
     except (TypeError, ValueError):
         return default
+
+
+def _summary_similarity(a: str, b: str) -> float:
+    """Token-level Jaccard similarity for diversity checks."""
+    a_tokens = set(re.findall(r"[a-z0-9]+", (a or "").lower()))
+    b_tokens = set(re.findall(r"[a-z0-9]+", (b or "").lower()))
+    if not a_tokens or not b_tokens:
+        return 0.0
+    return len(a_tokens & b_tokens) / len(a_tokens | b_tokens)
+
+
+def _summary_similarity_threshold() -> float:
+    """Similarity threshold above which we attempt a rewrite."""
+    return max(0.55, min(0.9, _env_float("ARTIFACT_MINER_USER_SUMMARY_SIMILARITY_THRESHOLD", 0.72)))
+
+
+def _looks_too_similar_to_recent(summary: str) -> bool:
+    """Return True if summary is too close to recent generated summaries."""
+    if not summary or not _RECENT_USER_SUMMARIES:
+        return False
+    threshold = _summary_similarity_threshold()
+    return any(_summary_similarity(summary, prev) >= threshold for prev in _RECENT_USER_SUMMARIES)
+
+
+def _remember_user_summary(summary: str) -> None:
+    """Store recent summaries for diversity checks."""
+    if not summary:
+        return
+    _RECENT_USER_SUMMARIES.append(summary)
+    if len(_RECENT_USER_SUMMARIES) > 20:
+        del _RECENT_USER_SUMMARIES[0 : len(_RECENT_USER_SUMMARIES) - 20]
 
 
 def _llama_cpp_max_tokens() -> int:
@@ -869,6 +911,36 @@ def _normalize_summary(text: str) -> str:
     return " ".join(cleaned.split())
 
 
+def _remove_percentage_mentions(summary: str) -> str:
+    """
+    Remove percentage mentions from user summaries.
+
+    User-level summaries should stay qualitative; project summaries can keep
+    percentages separately.
+    """
+    if not summary:
+        return summary
+
+    cleaned = summary
+    cleaned = re.sub(
+        r"(?i)\b(?:about|around|roughly|approximately|nearly|over|under|more than|less than)?\s*"
+        r"\d{1,3}(?:\.\d+)?\s*%",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(?i)\b(?:about|around|roughly|approximately|nearly|over|under|more than|less than)?\s*"
+        r"\d{1,3}(?:\.\d+)?\s*percent\b",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(r"(?i)\b(?:of|in)\s+(?:the\s+)?(?:activity|contributions?|commits?|lines?)\b", "", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    cleaned = re.sub(r"\s+,", ",", cleaned)
+    cleaned = re.sub(r",\s*,", ", ", cleaned)
+    return cleaned
+
+
 def _restore_anchor_casing(summary: str, facts: dict[str, Any]) -> str:
     """
     Restore original anchor casing (e.g., FastAPI) after normalization/rewrite.
@@ -1045,9 +1117,10 @@ def _log_signature_validation_rejection(reason: str, summary: str) -> None:
         )
 
 
-def _contains_summary_artifact_marker(summary: str) -> bool:
+def _contains_summary_artifact_marker(summary: str | None) -> bool:
     """Detect leaked formatting markers that should never appear in final prose."""
-    return bool(re.search(r"\b(?:final\s+)?summary\s*[:\-]", summary.lower()))
+    lowered = (summary or "").lower()
+    return bool(re.search(r"\b(?:final\s+)?summary\s*[:\-]", lowered))
 
 
 def _has_incomplete_sentence_fragment(summary: str) -> bool:
@@ -1911,6 +1984,10 @@ def _extract_summary_from_raw_text(raw_text: str) -> str | None:
 
 
 def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
+    if not isinstance(summary, str):
+        return False, "not_string"
+    if not summary.strip():
+        return False, "empty_summary"
     if _is_list_like(summary):
         return False, "list_like"
     if _contains_prompt_echo(summary):
@@ -1942,6 +2019,8 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
 
     if _contains_generic_resume_phrasing(summary):
         return False, "generic_resume_tone"
+    if re.search(r"(?i)\b\d{1,3}(?:\.\d+)?\s*%|\b\d{1,3}(?:\.\d+)?\s*percent\b", summary):
+        return False, "contains_percentage"
     if _contains_second_person_profile_voice(summary):
         return False, "second_person_profile_voice"
     if _has_mixed_person_voice(summary):
@@ -2031,10 +2110,59 @@ def _generate_signature_with_azure_openai(facts: dict[str, Any]) -> str | None:
         logger.warning("[TASK=USER_SUMMARY] Azure generation returned no structured response")
         return None
     repaired = _repair_summary_with_grounded_fallback(response.summary, facts, allow_fallback=False)
+    if not repaired:
+        logger.warning("[TASK=USER_SUMMARY] Azure output could not be repaired")
+        return None
     ok, reason = _is_valid_summary(repaired, facts)
     if not ok:
         logger.warning("[TASK=USER_SUMMARY] Azure output rejected by validator (reason=%s)", reason)
     return repaired if ok else None
+
+
+def _rewrite_summary_for_diversity_if_needed(summary: str, facts: dict[str, Any]) -> str:
+    """
+    When summary is too similar to recent outputs, try one Azure rewrite pass.
+
+    Falls back to the original summary on any failure to preserve safety.
+    """
+    if not summary:
+        return summary
+    if not _looks_too_similar_to_recent(summary):
+        return summary
+    if not (azure_openai_enabled() and ml_extraction_allowed()):
+        return summary
+
+    try:
+        foundry = AzureFoundryManager()
+        prompt_facts = dict(facts)
+        prompt_facts.pop("project_names", None)
+        prompt_facts.pop("tags", None)
+        response = foundry.process_request(
+            user_input=(
+                f"FACTS_JSON: {json.dumps(prompt_facts, ensure_ascii=True)}\n\n"
+                f"CURRENT_SUMMARY: {summary}"
+            ),
+            system_prompt=USER_SUMMARY_DIVERSITY_REWRITE_PROMPT,
+            response_model=UserSummaryOutput,
+            schema_name="signature_summary_diversity_rewrite",
+            max_tokens=180,
+            temperature=0.4,
+        )
+        if response is None or not response.summary:
+            return summary
+        candidate = _repair_summary_with_grounded_fallback(response.summary, facts, allow_fallback=False)
+        if not candidate:
+            return summary
+        ok, _reason = _is_valid_summary(candidate, facts)
+        if not ok:
+            return summary
+        if _summary_similarity(candidate, summary) >= _summary_similarity_threshold():
+            return summary
+        logger.info("[TASK=USER_SUMMARY] Diversity rewrite applied")
+        return candidate
+    except Exception:
+        logger.exception("User summary diversity rewrite failed")
+        return summary
 
 
 def _generate_signature_with_llama_cpp(facts: dict[str, Any]) -> str | None:
@@ -2426,6 +2554,7 @@ def _build_professional_fallback(facts: dict[str, Any]) -> str | None:
 
     summary = " ".join([sentence_1, sentence_2, sentence_3]).strip()
     summary = _normalize_summary(summary)
+    summary = _remove_percentage_mentions(summary)
     summary = _remove_invalid_sentences(summary, facts.get("project_names", []))
     summary = _polish_summary(summary)
     summary = _trim_to_sentences(summary, max_sentences=3)
@@ -2483,10 +2612,12 @@ def _repair_summary_with_grounded_fallback(
     )
 
     normalized = _normalize_summary(raw_summary)
+    normalized = _remove_percentage_mentions(normalized)
     cleaned = _remove_invalid_sentences(normalized, facts.get("project_names", []))
     polished = _polish_summary(cleaned)
     normalized = _trim_to_sentences(polished, max_sentences=3)
     normalized = _ensure_proficiency_in_opening(normalized, facts)
+    normalized = _remove_percentage_mentions(normalized)
     normalized = _normalize_summary(normalized)
     normalized_words = len(normalized.split()) if normalized else 0
     normalized_sentences = _sentence_count(normalized) if normalized else 0
@@ -2627,13 +2758,17 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
     cache_key = _facts_hash(facts)
     if _cache_enabled() and cache_key in _CACHE:
         logger.info("Signature summary cache hit")
-        return _CACHE[cache_key]
+        cached = _CACHE[cache_key]
+        _remember_user_summary(cached)
+        return cached
 
     if azure_openai_enabled():
         azure_summary = _generate_signature_with_azure_openai(facts)
         if azure_summary:
+            azure_summary = _rewrite_summary_for_diversity_if_needed(azure_summary, facts)
             if _cache_enabled():
                 _CACHE[cache_key] = azure_summary
+            _remember_user_summary(azure_summary)
             logger.info("[TASK=USER_SUMMARY] Generated successfully via Azure OpenAI")
             return azure_summary
         if _ml_required():
@@ -2642,14 +2777,17 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         if fallback_summary:
             if _cache_enabled():
                 _CACHE[cache_key] = fallback_summary
+            _remember_user_summary(fallback_summary)
             logger.info("[TASK=USER_SUMMARY] Generated from deterministic fallback")
             return fallback_summary
         return None
 
     llama_cpp_summary = _generate_signature_with_llama_cpp(facts)
     if llama_cpp_summary:
+        llama_cpp_summary = _rewrite_summary_for_diversity_if_needed(llama_cpp_summary, facts)
         if _cache_enabled():
             _CACHE[cache_key] = llama_cpp_summary
+        _remember_user_summary(llama_cpp_summary)
         logger.info("Signature summary generated successfully via llama-cpp")
         return llama_cpp_summary
 
@@ -2661,6 +2799,7 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         if fallback_summary:
             if _cache_enabled():
                 _CACHE[cache_key] = fallback_summary
+            _remember_user_summary(fallback_summary)
             logger.info("Signature summary generated from deterministic fallback")
             return fallback_summary
         return None
@@ -2674,6 +2813,7 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         if fallback_summary:
             if _cache_enabled():
                 _CACHE[cache_key] = fallback_summary
+            _remember_user_summary(fallback_summary)
             logger.info("Signature summary generated from deterministic fallback")
             return fallback_summary
         return None
@@ -2700,8 +2840,10 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         if summary:
             is_ok, reason = _is_valid_summary(summary, facts)
             if is_ok:
+                summary = _rewrite_summary_for_diversity_if_needed(summary, facts)
                 if _cache_enabled():
                     _CACHE[cache_key] = summary
+                _remember_user_summary(summary)
                 logger.info("Signature summary generated successfully")
                 return summary
             logger.warning("Summary rejected by validator (%s): %s", reason, summary[:200])
@@ -2728,8 +2870,10 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         if summary:
             is_ok, reason = _is_valid_summary(summary, facts)
             if is_ok:
+                summary = _rewrite_summary_for_diversity_if_needed(summary, facts)
                 if _cache_enabled():
                     _CACHE[cache_key] = summary
+                _remember_user_summary(summary)
                 logger.info("Signature summary generated successfully (strict pass)")
                 return summary
             logger.warning("Summary rejected after strict pass (%s): %s", reason, summary[:200])
@@ -2741,6 +2885,7 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         if fallback_summary:
             if _cache_enabled():
                 _CACHE[cache_key] = fallback_summary
+            _remember_user_summary(fallback_summary)
             logger.info("Signature summary generated from deterministic fallback after ML rejection")
             return fallback_summary
         return None
@@ -2752,6 +2897,7 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         if fallback_summary:
             if _cache_enabled():
                 _CACHE[cache_key] = fallback_summary
+            _remember_user_summary(fallback_summary)
             logger.info("Signature summary generated from deterministic fallback after exception")
             return fallback_summary
         return None

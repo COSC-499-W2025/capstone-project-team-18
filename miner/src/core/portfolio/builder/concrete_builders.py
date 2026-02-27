@@ -22,6 +22,12 @@ from src.infrastructure.log.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _summary_diagnostics_enabled() -> bool:
+    """Enable detailed per-project summary diagnostics."""
+    raw = os.environ.get("ARTIFACT_MINER_SUMMARY_DIAGNOSTICS", "0")
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
 class UserDateSectionBuilder(PortfolioSectionBuilder):
     """
     Builds a PortfolioSection
@@ -729,8 +735,24 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """
         facts = self._build_project_summary_facts(project_report)
         if not facts:
+            if _summary_diagnostics_enabled():
+                logger.info(
+                    "[PROJECT_SUMMARY][%s] skipped: no facts extracted",
+                    getattr(project_report, "project_name", "unknown-project"),
+                )
             return None
         require_ml = os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_REQUIRE_ML") == "1"
+        if _summary_diagnostics_enabled():
+            logger.info(
+                "[PROJECT_SUMMARY][%s] facts: goals=%d frameworks=%d languages=%d stack_hints=%d activity=%d allow_percentages=%s",
+                getattr(project_report, "project_name", "unknown-project"),
+                len(facts.get("goal_terms", []) or []),
+                len(facts.get("frameworks", []) or []),
+                len(facts.get("languages", []) or []),
+                len(facts.get("stack_hints", []) or []),
+                len(facts.get("activity_breakdown", []) or []),
+                facts.get("allow_percentages"),
+            )
         summary = generate_project_summary(facts)
         project_name = getattr(project_report, "project_name", "unknown-project")
         is_well_formed = bool(summary and self._is_summary_well_formed(summary))
@@ -744,6 +766,13 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
             and is_well_formed
             and (require_ml or covers_requirements)
         ):
+            if _summary_diagnostics_enabled():
+                logger.info(
+                    "[PROJECT_SUMMARY][%s] accepted: well_formed=%s covers_requirements=%s",
+                    project_name,
+                    is_well_formed,
+                    covers_requirements,
+                )
             return summary
 
         if summary:
@@ -760,13 +789,29 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 contribution_ok,
                 require_ml,
             )
+            if _summary_diagnostics_enabled():
+                logger.info(
+                    "[PROJECT_SUMMARY][%s] rejected summary text: %s",
+                    project_name,
+                    summary[:400],
+                )
 
         if require_ml:
             return None
 
         fallback = self._build_project_summary_deterministic(facts)
         if fallback and self._is_summary_well_formed(fallback) and self._summary_covers_requirements(fallback, facts):
+            if _summary_diagnostics_enabled():
+                logger.info(
+                    "[PROJECT_SUMMARY][%s] fallback accepted",
+                    project_name,
+                )
             return fallback
+        if _summary_diagnostics_enabled():
+            logger.info(
+                "[PROJECT_SUMMARY][%s] fallback rejected/empty",
+                project_name,
+            )
         return None
 
     def _build_project_summary_facts(self, project_report) -> dict | None:
@@ -788,6 +833,11 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
             framework_names = [
                 getattr(ws, "skill_name", str(ws)) for ws in ranked_frameworks[:3]
             ]
+        stack_hints = self._extract_stack_hints(themes, tags)
+        for hint in stack_hints:
+            if hint not in framework_names:
+                framework_names.append(hint)
+        framework_names = framework_names[:5]
 
         lang_ratio = project_report.get_value(ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
         language_names: list[str] = []
@@ -813,6 +863,7 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
             goal_terms=goal_terms,
             frameworks=framework_names,
             languages=language_names,
+            stack_hints=stack_hints,
             role=role_text,
             commit_focus=commit_focus,
             commit_pct=commit_pct if isinstance(commit_pct, (int, float)) else None,
@@ -832,6 +883,7 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         commit_pct = facts.get("commit_pct")
         line_pct = facts.get("line_pct")
         activity_breakdown = facts.get("activity_breakdown", [])
+        allow_percentages = bool(facts.get("allow_percentages"))
 
         goal_sentence = None
         if goal_terms:
@@ -871,6 +923,7 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 commit_pct=commit_pct,
                 line_pct=line_pct,
                 activity_breakdown=activity_breakdown,
+                allow_percentages=allow_percentages,
             )
 
         sentences = [s for s in [goal_sentence, stack_sentence, contribution_sentence] if s]
@@ -884,9 +937,17 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """
         project_tokens = self._token_set(project_name or "")
         raw_terms = [str(x).strip() for x in list(themes) + list(tags) if str(x).strip()]
+        deprioritize = {
+            "ci", "cicd", "testing", "test", "configuration", "requirements", "known bugs",
+            "startup scripts", "docker compose", "windows support", "macos support",
+        }
+        prioritize = {
+            "student", "management", "records", "course", "itinerary", "trip", "event",
+            "phonics", "pronunciation", "speech", "bayesian", "label", "transfer",
+            "analysis", "dashboard", "visualization",
+        }
 
-        selected: list[str] = []
-        selected_tokens: list[set[str]] = []
+        scored_terms: list[tuple[float, str, set[str]]] = []
         for term in raw_terms:
             term_tokens = self._token_set(term)
             if not term_tokens:
@@ -895,15 +956,57 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 overlap = len(term_tokens & project_tokens) / len(term_tokens)
                 if overlap >= 0.6:
                     continue
+            score = 1.0
+            if term_tokens & prioritize:
+                score += 1.0
+            if term_tokens & deprioritize:
+                score -= 0.6
+            if len(term_tokens) >= 2:
+                score += 0.2
+            scored_terms.append((score, term, term_tokens))
+
+        scored_terms.sort(key=lambda x: x[0], reverse=True)
+
+        selected: list[str] = []
+        selected_tokens: list[set[str]] = []
+        for _score, term, term_tokens in scored_terms:
             if any(self._jaccard(term_tokens, existing) >= 0.6 for existing in selected_tokens):
                 continue
-
             selected.append(term)
             selected_tokens.append(term_tokens)
             if len(selected) >= 4:
                 break
 
         return selected[:4]
+
+    def _extract_stack_hints(self, themes, tags) -> list[str]:
+        """Extract likely technical stack/service hints from README-derived terms."""
+        terms = [str(x).strip() for x in list(themes) + list(tags) if str(x).strip()]
+        hints: list[str] = []
+        seen: set[str] = set()
+        tech_keywords = {
+            "react", "next", "tailwind", "azure", "speech", "sdk", "android",
+            "androidx", "typescript", "javascript", "python", "java", "docker",
+            "pytest", "tkinter", "fastapi", "sql", "postgres", "mongodb",
+        }
+        for term in terms:
+            lowered = term.lower()
+            token_set = self._token_set(term)
+            if not token_set:
+                continue
+            if not (token_set & tech_keywords):
+                continue
+            if len(token_set) > 4:
+                continue
+            normalized = term.replace("next.js", "next").replace("typescript", "TypeScript").strip()
+            key = normalized.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            hints.append(normalized)
+            if len(hints) >= 4:
+                break
+        return hints
 
     def _activity_breakdown(self, project_report) -> list[tuple[str, float]]:
         """Return sorted contribution activity breakdown as (domain, percentage)."""
@@ -947,7 +1050,11 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         goal_terms = [str(x).lower() for x in facts.get("goal_terms", []) if str(x).strip()]
         goal_ok = (not goal_terms) or self._goal_anchor_matches(summary, goal_terms)
 
-        stack_terms = [str(x).lower() for x in facts.get("frameworks", []) + facts.get("languages", []) if str(x).strip()]
+        stack_terms = [
+            str(x).lower()
+            for x in facts.get("frameworks", []) + facts.get("languages", []) + facts.get("stack_hints", [])
+            if str(x).strip()
+        ]
         stack_ok = (not stack_terms) or any(term in lowered for term in stack_terms)
 
         contribution_terms = self._contribution_anchor_terms(facts)
@@ -1089,6 +1196,7 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         commit_pct: float | None,
         line_pct: float | None,
         activity_breakdown: list[tuple[str, float]] | None,
+        allow_percentages: bool = False,
     ) -> str:
         """
         Compose a readable contribution sentence from available contribution metrics.
@@ -1099,16 +1207,16 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
             lead += f" as a {role_text}"
 
         detail_phrases: list[str] = []
-        if isinstance(commit_pct, (int, float)):
+        if allow_percentages and isinstance(commit_pct, (int, float)):
             detail_phrases.append(f"authoring about {commit_pct:.0f}% of commits")
-        elif isinstance(line_pct, (int, float)):
+        elif allow_percentages and isinstance(line_pct, (int, float)):
             detail_phrases.append(f"accounting for about {line_pct:.0f}% of authored lines")
 
         if commit_focus:
             focus = str(commit_focus).replace("_", " ").strip().lower()
             detail_phrases.append(f"focusing on {focus} changes")
 
-        activity_phrase = self._activity_phrase(activity_breakdown or [])
+        activity_phrase = self._activity_phrase(activity_breakdown or [], allow_percentages=allow_percentages)
         if activity_phrase:
             detail_phrases.append(activity_phrase)
 
@@ -1116,12 +1224,16 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
             return f"{lead}, {self._join_english(detail_phrases)}."
         return f"{lead} across project delivery tasks."
 
-    def _activity_phrase(self, activity_breakdown: list[tuple[str, float]]) -> str | None:
+    def _activity_phrase(self, activity_breakdown: list[tuple[str, float]], *, allow_percentages: bool = False) -> str | None:
         """Return concise, professional activity-distribution wording."""
         if not activity_breakdown:
             return None
 
         top = activity_breakdown[:2]
+        if not allow_percentages:
+            if len(top) == 1:
+                return f"primarily through {top[0][0]} work"
+            return f"primarily through {top[0][0]} and {top[1][0]} work"
         if len(top) == 1:
             return f"primarily through {top[0][0]} work ({top[0][1]:.0f}%)"
         return (
@@ -1202,12 +1314,55 @@ class ProjectTagsSectionBuilder(PortfolioSectionBuilder):
 
         lines = []
         for pr in user_report.project_reports:
-            tags = pr.get_value(ProjectStatCollection.PROJECT_TAGS.value)
+            tags = pr.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+            tags = self._augment_tags(pr, tags)
             if not tags:
                 continue
             lines.append(f"{pr.project_name}: {', '.join(tags)}")
 
         return lines
+
+    def _augment_tags(self, project_report, tags: list[str]) -> list[str]:
+        """Augment README tags with high-signal framework/feature hints."""
+        merged: list[str] = []
+        seen: set[str] = set()
+
+        def _push(value: str):
+            label = str(value or "").strip()
+            if not label:
+                return
+            key = label.lower()
+            if key in seen:
+                return
+            seen.add(key)
+            merged.append(label)
+
+        for tag in tags:
+            _push(tag)
+
+        frameworks = project_report.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value) or []
+        for ws in frameworks:
+            name = str(getattr(ws, "skill_name", ws)).strip()
+            if len(name) >= 2:
+                _push(name)
+
+        # Infer feature tags from common app/activity file names.
+        for fr in getattr(project_report, "file_reports", []) or []:
+            path = str(getattr(fr, "filepath", "") or "").lower()
+            if "trip" in path:
+                _push("Trip Creation")
+            if "itinerary" in path:
+                _push("Itinerary")
+            if "event" in path:
+                _push("Event Search")
+            if "admin" in path:
+                _push("Admin Panel")
+            if "student" in path:
+                _push("Student Records")
+            if "course" in path:
+                _push("Course Management")
+
+        return merged[:20]
 
 
 class ProjectThemesSectionBuilder(PortfolioSectionBuilder):
@@ -1235,12 +1390,48 @@ class ProjectThemesSectionBuilder(PortfolioSectionBuilder):
 
         lines = []
         for pr in user_report.project_reports:
-            themes = pr.get_value(ProjectStatCollection.PROJECT_THEMES.value)
+            themes = pr.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
+            themes = self._augment_themes(pr, themes)
             if not themes:
                 continue
             lines.append(f"{pr.project_name}: {', '.join(themes)}")
 
         return lines
+
+    def _augment_themes(self, project_report, themes: list[str]) -> list[str]:
+        """Augment themes with domain-first terms inferred from tags and file paths."""
+        merged: list[str] = []
+        seen: set[str] = set()
+
+        def _push(value: str):
+            label = str(value or "").strip()
+            if not label:
+                return
+            key = label.lower()
+            if key in seen:
+                return
+            seen.add(key)
+            merged.append(label)
+
+        for theme in themes:
+            _push(theme)
+
+        tags = project_report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+        for tag in tags:
+            term = str(tag).strip()
+            if not term:
+                continue
+            # Prefer concise domain phrases as themes.
+            if len(term.split()) <= 4 and not re.search(r"\.(sh|ps1|yml|yaml|txt)$", term.lower()):
+                _push(term)
+
+        for fr in getattr(project_report, "file_reports", []) or []:
+            path = str(getattr(fr, "filepath", "") or "").lower()
+            if "student" in path or "course" in path:
+                _push("Student records and course management")
+                break
+
+        return merged[:10]
 
 
 class ProjectTonesSectionBuilder(PortfolioSectionBuilder):
