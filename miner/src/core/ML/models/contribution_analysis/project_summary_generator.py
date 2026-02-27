@@ -964,9 +964,20 @@ def _strip_all_percentages(summary: str) -> str:
         return summary
     cleaned = re.sub(r"(?i)\b\d{1,3}(?:\.\d+)?\s*%", "", summary)
     cleaned = re.sub(r"(?i)\b\d{1,3}(?:\.\d+)?\s*percent\b", "", cleaned)
+    # Repair common leftovers after percentage removal.
+    cleaned = re.sub(
+        r"(?i)\bwith\s+of\s+(?:the\s+)?activity\s+dedicated\s+to\s+([^.?!,;]+)",
+        r"with a focus on \1",
+        cleaned,
+    )
+    cleaned = re.sub(r"(?i)\band\s+to\s+(testing|documentation|coding|code)\b", r"and \1", cleaned)
+    cleaned = re.sub(r"(?i)\bwith\s+of\s+(?:the\s+)?activity\b", "with project activity", cleaned)
     cleaned = re.sub(r"\(\s*\)", "", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
     cleaned = re.sub(r"\s+,", ",", cleaned)
+    cleaned = re.sub(r",\s*,", ", ", cleaned)
+    cleaned = re.sub(r",\s*\.", ".", cleaned)
+    cleaned = re.sub(r"(?i)(?:,?\s*(?:and|or))\s*\.$", ".", cleaned)
     return cleaned
 
 
@@ -1127,6 +1138,51 @@ def _remove_percentage_brackets(summary: str) -> str:
     return updated
 
 
+def _cleanup_summary_fragments(summary: str) -> str:
+    """
+    Cleanup malformed fragments that can remain after percentage normalization.
+    """
+    if not summary:
+        return summary
+    cleaned = summary
+    # Remove trailing conjunction fragments.
+    cleaned = re.sub(r"(?i),?\s*and\.\s*$", ".", cleaned)
+    cleaned = re.sub(r"(?i),?\s*or\.\s*$", ".", cleaned)
+    # Normalize duplicated "coding ... code development" phrasing.
+    cleaned = re.sub(
+        r"(?i)\bfocus(?:es|ed)?\s+on\s+coding\s+and\s+testing,\s+with\s+(?:a\s+)?significant\s+emphasis\s+on\s+code\s+development\b",
+        "focuses on coding and testing",
+        cleaned,
+    )
+    # If testing percentage is mentioned twice across adjacent sentences, keep the clearer sentence.
+    cleaned = re.sub(
+        r"(?i)\bunit\s+testing\s+(\d{1,3})%\.\s+Contributions\s+include\b",
+        "unit testing. Contributions include",
+        cleaned,
+    )
+    # Prevent leftover "with ... and to testing" fragments.
+    cleaned = re.sub(r"(?i)\band\s+to\s+testing\b", "and testing", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    cleaned = re.sub(r"\s+,", ",", cleaned)
+    cleaned = re.sub(r",\s*,", ", ", cleaned)
+    cleaned = re.sub(r",\s*\.", ".", cleaned)
+    return cleaned
+
+
+def _has_malformed_contribution_phrase(summary: str) -> bool:
+    """Detect known malformed contribution artifacts."""
+    if not summary:
+        return False
+    bad_patterns = (
+        r"(?i)\bwith\s+of\s+(?:the\s+)?activity\b",
+        r"(?i)\bwith\s+of\s+\w+",
+        r"(?i)\band\s*\.\s*$",
+        r"(?i)\bcontributions?\s+include[^.?!]*,\s*and\.",
+        r"(?i)\bwith\s+a\s+focus\s+on\s+development\s+and\s+to\s+testing\b",
+    )
+    return any(re.search(pattern, summary) for pattern in bad_patterns)
+
+
 def _is_list_like(text: str) -> bool:
     """Detect list-like formatting that violates narrative requirement."""
     return "\n-" in text or "\n•" in text
@@ -1283,6 +1339,8 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
         return False, "list_like"
     if _has_dangling_numeric_fragment(summary):
         return False, "dangling_numeric_fragment"
+    if _has_malformed_contribution_phrase(summary):
+        return False, "malformed_contribution_phrase"
 
     min_words = 18 if _ml_required() else 20
     max_words = 150 if _ml_required() else 130
@@ -1435,6 +1493,9 @@ def _repair_summary(summary: str | None, facts: dict[str, Any]) -> str:
     normalized = _remove_percentage_brackets(normalized)
     if not _percentages_allowed_in_summary(facts):
         normalized = _strip_all_percentages(normalized)
+    normalized = _cleanup_summary_fragments(normalized)
+    if _has_malformed_contribution_phrase(normalized):
+        normalized = _cleanup_summary_fragments(_grounded_summary_fallback(facts))
     normalized = _trim_to_max_sentences(
         normalized,
         max_sentences=4 if _ml_required() else 3,

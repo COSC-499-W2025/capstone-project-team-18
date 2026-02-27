@@ -1061,8 +1061,25 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         if not self._has_strong_contribution_signals(facts):
             contribution_ok = True
         else:
-            contribution_ok = (not contribution_terms) or any(term in lowered for term in contribution_terms)
+            has_anchor = (not contribution_terms) or any(term in lowered for term in contribution_terms)
+            contribution_ok = has_anchor or self._has_generic_contribution_phrase(summary)
         return goal_ok, stack_ok, contribution_ok
+
+    def _has_generic_contribution_phrase(self, summary: str) -> bool:
+        """
+        Accept broad but valid contribution phrasing when exact anchors are absent.
+        """
+        text = str(summary or "").lower()
+        if not text:
+            return False
+        contribution_verbs = ("contributed", "contribution", "worked on", "focused on", "implemented", "built")
+        contribution_domains = (
+            "code", "coding", "documentation", "docs", "testing", "test",
+            "development", "implementation", "delivery",
+        )
+        has_verb = any(term in text for term in contribution_verbs)
+        has_domain = any(term in text for term in contribution_domains)
+        return has_verb and has_domain
 
     def _goal_anchor_matches(self, summary: str, goal_terms: list[str]) -> bool:
         """
