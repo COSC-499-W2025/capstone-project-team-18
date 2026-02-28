@@ -2,7 +2,6 @@ import json
 import os
 import hashlib
 import re
-from time import perf_counter
 from typing import Any
 
 from pydantic import BaseModel
@@ -10,13 +9,7 @@ from pydantic import BaseModel
 from src.core.ML.models.azure_foundry_manager import AzureFoundryManager
 from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
-from src.core.ML.models.model_runtime import cuda_available, get_causal_lm
-from src.core.ML.models.llama_cpp_runtime import (
-    llama_cpp_enabled,
-    resolve_llama_cpp_model_path,
-    llama_cpp_generate_json_object,
-    llama_cpp_generate_text,
-)
+from src.core.ML.models.model_runtime import get_causal_lm
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.contribution_analysis.summary_constants import (
     SUMMARY_STYLE_EXAMPLE,
@@ -107,22 +100,7 @@ def _ml_required() -> bool:
 def _signature_diagnostics_enabled() -> bool:
     """Enable detailed signature-validator diagnostics via env."""
     raw = os.environ.get("ARTIFACT_MINER_SIGNATURE_DIAGNOSTICS")
-    if raw is None:
-        raw = os.environ.get("ARTIFACT_MINER_LLAMA_CPP_DIAGNOSTICS")
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _get_model_name() -> str:
-    # If no explicit override, choose a smaller model on CPU to avoid OOM.
-    override = os.environ.get("ARTIFACT_MINER_SIGNATURE_MODEL")
-    if override:
-        return override
-
-    if cuda_available():
-        return "microsoft/Phi-3-mini-4k-instruct"
-
-    # CPU-friendly default (smaller, faster, lower memory)
-    return "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 
 
 def _load_model():
@@ -142,7 +120,7 @@ def _load_model():
         return _MODEL, _TOKENIZER
 
     try:
-        model_name = _get_model_name()
+        model_name = os.environ.get("ARTIFACT_MINER_SIGNATURE_MODEL") or "microsoft/Phi-3-mini-4k-instruct"
         logger.info("Loading signature model: %s", model_name)
         model, tokenizer = get_causal_lm(model_name)
         if model is None or tokenizer is None:
@@ -167,17 +145,6 @@ def _facts_hash(facts: dict[str, Any]) -> str:
 def _cache_enabled() -> bool:
     """Allow disabling summary cache for strict per-run ML generation checks."""
     return os.environ.get("ARTIFACT_MINER_SUMMARY_CACHE_DISABLE", "0") != "1"
-
-
-def _env_int(name: str, default: int) -> int:
-    """Read integer env var safely."""
-    raw = os.environ.get(name)
-    if raw is None:
-        return default
-    try:
-        return int(raw)
-    except (TypeError, ValueError):
-        return default
 
 
 def _env_float(name: str, default: float) -> float:
@@ -222,30 +189,6 @@ def _remember_user_summary(summary: str) -> None:
         del _RECENT_USER_SUMMARIES[0 : len(_RECENT_USER_SUMMARIES) - 20]
 
 
-def _llama_cpp_max_tokens() -> int:
-    """
-    Keep user-summary generation bounded so CLI remains responsive.
-    """
-    return max(64, min(180, _env_int("ARTIFACT_MINER_SIGNATURE_LLAMA_MAX_TOKENS", 112)))
-
-
-def _llama_cpp_max_retries() -> int:
-    """
-    Keep retries low; repaired fallback now handles many malformed outputs.
-    """
-    return max(0, min(2, _env_int("ARTIFACT_MINER_SIGNATURE_LLAMA_MAX_RETRIES", 2)))
-
-
-def _llama_cpp_max_seconds() -> float:
-    """Upper budget for user-summary llama-cpp generation attempts."""
-    return max(10.0, _env_float("ARTIFACT_MINER_SIGNATURE_LLAMA_MAX_SEC", 75.0))
-
-
-def _llama_cpp_model_path() -> str | None:
-    """Resolve GGUF model path for user summary generation."""
-    return resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_SIGNATURE_MODEL_PATH")
-
-
 def _stage_classifier_enabled() -> bool:
     """Enable optional ML stage classification (default on)."""
     raw = os.environ.get("ARTIFACT_MINER_STAGE_CLASSIFIER_ENABLE", "1")
@@ -284,141 +227,6 @@ def _normalize_stage_label(value: str | None) -> str | None:
     if any(token in lowered for token in ("senior", "experienced", "lead", "principal", "advanced")):
         return "experienced"
     return None
-
-
-def _parse_confidence(value: Any) -> float | None:
-    """Parse confidence values from flexible numeric/string formats."""
-    if value is None:
-        return None
-    try:
-        if isinstance(value, (int, float)):
-            raw = float(value)
-        else:
-            text = str(value).strip()
-            if not text:
-                return None
-            percent_match = re.search(r"(-?\d+(?:\.\d+)?)\s*%", text)
-            if percent_match:
-                raw = float(percent_match.group(1)) / 100.0
-            else:
-                numeric_match = re.search(r"(-?\d+(?:\.\d+)?)", text)
-                if not numeric_match:
-                    return None
-                raw = float(numeric_match.group(1))
-        if raw > 1.0:
-            raw = raw / 100.0
-        if raw < 0.0 or raw > 1.0:
-            return None
-        return raw
-    except Exception:
-        return None
-
-
-def _build_stage_classifier_prompt(stage_facts: dict[str, Any]) -> str:
-    """Prompt for ML stage classification."""
-    facts_json = json.dumps(stage_facts, ensure_ascii=True)
-    return (
-        "TASK: EXPERIENCE_STAGE_CLASSIFICATION\n"
-        "Classify the user's career stage using only FACTS_JSON.\n"
-        "Return exactly one JSON object with schema:\n"
-        '{"stage":"student|early-career|experienced","confidence":0.0,"rationale":"string"}\n'
-        "Rules:\n"
-        "- stage must be one of: student, early-career, experienced.\n"
-        "- confidence must be a number between 0 and 1.\n"
-        "- rationale must be concise and grounded in facts.\n"
-        "- Output valid JSON only.\n\n"
-        f"FACTS_JSON: {facts_json}"
-    )
-
-
-def _build_stage_classifier_plain_prompt(stage_facts: dict[str, Any]) -> str:
-    """Plain-text fallback prompt for stage classification when JSON fails."""
-    facts_json = json.dumps(stage_facts, ensure_ascii=True)
-    return (
-        "TASK: EXPERIENCE_STAGE_CLASSIFICATION\n"
-        "Classify the user's career stage using only FACTS_JSON.\n"
-        "Return one line in this format:\n"
-        "stage=<student|early-career|experienced>; confidence=<0-1>; rationale=<short text>\n\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        "Result:"
-    )
-
-
-def _extract_stage_from_payload(payload: Any) -> tuple[str | None, float | None]:
-    """Extract stage/confidence from tolerant payload shapes."""
-    if not isinstance(payload, dict):
-        return None, None
-
-    stage_candidate: str | None = None
-    confidence_candidate: float | None = None
-
-    for key in ("stage", "experience_stage", "level", "seniority"):
-        value = payload.get(key)
-        if isinstance(value, str):
-            normalized = _normalize_stage_label(value)
-            if normalized:
-                stage_candidate = normalized
-                break
-
-    for key in ("confidence", "score", "probability"):
-        conf = _parse_confidence(payload.get(key))
-        if conf is not None:
-            confidence_candidate = conf
-            break
-
-    if stage_candidate and confidence_candidate is not None:
-        return stage_candidate, confidence_candidate
-
-    for value in payload.values():
-        if isinstance(value, dict):
-            nested_stage, nested_conf = _extract_stage_from_payload(value)
-            if nested_stage:
-                return nested_stage, nested_conf
-        if isinstance(value, str) and not stage_candidate:
-            normalized = _normalize_stage_label(value)
-            if normalized:
-                stage_candidate = normalized
-
-    return stage_candidate, confidence_candidate
-
-
-def _extract_stage_from_raw_text(raw_text: str) -> tuple[str | None, float | None]:
-    """Recover stage/confidence from non-JSON model output."""
-    if not raw_text:
-        return None, None
-    cleaned = _strip_markdown_fence(raw_text).strip()
-    if not cleaned:
-        return None, None
-
-    try:
-        payload = json.loads(cleaned)
-        return _extract_stage_from_payload(payload)
-    except Exception:
-        pass
-
-    stage: str | None = None
-    confidence: float | None = None
-
-    explicit_stage = re.search(
-        r"\b(?:stage|experience[_\s-]*stage|level|seniority)\s*[:=]\s*([a-zA-Z\-\s]+)",
-        cleaned,
-        flags=re.IGNORECASE,
-    )
-    if explicit_stage:
-        stage = _normalize_stage_label(explicit_stage.group(1))
-
-    if not stage:
-        stage = _normalize_stage_label(cleaned)
-
-    explicit_conf = re.search(
-        r"\b(?:confidence|score|probability)\s*[:=]\s*([0-9]+(?:\.[0-9]+)?\s*%?)",
-        cleaned,
-        flags=re.IGNORECASE,
-    )
-    if explicit_conf:
-        confidence = _parse_confidence(explicit_conf.group(1))
-
-    return stage, confidence
 
 
 def resolve_experience_stage_with_ml(
@@ -475,87 +283,7 @@ def resolve_experience_stage_with_ml(
                     if abs(stage_levels[normalized] - stage_levels[baseline]) <= 1:
                         return normalized
         return baseline
-    if not llama_cpp_enabled() or not ml_extraction_allowed():
-        return baseline
-
-    model_path = _llama_cpp_model_path()
-    if not model_path:
-        return baseline
-
-    stage_facts: dict[str, Any] = {
-        "baseline_stage": baseline,
-        "project_count": int(project_count or 0),
-        "active_months": round(float(active_months), 1) if active_months is not None else None,
-        "role": role or "",
-        "top_skills": (top_skills or [])[:4],
-        "top_languages": (top_languages or [])[:4],
-        "tools": (tools or [])[:4],
-        "tone_counts": {
-            "professional": int(professional_project_count or 0),
-            "experimental": int(experimental_project_count or 0),
-            "educational": int(educational_project_count or 0),
-        },
-    }
-
-    min_conf = _stage_classifier_min_confidence()
-    stage_levels = {"student": 0, "early-career": 1, "experienced": 2}
-    candidate_stage: str | None = None
-    candidate_conf: float | None = None
-
-    def _validator(payload: dict[str, Any]) -> tuple[bool, str]:
-        stage, conf = _extract_stage_from_payload(payload)
-        if not stage:
-            return False, "missing_stage"
-        if conf is None:
-            return False, "missing_confidence"
-        if conf < 0.0 or conf > 1.0:
-            return False, "confidence_out_of_range"
-        return True, "ok"
-
-    response = llama_cpp_generate_json_object(
-        model_path=model_path,
-        prompt=_build_stage_classifier_prompt(stage_facts),
-        validator=_validator,
-        max_retries=1,
-        max_tokens=max(56, min(120, _llama_cpp_max_tokens())),
-        temperature=0.0,
-        top_p=0.95,
-        max_total_seconds=max(6.0, min(18.0, _llama_cpp_max_seconds() / 3.0)),
-    )
-    if isinstance(response, dict):
-        candidate_stage, candidate_conf = _extract_stage_from_payload(response)
-
-    if not candidate_stage:
-        raw_text = llama_cpp_generate_text(
-            model_path=model_path,
-            prompt=_build_stage_classifier_plain_prompt(stage_facts),
-            max_retries=0,
-            max_tokens=96,
-            temperature=0.0,
-            top_p=0.95,
-            max_total_seconds=max(4.0, min(10.0, _llama_cpp_max_seconds() / 4.0)),
-        )
-        if raw_text:
-            candidate_stage, candidate_conf = _extract_stage_from_raw_text(raw_text)
-
-    if not candidate_stage:
-        return baseline
-    candidate_stage = _normalize_stage_label(candidate_stage)
-    if not candidate_stage or candidate_stage not in stage_levels:
-        return baseline
-
-    # Same stage is always safe.
-    if candidate_stage == baseline:
-        return baseline
-
-    # Cross-level overrides require confidence + adjacency safety gate.
-    distance = abs(stage_levels[candidate_stage] - stage_levels[baseline])
-    if distance > 1:
-        return baseline
-    if candidate_conf is None or candidate_conf < min_conf:
-        return baseline
-
-    return candidate_stage
+    return baseline
 
 
 def _proficiency_level_from_stage(experience_stage: str | None) -> str | None:
@@ -568,17 +296,6 @@ def _proficiency_level_from_stage(experience_stage: str | None) -> str | None:
     if stage == "experienced":
         return "Senior-level"
     return None
-
-
-def _opening_mentions_proficiency(summary: str, facts: dict[str, Any]) -> bool:
-    """Check if sentence 1 contains the expected proficiency phrase."""
-    level = str(facts.get("proficiency_level") or "").strip()
-    if not level:
-        return True
-    sentences = _split_sentences(summary)
-    if not sentences:
-        return False
-    return level.lower() in sentences[0].lower()
 
 
 def _ensure_proficiency_in_opening(summary: str, facts: dict[str, Any]) -> str:
@@ -625,226 +342,6 @@ def _ensure_proficiency_in_opening(summary: str, facts: dict[str, Any]) -> str:
     sentences[0] = updated.strip()
     rebuilt = ". ".join(sentence.strip() for sentence in sentences if sentence.strip())
     return f"{rebuilt}." if rebuilt else summary
-
-
-def _build_llama_cpp_prompt(facts: dict[str, Any]) -> str:
-    """
-    Build strict structured prompt for llama-cpp summary generation.
-    """
-    prompt_facts = dict(facts)
-    prompt_facts.pop("project_names", None)
-    prompt_facts.pop("tags", None)
-    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    proficiency_line = ""
-    if prompt_facts.get("proficiency_level"):
-        proficiency_line = (
-            "- Sentence 1 must include the exact proficiency_level phrase when provided.\n"
-        )
-    return (
-        "TASK: USER_SUMMARY\n"
-        "Return exactly one JSON object with this schema:\n"
-        '{"summary":"string"}\n'
-        "Hard constraints:\n"
-        "- Exactly 3 sentences.\n"
-        "- 38 to 92 words.\n"
-        "- Narrative prose only (no lists or bullets).\n"
-        "- Use only the facts in the payload.\n"
-        "- Mention at least one concrete stack term from top_skills/top_languages/tools when available.\n"
-        f"{proficiency_line}"
-        "- Do not mention project names, company names, or being an assistant.\n"
-        "- Do not include any key besides summary.\n"
-        "- Output must be valid JSON and nothing else.\n\n"
-        f"FACTS_JSON: {facts_json}"
-    )
-
-
-def _build_llama_cpp_plain_prompt(facts: dict[str, Any]) -> str:
-    """
-    Build plain-text prompt for recovery when structured JSON output fails.
-    """
-    prompt_facts = dict(facts)
-    prompt_facts.pop("project_names", None)
-    prompt_facts.pop("tags", None)
-    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    proficiency_line = ""
-    if prompt_facts.get("proficiency_level"):
-        proficiency_line = "- Sentence 1 must include the exact proficiency_level phrase when provided.\n"
-    return (
-        "TASK: USER_SUMMARY\n"
-        "Write a professional user summary in exactly 3 sentences.\n"
-        "Constraints:\n"
-        "- 38 to 92 words.\n"
-        "- Narrative prose only (no lists or bullets).\n"
-        "- Mention at least one concrete stack term from top_skills/top_languages/tools when available.\n"
-        f"{proficiency_line}"
-        "- Use only the facts in the payload.\n"
-        "- Do not mention project names, company names, or being an assistant.\n"
-        "- Return only the summary text.\n\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        "Summary:"
-    )
-
-
-def _build_llama_cpp_polish_prompt(
-    facts: dict[str, Any],
-    draft_summary: str,
-    *,
-    style_variant: str = "primary",
-) -> str:
-    """
-    Build a rewrite prompt that converts rough ML output into resume-style prose
-    without introducing new facts.
-    """
-    prompt_facts = dict(facts)
-    prompt_facts.pop("project_names", None)
-    prompt_facts.pop("tags", None)
-    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    proficiency_line = ""
-    if prompt_facts.get("proficiency_level"):
-        proficiency_line = "- Sentence 1 must include the exact proficiency_level phrase when provided.\n"
-    variant_line = ""
-    if style_variant == "alternative":
-        variant_line = (
-            "- Prefer direct active voice and concrete delivery verbs.\n"
-            "- Avoid vague terms like broad, primarily, or extends.\n"
-        )
-    return (
-        "TASK: USER_SUMMARY_REWRITE\n"
-        "Rewrite the draft into a professional resume summary.\n"
-        f"Rewrite style variant: {style_variant}\n"
-        "Hard constraints:\n"
-        "- Exactly 3 sentences.\n"
-        "- 38 to 92 words.\n"
-        "- Narrative prose only (no lists, no bullets).\n"
-        "- Keep only information supported by DRAFT_SUMMARY and FACTS_JSON.\n"
-        "- Remove any prompt artifacts (e.g., QUESTION:, ANSWER:, instructions).\n"
-        "- Do not mention project names, company names, or being an assistant.\n"
-        "- Mention at least one concrete stack term from top_skills/top_languages/tools when available.\n"
-        f"{proficiency_line}"
-        f"{variant_line}"
-        "- Return only the final summary text.\n\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        f"DRAFT_SUMMARY: {draft_summary}\n\n"
-        "Summary:"
-    )
-
-
-def _build_llama_cpp_expand_prompt(
-    facts: dict[str, Any],
-    draft_summary: str,
-    rejection_reason: str,
-    *,
-    variant: str = "baseline",
-) -> str:
-    """Build an expansion prompt for short/under-structured ML outputs."""
-    prompt_facts = dict(facts)
-    prompt_facts.pop("project_names", None)
-    prompt_facts.pop("tags", None)
-    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    proficiency_line = ""
-    if prompt_facts.get("proficiency_level"):
-        proficiency_line = "- Sentence 1 must include the exact proficiency_level phrase when provided.\n"
-    variant_line = ""
-    if variant == "specific":
-        variant_line = (
-            "- Include at least one concrete delivery or outcome signal "
-            "(for example: delivered, improved, automated, measurable).\n"
-        )
-    return (
-        "TASK: USER_SUMMARY_EXPAND\n"
-        "Expand and refine the draft into a professional resume summary.\n"
-        "Hard constraints:\n"
-        "- Exactly 3 sentences.\n"
-        "- 38 to 92 words.\n"
-        "- Narrative prose only (no lists, no bullets).\n"
-        "- Keep only information supported by DRAFT_SUMMARY and FACTS_JSON.\n"
-        "- Do not mention project names, company names, or being an assistant.\n"
-        "- Mention at least one concrete stack term from top_skills/top_languages/tools when available.\n"
-        f"{proficiency_line}"
-        "- Include at least one concrete delivery or outcome signal (for example: delivered, improved, automated, measurable outcomes, reliability gains).\n"
-        "- Remove instruction artifacts and avoid generic phrasing.\n"
-        f"{variant_line}"
-        "- Return only the final summary text.\n\n"
-        f"REJECTION_REASON: {rejection_reason}\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        f"DRAFT_SUMMARY: {draft_summary}\n\n"
-        f"Variant: {variant}\n\n"
-        "Summary:"
-    )
-
-
-def _build_llama_cpp_fluency_prompt(facts: dict[str, Any], draft_summary: str) -> str:
-    """Build a final-pass prompt focused on improving narrative flow."""
-    prompt_facts = dict(facts)
-    prompt_facts.pop("project_names", None)
-    prompt_facts.pop("tags", None)
-    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    proficiency_line = ""
-    if prompt_facts.get("proficiency_level"):
-        proficiency_line = "- Sentence 1 must include the exact proficiency_level phrase when provided.\n"
-    return (
-        "TASK: USER_SUMMARY_FLUENCY_REWRITE\n"
-        "Improve readability and sentence flow for the draft summary.\n"
-        "Hard constraints:\n"
-        "- Keep exactly 3 sentences.\n"
-        "- Keep 38 to 92 words.\n"
-        "- Narrative prose only (no lists, no bullets).\n"
-        "- Keep only information supported by DRAFT_SUMMARY and FACTS_JSON.\n"
-        "- Preserve backend focus when present; if you mention a secondary domain, use a clear transition phrase (e.g., also, in addition).\n"
-        f"{proficiency_line}"
-        "- Remove prompt artifacts and labels (e.g., Summary:, Final summary:, QUESTION:, ANSWER:).\n"
-        "- Do not mention project names, company names, or being an assistant.\n"
-        "- Return only the final summary text.\n\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        f"DRAFT_SUMMARY: {draft_summary}\n\n"
-        "Summary:"
-    )
-
-
-def _build_llama_cpp_resume_mold_prompt(
-    facts: dict[str, Any],
-    draft_summary: str,
-    *,
-    variant: str = "primary",
-) -> str:
-    """Build a final-pass prompt to mold ML text into resume-style narrative."""
-    prompt_facts = dict(facts)
-    prompt_facts.pop("project_names", None)
-    prompt_facts.pop("tags", None)
-    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    proficiency_line = ""
-    if prompt_facts.get("proficiency_level"):
-        proficiency_line = "- Sentence 1 must include the exact proficiency_level phrase when provided.\n"
-
-    variant_line = ""
-    if variant == "structured":
-        variant_line = (
-            "- Sentence 1: identity and primary focus.\n"
-            "- Sentence 2: concrete delivery and outcomes.\n"
-            "- Sentence 3: strengths and growth direction (do not restart a new summary).\n"
-        )
-
-    return (
-        "TASK: USER_SUMMARY_RESUME_MOLD\n"
-        "Rewrite the draft into polished professional resume prose.\n"
-        "Hard constraints:\n"
-        "- Keep exactly 3 sentences.\n"
-        "- Keep 38 to 92 words.\n"
-        "- Narrative prose only (no lists, no bullets).\n"
-        "- Keep only information supported by DRAFT_SUMMARY and FACTS_JSON.\n"
-        "- Preserve one coherent narrative across all sentences.\n"
-        "- Do not start sentence 3 as a second summary.\n"
-        f"{proficiency_line}"
-        "- Do not include labels or artifacts (Summary:, Final summary:, QUESTION:, ANSWER:).\n"
-        "- Mention at least one concrete stack term from top_skills/top_languages/tools when available.\n"
-        "- Do not mention project names, company names, or being an assistant.\n"
-        f"{variant_line}"
-        "- Return only the final summary text.\n\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        f"DRAFT_SUMMARY: {draft_summary}\n\n"
-        f"Variant: {variant}\n\n"
-        "Summary:"
-    )
 
 
 def _build_prompt(facts: dict[str, Any], strict: bool = False, include_example: bool = True) -> str:
@@ -909,36 +406,6 @@ def _normalize_summary(text: str) -> str:
     cleaned = cleaned.replace("Skills:", "").replace("Tools:", "")
     cleaned = cleaned.replace("Languages:", "")
     return " ".join(cleaned.split())
-
-
-def _remove_percentage_mentions(summary: str) -> str:
-    """
-    Remove percentage mentions from user summaries.
-
-    User-level summaries should stay qualitative; project summaries can keep
-    percentages separately.
-    """
-    if not summary:
-        return summary
-
-    cleaned = summary
-    cleaned = re.sub(
-        r"(?i)\b(?:about|around|roughly|approximately|nearly|over|under|more than|less than)?\s*"
-        r"\d{1,3}(?:\.\d+)?\s*%",
-        "",
-        cleaned,
-    )
-    cleaned = re.sub(
-        r"(?i)\b(?:about|around|roughly|approximately|nearly|over|under|more than|less than)?\s*"
-        r"\d{1,3}(?:\.\d+)?\s*percent\b",
-        "",
-        cleaned,
-    )
-    cleaned = re.sub(r"(?i)\b(?:of|in)\s+(?:the\s+)?(?:activity|contributions?|commits?|lines?)\b", "", cleaned)
-    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
-    cleaned = re.sub(r"\s+,", ",", cleaned)
-    cleaned = re.sub(r",\s*,", ", ", cleaned)
-    return cleaned
 
 
 def _restore_anchor_casing(summary: str, facts: dict[str, Any]) -> str:
@@ -1221,128 +688,6 @@ def _has_delivery_or_outcome_signal(summary: str) -> bool:
     return has_action_verb and has_engineering_noun
 
 
-def _has_transition_phrase(sentence: str) -> bool:
-    """Detect explicit transition phrases that smooth topic shifts."""
-    lowered = sentence.lower()
-    transition_patterns = (
-        r"\balso\b",
-        r"\bin addition\b",
-        r"\balongside\b",
-        r"\bas well\b",
-        r"\bbeyond\b",
-        r"\bwhile\b",
-    )
-    return any(re.search(pattern, lowered) for pattern in transition_patterns)
-
-
-def _coherence_issues(summary: str) -> list[str]:
-    """Return soft coherence issues used for ranking and optional polish."""
-    sentences = _split_sentences(summary)
-    if len(sentences) < 3:
-        return ["missing_three_sentence_shape"]
-
-    s1, s2, s3 = sentences[0], sentences[1], sentences[2]
-    s1_lower = s1.lower()
-    s3_lower = s3.lower()
-    issues: list[str] = []
-
-    # Penalize "third sentence starts a brand new summary" phrasing.
-    restart_markers = (
-        "with a strong foundation",
-        "my journey",
-        "leveraging ",
-        "as an early-career",
-        "as a ",
-        "as an ",
-        "focused on ",
-        "specializing in",
-    )
-    if any(s3_lower.startswith(marker) for marker in restart_markers):
-        issues.append("third_sentence_restart")
-
-    # Penalize repeated identity framing across sentence 1 and 3.
-    identity_markers = (
-        "early-career",
-        "experienced",
-        "software contributor",
-        "software engineer",
-        "computer science student",
-    )
-    if any(marker in s1_lower for marker in identity_markers) and any(marker in s3_lower for marker in identity_markers):
-        issues.append("repeated_identity")
-
-    # Penalize abrupt domain switch in final sentence without transition.
-    s2_domains = _sentence_domains(s2)
-    s3_domains = _sentence_domains(s3)
-    if s2_domains and s3_domains and not (s2_domains & s3_domains) and not _has_transition_phrase(s3):
-        issues.append("abrupt_domain_shift")
-
-    return issues
-
-
-def _resume_quality_score(summary: str, facts: dict[str, Any]) -> int:
-    """Score candidate summaries so the best ML phrasing is selected."""
-    score = 0
-    words = len(summary.split())
-    sentences = _sentence_count(summary)
-    anchors = (facts.get("top_skills", []) or []) + (facts.get("top_languages", []) or []) + (facts.get("tools", []) or [])
-
-    if sentences == 3:
-        score += 3
-    elif sentences in {2, 4}:
-        score += 1
-
-    if 45 <= words <= 85:
-        score += 3
-    elif 42 <= words <= 92:
-        score += 2
-
-    if anchors and _summary_mentions_any(summary, anchors):
-        score += 2
-    if _has_delivery_or_outcome_signal(summary):
-        score += 2
-    if not _contains_generic_resume_phrasing(summary):
-        score += 2
-    if not _contains_project_name(summary, facts.get("project_names", []) or []):
-        score += 1
-    needs_polish, _ = _needs_resume_style_polish(summary)
-    if not needs_polish:
-        score += 1
-    if _opening_mentions_proficiency(summary, facts):
-        score += 2
-    elif facts.get("proficiency_level"):
-        score -= 1
-
-    coherence_issue_count = len(_coherence_issues(summary))
-    if coherence_issue_count == 0:
-        score += 2
-    else:
-        score -= min(6, coherence_issue_count * 2)
-
-    return score
-
-
-def _should_expand_after_rejection(reason: str) -> bool:
-    """Return whether rejection reason indicates summary needs expansion."""
-    if not reason:
-        return False
-    return (
-        reason.startswith("word_count=")
-        or reason.startswith("sentence_count=")
-        or reason in {
-            "missing_delivery_signal",
-            "generic_resume_tone",
-            "second_person_tone",
-            "second_person_profile_voice",
-            "mixed_person_voice",
-            "meta_narration",
-            "noise_artifact",
-            "meta_summary_marker",
-            "fragment_sentence",
-        }
-    )
-
-
 def _inject_delivery_signal(summary: str, facts: dict[str, Any]) -> str | None:
     """
     Add a minimal grounded delivery/outcome clause when that is the sole blocker.
@@ -1374,210 +719,6 @@ def _inject_delivery_signal(summary: str, facts: dict[str, Any]) -> str | None:
     rebuilt = _ensure_proficiency_in_opening(rebuilt, facts)
     rebuilt = _normalize_summary(rebuilt)
     return rebuilt or None
-
-
-def _select_best_summary_candidate(candidates: list[str], facts: dict[str, Any]) -> str | None:
-    """Normalize and rank candidate summaries, returning the strongest option."""
-    best: str | None = None
-    best_score = -1
-    seen: set[str] = set()
-
-    for candidate in candidates:
-        normalized = _normalize_summary(candidate or "")
-        normalized = _remove_invalid_sentences(normalized, facts.get("project_names", []))
-        normalized = _polish_summary(normalized)
-        normalized = _trim_to_sentences(normalized, max_sentences=3)
-        normalized = _restore_anchor_casing(normalized, facts)
-        normalized = _ensure_proficiency_in_opening(normalized, facts)
-        normalized = _normalize_summary(normalized)
-        if not normalized:
-            continue
-        key = normalized.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-
-        score = _resume_quality_score(normalized, facts)
-        is_ok, _reason = _is_valid_summary(normalized, facts)
-        if is_ok:
-            score += 100
-        if score > best_score:
-            best = normalized
-            best_score = score
-
-    return best
-
-
-def _apply_resume_style_mold_if_better(
-    model_path: str,
-    facts: dict[str, Any],
-    draft_summary: str,
-    *,
-    context: str,
-) -> str:
-    """
-    Apply optional resume-style molding and keep it only when quality improves.
-
-    This never blocks generation: if molding is unavailable/invalid/worse,
-    the original candidate is preserved.
-    """
-    if not draft_summary:
-        return draft_summary
-
-    base = _normalize_summary(draft_summary)
-    base = _remove_invalid_sentences(base, facts.get("project_names", []))
-    base = _polish_summary(base)
-    base = _trim_to_sentences(base, max_sentences=3)
-    base = _restore_anchor_casing(base, facts)
-    base = _ensure_proficiency_in_opening(base, facts)
-    base = _normalize_summary(base)
-    if not base:
-        return draft_summary
-
-    mold_candidates: list[str] = []
-    for idx, variant in enumerate(("primary", "structured")):
-        mold_raw = llama_cpp_generate_text(
-            model_path=model_path,
-            prompt=_build_llama_cpp_resume_mold_prompt(
-                facts,
-                base,
-                variant=variant,
-            ),
-            max_retries=0,
-            max_tokens=max(120, min(184, _llama_cpp_max_tokens() + 56)),
-            temperature=0.0 if idx == 0 else 0.15,
-            top_p=0.95,
-            max_total_seconds=max(4.0, min(10.0, _llama_cpp_max_seconds() / 3.0)),
-        )
-        mold_text = _extract_summary_from_raw_text(mold_raw) if mold_raw else None
-        if not mold_text:
-            continue
-        normalized = _normalize_summary(mold_text)
-        normalized = _remove_invalid_sentences(normalized, facts.get("project_names", []))
-        normalized = _polish_summary(normalized)
-        normalized = _trim_to_sentences(normalized, max_sentences=3)
-        normalized = _restore_anchor_casing(normalized, facts)
-        normalized = _ensure_proficiency_in_opening(normalized, facts)
-        normalized = _normalize_summary(normalized)
-        if normalized:
-            mold_candidates.append(normalized)
-
-    if not mold_candidates:
-        logger.info("Signature resume-style mold unavailable; keeping selected summary (%s)", context)
-        return base
-
-    best_mold = _select_best_summary_candidate([base, *mold_candidates], facts)
-    if not best_mold:
-        logger.info("Signature resume-style mold could not rank candidates; keeping selected summary (%s)", context)
-        return base
-
-    base_ok, _base_reason = _is_valid_summary(base, facts)
-    best_ok, best_reason = _is_valid_summary(best_mold, facts)
-    if not best_ok:
-        logger.info(
-            "Signature resume-style mold rejected invalid candidate (%s, context=%s)",
-            best_reason,
-            context,
-        )
-        return base
-    if not base_ok:
-        logger.info("Signature resume-style mold accepted over invalid base (context=%s)", context)
-        return best_mold
-
-    base_score = _resume_quality_score(base, facts)
-    best_score = _resume_quality_score(best_mold, facts)
-    if best_score > base_score:
-        logger.info(
-            "Signature resume-style mold accepted (context=%s, score_delta=%d)",
-            context,
-            best_score - base_score,
-        )
-        return best_mold
-
-    logger.info(
-        "Signature resume-style mold kept original summary (context=%s, score_delta=%d)",
-        context,
-        best_score - base_score,
-    )
-    return base
-
-
-def _apply_fluency_polish_if_better(
-    model_path: str,
-    facts: dict[str, Any],
-    draft_summary: str,
-    *,
-    context: str,
-) -> str:
-    """
-    Apply an optional fluency rewrite and keep it only if quality improves.
-
-    This is deliberately non-blocking: if rewrite is unavailable/invalid/worse,
-    keep the original draft without introducing new rejection paths.
-    """
-    if not draft_summary:
-        return draft_summary
-
-    base = _normalize_summary(draft_summary)
-    base = _remove_invalid_sentences(base, facts.get("project_names", []))
-    base = _polish_summary(base)
-    base = _trim_to_sentences(base, max_sentences=3)
-    base = _restore_anchor_casing(base, facts)
-    base = _ensure_proficiency_in_opening(base, facts)
-    base = _normalize_summary(base)
-    if not base:
-        return draft_summary
-
-    fluency_raw = llama_cpp_generate_text(
-        model_path=model_path,
-        prompt=_build_llama_cpp_fluency_prompt(facts, base),
-        max_retries=0,
-        max_tokens=max(112, min(176, _llama_cpp_max_tokens() + 48)),
-        temperature=0.0,
-        top_p=0.95,
-        max_total_seconds=max(4.0, min(10.0, _llama_cpp_max_seconds() / 3.0)),
-    )
-    fluency_text = _extract_summary_from_raw_text(fluency_raw) if fluency_raw else None
-    if not fluency_text:
-        logger.info("Signature fluency polish unavailable; keeping selected summary (%s)", context)
-        return base
-
-    candidate = _normalize_summary(fluency_text)
-    candidate = _remove_invalid_sentences(candidate, facts.get("project_names", []))
-    candidate = _polish_summary(candidate)
-    candidate = _trim_to_sentences(candidate, max_sentences=3)
-    candidate = _restore_anchor_casing(candidate, facts)
-    candidate = _ensure_proficiency_in_opening(candidate, facts)
-    candidate = _normalize_summary(candidate)
-    if not candidate:
-        logger.info("Signature fluency polish produced empty candidate; keeping selected summary (%s)", context)
-        return base
-
-    candidate_ok, candidate_reason = _is_valid_summary(candidate, facts)
-    if not candidate_ok:
-        logger.info(
-            "Signature fluency polish rejected invalid candidate (%s, context=%s)",
-            candidate_reason,
-            context,
-        )
-        return base
-
-    base_score = _resume_quality_score(base, facts)
-    candidate_score = _resume_quality_score(candidate, facts)
-    if candidate_score > base_score:
-        logger.info(
-            "Signature fluency polish accepted (context=%s, score_delta=%d)",
-            context,
-            candidate_score - base_score,
-        )
-        return candidate
-
-    logger.info(
-        "Signature fluency polish kept original summary (context=%s, score_delta=%d)",
-        context,
-        candidate_score - base_score,
-    )
-    return base
 
 
 def _is_list_like(text: str) -> bool:
@@ -1934,70 +1075,116 @@ def _contains_project_name(summary: str, project_names: list[str]) -> bool:
     return False
 
 
-def _extract_summary_from_payload(payload: Any) -> str | None:
-    """Extract summary text from tolerant payload shapes."""
-    if not isinstance(payload, dict):
+def _stage_identity_phrase(stage: str | None, role: Any) -> str:
+    """Return a concise identity opener based on stage and role."""
+    role_text = str(role or "software contributor").strip().lower()
+    if "engineer" not in role_text and "developer" not in role_text and "contributor" not in role_text:
+        role_text = "software contributor"
+    stage_label = _normalize_stage_label(stage)
+    if stage_label == "student":
+        return f"Entry-level {role_text}"
+    if stage_label == "experienced":
+        return f"Senior-level {role_text}"
+    return f"Entry-to-mid-level {role_text}"
+
+
+def _focus_phrase(focus: Any) -> str:
+    """Return a safe focus phrase for deterministic fallbacks."""
+    focus_text = str(focus or "").strip()
+    if focus_text:
+        return focus_text.lower()
+    return "software delivery and maintainable engineering"
+
+
+def _has_redundant_repetition(summary: str) -> bool:
+    """Detect obvious repetitive sentence patterns."""
+    sentences = [s.strip().lower() for s in _split_sentences(summary) if s.strip()]
+    if len(sentences) < 2:
+        return False
+    if len(set(sentences)) != len(sentences):
+        return True
+    for idx in range(1, len(sentences)):
+        prev_tokens = set(_tokenize_words(sentences[idx - 1]))
+        curr_tokens = set(_tokenize_words(sentences[idx]))
+        if not prev_tokens or not curr_tokens:
+            continue
+        overlap = len(prev_tokens & curr_tokens) / len(prev_tokens | curr_tokens)
+        if overlap >= 0.85:
+            return True
+    return False
+
+
+def _build_grounded_fallback_summary(facts: dict[str, Any]) -> str:
+    """Build deterministic 3-sentence fallback anchored to profile facts."""
+    stage = facts.get("experience_stage")
+    role = facts.get("role")
+    focus = _focus_phrase(facts.get("focus"))
+    s1 = f"{_stage_identity_phrase(stage, role)} focused on {focus}"
+
+    anchors: list[str] = []
+    for key in ("top_skills", "top_languages", "tools"):
+        values = facts.get(key) or []
+        for item in values:
+            text = str(item).strip()
+            if text and text.lower() not in {a.lower() for a in anchors}:
+                anchors.append(text)
+            if len(anchors) >= 3:
+                break
+        if len(anchors) >= 3:
+            break
+    stack_text = ", ".join(anchors[:3]) if anchors else "core engineering tools"
+    s2 = f"I build and maintain solutions using {stack_text} with practical implementation discipline"
+
+    activities = [str(a).strip() for a in (facts.get("activities") or []) if str(a).strip()]
+    activity_text = ", ".join(activities[:2]) if activities else "steady delivery, code quality, and clear collaboration"
+    s3 = f"I deliver reliable outcomes through {activity_text}"
+    return f"{s1}. {s2}. {s3}."
+
+
+def _repair_summary_with_grounded_fallback(
+    summary: str,
+    facts: dict[str, Any],
+    *,
+    allow_fallback: bool = True,
+) -> str | None:
+    """
+    Normalize/repair model output, optionally falling back to deterministic text.
+    """
+    normalized = _normalize_summary(summary or "")
+    normalized = _remove_invalid_sentences(normalized, facts.get("project_names", []))
+    normalized = _polish_summary(normalized)
+    normalized = _trim_to_sentences(normalized, max_sentences=3)
+    normalized = _restore_anchor_casing(normalized, facts)
+    normalized = _ensure_proficiency_in_opening(normalized, facts)
+    normalized = _normalize_summary(normalized)
+    if normalized:
+        injected = _inject_delivery_signal(normalized, facts)
+        if injected:
+            normalized = injected
+        return normalized
+    if not allow_fallback:
         return None
+    fallback = _build_grounded_fallback_summary(facts)
+    fallback = _normalize_summary(fallback)
+    fallback = _remove_invalid_sentences(fallback, facts.get("project_names", []))
+    fallback = _polish_summary(fallback)
+    fallback = _trim_to_sentences(fallback, max_sentences=3)
+    fallback = _restore_anchor_casing(fallback, facts)
+    fallback = _ensure_proficiency_in_opening(fallback, facts)
+    fallback = _normalize_summary(fallback)
+    return fallback or None
 
-    direct = payload.get("summary")
-    if isinstance(direct, str):
-        return direct
 
-    for key in ("result", "response", "text", "content"):
-        value = payload.get(key)
-        if isinstance(value, str):
-            return value
-        if isinstance(value, dict):
-            nested = _extract_summary_from_payload(value)
-            if nested:
-                return nested
-
-    for value in payload.values():
-        if isinstance(value, str) and value.strip():
-            return value
-        if isinstance(value, dict):
-            nested = _extract_summary_from_payload(value)
-            if nested:
-                return nested
+def _validated_fallback_summary(facts: dict[str, Any], *, context: str) -> str | None:
+    """Create deterministic fallback summary and return it only if valid."""
+    fallback = _repair_summary_with_grounded_fallback("", facts, allow_fallback=True)
+    if not fallback:
+        return None
+    ok, reason = _is_valid_summary(fallback, facts)
+    if ok:
+        return fallback
+    logger.warning("Signature summary fallback rejected%s (%s)", context, reason)
     return None
-
-
-def _strip_markdown_fence(text: str) -> str:
-    """Remove single code-fence wrappers around model output."""
-    stripped = text.strip()
-    if not stripped.startswith("```"):
-        return stripped
-
-    lines = stripped.splitlines()
-    if len(lines) < 3:
-        return stripped
-    if not lines[0].startswith("```") or lines[-1].strip() != "```":
-        return stripped
-    return "\n".join(lines[1:-1]).strip()
-
-
-def _extract_summary_from_raw_text(raw_text: str) -> str | None:
-    """Recover summary text when llama-cpp output is not valid JSON."""
-    if not raw_text:
-        return None
-
-    cleaned = _strip_markdown_fence(raw_text)
-    if not cleaned:
-        return None
-
-    # Sometimes the model still returns JSON-ish text in plain mode.
-    try:
-        payload = json.loads(cleaned)
-        summary = _extract_summary_from_payload(payload)
-        if summary:
-            return summary
-    except Exception:
-        pass
-
-    # Strip common label wrappers.
-    cleaned = re.sub(r"^\s*(?:final\s+)?summary\s*:\s*", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\b(?:final\s+)?summary\s*:\s*", "", cleaned, flags=re.IGNORECASE).strip()
-    return cleaned or None
 
 
 def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
@@ -2065,46 +1252,6 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     if _has_redundant_repetition(summary):
         return False, "redundant_repetition"
     return True, "ok"
-
-
-def _llama_cpp_response_valid(response: dict[str, Any], facts: dict[str, Any]) -> tuple[bool, str]:
-    """Validate structured llama-cpp response payload."""
-    diagnostics = _signature_diagnostics_enabled()
-    if not isinstance(response, dict):
-        return False, "not_object"
-
-    summary = _extract_summary_from_payload(response)
-    if not isinstance(summary, str):
-        if diagnostics:
-            logger.info(
-                "Signature validator missing summary text (keys=%s)",
-                sorted(response.keys()) if isinstance(response, dict) else [],
-            )
-        return False, "missing_summary"
-    if diagnostics:
-        logger.info(
-            "Signature validator received summary candidate (chars=%d, words=%d)",
-            len(summary),
-            len(summary.split()),
-        )
-    if not summary.strip():
-        if diagnostics:
-            logger.info("Signature validator rejected empty summary text before repair")
-        return False, "empty_summary_text"
-
-    repaired = _repair_summary_with_grounded_fallback(summary, facts, allow_fallback=False)
-    if not repaired:
-        normalized = _normalize_summary(summary or "")
-        normalized = _remove_invalid_sentences(normalized, facts.get("project_names", []))
-        normalized = _polish_summary(normalized)
-        normalized = _trim_to_sentences(normalized, max_sentences=3)
-        if not normalized:
-            return False, "empty_summary"
-        is_ok, reason = _is_valid_summary(normalized, facts)
-        return (True, "ok") if is_ok else (False, reason)
-    response.clear()
-    response["summary"] = repaired
-    return _is_valid_summary(repaired, facts)
 
 
 def _generate_signature_with_azure_openai(facts: dict[str, Any]) -> str | None:
@@ -2208,588 +1355,6 @@ def _rewrite_summary_for_diversity_if_needed(summary: str, facts: dict[str, Any]
         return summary
 
 
-def _generate_signature_with_llama_cpp(facts: dict[str, Any]) -> str | None:
-    """
-    Generate signature summary via local llama-cpp GGUF model.
-    """
-    if not llama_cpp_enabled():
-        return None
-    if not ml_extraction_allowed():
-        return None
-    if os.environ.get("ARTIFACT_MINER_DISABLE_SIGNATURE_MODEL") == "1":
-        return None
-
-    model_path = _llama_cpp_model_path()
-    if not model_path:
-        logger.warning("llama-cpp enabled but no signature GGUF model path could be resolved")
-        return None
-    started_at = perf_counter()
-    last_validation_reason = "no_attempt"
-
-    def _validator(payload: dict[str, Any]) -> tuple[bool, str]:
-        nonlocal last_validation_reason
-        is_valid, reason = _llama_cpp_response_valid(payload, facts)
-        last_validation_reason = reason
-        return is_valid, reason
-
-    response = llama_cpp_generate_json_object(
-        model_path=model_path,
-        prompt=_build_llama_cpp_prompt(facts),
-        validator=_validator,
-        max_retries=_llama_cpp_max_retries(),
-        max_tokens=_llama_cpp_max_tokens(),
-        temperature=0.0,
-        top_p=0.95,
-        max_total_seconds=_llama_cpp_max_seconds(),
-    )
-    summary_text = _extract_summary_from_payload(response) if isinstance(response, dict) else None
-
-    # Recover from malformed/non-JSON outputs with one short plain-text pass.
-    if not summary_text:
-        recovery_max_seconds = max(4.0, min(12.0, _llama_cpp_max_seconds() / 2.0))
-        raw_text = llama_cpp_generate_text(
-            model_path=model_path,
-            prompt=_build_llama_cpp_plain_prompt(facts),
-            max_retries=0,
-            max_tokens=max(72, min(140, _llama_cpp_max_tokens())),
-            temperature=0.0,
-            top_p=0.95,
-            max_total_seconds=recovery_max_seconds,
-        )
-        summary_text = _extract_summary_from_raw_text(raw_text) if raw_text else None
-
-    if summary_text:
-        raw_candidate = _restore_anchor_casing(summary_text, facts)
-        candidates = [raw_candidate]
-
-        needs_polish, polish_reason = _needs_resume_style_polish(raw_candidate)
-        polish_label = polish_reason if needs_polish else "resume_polish"
-        polish_max_seconds = max(4.0, min(10.0, _llama_cpp_max_seconds() / 3.0))
-        polish_applied = 0
-        for style_variant, temperature in (("primary", 0.0), ("alternative", 0.15)):
-            polished_raw = llama_cpp_generate_text(
-                model_path=model_path,
-                prompt=_build_llama_cpp_polish_prompt(
-                    facts,
-                    raw_candidate,
-                    style_variant=style_variant,
-                ),
-                max_retries=0,
-                max_tokens=max(112, min(176, _llama_cpp_max_tokens() + 48)),
-                temperature=temperature,
-                top_p=0.95,
-                max_total_seconds=polish_max_seconds,
-            )
-            polished_text = _extract_summary_from_raw_text(polished_raw) if polished_raw else None
-            if not polished_text:
-                continue
-            candidates.append(_restore_anchor_casing(polished_text, facts))
-            polish_applied += 1
-        if polish_applied > 0:
-            logger.info(
-                "Signature style polish applied via llama-cpp (%s, candidates=%d)",
-                polish_label,
-                polish_applied,
-            )
-        else:
-            logger.info(
-                "Signature style polish unavailable; continuing with original ML summary (%s)",
-                polish_label,
-            )
-
-        summary_text = _select_best_summary_candidate(candidates, facts)
-        if summary_text:
-            summary_text = _apply_resume_style_mold_if_better(
-                model_path,
-                facts,
-                summary_text,
-                context="primary",
-            )
-            summary_text = _apply_fluency_polish_if_better(
-                model_path,
-                facts,
-                summary_text,
-                context="primary",
-            )
-
-    def _attempt_expansion_retry(draft_summary: str, rejection_reason: str) -> str | None:
-        if not _should_expand_after_rejection(rejection_reason):
-            return None
-
-        expansion_candidates: list[str] = []
-        expansion_max_seconds = max(4.0, min(12.0, _llama_cpp_max_seconds() / 3.0))
-        for idx, variant in enumerate(("baseline", "specific")):
-            expanded_raw = llama_cpp_generate_text(
-                model_path=model_path,
-                prompt=_build_llama_cpp_expand_prompt(
-                    facts,
-                    draft_summary,
-                    rejection_reason,
-                    variant=variant,
-                ),
-                max_retries=0,
-                max_tokens=max(128, min(196, _llama_cpp_max_tokens() + 72)),
-                temperature=0.0 if idx == 0 else 0.15,
-                top_p=0.95,
-                max_total_seconds=expansion_max_seconds,
-            )
-            expanded_text = _extract_summary_from_raw_text(expanded_raw) if expanded_raw else None
-            if not expanded_text:
-                continue
-            expansion_candidates.append(_restore_anchor_casing(expanded_text, facts))
-
-        if not expansion_candidates:
-            logger.info(
-                "Signature expansion retry unavailable; no expanded candidates (%s)",
-                rejection_reason,
-            )
-            return None
-
-        expanded_best = _select_best_summary_candidate([draft_summary, *expansion_candidates], facts)
-        if not expanded_best:
-            logger.info(
-                "Signature expansion retry could not rank expanded candidates (%s)",
-                rejection_reason,
-            )
-            return None
-        expanded_best = _apply_resume_style_mold_if_better(
-            model_path,
-            facts,
-            expanded_best,
-            context="expansion",
-        )
-        expanded_best = _apply_fluency_polish_if_better(
-            model_path,
-            facts,
-            expanded_best,
-            context="expansion",
-        )
-
-        expanded_repaired = _repair_summary_with_grounded_fallback(
-            expanded_best,
-            facts,
-            allow_fallback=False,
-        )
-        if not expanded_repaired:
-            expanded_normalized = _normalize_summary(expanded_best or "")
-            expanded_normalized = _remove_invalid_sentences(
-                expanded_normalized,
-                facts.get("project_names", []),
-            )
-            expanded_normalized = _polish_summary(expanded_normalized)
-            expanded_normalized = _trim_to_sentences(expanded_normalized, max_sentences=3)
-            expanded_reason = "empty_normalized"
-            expanded_words = len(expanded_normalized.split()) if expanded_normalized else 0
-            expanded_sentences = _sentence_count(expanded_normalized) if expanded_normalized else 0
-            if expanded_normalized:
-                expanded_reason = _is_valid_summary(expanded_normalized, facts)[1]
-            logger.info(
-                "Signature expansion retry rejected candidate (initial_reason=%s, expanded_reason=%s, expanded_words=%d, expanded_sentences=%d)",
-                rejection_reason,
-                expanded_reason,
-                expanded_words,
-                expanded_sentences,
-            )
-            return None
-
-        expanded_ok, expanded_reason = _is_valid_summary(expanded_repaired, facts)
-        if not expanded_ok:
-            logger.info(
-                "Signature expansion retry still invalid (%s)",
-                expanded_reason,
-            )
-            return None
-
-        logger.info(
-            "Signature expansion retry accepted via llama-cpp (initial_reason=%s)",
-            rejection_reason,
-        )
-        return expanded_repaired
-
-    elapsed = perf_counter() - started_at
-    if not summary_text:
-        logger.warning(
-            "llama-cpp signature generation failed validation/response (%s, elapsed=%.1fs)",
-            last_validation_reason,
-            elapsed,
-        )
-        return None
-
-    repaired = _repair_summary_with_grounded_fallback(summary_text, facts, allow_fallback=False)
-    if not repaired:
-        normalized = _normalize_summary(summary_text or "")
-        normalized = _remove_invalid_sentences(normalized, facts.get("project_names", []))
-        normalized = _polish_summary(normalized)
-        normalized = _trim_to_sentences(normalized, max_sentences=3)
-        rejection_reason = "empty_normalized"
-        if normalized:
-            _ok, rejection_reason = _is_valid_summary(normalized, facts)
-        expanded = _attempt_expansion_retry(summary_text, rejection_reason)
-        if expanded:
-            return expanded
-        logger.warning(
-            "llama-cpp signature generation produced invalid repaired summary (%s, elapsed=%.1fs)",
-            rejection_reason,
-            elapsed,
-        )
-        return None
-    ok, reason = _is_valid_summary(repaired, facts)
-    if not ok:
-        expanded = _attempt_expansion_retry(repaired, reason)
-        if expanded:
-            return expanded
-        logger.warning(
-            "llama-cpp signature summary still invalid (%s, elapsed=%.1fs)",
-            reason,
-            elapsed,
-        )
-        return None
-    logger.info("llama-cpp signature generation finished in %.1fs", elapsed)
-    return repaired
-
-
-def _has_redundant_repetition(summary: str) -> bool:
-    """
-    Detect substantial repetition at sentence and phrase level.
-
-    We reject summaries that restate the same domain point with high lexical
-    overlap or repeated 4-gram phrases.
-    """
-    sentences = _split_sentences(summary)
-    if len(sentences) >= 2:
-        for i in range(len(sentences)):
-            left_tokens = set(_tokenize_words(sentences[i]))
-            left_domains = _sentence_domains(sentences[i])
-            for j in range(i + 1, len(sentences)):
-                right_tokens = set(_tokenize_words(sentences[j]))
-                right_domains = _sentence_domains(sentences[j])
-                if not (left_domains & right_domains):
-                    continue
-                if _jaccard_similarity(left_tokens, right_tokens) >= 0.62:
-                    return True
-
-    tokens = _tokenize_words(summary)
-    if len(tokens) < 12:
-        return False
-
-    seen_ngrams: set[tuple[str, str, str, str]] = set()
-    for i in range(len(tokens) - 3):
-        ngram = (tokens[i], tokens[i + 1], tokens[i + 2], tokens[i + 3])
-        if ngram in seen_ngrams:
-            return True
-        seen_ngrams.add(ngram)
-
-    return False
-
-
-def _join_phrases(items: list[str], limit: int = 3) -> str:
-    """Join short phrase lists with readable English conjunctions."""
-    trimmed = [item for item in items if item][:limit]
-    if not trimmed:
-        return ""
-    if len(trimmed) == 1:
-        return trimmed[0]
-    if len(trimmed) == 2:
-        return f"{trimmed[0]} and {trimmed[1]}"
-    return f"{', '.join(trimmed[:-1])}, and {trimmed[-1]}"
-
-
-def _role_phrase(role: str | None) -> str:
-    """Map internal role labels to resume-friendly identity phrases."""
-    if not role:
-        return "software contributor"
-    lowered = role.lower()
-    if "leader" in lowered:
-        return "technical contributor with leadership experience"
-    if "solo" in lowered:
-        return "independent software contributor"
-    if "core" in lowered:
-        return "core engineering contributor"
-    return "software contributor"
-
-
-def _stage_identity_phrase(experience_stage: str | None, role: str | None) -> str:
-    """Select stage-aware opening identity text for the summary."""
-    stage = _normalize_stage_label(experience_stage) or (experience_stage or "").lower()
-    role_phrase = _role_phrase(role)
-    proficiency = _proficiency_level_from_stage(stage)
-
-    if stage == "student":
-        if proficiency:
-            return f"{proficiency} Computer Science student"
-        return "Data-driven Computer Science student"
-    if stage == "early-career":
-        if proficiency:
-            return f"{proficiency} {role_phrase}"
-        return f"Early-career {role_phrase}"
-    if stage == "experienced":
-        if proficiency:
-            return f"{proficiency} software engineer"
-        return "Experienced software engineer"
-    return role_phrase.capitalize()
-
-
-def _focus_phrase(focus: str | None) -> str:
-    """Map inferred focus categories to polished narrative focus phrases."""
-    focus_map = {
-        "Analytics": "data and analytics delivery",
-        "Backend": "backend systems and service reliability",
-        "Frontend": "product interface quality and usability",
-        "ML": "applied machine learning and model-driven workflows",
-        "DevOps": "delivery pipelines and platform operations",
-    }
-    return focus_map.get(focus, "practical software development")
-
-
-def _build_professional_fallback(facts: dict[str, Any]) -> str | None:
-    """Deterministic summary when model output is unavailable or rejected."""
-    top_skills = facts.get("top_skills", []) or []
-    top_languages = facts.get("top_languages", []) or []
-    tools = facts.get("tools", []) or []
-    activities = facts.get("activities", []) or []
-    emerging = facts.get("emerging", []) or []
-    commit_focus = facts.get("commit_focus")
-    cadence = facts.get("cadence")
-    focus = facts.get("focus")
-    role = facts.get("role")
-    experience_stage = facts.get("experience_stage")
-
-    stack_items = list(dict.fromkeys([*top_skills[:2], *top_languages[:1], *tools[:1]]))
-    stack = _join_phrases(stack_items, limit=4)
-    activity_phrase = _join_phrases(activities, limit=2)
-    emerging_phrase = _join_phrases(emerging, limit=2)
-
-    sentence_1 = (
-        f"{_stage_identity_phrase(experience_stage, role)} focused on {_focus_phrase(focus)}."
-    )
-
-    delivery_parts: list[str] = []
-    if commit_focus:
-        delivery_parts.append(f"{commit_focus} delivery")
-    if cadence and cadence not in {"steady", "unknown"}:
-        delivery_parts.append(f"{cadence} execution patterns")
-    if activity_phrase:
-        delivery_parts.append(activity_phrase)
-    if not delivery_parts:
-        delivery_parts.append("measurable engineering outcomes")
-    sentence_2 = (
-        f"Recent work delivers {_join_phrases(delivery_parts, limit=2)} through reliable, outcome-oriented implementation."
-    )
-
-    if stack:
-        sentence_3 = f"Core stack includes {stack}."
-    else:
-        sentence_3 = "Builds maintainable software with clear technical communication."
-
-    if emerging_phrase:
-        stage = (experience_stage or "").lower()
-        if stage == "student":
-            sentence_3 = f"{sentence_3.rstrip('.')} while building applied depth in {emerging_phrase} through portfolio work."
-        elif stage == "experienced":
-            sentence_3 = (
-                f"{sentence_3.rstrip('.')} while continuing to expand applied depth in {emerging_phrase} "
-                "with mature engineering judgment."
-            )
-        else:
-            sentence_3 = f"{sentence_3.rstrip('.')} while currently expanding applied depth in {emerging_phrase} through portfolio work."
-    else:
-        sentence_3 = f"{sentence_3.rstrip('.')} Communicates technical decisions clearly to engineering and business stakeholders."
-
-    summary = " ".join([sentence_1, sentence_2, sentence_3]).strip()
-    summary = _normalize_summary(summary)
-    summary = _remove_percentage_mentions(summary)
-    summary = _remove_invalid_sentences(summary, facts.get("project_names", []))
-    summary = _polish_summary(summary)
-    summary = _trim_to_sentences(summary, max_sentences=3)
-    return summary if summary else None
-
-
-def _validated_fallback_summary(facts: dict[str, Any], *, context: str) -> str | None:
-    """Build and validate deterministic fallback summary."""
-    fallback_summary = _build_professional_fallback(facts)
-    if not fallback_summary:
-        logger.info("Signature fallback unavailable%s (reason=builder_returned_empty)", context)
-        return None
-    fallback_words = len(fallback_summary.split())
-    fallback_sentences = _sentence_count(fallback_summary)
-    is_ok, reason = _is_valid_summary(fallback_summary, facts)
-    if not is_ok:
-        logger.warning(
-            "Fallback summary rejected%s (%s, words=%d, sentences=%d): %s",
-            context,
-            reason,
-            fallback_words,
-            fallback_sentences,
-            fallback_summary[:200],
-        )
-        return None
-    logger.info(
-        "Fallback summary validated%s (words=%d, sentences=%d)",
-        context,
-        fallback_words,
-        fallback_sentences,
-    )
-    return fallback_summary
-
-
-def _repair_summary_with_grounded_fallback(
-    summary: str | None,
-    facts: dict[str, Any],
-    *,
-    allow_fallback: bool = True,
-) -> str | None:
-    """
-    Normalize and salvage borderline ML output before final validation.
-
-    If the output is substantially malformed (very short/list-like/anchor-missing),
-    use a grounded deterministic fallback sentence set to keep output stable.
-    """
-    raw_summary = summary or ""
-    raw_words = len(raw_summary.split())
-    raw_sentences = _sentence_count(raw_summary) if raw_summary else 0
-    logger.info(
-        "Signature repair start (raw_words=%d, raw_sentences=%d, ml_required=%s)",
-        raw_words,
-        raw_sentences,
-        _ml_required(),
-    )
-
-    normalized = _normalize_summary(raw_summary)
-    normalized = _remove_percentage_mentions(normalized)
-    cleaned = _remove_invalid_sentences(normalized, facts.get("project_names", []))
-    polished = _polish_summary(cleaned)
-    normalized = _trim_to_sentences(polished, max_sentences=3)
-    normalized = _ensure_proficiency_in_opening(normalized, facts)
-    normalized = _remove_percentage_mentions(normalized)
-    normalized = _normalize_summary(normalized)
-    normalized_words = len(normalized.split()) if normalized else 0
-    normalized_sentences = _sentence_count(normalized) if normalized else 0
-    logger.info(
-        "Signature repair normalized output (words=%d, sentences=%d)",
-        normalized_words,
-        normalized_sentences,
-    )
-
-    # In ML-only mode (or when explicitly requested), never inject
-    # deterministic template text during repair.
-    if _ml_required() or not allow_fallback:
-        if not normalized:
-            logger.info("Signature summary rejected in ML-only repair mode (reason=empty_normalized)")
-            return None
-        is_ok, reason = _is_valid_summary(normalized, facts)
-        if not is_ok and reason == "missing_delivery_signal":
-            injected = _inject_delivery_signal(normalized, facts)
-            if injected:
-                injected_ok, injected_reason = _is_valid_summary(injected, facts)
-                if injected_ok:
-                    logger.info(
-                        "Signature repair injected delivery signal and accepted ML-only summary "
-                        "(words=%d, sentences=%d)",
-                        len(injected.split()),
-                        _sentence_count(injected),
-                    )
-                    return injected
-                logger.info(
-                    "Signature repair delivery-signal injection still invalid in ML-only mode (%s)",
-                    injected_reason,
-                )
-        if not is_ok:
-            logger.info(
-                "Signature summary rejected in ML-only repair mode (reason=%s, words=%d, sentences=%d)",
-                reason,
-                normalized_words,
-                normalized_sentences,
-            )
-            return None
-        logger.info(
-            "Signature repair accepted ML-only summary (words=%d, sentences=%d)",
-            normalized_words,
-            normalized_sentences,
-        )
-        return normalized
-
-    if not normalized:
-        logger.info("Signature repair produced empty normalized output; attempting deterministic fallback")
-        return _validated_fallback_summary(facts, context=" after empty ML output")
-
-    is_ok, reason = _is_valid_summary(normalized, facts)
-    if is_ok:
-        logger.info(
-            "Signature repair accepted normalized ML summary (words=%d, sentences=%d)",
-            normalized_words,
-            normalized_sentences,
-        )
-        return normalized
-
-    logger.info(
-        "Signature repair validation failed before fallback (reason=%s, words=%d, sentences=%d)",
-        reason,
-        normalized_words,
-        normalized_sentences,
-    )
-    fallback_summary = _validated_fallback_summary(facts, context=" after ML validation failure")
-    if not fallback_summary:
-        logger.warning(
-            "Signature repair could not validate deterministic fallback; returning normalized ML output (reason=%s)",
-            reason,
-        )
-        return normalized
-    fallback_words = len(fallback_summary.split())
-    fallback_sentences = _sentence_count(fallback_summary)
-
-    short_or_malformed = (
-        reason.startswith("word_count=")
-        or reason.startswith("sentence_count=")
-        or reason in {
-            "list_like",
-            "prompt_echo",
-            "no_skill_language_tool_anchor",
-            "mentions_project_name",
-            "example_overlap",
-            "redundant_repetition",
-            "meta_summary_marker",
-            "fragment_sentence",
-        }
-    )
-    if short_or_malformed:
-        logger.info(
-            "Signature summary fallback engaged after ML validation failure "
-            "(reason=%s, normalized_words=%d, normalized_sentences=%d, "
-            "fallback_words=%d, fallback_sentences=%d)",
-            reason,
-            normalized_words,
-            normalized_sentences,
-            fallback_words,
-            fallback_sentences,
-        )
-        return fallback_summary
-
-    merged = f"{normalized.rstrip('.')} {fallback_summary}"
-    merged = _normalize_summary(merged)
-    merged = _remove_invalid_sentences(merged, facts.get("project_names", []))
-    merged = _polish_summary(merged)
-    merged = _trim_to_sentences(merged, max_sentences=3)
-    merged_words = len(merged.split()) if merged else 0
-    merged_sentences = _sentence_count(merged) if merged else 0
-    merged_ok, merged_reason = _is_valid_summary(merged, facts)
-    if merged_ok:
-        logger.info(
-            "Signature repair accepted merged summary (merged_words=%d, merged_sentences=%d)",
-            merged_words,
-            merged_sentences,
-        )
-        return merged
-    logger.info(
-        "Signature summary fallback engaged after merged summary validation failure "
-        "(initial_reason=%s, merged_reason=%s, merged_words=%d, merged_sentences=%d)",
-        reason,
-        merged_reason,
-        merged_words,
-        merged_sentences,
-    )
-    return fallback_summary
-
-
 def generate_signature(facts: dict[str, Any]) -> str | None:
     """
     Generate a dynamic developer signature using a local LLM.
@@ -2805,6 +1370,16 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         _remember_user_summary(cached)
         return cached
 
+    def _use_deterministic_fallback(context: str, log_message: str) -> str | None:
+        if _ml_required():
+            return None
+        fallback_summary = _validated_fallback_summary(facts, context=context)
+        if fallback_summary:
+            _remember_user_summary(fallback_summary)
+            logger.info(log_message)
+            return fallback_summary
+        return None
+
     if azure_openai_enabled():
         azure_summary = _generate_signature_with_azure_openai(facts)
         if azure_summary:
@@ -2814,46 +1389,19 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             _remember_user_summary(azure_summary)
             logger.info("[TASK=USER_SUMMARY] Generated successfully via Azure OpenAI")
             return azure_summary
-        if _ml_required():
-            return None
-        fallback_summary = _validated_fallback_summary(facts, context=" after Azure generation failure")
-        if fallback_summary:
-            _remember_user_summary(fallback_summary)
-            logger.info("[TASK=USER_SUMMARY] Generated from deterministic fallback")
-            return fallback_summary
-        return None
+        return _use_deterministic_fallback(
+            " after Azure generation failure",
+            "[TASK=USER_SUMMARY] Generated from deterministic fallback",
+        )
 
-    llama_cpp_summary = _generate_signature_with_llama_cpp(facts)
-    if llama_cpp_summary:
-        llama_cpp_summary = _rewrite_summary_for_diversity_if_needed(llama_cpp_summary, facts)
-        if _cache_enabled():
-            _CACHE[cache_key] = llama_cpp_summary
-        _remember_user_summary(llama_cpp_summary)
-        logger.info("Signature summary generated successfully via llama-cpp")
-        return llama_cpp_summary
-
-    if llama_cpp_enabled():
-        logger.warning("llama-cpp signature generation unavailable or invalid")
-        if _ml_required():
-            return None
-        fallback_summary = _validated_fallback_summary(facts, context="")
-        if fallback_summary:
-            _remember_user_summary(fallback_summary)
-            logger.info("Signature summary generated from deterministic fallback")
-            return fallback_summary
-        return None
 
     model, tokenizer = _load_model()
     if model is None or tokenizer is None:
         logger.warning("Signature summary skipped: model not available")
-        if _ml_required():
-            return None
-        fallback_summary = _validated_fallback_summary(facts, context="")
-        if fallback_summary:
-            _remember_user_summary(fallback_summary)
-            logger.info("Signature summary generated from deterministic fallback")
-            return fallback_summary
-        return None
+        return _use_deterministic_fallback(
+            "",
+            "Signature summary generated from deterministic fallback",
+        )
 
     prompt = _build_prompt(facts, strict=False, include_example=True)
 
@@ -2916,24 +1464,16 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             logger.warning("Summary rejected after strict pass (%s): %s", reason, summary[:200])
         else:
             logger.warning("Summary rejected after strict pass: empty output")
-        if _ml_required():
-            return None
-        fallback_summary = _validated_fallback_summary(facts, context=" after ML failure")
-        if fallback_summary:
-            _remember_user_summary(fallback_summary)
-            logger.info("Signature summary generated from deterministic fallback after ML rejection")
-            return fallback_summary
-        return None
+        return _use_deterministic_fallback(
+            " after ML failure",
+            "Signature summary generated from deterministic fallback after ML rejection",
+        )
     except Exception:
         logger.exception("Signature generation failed")
-        if _ml_required():
-            return None
-        fallback_summary = _validated_fallback_summary(facts, context=" after exception")
-        if fallback_summary:
-            _remember_user_summary(fallback_summary)
-            logger.info("Signature summary generated from deterministic fallback after exception")
-            return fallback_summary
-        return None
+        return _use_deterministic_fallback(
+            " after exception",
+            "Signature summary generated from deterministic fallback after exception",
+        )
 
 
 def build_signature_facts(

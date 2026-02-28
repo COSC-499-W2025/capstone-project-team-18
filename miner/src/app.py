@@ -49,11 +49,6 @@ def init_system() -> tuple[bool, str]:
         from src.core.ML.models.contribution_analysis.role_analyzer import _get_role_classifier
         from src.core.ML.models.readme_analysis.readme_insights import _get_classifier as get_readme_tone_classifier
         from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
-        from src.core.ML.models.llama_cpp_runtime import (
-            llama_cpp_enabled,
-            resolve_llama_cpp_model_path,
-            warmup_llama_cpp_model,
-        )
 
         loaded_components: list[str] = []
 
@@ -69,42 +64,7 @@ def init_system() -> tuple[bool, str]:
             logger.info(message)
             return True, message
 
-        if llama_cpp_enabled() and ml_extraction_allowed():
-            signature_path = resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_SIGNATURE_MODEL_PATH")
-            project_path = resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_PROJECT_MODEL_PATH")
-
-            if not signature_path:
-                logger.warning("llama-cpp enabled but no signature GGUF model path could be resolved")
-            if not project_path:
-                logger.warning("llama-cpp enabled but no project-summary GGUF model path could be resolved")
-
-            if (
-                signature_path
-                and
-                os.environ.get("ARTIFACT_MINER_DISABLE_SIGNATURE_MODEL") != "1"
-                and warmup_llama_cpp_model(signature_path)
-            ):
-                loaded_components.append("signature summary (llama-cpp)")
-
-            if project_path and project_path == signature_path:
-                if (
-                    os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") != "1"
-                    and "signature summary (llama-cpp)" in loaded_components
-                ):
-                    loaded_components.append("project summary (llama-cpp)")
-                elif (
-                    os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") != "1"
-                    and warmup_llama_cpp_model(project_path)
-                ):
-                    loaded_components.append("project summary (llama-cpp)")
-            elif (
-                project_path
-                and
-                os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") != "1"
-                and warmup_llama_cpp_model(project_path)
-            ):
-                loaded_components.append("project summary (llama-cpp)")
-        else:
+        if ml_extraction_allowed():
             signature_model, signature_tokenizer = load_signature_model()
             if signature_model is not None and signature_tokenizer is not None:
                 loaded_components.append("signature summary")

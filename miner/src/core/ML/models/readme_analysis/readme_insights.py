@@ -31,7 +31,6 @@ _TOPIC_MODEL = None
 _TOPIC_FAILED = False
 _EMBEDDING_MODEL = None
 _EMBEDDING_FAILED = False
-_TOPIC_SINGLE_CACHE: dict[int, list[str]] = {}
 _TOPIC_CORPUS_CACHE: dict[int, list[list[str]]] = {}
 
 # BERTopic is slow and noisy on tiny corpora; skip below these thresholds.
@@ -181,18 +180,6 @@ def _get_classifier():
     return _ZSC_PIPELINE
 
 
-def _classify_labels(text: str, labels: list[str], threshold: float, max_labels: int) -> list[str]:
-    """Score text against labels and return top matches above threshold."""
-    classifier = _get_classifier()
-    if classifier is None:
-        return []
-    result = classifier(text, labels, multi_label=True)
-    ranked = [
-        label for label, score in zip(result["labels"], result["scores"])
-        if score >= threshold
-    ]
-    return ranked[:max_labels]
-
 def _get_topic_model():
     global _TOPIC_MODEL, _TOPIC_FAILED
     """Return the cached BERTopic model, or None if unavailable/disabled."""
@@ -300,32 +287,6 @@ def _extract_themes_small_corpus(texts: list[str], max_themes: int) -> list[list
     except Exception:
         logger.exception("Small-corpus theme fallback failed")
         return _theme_fallback_keyphrases(texts, max_themes)
-
-
-def _extract_topics(text: str, max_topics: int) -> list[str]:
-    """Extract top topic terms from BERTopic for a single README.
-    Uses an in-memory cache to avoid recomputing for the same text.
-    """
-    model = _get_topic_model()
-    if model is None:
-        return []
-    cache_key = hash(text)
-    cached = _TOPIC_SINGLE_CACHE.get(cache_key)
-    if cached is not None:
-        return cached[:max_topics]
-    try:
-        topics, _ = model.fit_transform([text])
-        topic_id = topics[0]
-        if topic_id == -1:
-            return []
-        topic_terms = model.get_topic(topic_id) or []
-        labels = [term for term, _score in topic_terms][:max_topics]
-        labels = _clean_theme_terms(labels)
-        _TOPIC_SINGLE_CACHE[cache_key] = labels
-        return labels
-    except Exception:
-        logger.exception("Failed to extract BERTopic themes from README")
-        return []
 
 
 def _corpus_cache_key(texts: list[str]) -> int:

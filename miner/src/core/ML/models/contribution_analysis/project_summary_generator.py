@@ -9,13 +9,7 @@ from pydantic import BaseModel
 
 from src.core.ML.models.azure_foundry_manager import AzureFoundryManager
 from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
-from src.core.ML.models.model_runtime import cuda_available, get_causal_lm
-from src.core.ML.models.llama_cpp_runtime import (
-    llama_cpp_enabled,
-    resolve_llama_cpp_model_path,
-    llama_cpp_generate_json_object,
-    llama_cpp_generate_text,
-)
+from src.core.ML.models.model_runtime import get_causal_lm
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 
@@ -46,9 +40,6 @@ _TOKENIZER = None
 _MODEL_FAILED = False
 _ML_DISABLED_FOR_RUN = False
 _CACHE: dict[str, str] = {}
-_LLAMA_CPP_TOTAL_SECONDS = 0.0
-_LLAMA_CPP_RUN_BUDGET_OVERRIDE_SECONDS: float | None = None
-_LLAMA_CPP_PER_PROJECT_MAX_OVERRIDE_SECONDS: float | None = None
 
 
 def _ml_required() -> bool:
@@ -56,91 +47,13 @@ def _ml_required() -> bool:
     return os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_REQUIRE_ML") == "1"
 
 
-def _clamp(value: float, lower: float, upper: float) -> float:
-    """Clamp numeric values to a closed interval."""
-    return max(lower, min(upper, value))
-
-
 def configure_project_summary_run(project_count: int):
     """
-    Configure dynamic llama-cpp timing budgets for the current portfolio run.
-
-    This function is intended to be called once before iterating project
-    summaries. It resets per-run counters and computes dynamic budget values
-    from project_count unless explicitly disabled.
+    Reset per-run project-summary state before portfolio generation.
     """
+    del project_count  # Reserved for compatibility with existing call sites.
     global _ML_DISABLED_FOR_RUN
-    global _LLAMA_CPP_TOTAL_SECONDS
-    global _LLAMA_CPP_RUN_BUDGET_OVERRIDE_SECONDS
-    global _LLAMA_CPP_PER_PROJECT_MAX_OVERRIDE_SECONDS
-
     _ML_DISABLED_FOR_RUN = False
-    _LLAMA_CPP_TOTAL_SECONDS = 0.0
-    _LLAMA_CPP_RUN_BUDGET_OVERRIDE_SECONDS = None
-    _LLAMA_CPP_PER_PROJECT_MAX_OVERRIDE_SECONDS = None
-
-    if os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_DYNAMIC_BUDGET", "1") == "0":
-        logger.info("Project summary dynamic budget disabled via env variable")
-        return
-
-    if project_count <= 0:
-        return
-
-    try:
-        count = max(1, int(project_count))
-    except (TypeError, ValueError):
-        count = 1
-
-    explicit_run_budget = bool(os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_RUN_BUDGET_SEC"))
-    explicit_per_project = bool(os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_SEC"))
-    if explicit_run_budget:
-        logger.info("Project summary dynamic run budget skipped due to explicit run budget env")
-    if explicit_per_project:
-        logger.info("Project summary dynamic per-project timeout skipped due to explicit max-sec env")
-
-    fast_mode = _fast_mode_enabled()
-    target_total = _env_float(
-        "ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_TARGET_TOTAL_SEC",
-        300.0 if fast_mode else 480.0,
-    )
-    warmup = _env_float(
-        "ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_WARMUP_SEC",
-        25.0 if fast_mode else 40.0,
-    )
-    min_per_project = _env_float(
-        "ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MIN_PER_PROJECT_SEC",
-        10.0 if fast_mode else 14.0,
-    )
-    max_per_project = _env_float(
-        "ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_PER_PROJECT_SEC",
-        35.0 if fast_mode else 60.0,
-    )
-    if max_per_project < min_per_project:
-        max_per_project = min_per_project
-
-    distributable = max(min_per_project, target_total - warmup)
-    per_project = _clamp(distributable / float(count), min_per_project, max_per_project)
-    raw_run_budget = warmup + (per_project * float(count))
-    run_budget = max(30.0, min(target_total, raw_run_budget))
-
-    if not explicit_per_project:
-        _LLAMA_CPP_PER_PROJECT_MAX_OVERRIDE_SECONDS = per_project
-    if not explicit_run_budget:
-        _LLAMA_CPP_RUN_BUDGET_OVERRIDE_SECONDS = run_budget
-
-    logger.info(
-        (
-            "Configured dynamic project-summary llama budget: projects=%d, "
-            "per_project=%.1fs, run_budget=%.1fs (target_total=%.1fs, warmup=%.1fs, explicit_run_budget=%s, explicit_per_project=%s)"
-        ),
-        count,
-        per_project,
-        run_budget,
-        target_total,
-        warmup,
-        explicit_run_budget,
-        explicit_per_project,
-    )
 
 
 def _fast_mode_enabled() -> bool:
@@ -190,38 +103,6 @@ def _strict_retry_enabled() -> bool:
     return not _fast_mode_enabled()
 
 
-def _llama_cpp_max_tokens() -> int:
-    """
-    Keep project-summary generation tightly bounded for CLI responsiveness.
-    """
-    default = 120 if _fast_mode_enabled() else 160
-    return max(64, min(220, _env_int("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_TOKENS", default)))
-
-
-def _llama_cpp_max_retries() -> int:
-    """
-    Default to one attempt in fast mode; fallback/repair handles malformed text.
-    """
-    default = 1 if _fast_mode_enabled() else 2
-    return max(0, min(3, _env_int("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_RETRIES", default)))
-
-
-def _llama_cpp_max_total_seconds() -> float:
-    """Per-project upper budget for llama-cpp generation attempts."""
-    if _LLAMA_CPP_PER_PROJECT_MAX_OVERRIDE_SECONDS is not None:
-        return _LLAMA_CPP_PER_PROJECT_MAX_OVERRIDE_SECONDS
-    default = 45.0 if _fast_mode_enabled() else 90.0
-    return max(8.0, _env_float("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_MAX_SEC", default))
-
-
-def _llama_cpp_run_budget_seconds() -> float:
-    """Total run-time budget for llama-cpp project summaries across a CLI run."""
-    if _LLAMA_CPP_RUN_BUDGET_OVERRIDE_SECONDS is not None:
-        return _LLAMA_CPP_RUN_BUDGET_OVERRIDE_SECONDS
-    default = 180.0 if _fast_mode_enabled() else 300.0
-    return max(30.0, _env_float("ARTIFACT_MINER_PROJECT_SUMMARY_LLAMA_RUN_BUDGET_SEC", default))
-
-
 def _disable_ml_if_slow(elapsed_seconds: float):
     """
     Disable ML summaries for the remainder of the current process if generation
@@ -239,33 +120,6 @@ def _disable_ml_if_slow(elapsed_seconds: float):
             elapsed_seconds,
             threshold,
         )
-
-
-def _disable_llama_cpp_if_over_budget(elapsed_seconds: float):
-    """
-    Disable llama-cpp project summaries once cumulative time exceeds budget.
-    """
-    global _ML_DISABLED_FOR_RUN, _LLAMA_CPP_TOTAL_SECONDS
-    _LLAMA_CPP_TOTAL_SECONDS += max(0.0, float(elapsed_seconds))
-    budget = _llama_cpp_run_budget_seconds()
-    if _LLAMA_CPP_TOTAL_SECONDS > budget:
-        _ML_DISABLED_FOR_RUN = True
-        logger.warning(
-            "llama-cpp project summaries exceeded run budget (%.1fs > %.1fs); using deterministic fallback for remaining projects",
-            _LLAMA_CPP_TOTAL_SECONDS,
-            budget,
-        )
-
-
-def _get_model_name() -> str:
-    """Select model from env override or sensible local default."""
-    override = os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_MODEL")
-    if override:
-        return override
-
-    if cuda_available():
-        return "microsoft/Phi-3-mini-4k-instruct"
-    return "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 
 
 def _load_model():
@@ -291,7 +145,7 @@ def _load_model():
 
     try:
         load_start = perf_counter()
-        model_name = _get_model_name()
+        model_name = os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_MODEL") or "microsoft/Phi-3-mini-4k-instruct"
         logger.info("Loading project summary model: %s", model_name)
         model, tokenizer = get_causal_lm(model_name)
         if model is None or tokenizer is None:
@@ -317,139 +171,6 @@ def _facts_hash(facts: dict[str, Any]) -> str:
 def _cache_enabled() -> bool:
     """Allow disabling cache for strict per-run ML generation checks."""
     return os.environ.get("ARTIFACT_MINER_SUMMARY_CACHE_DISABLE", "0") != "1"
-
-
-def _llama_cpp_model_path() -> str | None:
-    """Resolve GGUF model path for project summary generation."""
-    return resolve_llama_cpp_model_path("ARTIFACT_MINER_LLAMA_CPP_PROJECT_MODEL_PATH")
-
-
-def _build_llama_cpp_prompt(facts: dict[str, Any]) -> str:
-    """
-    Build strict structured prompt for llama-cpp project summary generation.
-    """
-    facts_json = json.dumps(facts, ensure_ascii=True)
-    return (
-        "TASK: PROJECT_SUMMARY\n"
-        "Return exactly one JSON object with this schema:\n"
-        '{"summary":"string"}\n'
-        "Hard constraints:\n"
-        "- 2 to 3 sentences.\n"
-        "- 20 to 130 words.\n"
-        "- Cover goals, stack, and contribution.\n"
-        "- Use only facts from the payload.\n"
-        "- Do not invent tools, roles, percentages, or outcomes.\n"
-        "- Do not include any key besides summary.\n"
-        "- Output must be valid JSON and nothing else.\n\n"
-        f"FACTS_JSON: {facts_json}"
-    )
-
-
-def _build_llama_cpp_plain_prompt(facts: dict[str, Any]) -> str:
-    """
-    Build a plain-text prompt used to recover from malformed JSON responses.
-    """
-    facts_json = json.dumps(facts, ensure_ascii=True)
-    return (
-        "Write a professional project summary in exactly 2 to 3 sentences.\n"
-        "Constraints:\n"
-        "- 20 to 130 words.\n"
-        "- Cover goals, stack, and contribution.\n"
-        "- Use only the facts provided.\n"
-        "- No bullet points.\n"
-        "- Return only the summary text.\n\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        "Summary:"
-    )
-
-
-def _build_llama_cpp_structural_retry_prompt(facts: dict[str, Any], draft_summary: str, rejection_reason: str) -> str:
-    """
-    Build a rewrite prompt for structurally invalid summaries (too short/one sentence).
-    """
-    facts_json = json.dumps(facts, ensure_ascii=True)
-    return (
-        "TASK: PROJECT_SUMMARY_REWRITE\n"
-        "Rewrite DRAFT_SUMMARY into a professional 2 to 3 sentence project summary.\n"
-        "Hard constraints:\n"
-        "- 20 to 130 words.\n"
-        "- Keep only information grounded in FACTS_JSON and DRAFT_SUMMARY.\n"
-        "- Cover goals, stack, and contribution.\n"
-        "- Do not invent tools, percentages, roles, or outcomes.\n"
-        "- No bullet points.\n"
-        "- Return only the rewritten summary text.\n\n"
-        f"REJECTION_REASON: {rejection_reason}\n\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        f"DRAFT_SUMMARY: {draft_summary}\n\n"
-        "Rewritten summary:"
-    )
-
-
-def _extract_summary_from_payload(payload: Any) -> str | None:
-    """
-    Extract summary text from tolerant payload shapes.
-    """
-    if not isinstance(payload, dict):
-        return None
-
-    direct = payload.get("summary")
-    if isinstance(direct, str):
-        return direct
-
-    for key in ("project_summary", "result", "response", "text", "content"):
-        value = payload.get(key)
-        if isinstance(value, str):
-            return value
-        if isinstance(value, dict):
-            nested = _extract_summary_from_payload(value)
-            if nested:
-                return nested
-
-    for value in payload.values():
-        if isinstance(value, str) and len(value.split()) >= 5:
-            return value
-        if isinstance(value, dict):
-            nested = _extract_summary_from_payload(value)
-            if nested:
-                return nested
-    return None
-
-
-def _strip_markdown_fence(text: str) -> str:
-    """
-    Remove single code-fence wrappers around model output.
-    """
-    stripped = text.strip()
-    if not stripped.startswith("```"):
-        return stripped
-
-    lines = stripped.splitlines()
-    if len(lines) < 3:
-        return stripped
-    if not lines[0].startswith("```") or lines[-1].strip() != "```":
-        return stripped
-    return "\n".join(lines[1:-1]).strip()
-
-
-def _extract_summary_from_raw_text(raw_text: str) -> str | None:
-    """
-    Recover summary text when llama-cpp output is not valid JSON.
-    """
-    if not raw_text:
-        return None
-
-    cleaned = _strip_markdown_fence(raw_text)
-
-    # Sometimes the model still returns JSON-ish text in plain mode.
-    try:
-        payload = json.loads(cleaned)
-        summary = _extract_summary_from_payload(payload)
-        if summary:
-            return summary
-    except Exception:
-        pass
-
-    return cleaned
 
 
 def _build_prompt(facts: dict[str, Any], strict: bool = False) -> str:
@@ -1657,34 +1378,6 @@ def _validated_fallback_summary(facts: dict[str, Any], *, context: str) -> str |
     return None
 
 
-def _llama_cpp_response_valid(response: dict[str, Any], facts: dict[str, Any]) -> tuple[bool, str]:
-    """Validate structured llama-cpp response payload."""
-    if not isinstance(response, dict):
-        return False, "not_object"
-
-    summary = _extract_summary_from_payload(response)
-    if not summary:
-        return False, "missing_summary"
-
-    repaired = _repair_summary(summary, facts)
-    if not repaired:
-        return False, "empty_summary"
-    response.clear()
-    response["summary"] = repaired
-    return _is_valid_summary(repaired, facts)
-
-
-def _should_retry_structural_with_llama(reason: str) -> bool:
-    """Retry with an ML rewrite when failure is likely recoverable via reshaping."""
-    if reason in {"list_like", "dangling_numeric_fragment"}:
-        return True
-    if reason.startswith("sentence_count="):
-        return True
-    if reason.startswith("word_count="):
-        return True
-    return False
-
-
 def _generate_project_summary_with_azure_openai(facts: dict[str, Any]) -> str | None:
     """Generate project summary via Azure OpenAI structured output."""
     if not azure_openai_enabled() or not ml_extraction_allowed():
@@ -1731,111 +1424,6 @@ def _generate_project_summary_with_azure_openai(facts: dict[str, Any]) -> str | 
     return repaired if ok else None
 
 
-def _generate_project_summary_with_llama_cpp(facts: dict[str, Any]) -> str | None:
-    """
-    Generate project summary via local llama-cpp GGUF model.
-    """
-    if not llama_cpp_enabled():
-        return None
-    if not ml_extraction_allowed():
-        return None
-    if _ML_DISABLED_FOR_RUN:
-        logger.warning("Project summary skipped: llama-cpp disabled for this run due to prior timeout budget")
-        return None
-    if os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") == "1":
-        return None
-
-    model_path = _llama_cpp_model_path()
-    if not model_path:
-        logger.warning("llama-cpp enabled but no project-summary GGUF model path could be resolved")
-        return None
-
-    project_name = str(facts.get("project_name") or "unknown-project")
-    started_at = perf_counter()
-    logger.info("Project summary llama-cpp start for %s", project_name)
-    response = llama_cpp_generate_json_object(
-        model_path=model_path,
-        prompt=_build_llama_cpp_prompt(facts),
-        validator=lambda payload: _llama_cpp_response_valid(payload, facts),
-        max_retries=_llama_cpp_max_retries(),
-        max_tokens=_llama_cpp_max_tokens(),
-        temperature=0.0,
-        top_p=0.95,
-        max_total_seconds=_llama_cpp_max_total_seconds(),
-    )
-    summary_text = _extract_summary_from_payload(response) if isinstance(response, dict) else None
-
-    # Recover from malformed/non-JSON outputs with one short plain-text pass.
-    if not summary_text:
-        recovery_max_seconds = max(4.0, min(12.0, _llama_cpp_max_total_seconds() / 2.0))
-        raw_text = llama_cpp_generate_text(
-            model_path=model_path,
-            prompt=_build_llama_cpp_plain_prompt(facts),
-            max_retries=0,
-            max_tokens=max(48, min(120, _llama_cpp_max_tokens())),
-            temperature=0.0,
-            top_p=0.95,
-            max_total_seconds=recovery_max_seconds,
-        )
-        summary_text = _extract_summary_from_raw_text(raw_text) if raw_text else None
-
-    elapsed = perf_counter() - started_at
-    _disable_llama_cpp_if_over_budget(elapsed)
-
-    if not summary_text:
-        logger.warning(
-            "llama-cpp project summary failed validation/response for %s (elapsed=%.1fs)",
-            project_name,
-            elapsed,
-        )
-        return None
-
-    repaired = _repair_summary(summary_text, facts)
-    ok, reason = _is_valid_summary(repaired, facts)
-    if not ok and _should_retry_structural_with_llama(reason):
-        retry_max_seconds = max(5.0, min(14.0, _llama_cpp_max_total_seconds() / 2.0))
-        rewrite_text = llama_cpp_generate_text(
-            model_path=model_path,
-            prompt=_build_llama_cpp_structural_retry_prompt(facts, summary_text, reason),
-            max_retries=0,
-            max_tokens=max(56, min(132, _llama_cpp_max_tokens() + 16)),
-            temperature=0.0,
-            top_p=0.95,
-            max_total_seconds=retry_max_seconds,
-        )
-        rewritten = _extract_summary_from_raw_text(rewrite_text) if rewrite_text else None
-        if rewritten:
-            repaired_retry = _repair_summary(rewritten, facts)
-            retry_ok, retry_reason = _is_valid_summary(repaired_retry, facts)
-            if retry_ok:
-                logger.info(
-                    "Project summary structural rewrite retry accepted for %s (initial_reason=%s)",
-                    project_name,
-                    reason,
-                )
-                repaired = repaired_retry
-                ok = True
-            else:
-                logger.info(
-                    "Project summary structural rewrite retry rejected for %s (initial_reason=%s, retry_reason=%s)",
-                    project_name,
-                    reason,
-                    retry_reason,
-                )
-
-    if not ok:
-        logger.warning(
-            "llama-cpp project summary still invalid for %s (%s, elapsed=%.1fs)",
-            project_name,
-            reason,
-            elapsed,
-        )
-        return None
-
-    logger.info("Project summary llama-cpp finished for %s in %.1fs", project_name, elapsed)
-    return repaired
-
-
 def generate_project_summary(facts: dict[str, Any]) -> str | None:
     """
     Generate ML project summary from structured facts.
@@ -1875,16 +1463,6 @@ def generate_project_summary(facts: dict[str, Any]) -> str | None:
             return azure_summary
         return _use_deterministic_fallback(" after Azure generation failure")
 
-    llama_cpp_summary = _generate_project_summary_with_llama_cpp(facts)
-    if llama_cpp_summary:
-        if _cache_enabled():
-            _CACHE[cache_key] = llama_cpp_summary
-        logger.info("Project summary generated successfully via llama-cpp")
-        return llama_cpp_summary
-
-    if llama_cpp_enabled():
-        logger.warning("llama-cpp project summary generation unavailable or invalid")
-        return _use_deterministic_fallback(" after llama-cpp generation failure")
 
     model, tokenizer = _load_model()
     if model is None or tokenizer is None:
