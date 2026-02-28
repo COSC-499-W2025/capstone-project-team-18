@@ -45,7 +45,7 @@ Task: write a first-person developer summary using only FACTS_JSON.
 Constraints:
 - Exactly 3 sentences.
 - 36 to 92 words total.
-- Mention at least one skill, language, or tool from facts.
+- Mention at least two anchors from facts across skills, languages, tools, role, or activities.
 - Include delivery/outcome wording.
 - Do not mention project names.
 """
@@ -1847,6 +1847,23 @@ def _summary_mentions_any(summary: str, items: list[str]) -> bool:
     return False
 
 
+def _anchor_coverage_count(summary: str, facts: dict[str, Any]) -> int:
+    """Count how many distinct anchor groups are referenced in the summary."""
+    groups = {
+        "skills": facts.get("top_skills", []) or [],
+        "languages": facts.get("top_languages", []) or [],
+        "tools": facts.get("tools", []) or [],
+        "role": [facts.get("role")] if facts.get("role") else [],
+        "activities": facts.get("activities", []) or [],
+    }
+    covered = 0
+    for items in groups.values():
+        normalized_items = [str(x).strip() for x in items if str(x).strip()]
+        if normalized_items and _summary_mentions_any(summary, normalized_items):
+            covered += 1
+    return covered
+
+
 def _contains_example_overlap(summary: str) -> bool:
     # Reject if summary overlaps 5+ consecutive words from the example.
     def _tokens(text: str) -> list[str]:
@@ -2018,7 +2035,8 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
         return False, f"sentence_count={sentence_count}"
 
     if _contains_generic_resume_phrasing(summary):
-        return False, "generic_resume_tone"
+        if _anchor_coverage_count(summary, facts) < 2:
+            return False, "generic_resume_tone"
     if re.search(r"(?i)\b\d{1,3}(?:\.\d+)?\s*%|\b\d{1,3}(?:\.\d+)?\s*percent\b", summary):
         return False, "contains_percentage"
     if _contains_second_person_profile_voice(summary):
@@ -2040,6 +2058,8 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     anchors = skills + langs + tools
     if anchors and not _summary_mentions_any(summary, anchors):
         return False, "no_skill_language_tool_anchor"
+    if _anchor_coverage_count(summary, facts) < 2:
+        return False, "insufficient_anchor_coverage"
     if _contains_example_overlap(summary):
         return False, "example_overlap"
     if _has_redundant_repetition(summary):
@@ -2116,6 +2136,29 @@ def _generate_signature_with_azure_openai(facts: dict[str, Any]) -> str | None:
     ok, reason = _is_valid_summary(repaired, facts)
     if not ok:
         logger.warning("[TASK=USER_SUMMARY] Azure output rejected by validator (reason=%s)", reason)
+        if reason == "generic_resume_tone":
+            # One targeted retry to make the summary more fact-anchored.
+            retry = foundry.process_request(
+                user_input=(
+                    f"FACTS_JSON: {json.dumps(prompt_facts, ensure_ascii=True)}\n\n"
+                    f"DRAFT_SUMMARY: {repaired}\n\n"
+                    "Rewrite to be specific to this profile. Mention at least two concrete anchors "
+                    "from skills/languages/tools/role/activities."
+                ),
+                system_prompt=USER_SUMMARY_DIVERSITY_REWRITE_PROMPT,
+                response_model=UserSummaryOutput,
+                schema_name="signature_summary_generic_retry",
+                max_tokens=180,
+                temperature=0.0,
+            )
+            if retry and retry.summary:
+                retried = _repair_summary_with_grounded_fallback(retry.summary, facts, allow_fallback=False)
+                if retried:
+                    retry_ok, retry_reason = _is_valid_summary(retried, facts)
+                    if retry_ok:
+                        logger.info("[TASK=USER_SUMMARY] Azure generic-tone retry accepted")
+                        return retried
+                    logger.warning("[TASK=USER_SUMMARY] Azure generic-tone retry rejected (reason=%s)", retry_reason)
     return repaired if ok else None
 
 
@@ -2775,8 +2818,6 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             return None
         fallback_summary = _validated_fallback_summary(facts, context=" after Azure generation failure")
         if fallback_summary:
-            if _cache_enabled():
-                _CACHE[cache_key] = fallback_summary
             _remember_user_summary(fallback_summary)
             logger.info("[TASK=USER_SUMMARY] Generated from deterministic fallback")
             return fallback_summary
@@ -2797,8 +2838,6 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             return None
         fallback_summary = _validated_fallback_summary(facts, context="")
         if fallback_summary:
-            if _cache_enabled():
-                _CACHE[cache_key] = fallback_summary
             _remember_user_summary(fallback_summary)
             logger.info("Signature summary generated from deterministic fallback")
             return fallback_summary
@@ -2811,8 +2850,6 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             return None
         fallback_summary = _validated_fallback_summary(facts, context="")
         if fallback_summary:
-            if _cache_enabled():
-                _CACHE[cache_key] = fallback_summary
             _remember_user_summary(fallback_summary)
             logger.info("Signature summary generated from deterministic fallback")
             return fallback_summary
@@ -2883,8 +2920,6 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             return None
         fallback_summary = _validated_fallback_summary(facts, context=" after ML failure")
         if fallback_summary:
-            if _cache_enabled():
-                _CACHE[cache_key] = fallback_summary
             _remember_user_summary(fallback_summary)
             logger.info("Signature summary generated from deterministic fallback after ML rejection")
             return fallback_summary
@@ -2895,8 +2930,6 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             return None
         fallback_summary = _validated_fallback_summary(facts, context=" after exception")
         if fallback_summary:
-            if _cache_enabled():
-                _CACHE[cache_key] = fallback_summary
             _remember_user_summary(fallback_summary)
             logger.info("Signature summary generated from deterministic fallback after exception")
             return fallback_summary

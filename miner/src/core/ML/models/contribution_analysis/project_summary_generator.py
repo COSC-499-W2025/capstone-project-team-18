@@ -952,6 +952,27 @@ def _normalize_contribution_percentage_noise(summary: str, facts: dict[str, Any]
         r"\1 \2",
         updated,
     )
+    # Collapse mixed decimal+rounded duplicates around activity labels, e.g.:
+    # "42.86% coding 43%" -> "43% coding"
+    for domain, pct in activity:
+        pct_str = f"{int(round(float(pct)))}"
+        for alias in _domain_aliases(domain):
+            alias_re = re.escape(alias)
+            updated = re.sub(
+                rf"(?i)\b\d{{1,3}}\.\d+%\s+{alias_re}\s+{pct_str}(?:\.0+)?%",
+                rf"{pct_str}% {alias}",
+                updated,
+            )
+            updated = re.sub(
+                rf"(?i)\b{alias_re}\s+\d{{1,3}}\.\d+%\s+{pct_str}(?:\.0+)?%",
+                rf"{alias} {pct_str}%",
+                updated,
+            )
+            updated = re.sub(
+                rf"(?i)\b\d{{1,3}}\.\d+%\s+{alias_re}\s*\(\s*{pct_str}(?:\.0+)?%\s*\)",
+                rf"{pct_str}% {alias}",
+                updated,
+            )
 
     updated = re.sub(r"\s{2,}", " ", updated).strip()
     updated = re.sub(r"\s+,", ",", updated)
@@ -1404,6 +1425,75 @@ def _join_english(items: list[str], limit: int = 3) -> str:
     return f"{', '.join(trimmed[:-1])}, and {trimmed[-1]}"
 
 
+def _canonical_activity_label(domain: str) -> str:
+    """Normalize activity labels for contribution prose."""
+    lowered = str(domain or "").strip().lower()
+    if lowered in {"code", "coding"}:
+        return "coding"
+    if lowered in {"test", "testing", "tests", "qa"}:
+        return "testing"
+    if lowered in {"documentation", "docs", "documenting"}:
+        return "documentation"
+    return lowered
+
+
+def _canonical_contribution_sentence_from_facts(facts: dict[str, Any]) -> str | None:
+    """
+    Build a deterministic contribution sentence from canonical percentages.
+    """
+    if not _percentages_allowed_in_summary(facts):
+        return None
+
+    raw_visible = _resume_visible_activity_domains(facts)
+    visible = {_canonical_activity_label(domain) for domain in raw_visible}
+    activity = []
+    for domain, pct in facts.get("activity_breakdown", []) or []:
+        norm_pct = _normalize_percentage(pct)
+        if norm_pct is None:
+            continue
+        label = _canonical_activity_label(str(domain))
+        if visible and label not in visible:
+            continue
+        activity.append((label, int(round(float(norm_pct)))))
+
+    if len(activity) < 2:
+        return None
+
+    # Deduplicate repeated labels while preserving ranking order.
+    seen: set[str] = set()
+    parts: list[str] = []
+    for label, pct in activity:
+        if label in seen:
+            continue
+        seen.add(label)
+        parts.append(f"{label} {pct}%")
+        if len(parts) >= 3:
+            break
+
+    if len(parts) < 2:
+        return None
+    return f"Contributed through {_join_english(parts, limit=3)}."
+
+
+def _enforce_canonical_contribution_sentence(summary: str, facts: dict[str, Any]) -> str:
+    """
+    Ensure contribution percentages appear when resume-visible percentages exist.
+    """
+    canonical = _canonical_contribution_sentence_from_facts(facts)
+    if not canonical:
+        return summary
+
+    sentences = _sentence_segments(summary)
+    if not sentences:
+        return canonical
+    if len(sentences) == 1:
+        return f"{sentences[0]}. {canonical}"
+    if len(sentences) == 2:
+        return f"{sentences[0]}. {sentences[1]}. {canonical}"
+    # Keep goal+stack wording from ML and enforce canonical contribution ending.
+    return f"{sentences[0]}. {sentences[1]}. {canonical}"
+
+
 def _grounded_summary_fallback(facts: dict[str, Any]) -> str:
     """
     Build a deterministic 3-sentence summary anchored to project facts.
@@ -1494,6 +1584,7 @@ def _repair_summary(summary: str | None, facts: dict[str, Any]) -> str:
     if not _percentages_allowed_in_summary(facts):
         normalized = _strip_all_percentages(normalized)
     normalized = _cleanup_summary_fragments(normalized)
+    normalized = _enforce_canonical_contribution_sentence(normalized, facts)
     if _has_malformed_contribution_phrase(normalized):
         normalized = _cleanup_summary_fragments(_grounded_summary_fallback(facts))
     normalized = _trim_to_max_sentences(
@@ -1767,8 +1858,8 @@ def generate_project_summary(facts: dict[str, Any]) -> str | None:
         fallback_summary = _validated_fallback_summary(facts, context=context)
         if not fallback_summary:
             return None
-        if _cache_enabled():
-            _CACHE[cache_key] = fallback_summary
+        # Do not cache deterministic fallback summaries. This keeps later runs
+        # eligible for fresh ML output once validation/transient issues clear.
         logger.info("[TASK=PROJECT_SUMMARY][PROJECT=%s] Generated from deterministic fallback", project_name)
         return fallback_summary
 

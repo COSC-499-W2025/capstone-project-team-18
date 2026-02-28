@@ -789,6 +789,11 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 contribution_ok,
                 require_ml,
             )
+            logger.info(
+                "[PROJECT_SUMMARY][%s] rejected summary text (always): %s",
+                project_name,
+                summary[:600],
+            )
             if _summary_diagnostics_enabled():
                 logger.info(
                     "[PROJECT_SUMMARY][%s] rejected summary text: %s",
