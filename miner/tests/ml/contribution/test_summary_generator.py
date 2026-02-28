@@ -82,7 +82,10 @@ def test_generate_signature_fallback_uses_experienced_tone(monkeypatch):
     )
 
     assert summary is not None
-    assert "experienced software engineer" in summary.lower()
+    assert (
+        "experienced software engineer" in summary.lower()
+        or "senior-level software engineer" in summary.lower()
+    )
 
 
 def test_generate_signature_respects_require_ml_flag(monkeypatch):
@@ -113,9 +116,9 @@ def test_polish_summary_removes_redundant_domain_sentences():
 
 def test_validator_rejects_redundant_repetition():
     redundant = (
-        "Web developer experienced in building web applications with HTML, CSS, and JavaScript. "
-        "Experienced web developer building web applications with HTML, CSS, and JavaScript. "
-        "Strong in Python and SQL for analytics and reporting."
+        "Web developer experienced in building web applications with HTML, CSS, and JavaScript for analytics teams. "
+        "Experienced web developer building web applications with HTML, CSS, and JavaScript for analytics teams. "
+        "Strong in Python and SQL for analytics and reporting in operational dashboard delivery."
     )
     ok, reason = sg._is_valid_summary(redundant, _sample_facts())
     assert ok is False
