@@ -120,3 +120,24 @@ def test_validator_rejects_redundant_repetition():
     ok, reason = sg._is_valid_summary(redundant, _sample_facts())
     assert ok is False
     assert reason == "redundant_repetition"
+
+
+def test_generate_signature_does_not_cache_deterministic_fallback(monkeypatch):
+    monkeypatch.setattr(sg, "azure_openai_enabled", lambda: True)
+    monkeypatch.setattr(sg, "ml_extraction_allowed", lambda: True)
+    monkeypatch.setattr(sg, "_generate_signature_with_azure_openai", lambda _facts: None)
+    calls = {"count": 0}
+
+    def _fallback(_facts, *, context):
+        calls["count"] += 1
+        return f"Fallback summary {calls['count']}"
+
+    monkeypatch.setattr(sg, "_validated_fallback_summary", _fallback)
+    sg._CACHE.clear()
+
+    summary_one = sg.generate_signature(_sample_facts())
+    summary_two = sg.generate_signature(_sample_facts())
+
+    assert summary_one == "Fallback summary 1"
+    assert summary_two == "Fallback summary 2"
+    assert calls["count"] == 2

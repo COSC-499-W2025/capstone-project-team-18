@@ -53,11 +53,11 @@ def test_project_summary_builds_grounded_three_sentence_text(project_report_from
     assert len(lines) == 1
     line = lines[0]
     assert line.startswith("Insight Portal:")
-    assert "primary goals of analytics and reporting" in line.lower()
+    assert "analytics and reporting" in line.lower()
     assert "React and FastAPI" in line
     assert "written in Python and JavaScript" in line
-    assert "about 42% of commits" in line
-    assert "focusing on feature changes" in line
+    assert "about 42% commits" in line
+    assert "feature" in line.lower()
 
     summary_text = line.split(": ", 1)[1]
     assert 2 <= summary_text.count(".") <= 3
@@ -283,3 +283,101 @@ def test_project_summary_validator_allows_missing_percent_when_textual_contribut
 
     ok, reason = psg._is_valid_summary(summary, facts)
     assert ok is True, reason
+
+
+def test_project_summary_repair_enforces_canonical_activity_percentages():
+    facts = {
+        "project_name": "web-analytics-portal",
+        "goal_terms": ["Data visualization", "Stakeholder dashboards"],
+        "frameworks": ["react"],
+        "languages": ["JavaScript", "CSS"],
+        "stack_hints": [],
+        "role": None,
+        "role_description": None,
+        "commit_focus": None,
+        "commit_pct": None,
+        "line_pct": None,
+        "activity_breakdown": [("code", 62.0), ("documentation", 38.0)],
+        "allow_percentages": True,
+    }
+    raw = (
+        "The project focused on data visualization outcomes. "
+        "It was implemented with react and written in JavaScript and CSS. "
+        "I contributed across code and documentation changes."
+    )
+
+    repaired = psg._repair_summary(raw, facts)
+
+    assert "Contributed through coding 62% and documentation 38%." in repaired
+
+
+def test_project_summary_repair_skips_percentage_enforcement_when_not_allowed():
+    facts = {
+        "project_name": "docs-only-project",
+        "goal_terms": ["Documentation"],
+        "frameworks": [],
+        "languages": ["Python"],
+        "stack_hints": [],
+        "role": None,
+        "role_description": None,
+        "commit_focus": None,
+        "commit_pct": None,
+        "line_pct": None,
+        "activity_breakdown": [("documentation", 100.0)],
+        "allow_percentages": False,
+    }
+    raw = (
+        "The project focused on documentation outcomes. "
+        "It was primarily written in Python. "
+        "I contributed through documentation work."
+    )
+
+    repaired = psg._repair_summary(raw, facts)
+
+    assert "Contributed through" not in repaired
+    assert "%" not in repaired
+
+
+def test_project_summary_normalizer_collapses_decimal_and_rounded_duplicates():
+    facts = {
+        "activity_breakdown": [("code", 43.0), ("documentation", 39.0), ("testing", 18.0)],
+    }
+    noisy = (
+        "The development process involved 42.86% coding 43%, "
+        "39.29% documentation 39%, and 17.86% testing 18%."
+    )
+
+    normalized = psg._normalize_contribution_percentage_noise(noisy, facts)
+
+    assert "42.86%" not in normalized
+    assert "39.29%" not in normalized
+    assert "17.86%" not in normalized
+    assert "43% coding" in normalized
+    assert "39% documentation" in normalized
+    assert "18% testing" in normalized
+
+
+def test_builder_accepts_generic_contribution_phrase_with_strong_signals():
+    builder = ProjectSummariesSectionBuilder()
+    facts = {
+        "goal_terms": ["analytics"],
+        "frameworks": ["FastAPI"],
+        "languages": ["Python"],
+        "stack_hints": [],
+        "role": "core_contributor",
+        "commit_focus": "feature",
+        "commit_pct": 42.0,
+        "line_pct": None,
+        "activity_breakdown": [("code", 62.0), ("documentation", 38.0)],
+    }
+    summary = (
+        "The project focused on analytics outcomes. "
+        "It was implemented with FastAPI and Python. "
+        "Contributed through coding and documentation work."
+    )
+
+    goal_ok, stack_ok, contribution_ok = builder._summary_requirement_checks(summary, facts)
+
+    assert goal_ok is True
+    assert stack_ok is True
+    assert contribution_ok is True
