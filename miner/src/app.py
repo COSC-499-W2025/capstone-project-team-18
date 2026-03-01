@@ -43,12 +43,9 @@ def init_system() -> tuple[bool, str]:
         return False, message
 
     try:
-        from src.core.ML.models.contribution_analysis.summary_generator import _load_model as load_signature_model
-        from src.core.ML.models.contribution_analysis.project_summary_generator import _load_model as load_project_model
         from src.core.ML.models.contribution_analysis.commit_classifier import _get_commit_classifier
         from src.core.ML.models.contribution_analysis.role_analyzer import _get_role_classifier
         from src.core.ML.models.readme_analysis.readme_insights import _get_classifier as get_readme_tone_classifier
-        from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 
         loaded_components: list[str] = []
 
@@ -63,15 +60,6 @@ def init_system() -> tuple[bool, str]:
             message = f"ML warmup complete: {', '.join(loaded_components)} ready."
             logger.info(message)
             return True, message
-
-        if ml_extraction_allowed():
-            signature_model, signature_tokenizer = load_signature_model()
-            if signature_model is not None and signature_tokenizer is not None:
-                loaded_components.append("signature summary")
-
-            project_model, project_tokenizer = load_project_model()
-            if project_model is not None and project_tokenizer is not None:
-                loaded_components.append("project summary")
 
         if _get_commit_classifier() is not None:
             loaded_components.append("commit classifier")

@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from src.core.ML.models.azure_foundry_manager import AzureFoundryManager
 from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
-from src.core.ML.models.model_runtime import cuda_available, get_causal_lm
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.contribution_analysis.summary_constants import (
     SUMMARY_STYLE_EXAMPLE,
@@ -60,9 +59,6 @@ Constraints:
 - Do not include percentages.
 """
 
-_MODEL = None
-_TOKENIZER = None
-_MODEL_FAILED = False
 _CACHE: dict[str, str] = {}
 _RECENT_USER_SUMMARIES: list[str] = []
 
@@ -103,49 +99,9 @@ def _signature_diagnostics_enabled() -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _get_model_name() -> str:
-    # If no explicit override, choose a smaller model on CPU to avoid OOM.
-    override = os.environ.get("ARTIFACT_MINER_SIGNATURE_MODEL")
-    if override:
-        return override
-
-    if cuda_available():
-        return "microsoft/Phi-3-mini-4k-instruct"
-
-    return "microsoft/Phi-3-mini-4k-instruct"
-
-
 def _load_model():
-    global _MODEL, _TOKENIZER, _MODEL_FAILED
-
-    if not ml_extraction_allowed():
-        return None, None
-
-    if os.environ.get("ARTIFACT_MINER_DISABLE_SIGNATURE_MODEL") == "1":
-        logger.info("Signature model disabled via env variable")
-        return None, None
-
-    if _MODEL_FAILED:
-        return None, None
-
-    if _MODEL is not None and _TOKENIZER is not None:
-        return _MODEL, _TOKENIZER
-
-    try:
-        model_name = _get_model_name()
-        logger.info("Loading signature model: %s", model_name)
-        model, tokenizer = get_causal_lm(model_name)
-        if model is None or tokenizer is None:
-            _MODEL_FAILED = True
-            return None, None
-
-        _MODEL = model
-        _TOKENIZER = tokenizer
-        return _MODEL, _TOKENIZER
-    except Exception:
-        logger.exception("Failed to load signature model")
-        _MODEL_FAILED = True
-        return None, None
+    """Compatibility shim; local non-Azure model generation is removed."""
+    return None, None
 
 
 def _facts_hash(facts: dict[str, Any]) -> str:
@@ -1864,111 +1820,15 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
             return fallback_summary
         return None
 
-    model, tokenizer = _load_model()
-    if model is None or tokenizer is None:
-        logger.warning("Signature summary skipped: model not available")
-        if _ml_required():
-            return None
-        fallback_summary = _validated_fallback_summary(facts, context="")
-        if fallback_summary:
-            _remember_user_summary(fallback_summary)
-            logger.info(
-                "Signature summary generated from deterministic fallback")
-            return fallback_summary
+    logger.info("Signature local-model path removed; using deterministic fallback")
+    if _ml_required():
         return None
-
-    prompt = _build_prompt(facts, strict=False, include_example=True)
-
-    try:
-        reason = "unknown"
-        inputs = tokenizer(prompt, return_tensors="pt")
-        output = model.generate(
-            **inputs,
-            max_new_tokens=140,
-            do_sample=False,
-            temperature=0.0,
-            top_p=1.0,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-
-        decoded = tokenizer.decode(output[0], skip_special_tokens=True)
-        if "Summary:" in decoded:
-            decoded = decoded.split("Summary:", 1)[-1].strip()
-        summary = _repair_summary_with_grounded_fallback(
-            decoded, facts, allow_fallback=False)
-
-        if summary:
-            is_ok, reason = _is_valid_summary(summary, facts)
-            if is_ok:
-                summary = _rewrite_summary_for_diversity_if_needed(
-                    summary, facts)
-                if _cache_enabled():
-                    _CACHE[cache_key] = summary
-                _remember_user_summary(summary)
-                logger.info("Signature summary generated successfully")
-                return summary
-            logger.warning(
-                "Summary rejected by validator (%s): %s", reason, summary[:200])
-
-        # Retry once with a stricter prompt
-        logger.warning(
-            "Signature summary rejected on first pass; retrying with strict prompt")
-        # Retry without the example to avoid copying if overlap was detected.
-        include_example = False if reason == "example_overlap" else True
-        strict_prompt = _build_prompt(
-            facts, strict=True, include_example=include_example)
-        inputs = tokenizer(strict_prompt, return_tensors="pt")
-        output = model.generate(
-            **inputs,
-            max_new_tokens=140,
-            do_sample=False,
-            temperature=0.0,
-            top_p=1.0,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-        decoded = tokenizer.decode(output[0], skip_special_tokens=True)
-        if "Summary:" in decoded:
-            decoded = decoded.split("Summary:", 1)[-1].strip()
-        summary = _repair_summary_with_grounded_fallback(
-            decoded, facts, allow_fallback=False)
-
-        if summary:
-            is_ok, reason = _is_valid_summary(summary, facts)
-            if is_ok:
-                summary = _rewrite_summary_for_diversity_if_needed(
-                    summary, facts)
-                if _cache_enabled():
-                    _CACHE[cache_key] = summary
-                _remember_user_summary(summary)
-                logger.info(
-                    "Signature summary generated successfully (strict pass)")
-                return summary
-            logger.warning(
-                "Summary rejected after strict pass (%s): %s", reason, summary[:200])
-        else:
-            logger.warning("Summary rejected after strict pass: empty output")
-        if _ml_required():
-            return None
-        fallback_summary = _validated_fallback_summary(
-            facts, context=" after ML failure")
-        if fallback_summary:
-            _remember_user_summary(fallback_summary)
-            logger.info(
-                "Signature summary generated from deterministic fallback after ML rejection")
-            return fallback_summary
-        return None
-    except Exception:
-        logger.exception("Signature generation failed")
-        if _ml_required():
-            return None
-        fallback_summary = _validated_fallback_summary(
-            facts, context=" after exception")
-        if fallback_summary:
-            _remember_user_summary(fallback_summary)
-            logger.info(
-                "Signature summary generated from deterministic fallback after exception")
-            return fallback_summary
-        return None
+    fallback_summary = _validated_fallback_summary(facts, context="")
+    if fallback_summary:
+        _remember_user_summary(fallback_summary)
+        logger.info("Signature summary generated from deterministic fallback")
+        return fallback_summary
+    return None
 
 
 def build_signature_facts(

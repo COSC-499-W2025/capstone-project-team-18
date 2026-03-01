@@ -2,14 +2,12 @@ import hashlib
 import json
 import os
 import re
-from time import perf_counter
 from typing import Any
 
 from pydantic import BaseModel
 
 from src.core.ML.models.azure_foundry_manager import AzureFoundryManager
 from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
-from src.core.ML.models.model_runtime import get_causal_lm
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 
@@ -35,9 +33,6 @@ Constraints:
 - Keep output factual and concise.
 """
 
-_MODEL = None
-_TOKENIZER = None
-_MODEL_FAILED = False
 _ML_DISABLED_FOR_RUN = False
 _CACHE: dict[str, str] = {}
 
@@ -123,43 +118,8 @@ def _disable_ml_if_slow(elapsed_seconds: float):
 
 
 def _load_model():
-    """Load model/tokenizer once and cache globally."""
-    global _MODEL, _TOKENIZER, _MODEL_FAILED, _ML_DISABLED_FOR_RUN
-
-    if not ml_extraction_allowed():
-        return None, None
-
-    if os.environ.get("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL") == "1":
-        logger.info("Project summary model disabled via env variable")
-        return None, None
-
-    if _ML_DISABLED_FOR_RUN:
-        logger.warning("Project summary skipped: ML disabled for current run due to prior slow generation")
-        return None, None
-
-    if _MODEL_FAILED:
-        return None, None
-
-    if _MODEL is not None and _TOKENIZER is not None:
-        return _MODEL, _TOKENIZER
-
-    try:
-        load_start = perf_counter()
-        model_name = os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_MODEL") or "microsoft/Phi-3-mini-4k-instruct"
-        logger.info("Loading project summary model: %s", model_name)
-        model, tokenizer = get_causal_lm(model_name)
-        if model is None or tokenizer is None:
-            _MODEL_FAILED = True
-            return None, None
-        _MODEL = model
-        _TOKENIZER = tokenizer
-        load_seconds = perf_counter() - load_start
-        logger.info("Project summary model loaded in %.1fs", load_seconds)
-        return _MODEL, _TOKENIZER
-    except Exception:
-        logger.exception("Failed to load project summary model")
-        _MODEL_FAILED = True
-        return None, None
+    """Compatibility shim; local non-Azure model generation is removed."""
+    return None, None
 
 
 def _facts_hash(facts: dict[str, Any]) -> str:
@@ -1463,63 +1423,8 @@ def generate_project_summary(facts: dict[str, Any]) -> str | None:
             return azure_summary
         return _use_deterministic_fallback(" after Azure generation failure")
 
-
-    model, tokenizer = _load_model()
-    if model is None or tokenizer is None:
-        logger.warning("Project summary skipped: model not available")
-        return _use_deterministic_fallback(" after model unavailable")
-
-    try:
-        gen_kwargs = {
-            "max_new_tokens": _max_new_tokens(),
-            "max_time": _max_generation_seconds(),
-            "do_sample": False,
-            "temperature": 0.0,
-            "top_p": 1.0,
-            "pad_token_id": tokenizer.eos_token_id,
-        }
-        reason = "unknown"
-        prompt = _build_prompt(facts, strict=False)
-        inputs = tokenizer(prompt, return_tensors="pt")
-        pass_start = perf_counter()
-        output = model.generate(
-            **inputs,
-            **gen_kwargs,
-        )
-        _disable_ml_if_slow(perf_counter() - pass_start)
-        summary = _repair_summary(tokenizer.decode(output[0], skip_special_tokens=True), facts)
-        if summary:
-            ok, reason = _is_valid_summary(summary, facts)
-            if ok:
-                if _cache_enabled():
-                    _CACHE[cache_key] = summary
-                logger.info("Project summary generated successfully")
-                return summary
-            logger.warning("Project summary rejected (%s): %s", reason, summary[:200])
-
-        if _strict_retry_enabled():
-            strict_prompt = _build_prompt(facts, strict=True)
-            inputs = tokenizer(strict_prompt, return_tensors="pt")
-            pass_start = perf_counter()
-            output = model.generate(
-                **inputs,
-                **gen_kwargs,
-            )
-            _disable_ml_if_slow(perf_counter() - pass_start)
-            summary = _repair_summary(tokenizer.decode(output[0], skip_special_tokens=True), facts)
-            if summary:
-                ok, reason = _is_valid_summary(summary, facts)
-                if ok:
-                    if _cache_enabled():
-                        _CACHE[cache_key] = summary
-                    logger.info("Project summary generated successfully (strict pass)")
-                    return summary
-                logger.warning("Project summary rejected after strict pass (%s): %s", reason, summary[:200])
-        logger.warning("Project summary generation unavailable or invalid after ML passes")
-        return _use_deterministic_fallback(" after ML validation failure")
-    except Exception:
-        logger.exception("Project summary generation failed")
-        return _use_deterministic_fallback(" after exception")
+    logger.info("Project summary local-model path removed; using deterministic fallback")
+    return _use_deterministic_fallback(" after model unavailable")
 
 
 def build_project_summary_facts(
