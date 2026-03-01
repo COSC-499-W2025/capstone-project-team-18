@@ -1,6 +1,3 @@
-import os
-import shutil
-import tempfile
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import SQLModel
@@ -22,12 +19,14 @@ router = APIRouter(
 
 SUPPORTED_FORMATS = [".tar.gz", ".gz", ".7z", ".zip"]
 
+
 class ProjectReportResponse(SQLModel):
     project_name: str
     user_config_used: Optional[int]
     image_data: Optional[bytes]
     created_at: datetime
     last_updated: datetime
+
 
 class UploadProjectResponse(SQLModel):
     message: str
@@ -41,7 +40,15 @@ def upload_project(
     portfolio_name: Optional[str] = None,
     session=Depends(get_session)
 ):
-    """Upload a zipped project file for analysis."""
+    """
+    POST /upload
+
+    This endpoint will intake a zipped file. This zipped file will then
+    be analyzed for projects. These projects will be analyzed, then saved
+    to the database.
+
+    Errors will be thrown if the zipped file does not match the accepted formats.
+    """
     filename = file.filename or ""
     matched_format = next(
         (fmt for fmt in SUPPORTED_FORMATS if filename.endswith(fmt)), None
