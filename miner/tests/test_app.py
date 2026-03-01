@@ -5,6 +5,7 @@ More detailed tests will be in their respective modules.
 
 import pytest
 
+from src.core.analyzer import analyzer_util
 from src.interface.cli.cli_service_handler import start_miner_cli
 from src.utils.errors import NoDiscoveredProjects, ErrorCode
 
@@ -23,6 +24,11 @@ def mock_engine(monkeypatch, blank_db):
         "src.services.mining_service.get_engine", fake_get_engine)
 
     yield blank_db
+
+
+@pytest.fixture(autouse=True)
+def mock_analyzer_db_engine(monkeypatch, blank_db):
+    monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
 
 
 def test_app_runs(mock_engine, mock_readme_analysis, resource_dir):

@@ -7,6 +7,8 @@ from multiprocessing import Pool, cpu_count
 from typing import Optional
 from pathlib import Path
 
+from sqlmodel import Session
+
 from src.core.report.file_report import FileReport
 from src.core.statistic import LANGUAGE_EXTENSIONS
 from src.core.project_discovery.project_discovery import ProjectLayout
@@ -22,6 +24,8 @@ from src.core.analyzer.php_analyzer import PHPAnalyzer
 from src.core.analyzer.python_analyzer import PythonAnalyzer
 from src.core.analyzer.text_file_analyzer import TextFileAnalyzer
 from src.core.analyzer.type_script_analyzer import TypeScriptAnalyzer
+from src.database.api.CRUD.files import get_file_report_by_hash, filepath_exists_in_db, delete_file_report_by_hash
+from src.database.core.base import get_engine
 from src.infrastructure.log.logging import get_logger
 from src.database.api.models import UserConfigModel as UserConfig
 
@@ -47,6 +51,18 @@ def single_file_analysis(
     if not analyzer.should_analyze_file():
         logger.info("Skipping file %s in project %s", file, project_name)
         return analyzer.create_info_file()
+
+    engine = get_engine()
+    with Session(engine) as session:
+        if filepath_exists_in_db(session, analyzer.filepath):
+            if analyzer.compare_hashes():
+                logger.info("Skipping already analyzed file: %s", file)
+                return get_file_report_by_hash(session, analyzer.hashed_content)
+            else:
+                delete_file_report_by_hash(
+                    session, analyzer.hashed_content)
+                session.commit()
+                return analyzer.analyze()
 
     try:
         return analyzer.analyze()
