@@ -17,6 +17,25 @@ def disable_project_summary_model(monkeypatch):
     monkeypatch.setenv("ARTIFACT_MINER_DISABLE_PROJECT_SUMMARY_MODEL", "1")
 
 
+def _project_repair_facts(**overrides):
+    facts = {
+        "project_name": "web-analytics-portal",
+        "goal_terms": ["Data visualization", "Stakeholder dashboards"],
+        "frameworks": ["react"],
+        "languages": ["JavaScript", "CSS"],
+        "stack_hints": [],
+        "role": None,
+        "role_description": None,
+        "commit_focus": None,
+        "commit_pct": None,
+        "line_pct": None,
+        "activity_breakdown": [("code", 62.0), ("documentation", 38.0)],
+        "allow_percentages": True,
+    }
+    facts.update(overrides)
+    return facts
+
+
 def test_project_summaries_empty_user_report_returns_no_lines(user_report_from_stats):
     user_report = user_report_from_stats([])
     builder = ProjectSummariesSectionBuilder()
@@ -286,20 +305,7 @@ def test_project_summary_validator_allows_missing_percent_when_textual_contribut
 
 
 def test_project_summary_repair_enforces_canonical_activity_percentages():
-    facts = {
-        "project_name": "web-analytics-portal",
-        "goal_terms": ["Data visualization", "Stakeholder dashboards"],
-        "frameworks": ["react"],
-        "languages": ["JavaScript", "CSS"],
-        "stack_hints": [],
-        "role": None,
-        "role_description": None,
-        "commit_focus": None,
-        "commit_pct": None,
-        "line_pct": None,
-        "activity_breakdown": [("code", 62.0), ("documentation", 38.0)],
-        "allow_percentages": True,
-    }
+    facts = _project_repair_facts()
     raw = (
         "The project focused on data visualization outcomes. "
         "It was implemented with react and written in JavaScript and CSS. "
@@ -311,21 +317,29 @@ def test_project_summary_repair_enforces_canonical_activity_percentages():
     assert "Contributed through coding 62% and documentation 38%." in repaired
 
 
+def test_project_summary_repair_avoids_duplicate_contribution_percentages():
+    facts = _project_repair_facts()
+    raw = (
+        "The project focused on data visualization outcomes. "
+        "It was implemented with react and written in JavaScript and CSS, with focus on coding 62% and documentation 38%. "
+        "I contributed across code and documentation changes."
+    )
+
+    repaired = psg._repair_summary(raw, facts)
+
+    assert repaired.count("coding 62%") == 1
+    assert repaired.count("documentation 38%") == 1
+
+
 def test_project_summary_repair_skips_percentage_enforcement_when_not_allowed():
-    facts = {
-        "project_name": "docs-only-project",
-        "goal_terms": ["Documentation"],
-        "frameworks": [],
-        "languages": ["Python"],
-        "stack_hints": [],
-        "role": None,
-        "role_description": None,
-        "commit_focus": None,
-        "commit_pct": None,
-        "line_pct": None,
-        "activity_breakdown": [("documentation", 100.0)],
-        "allow_percentages": False,
-    }
+    facts = _project_repair_facts(
+        project_name="docs-only-project",
+        goal_terms=["Documentation"],
+        frameworks=[],
+        languages=["Python"],
+        activity_breakdown=[("documentation", 100.0)],
+        allow_percentages=False,
+    )
     raw = (
         "The project focused on documentation outcomes. "
         "It was primarily written in Python. "

@@ -12,8 +12,6 @@ from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.contribution_analysis.summary_constants import (
     SUMMARY_STYLE_EXAMPLE,
-    SUMMARY_EXAMPLE_GUIDANCE,
-    SUMMARY_BASE_PROMPT,
     SUMMARY_BANNED_PHRASES,
     SUMMARY_DOMAIN_KEYWORDS,
     SUMMARY_PHRASE_NORMALIZATION_REPLACEMENTS,
@@ -236,113 +234,6 @@ def _parse_confidence(value: Any) -> float | None:
         return None
 
 
-def _build_stage_classifier_prompt(stage_facts: dict[str, Any]) -> str:
-    """Prompt for ML stage classification."""
-    facts_json = json.dumps(stage_facts, ensure_ascii=True)
-    return (
-        "TASK: EXPERIENCE_STAGE_CLASSIFICATION\n"
-        "Classify the user's career stage using only FACTS_JSON.\n"
-        "Return exactly one JSON object with schema:\n"
-        '{"stage":"student|early-career|experienced","confidence":0.0,"rationale":"string"}\n'
-        "Rules:\n"
-        "- stage must be one of: student, early-career, experienced.\n"
-        "- confidence must be a number between 0 and 1.\n"
-        "- rationale must be concise and grounded in facts.\n"
-        "- Output valid JSON only.\n\n"
-        f"FACTS_JSON: {facts_json}"
-    )
-
-
-def _build_stage_classifier_plain_prompt(stage_facts: dict[str, Any]) -> str:
-    """Plain-text fallback prompt for stage classification when JSON fails."""
-    facts_json = json.dumps(stage_facts, ensure_ascii=True)
-    return (
-        "TASK: EXPERIENCE_STAGE_CLASSIFICATION\n"
-        "Classify the user's career stage using only FACTS_JSON.\n"
-        "Return one line in this format:\n"
-        "stage=<student|early-career|experienced>; confidence=<0-1>; rationale=<short text>\n\n"
-        f"FACTS_JSON: {facts_json}\n\n"
-        "Result:"
-    )
-
-
-def _extract_stage_from_payload(payload: Any) -> tuple[str | None, float | None]:
-    """Extract stage/confidence from tolerant payload shapes."""
-    if not isinstance(payload, dict):
-        return None, None
-
-    stage_candidate: str | None = None
-    confidence_candidate: float | None = None
-
-    for key in ("stage", "experience_stage", "level", "seniority"):
-        value = payload.get(key)
-        if isinstance(value, str):
-            normalized = _normalize_stage_label(value)
-            if normalized:
-                stage_candidate = normalized
-                break
-
-    for key in ("confidence", "score", "probability"):
-        conf = _parse_confidence(payload.get(key))
-        if conf is not None:
-            confidence_candidate = conf
-            break
-
-    if stage_candidate and confidence_candidate is not None:
-        return stage_candidate, confidence_candidate
-
-    for value in payload.values():
-        if isinstance(value, dict):
-            nested_stage, nested_conf = _extract_stage_from_payload(value)
-            if nested_stage:
-                return nested_stage, nested_conf
-        if isinstance(value, str) and not stage_candidate:
-            normalized = _normalize_stage_label(value)
-            if normalized:
-                stage_candidate = normalized
-
-    return stage_candidate, confidence_candidate
-
-
-def _extract_stage_from_raw_text(raw_text: str) -> tuple[str | None, float | None]:
-    """Recover stage/confidence from non-JSON model output."""
-    if not raw_text:
-        return None, None
-    cleaned = _strip_markdown_fence(raw_text).strip()
-    if not cleaned:
-        return None, None
-
-    try:
-        payload = json.loads(cleaned)
-        return _extract_stage_from_payload(payload)
-    except Exception:
-        pass
-
-    stage: str | None = None
-    confidence: float | None = None
-
-    explicit_stage = re.search(
-        r"\b(?:stage|experience[_\s-]*stage|level|seniority)\s*[:=]\s*([a-zA-Z\-\s]+)",
-        cleaned,
-        flags=re.IGNORECASE,
-    )
-    if explicit_stage:
-        stage = _normalize_stage_label(explicit_stage.group(1))
-
-    if not stage:
-        stage = _normalize_stage_label(cleaned)
-
-    explicit_conf = re.search(
-        r"\b(?:confidence|score|probability)\s*[:=]\s*([0-9]+(?:\.[0-9]+)?\s*%?)",
-        cleaned,
-        flags=re.IGNORECASE,
-    )
-    if explicit_conf:
-        confidence = _parse_confidence(explicit_conf.group(1))
-
-    return stage, confidence
-
-
 def resolve_experience_stage_with_ml(
     *,
     baseline_stage: str,
@@ -474,6 +365,25 @@ def _ensure_proficiency_in_opening(summary: str, facts: dict[str, Any]) -> str:
     return f"{rebuilt}." if rebuilt else summary
 
 
+def _finalize_summary_text(
+    text: str,
+    facts: dict[str, Any],
+    *,
+    max_sentences: int = 3,
+    restore_anchor_casing: bool = True,
+) -> str:
+    """Run the shared summary cleanup pipeline."""
+    normalized = _normalize_summary(text or "")
+    normalized = _remove_invalid_sentences(
+        normalized, facts.get("project_names", []))
+    normalized = _polish_summary(normalized)
+    normalized = _trim_to_sentences(normalized, max_sentences=max_sentences)
+    if restore_anchor_casing:
+        normalized = _restore_anchor_casing(normalized, facts)
+    normalized = _ensure_proficiency_in_opening(normalized, facts)
+    return _normalize_summary(normalized)
+
+
 def _stage_identity_phrase(stage: str | None, role: Any) -> str:
     """Return a stable identity phrase for deterministic fallbacks."""
     normalized_stage = _normalize_stage_label(stage)
@@ -556,13 +466,7 @@ def _repair_summary_with_grounded_fallback(
     if recalculated_level:
         repair_facts["proficiency_level"] = recalculated_level
 
-    normalized = _normalize_summary(summary or "")
-    normalized = _remove_invalid_sentences(normalized, repair_facts.get("project_names", []))
-    normalized = _polish_summary(normalized)
-    normalized = _trim_to_sentences(normalized, max_sentences=3)
-    normalized = _restore_anchor_casing(normalized, repair_facts)
-    normalized = _ensure_proficiency_in_opening(normalized, repair_facts)
-    normalized = _normalize_summary(normalized)
+    normalized = _finalize_summary_text(summary, repair_facts)
     if normalized:
         injected = _inject_delivery_signal(normalized, repair_facts)
         return injected or normalized
@@ -570,14 +474,8 @@ def _repair_summary_with_grounded_fallback(
     if not allow_fallback:
         return None
 
-    fallback = _build_grounded_fallback_summary(repair_facts)
-    fallback = _normalize_summary(fallback)
-    fallback = _remove_invalid_sentences(fallback, repair_facts.get("project_names", []))
-    fallback = _polish_summary(fallback)
-    fallback = _trim_to_sentences(fallback, max_sentences=3)
-    fallback = _restore_anchor_casing(fallback, repair_facts)
-    fallback = _ensure_proficiency_in_opening(fallback, repair_facts)
-    fallback = _normalize_summary(fallback)
+    fallback = _finalize_summary_text(
+        _build_grounded_fallback_summary(repair_facts), repair_facts)
     return fallback or None
 
 
@@ -591,33 +489,6 @@ def _validated_fallback_summary(facts: dict[str, Any], *, context: str) -> str |
         return fallback
     logger.warning("Signature summary fallback rejected%s (%s)", context, reason)
     return None
-
-
-def _build_prompt(facts: dict[str, Any], strict: bool = False, include_example: bool = True) -> str:
-    """
-    Build a constrained prompt that forces narrative output and avoids list repetition.
-    Remove project names/tags from the prompt to prevent leakage.
-    """
-    prompt_facts = dict(facts)
-    prompt_facts.pop("project_names", None)
-    prompt_facts.pop("tags", None)
-    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    style_example = f"{SUMMARY_EXAMPLE_GUIDANCE}{SUMMARY_STYLE_EXAMPLE}"
-    base = SUMMARY_BASE_PROMPT
-    if strict:
-        must_mention = ", ".join([str(x) for x in facts.get(
-            "top_skills", []) + facts.get("top_languages", []) + facts.get("tools", [])][:4])
-        base += (
-            " Follow this structure strictly: "
-            "Sentence 1: identity + focus. "
-            "Sentence 2: experience + impact. "
-            "Sentence 3: strengths (skills/tools) + communication/insights. "
-            "Sentence 4-6 (optional): only if each adds distinct, non-redundant information supported by facts."
-            f" You MUST mention at least one of these terms verbatim: {must_mention}."
-        )
-    if include_example:
-        return f"{base}\n{style_example}\n\nFacts (JSON): {facts_json}\n\nSummary:"
-    return f"{base}\n\nFacts (JSON): {facts_json}\n\nSummary:"
 
 
 def _normalize_summary(text: str) -> str:
@@ -658,37 +529,6 @@ def _normalize_summary(text: str) -> str:
     cleaned = cleaned.replace("Skills:", "").replace("Tools:", "")
     cleaned = cleaned.replace("Languages:", "")
     return " ".join(cleaned.split())
-
-
-def _remove_percentage_mentions(summary: str) -> str:
-    """
-    Remove percentage mentions from user summaries.
-
-    User-level summaries should stay qualitative; project summaries can keep
-    percentages separately.
-    """
-    if not summary:
-        return summary
-
-    cleaned = summary
-    cleaned = re.sub(
-        r"(?i)\b(?:about|around|roughly|approximately|nearly|over|under|more than|less than)?\s*"
-        r"\d{1,3}(?:\.\d+)?\s*%",
-        "",
-        cleaned,
-    )
-    cleaned = re.sub(
-        r"(?i)\b(?:about|around|roughly|approximately|nearly|over|under|more than|less than)?\s*"
-        r"\d{1,3}(?:\.\d+)?\s*percent\b",
-        "",
-        cleaned,
-    )
-    cleaned = re.sub(
-        r"(?i)\b(?:of|in)\s+(?:the\s+)?(?:activity|contributions?|commits?|lines?)\b", "", cleaned)
-    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
-    cleaned = re.sub(r"\s+,", ",", cleaned)
-    cleaned = re.sub(r",\s*,", ", ", cleaned)
-    return cleaned
 
 
 def _restore_anchor_casing(summary: str, facts: dict[str, Any]) -> str:
@@ -1075,27 +915,6 @@ def _resume_quality_score(summary: str, facts: dict[str, Any]) -> int:
     return score
 
 
-def _should_expand_after_rejection(reason: str) -> bool:
-    """Return whether rejection reason indicates summary needs expansion."""
-    if not reason:
-        return False
-    return (
-        reason.startswith("word_count=")
-        or reason.startswith("sentence_count=")
-        or reason in {
-            "missing_delivery_signal",
-            "generic_resume_tone",
-            "second_person_tone",
-            "second_person_profile_voice",
-            "mixed_person_voice",
-            "meta_narration",
-            "noise_artifact",
-            "meta_summary_marker",
-            "fragment_sentence",
-        }
-    )
-
-
 def _inject_delivery_signal(summary: str, facts: dict[str, Any]) -> str | None:
     """
     Add a minimal grounded delivery/outcome clause when that is the sole blocker.
@@ -1121,47 +940,9 @@ def _inject_delivery_signal(summary: str, facts: dict[str, Any]) -> str | None:
     sentences[target_idx] = patched
     rebuilt = ". ".join(s.strip().rstrip(".")
                         for s in sentences if s.strip()) + "."
-    rebuilt = _normalize_summary(rebuilt)
-    rebuilt = _remove_invalid_sentences(
-        rebuilt, facts.get("project_names", []))
-    rebuilt = _polish_summary(rebuilt)
-    rebuilt = _trim_to_sentences(rebuilt, max_sentences=3)
-    rebuilt = _ensure_proficiency_in_opening(rebuilt, facts)
-    rebuilt = _normalize_summary(rebuilt)
+    rebuilt = _finalize_summary_text(
+        rebuilt, facts, restore_anchor_casing=False)
     return rebuilt or None
-
-
-def _select_best_summary_candidate(candidates: list[str], facts: dict[str, Any]) -> str | None:
-    """Normalize and rank candidate summaries, returning the strongest option."""
-    best: str | None = None
-    best_score = -1
-    seen: set[str] = set()
-
-    for candidate in candidates:
-        normalized = _normalize_summary(candidate or "")
-        normalized = _remove_invalid_sentences(
-            normalized, facts.get("project_names", []))
-        normalized = _polish_summary(normalized)
-        normalized = _trim_to_sentences(normalized, max_sentences=3)
-        normalized = _restore_anchor_casing(normalized, facts)
-        normalized = _ensure_proficiency_in_opening(normalized, facts)
-        normalized = _normalize_summary(normalized)
-        if not normalized:
-            continue
-        key = normalized.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-
-        score = _resume_quality_score(normalized, facts)
-        is_ok, _reason = _is_valid_summary(normalized, facts)
-        if is_ok:
-            score += 100
-        if score > best_score:
-            best = normalized
-            best_score = score
-
-    return best
 
 
 def _is_list_like(text: str) -> bool:
@@ -1539,34 +1320,6 @@ def _contains_project_name(summary: str, project_names: list[str]) -> bool:
     return False
 
 
-def _extract_summary_from_payload(payload: Any) -> str | None:
-    """Extract summary text from tolerant payload shapes."""
-    if not isinstance(payload, dict):
-        return None
-
-    direct = payload.get("summary")
-    if isinstance(direct, str):
-        return direct
-
-    for key in ("result", "response", "text", "content"):
-        value = payload.get(key)
-        if isinstance(value, str):
-            return value
-        if isinstance(value, dict):
-            nested = _extract_summary_from_payload(value)
-            if nested:
-                return nested
-
-    for value in payload.values():
-        if isinstance(value, str) and value.strip():
-            return value
-        if isinstance(value, dict):
-            nested = _extract_summary_from_payload(value)
-            if nested:
-                return nested
-    return None
-
-
 def _strip_markdown_fence(text: str) -> str:
     """Remove single code-fence wrappers around model output."""
     stripped = text.strip()
@@ -1579,32 +1332,6 @@ def _strip_markdown_fence(text: str) -> str:
     if not lines[0].startswith("```") or lines[-1].strip() != "```":
         return stripped
     return "\n".join(lines[1:-1]).strip()
-
-
-def _extract_summary_from_raw_text(raw_text: str) -> str | None:
-    """Recover summary text when model output is not valid JSON."""
-    if not raw_text:
-        return None
-
-    cleaned = _strip_markdown_fence(raw_text)
-    if not cleaned:
-        return None
-
-    # Sometimes the model still returns JSON-ish text in plain mode.
-    try:
-        payload = json.loads(cleaned)
-        summary = _extract_summary_from_payload(payload)
-        if summary:
-            return summary
-    except Exception:
-        pass
-
-    # Strip common label wrappers.
-    cleaned = re.sub(r"^\s*(?:final\s+)?summary\s*:\s*",
-                     "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\b(?:final\s+)?summary\s*:\s*", "",
-                     cleaned, flags=re.IGNORECASE).strip()
-    return cleaned or None
 
 
 def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:

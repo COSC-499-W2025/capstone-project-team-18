@@ -33,7 +33,6 @@ Constraints:
 - Keep output factual and concise.
 """
 
-_ML_DISABLED_FOR_RUN = False
 _CACHE: dict[str, str] = {}
 
 
@@ -47,24 +46,6 @@ def configure_project_summary_run(project_count: int):
     Reset per-run project-summary state before portfolio generation.
     """
     del project_count  # Reserved for compatibility with existing call sites.
-    global _ML_DISABLED_FOR_RUN
-    _ML_DISABLED_FOR_RUN = False
-
-
-def _fast_mode_enabled() -> bool:
-    """Return whether fast generation mode is active (default on)."""
-    return os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_FAST_MODE", "1") != "0"
-
-
-def _env_int(name: str, default: int) -> int:
-    """Read an integer env var with safe fallback."""
-    raw = os.environ.get(name)
-    if raw is None:
-        return default
-    try:
-        return max(1, int(raw))
-    except (TypeError, ValueError):
-        return default
 
 
 def _env_float(name: str, default: float) -> float:
@@ -78,50 +59,6 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-def _max_new_tokens() -> int:
-    """Return capped generation length tuned for interactive CLI speed."""
-    default = 72 if _fast_mode_enabled() else 120
-    return _env_int("ARTIFACT_MINER_PROJECT_SUMMARY_MAX_NEW_TOKENS", default)
-
-
-def _max_generation_seconds() -> float:
-    """Return per-generation timeout in seconds."""
-    default = 8.0 if _fast_mode_enabled() else 25.0
-    return _env_float("ARTIFACT_MINER_PROJECT_SUMMARY_MAX_TIME_SEC", default)
-
-
-def _strict_retry_enabled() -> bool:
-    """Control whether a strict second pass should run after rejection."""
-    override = os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_STRICT_RETRY")
-    if override is not None:
-        return override == "1"
-    return not _fast_mode_enabled()
-
-
-def _disable_ml_if_slow(elapsed_seconds: float):
-    """
-    Disable ML summaries for the remainder of the current process if generation
-    is consistently too slow. This prevents multi-project CLI runs from appearing
-    stalled.
-    """
-    global _ML_DISABLED_FOR_RUN
-    if os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_DISABLE_AFTER_SLOW", "1") == "0":
-        return
-    threshold = _env_float("ARTIFACT_MINER_PROJECT_SUMMARY_SLOW_THRESHOLD_SEC", 30.0)
-    if elapsed_seconds > threshold:
-        _ML_DISABLED_FOR_RUN = True
-        logger.warning(
-            "Project summary generation took %.1fs (> %.1fs); disabling ML summaries for this run",
-            elapsed_seconds,
-            threshold,
-        )
-
-
-def _load_model():
-    """Compatibility shim; local non-Azure model generation is removed."""
-    return None, None
-
-
 def _facts_hash(facts: dict[str, Any]) -> str:
     """Create stable hash for summary cache."""
     serialized = json.dumps(facts, sort_keys=True, ensure_ascii=True)
@@ -133,31 +70,6 @@ def _cache_enabled() -> bool:
     return os.environ.get("ARTIFACT_MINER_SUMMARY_CACHE_DISABLE", "0") != "1"
 
 
-def _build_prompt(facts: dict[str, Any], strict: bool = False) -> str:
-    """
-    Build strict prompt for grounded project summaries.
-
-    Output must remain 2-3 sentences and reuse only factual terms from the
-    payload, with explicit mention of goals, stack, and contribution.
-    """
-    facts_json = json.dumps(facts, ensure_ascii=True)
-    base = (
-        "Write a professional 2-3 sentence project summary using ONLY the facts below. "
-        "Sentence 1: project goals. Sentence 2: frameworks/languages used. "
-        "Sentence 3: contribution details. Do not invent tools, percentages, or roles. "
-        "Do not use bullet points."
-    )
-    if strict:
-        must = (
-            facts.get("goal_terms", [])[:1]
-            + facts.get("frameworks", [])[:1]
-            + facts.get("languages", [])[:1]
-            + facts.get("stack_hints", [])[:1]
-        )
-        must_text = ", ".join([str(x) for x in must if x])
-        if must_text:
-            base += f" You MUST mention at least one of these terms verbatim: {must_text}."
-    return f"{base}\n\nFacts (JSON): {facts_json}\n\nSummary:"
 
 
 def _normalize_summary(text: str) -> str:
@@ -1156,6 +1068,38 @@ def _canonical_contribution_sentence_from_facts(facts: dict[str, Any]) -> str | 
     return f"Contributed through {_join_english(parts, limit=3)}."
 
 
+def _has_activity_percentage_coverage(summary: str, facts: dict[str, Any], *, min_matches: int = 2) -> bool:
+    """Return True when summary already grounds contribution with activity percentages."""
+    if not summary or not _percentages_allowed_in_summary(facts):
+        return False
+
+    raw_visible = _resume_visible_activity_domains(facts)
+    visible = {_canonical_activity_label(domain) for domain in raw_visible}
+    expected: list[tuple[str, int]] = []
+    for domain, pct in facts.get("activity_breakdown", []) or []:
+        norm_pct = _normalize_percentage(pct)
+        if norm_pct is None:
+            continue
+        label = _canonical_activity_label(str(domain))
+        if visible and label not in visible:
+            continue
+        expected.append((label, int(round(float(norm_pct)))))
+
+    if len(expected) < min_matches:
+        return False
+
+    matched = 0
+    for label, pct in expected:
+        pattern = (
+            rf"(?i)(?:\b{re.escape(label)}\b[^.?!%]{{0,24}}\b{pct}%)(?!\d)"
+            rf"|(?:\b{pct}%(?!\d)[^.?!]{{0,24}}\b{re.escape(label)}\b)"
+        )
+        if re.search(pattern, summary):
+            matched += 1
+
+    return matched >= min(min_matches, len(expected))
+
+
 def _enforce_canonical_contribution_sentence(summary: str, facts: dict[str, Any]) -> str:
     """
     Ensure contribution percentages appear when resume-visible percentages exist.
@@ -1163,6 +1107,8 @@ def _enforce_canonical_contribution_sentence(summary: str, facts: dict[str, Any]
     canonical = _canonical_contribution_sentence_from_facts(facts)
     if not canonical:
         return summary
+    if _has_activity_percentage_coverage(summary, facts):
+        return _trim_to_max_sentences(summary, max_sentences=3)
 
     sentences = _sentence_segments(summary)
     if not sentences:
