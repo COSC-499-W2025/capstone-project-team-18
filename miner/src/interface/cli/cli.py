@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional
 from src.interface.cli.cli_service_handler import start_miner_cli
 from src.core.resume.bullet_point_builder import BulletPointBuilder
-from src.utils.pathing_utils import is_valid_filepath_to_zip, normalize_path
+from src.utils.pathing_utils import is_valid_filepath_to_zip
 from src.interface.cli.user_preferences import UserPreferences
 
 
@@ -176,11 +176,8 @@ class ArtifactMiner(cmd.Cmd):
                     self.cmd_history.pop()
                 return self.do_back(arg)
 
-            # Normalize the user input path
-            normalized_path = normalize_path(answer)
-
             # Validate the normalized filepath
-            error_code = is_valid_filepath_to_zip(normalized_path)
+            error_code = is_valid_filepath_to_zip(answer)
             if error_code == 0:
                 break  # Valid filepath found, exit the loop
             elif error_code == 1:
@@ -193,9 +190,9 @@ class ArtifactMiner(cmd.Cmd):
                     "\nError: The provided filepath does not exist. Please try again.\n")
 
         # Process the filepath
-        self.project_filepath = normalized_path
+        self.project_filepath = answer
         # Save filepath to preferences
-        success = self.preferences.update_project_filepath(normalized_path)
+        success = self.preferences.update_project_filepath(answer)
         print("\nFilepath successfully received and saved to preferences")
         if not success:
             print("Warning: Failed to save filepath to preferences file.")
