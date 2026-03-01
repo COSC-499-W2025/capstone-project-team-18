@@ -277,3 +277,61 @@ def edit_resume_item(
         session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to edit resume item: {str(e)}")
+
+
+@router.post("/{resume_id}/refresh", response_model=ResumeResponse)
+def refresh_resume(
+    resume_id: int,
+    session=Depends(get_session)
+):
+    """
+    Refresh a resume with new project information
+    """
+
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404, detail=f"No resume found with id {resume_id}")
+
+    project_names = [
+        item.project_name for item in resume_model.items if item.project_name]
+
+    if not project_names:
+        raise HTTPException(
+            status_code=400, detail="Cannot refresh: No projects are associated with this resume."
+        )
+
+    project_reports = []
+    for project_name in project_names:
+        project = get_project_report_by_name(session, project_name)
+        if not project:
+            raise HTTPException(
+                status_code=404, detail=f"No project found with name '{project_name}'"
+            )
+        project_reports.append(project)
+
+    try:
+        user_report = UserReport(
+            project_reports=project_reports, report_name="Generated Resume"
+        )
+
+        new_resume_domain = user_report.generate_resume(
+            email=resume_model.email,
+            github=resume_model.github
+        )
+
+        updated_model = save_resume(session, new_resume_domain)
+        updated_model.id = resume_id
+        updated_model.last_updated = datetime.datetime.now()
+
+        session.commit()
+        session.refresh(updated_model)
+
+        return updated_model
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to refresh resume: {str(e)}"
+        )
