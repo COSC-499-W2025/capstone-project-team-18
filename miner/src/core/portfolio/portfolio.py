@@ -19,7 +19,7 @@ class PortfolioMetadata:
 
         self.creation_time = creation_date or datetime.now()
         self.last_updated_at = last_updated_at or datetime.now()
-        self.project_ids_include = project_ids
+        self.project_ids_include = list(project_ids)
 
 
 class Portfolio:

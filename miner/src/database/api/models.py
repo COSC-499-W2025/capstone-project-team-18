@@ -131,7 +131,7 @@ class PortfolioSectionModel(SQLModel, table=True):
     section_id: str
     title: str
     order: int = 0
-    block_order: List[str] = Field(sa_column=Column(JSON), default=[])
+    block_order: List[str] = Field(sa_column=Column(JSON), default=list())
 
     portfolio: Optional["PortfolioModel"] = Relationship(
         back_populates="sections")
@@ -145,7 +145,8 @@ class PortfolioModel(SQLModel, table=True):
     # Metadata fields
     creation_time: datetime = Field(default_factory=datetime.now)
     last_updated_at: datetime = Field(default_factory=datetime.now)
-    project_ids_include: List[str] = Field(sa_column=Column(JSON), default=[])
+    project_ids_include: List[str] = Field(
+        sa_column=Column(JSON), default=list())
 
     # Relationships
     sections: List["PortfolioSectionModel"] = Relationship(
