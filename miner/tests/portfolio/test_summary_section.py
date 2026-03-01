@@ -381,96 +381,67 @@ def test_summary_section_emerging_signals_use_skillmapper_keywords(tmp_path, mon
     )
 
 
-def test_summary_section_infers_experience_stage_from_timeline(tmp_path, monkeypatch):
-    project = _make_project_report(
-        tmp_path,
-        role="leader",
-        frameworks=[WeightedSkills("FastAPI", 1.0)],
-        tone="Professional",
-    )
-    report = _make_user_report(
-        [project],
-        start_date=date(2019, 1, 1),
-        end_date=date(2026, 1, 1),
-    )
-
-    captured_facts = {}
-
-    def fake_build_signature_facts(**kwargs):
-        captured_facts.update(kwargs)
-        return {"mock": "facts"}
-
-    monkeypatch.setattr(
-        "src.core.portfolio.builder.concrete_builders.build_signature_facts",
-        fake_build_signature_facts,
-    )
-    monkeypatch.setattr(
-        "src.core.portfolio.builder.concrete_builders.generate_signature",
-        lambda _facts: (
-            "Experienced software engineer with practical experience in backend services and delivery quality. "
-            "Strong in Python and FastAPI with a track record of dependable implementation and communication."
+@pytest.mark.parametrize(
+    "roles,start_date,end_date,generated_summary,expected_stage,equality_check",
+    [
+        (
+            ["leader"],
+            date(2019, 1, 1),
+            date(2026, 1, 1),
+            (
+                "Experienced software engineer with practical experience in backend services and delivery quality. "
+                "Strong in Python and FastAPI with a track record of dependable implementation and communication."
+            ),
+            "early-career",
+            True,
         ),
-    )
-
-    builder = UserSummarySectionBuilder()
-    blocks = builder.create_blocks(report)
-
-    assert len(blocks) == 1
-    assert captured_facts["experience_stage"] == "early-career"
-
-
-def test_summary_stage_not_overstated_for_single_old_project(tmp_path, monkeypatch):
-    project = _make_project_report(
-        tmp_path,
-        role="core_contributor",
-        frameworks=[WeightedSkills("FastAPI", 1.0)],
-        tone="Professional",
-    )
-    report = _make_user_report(
-        [project],
-        start_date=date(2017, 1, 1),
-        end_date=date(2026, 1, 1),
-    )
-
-    captured_facts = {}
-
-    def fake_build_signature_facts(**kwargs):
-        captured_facts.update(kwargs)
-        return {"mock": "facts"}
-
-    monkeypatch.setattr(
-        "src.core.portfolio.builder.concrete_builders.build_signature_facts",
-        fake_build_signature_facts,
-    )
-    monkeypatch.setattr(
-        "src.core.portfolio.builder.concrete_builders.generate_signature",
-        lambda _facts: (
-            "Engineer with practical backend experience and clear delivery focus across technical initiatives. "
-            "Strong in Python and SQL with an emphasis on reliability and maintainable implementation."
+        (
+            ["core_contributor"],
+            date(2017, 1, 1),
+            date(2026, 1, 1),
+            (
+                "Engineer with practical backend experience and clear delivery focus across technical initiatives. "
+                "Strong in Python and SQL with an emphasis on reliability and maintainable implementation."
+            ),
+            "experienced",
+            False,
         ),
-    )
-
-    builder = UserSummarySectionBuilder()
-    blocks = builder.create_blocks(report)
-
-    assert len(blocks) == 1
-    assert captured_facts["experience_stage"] != "experienced"
-
-
-def test_summary_stage_uses_professional_tone_for_multi_project_history(tmp_path, monkeypatch):
+        (
+            ["leader", "core_contributor", "core_contributor", "core_contributor", "core_contributor"],
+            date(2019, 1, 1),
+            date(2026, 1, 1),
+            (
+                "Experienced engineer with a track record of delivering production-oriented backend services and measurable improvements. "
+                "Strong in Python and SQL with consistent execution and clear collaboration across technical contexts."
+            ),
+            "experienced",
+            True,
+        ),
+    ],
+)
+def test_summary_section_stage_inference_scenarios(
+    tmp_path,
+    monkeypatch,
+    roles,
+    start_date,
+    end_date,
+    generated_summary,
+    expected_stage,
+    equality_check,
+):
     projects = [
         _make_project_report(
             tmp_path,
-            role="leader" if idx == 0 else "core_contributor",
+            role=role,
             frameworks=[WeightedSkills("FastAPI", 1.0)],
             tone="Professional",
         )
-        for idx in range(5)
+        for role in roles
     ]
     report = _make_user_report(
         projects,
-        start_date=date(2019, 1, 1),
-        end_date=date(2026, 1, 1),
+        start_date=start_date,
+        end_date=end_date,
     )
 
     captured_facts = {}
@@ -485,14 +456,14 @@ def test_summary_stage_uses_professional_tone_for_multi_project_history(tmp_path
     )
     monkeypatch.setattr(
         "src.core.portfolio.builder.concrete_builders.generate_signature",
-        lambda _facts: (
-            "Experienced engineer with a track record of delivering production-oriented backend services and measurable improvements. "
-            "Strong in Python and SQL with consistent execution and clear collaboration across technical contexts."
-        ),
+        lambda _facts: generated_summary,
     )
 
     builder = UserSummarySectionBuilder()
     blocks = builder.create_blocks(report)
 
     assert len(blocks) == 1
-    assert captured_facts["experience_stage"] == "experienced"
+    if equality_check:
+        assert captured_facts["experience_stage"] == expected_stage
+    else:
+        assert captured_facts["experience_stage"] != expected_stage
