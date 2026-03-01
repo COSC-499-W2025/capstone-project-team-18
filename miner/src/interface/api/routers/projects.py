@@ -43,6 +43,12 @@ class ProjectShowcaseResponse(SQLModel):
     frameworks: List[str] = []
     bullet_points: List[str] = []
 
+class ProjectResumeItemResponse(SQLModel):
+    title: str
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    frameworks: List[str] = []
+    bullet_points: List[str] = []
 
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
@@ -169,6 +175,42 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
 
     return ProjectShowcaseResponse(
         project_name=report.project_name,
+        start_date=_to_datetime(resume_item.start_date),
+        end_date=_to_datetime(resume_item.end_date),
+        frameworks=list(resume_item.frameworks or []),
+        bullet_points=list(resume_item.bullet_points or []),
+    )
+
+@router.get("/{project_name}/resume-item", response_model=ProjectResumeItemResponse)
+def get_project_resume_item(project_name: str, session=Depends(get_session)):
+    try:
+        report = get_project_report_by_name(session, project_name)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve project report {e}"
+        )
+
+    if not report:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No project report named {project_name}"
+        )
+
+    resume_item = report.generate_resume_item()
+
+    def _to_datetime(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        try:
+            return datetime.combine(value, datetime.min.time())
+        except Exception:
+            return None
+
+    return ProjectResumeItemResponse(
+        title=resume_item.title,
         start_date=_to_datetime(resume_item.start_date),
         end_date=_to_datetime(resume_item.end_date),
         frameworks=list(resume_item.frameworks or []),
