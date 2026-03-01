@@ -3,7 +3,7 @@ from sqlmodel import SQLModel
 from typing import Optional
 
 from src.interface.api.routers.util import get_session
-from src.database import get_most_recent_user_config, save_user_config, UserConfigModel
+from src.database import get_most_recent_user_config, save_user_config
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -32,7 +32,15 @@ def set_privacy_consent(
     request: PrivacyConsentRequest,
     session=Depends(get_session)
 ):
-    """Set the user's privacy consent."""
+    """
+    POST /privacy-consent
+
+    This end point will set the user's privacy config. This endpoint handles
+    updates for their consent, user_email, or github.
+
+    This endpoint will respond with the updated fields.
+    """
+
     if not request.user_email:
         raise HTTPException(status_code=400, detail="user_email is required")
 
