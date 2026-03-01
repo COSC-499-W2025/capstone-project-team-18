@@ -183,6 +183,18 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
 
 @router.get("/{project_name}/resume-item", response_model=ProjectResumeItemResponse)
 def get_project_resume_item(project_name: str, session=Depends(get_session)):
+    """
+    GET /{project_name}/resume-item
+    
+    This endpoint will retrieve a passed in project_name and format it
+    as a résumé item. The idea is that a user can select which project
+    they would like to include in their résumé through the UI, and the
+    system will call this endpoint to generate a structured résumé entry
+    for that project.
+    
+    Returns the project formatted as a résumé item, including title,
+    date range, frameworks used, and descriptive bullet points.
+    """
     try:
         report = get_project_report_by_name(session, project_name)
     except Exception as e:
