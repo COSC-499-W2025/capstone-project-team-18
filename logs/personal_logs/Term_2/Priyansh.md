@@ -10,6 +10,8 @@
 
 **[Week 4-5, Jan. 26-Feb. 08](#week-4-5-jan-26-feb-08)**
 
+**[Week 6, Feb. 22-Mar. 01](#week-6-feb-23-mar-01)**
+
 ---
 
 ## Week 1, Jan. 05-11
@@ -106,4 +108,31 @@ My reviews focused on ensuring code quality, proper error handling, test coverag
 #### Goals for Next Week
 
 - Work on remaining Milestone 2 deliverables and documentation
+
+## Week 6, Feb. 23-Mar. 01
+
+### Peer Eval
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/priyansh/priyansh_week6_term2_log.png)
+
+### Recap
+
+[Add recap for Week 6]
+
+#### Coding Tasks
+
+I completed [PR #440 - Upgrade ML Generation Pipeline to Azure OpenAI for Portfolio Outputs](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/440), which closes [Issue #439](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/439). This PR represents a major infrastructure upgrade, migrating the entire ML generation pipeline from local HuggingFace inference to Azure OpenAI cloud-based execution. This includes user summaries, project summaries, and README enrichment (themes, tags, tone). The upgrade significantly speeds up the generation process by eliminating model loading overhead, improving scalability and reliability, and consolidating ML providers. Infrastructure improvements include refactored ML generation architecture, removal of legacy HuggingFace local inference paths, deterministic fallback mechanisms for safety, and comprehensive regression testing for output stability and data normalization. 
+
+#### Reviewing Tasks
+
+I reviewed [PR #434 - Major Use Cases for the Portfolio Object](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/434), which introduces portfolio CRUD operations and helper functions for merging, creating, and updating portfolios with comprehensive API endpoints. I identified and flagged mutable default argument issues in PortfolioMetadata and database models where using `default=[]` instead of `default_factory=list` could cause state leakage between instances.
+
+I also reviewed [PR #442 - Extra Documentation for Endpoints](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/442), which adds clear documentation for all current development endpoints. The documentation helps clarify endpoint logic and implementation thinking.
+
+#### Recap
+
+This week the team focused on completing Milestone 2 requirements. Major work included infrastructure upgrades to the ML generation pipeline, implementing portfolio persistence and CRUD operations, developing new API endpoints for skills extraction and user configuration, and improving documentation across the codebase. On the frontend, significant progress was made building out the Electron desktop application with new pages for projects and skills visualization, along with FastAPI integration for seamless backend communication. The team also emphasized code quality through thorough reviews, identifying and addressing potential issues before merge. Overall, substantial progress was made across both frontend UI development and backend infrastructure to meet the milestone deliverables.
+
+#### Goals for Next Week
+
+- Start Working on Milestone 3
 
