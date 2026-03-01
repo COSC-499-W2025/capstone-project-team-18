@@ -13,7 +13,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from sqlmodel import SQLModel
-
 from src.utils.errors import KeyNotFoundError
 from src.database.core.base import get_engine
 from src.interface.api.routers import (
@@ -22,6 +21,7 @@ from src.interface.api.routers import (
     portfolio,
     skills,
     user_config,
+    privacy_consent,
 )
 
 app = FastAPI(
@@ -81,3 +81,4 @@ async def universal_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "An internal error occurred", "details": str(exc)},
     )
+app.include_router(privacy_consent)
