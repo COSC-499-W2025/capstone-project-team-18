@@ -885,7 +885,8 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
     def build(self, report: ProjectReport) -> List[Statistic]:
         """
         Compile all the project level statistics together into one
-        statistic list
+        statistic list. We overide build because the statistic index
+        attribute is called "project_statistics" in a project report.
         """
 
         stats: List[Statistic] = []

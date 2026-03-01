@@ -4,8 +4,20 @@ from typing import Optional
 from sqlmodel import Session
 from src.database.api.models import ProjectReportModel, FileReportModel
 from src.core.report import ProjectReport
-from src.database.core.model_serializer import serialize_project_report, serialize_file_report
+from src.database.core.model_serializer import serialize_project_report
 from src.database.core.model_deserializer import deserialize_project_report
+
+
+def get_all_project_ids(
+    session: Session
+) -> list[str]:
+    """
+    Returns all the project report names
+    """
+    statement = select(ProjectReportModel.project_name)
+    results = session.exec(statement).all()
+
+    return list(results)
 
 
 def save_project_report(
@@ -28,9 +40,11 @@ def save_project_report(
     """
 
     incoming_model = serialize_project_report(project_report, user_config_id)
-    incoming_files = [serialize_file_report(fr) for fr in project_report.file_reports]
+    incoming_files = [serialize_file_report(
+        fr) for fr in project_report.file_reports]
 
-    existing = get_project_report_model_by_name(session, incoming_model.project_name)
+    existing = get_project_report_model_by_name(
+        session, incoming_model.project_name)
     if existing is None:
         incoming_model.file_reports = incoming_files
         session.add(incoming_model)
@@ -43,7 +57,8 @@ def save_project_report(
     existing.last_updated = datetime.now()
 
     stale_files = session.exec(
-        select(FileReportModel).where(FileReportModel.project_name == existing.project_name)
+        select(FileReportModel).where(
+            FileReportModel.project_name == existing.project_name)
     ).all()
     for row in stale_files:
         session.delete(row)
