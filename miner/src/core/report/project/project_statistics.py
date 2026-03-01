@@ -6,21 +6,19 @@ to create and compute various statistics related to projects.
 
 from typing import List, Type
 import os
+import json
 import re
 from pathlib import Path
 from src.core.statistic import Statistic, FileStatCollection, ProjectStatCollection, WeightedSkills
 from src.core.report import ProjectReport
 from src.core.report.statistic_builder import StatisticCalculation, StatisticReportBuilder
+from src.core.ML.models.azure_foundry_manager import AzureFoundryManager, azure_openai_enabled
 from src.core.statistic.skills import SkillMapper
 from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis import readme_insights
-from src.core.ML.models.contribution_analysis import (
-    CommitClassifier,
-    PatternDetector,
-    RoleAnalyzer
-)
+from src.core.ML.models.contribution_analysis.commit_classifier import ContributionPatternOutput, CONTRIBUTION_PATTERN_PROMPT
 from src.core.project_discovery.ignore_constants import *
 from typing import Optional
 
@@ -320,7 +318,8 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
                 stem = name.rsplit(".", 1)[0]
                 stem = stem.replace("Activity", "")
                 words = re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)", stem)
-                label = " ".join(w for w in words if w and w.lower() not in {"main"})
+                label = " ".join(
+                    w for w in words if w and w.lower() not in {"main"})
                 if label and label.lower() not in low_signal:
                     _push(label)
 
@@ -349,7 +348,8 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
         """
         Infer a conservative project tone when README tone is unavailable.
         """
-        corpus_parts: list[str] = [str(x) for x in (tags + themes) if str(x).strip()]
+        corpus_parts: list[str] = [str(x)
+                                   for x in (tags + themes) if str(x).strip()]
         for fr in file_reports:
             corpus_parts.append(str(getattr(fr, "filepath", "") or ""))
         corpus = " ".join(corpus_parts).lower()
@@ -678,7 +678,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
 
 class ProjectContributionPatterns(ProjectStatisticCalculation):
     """
-    Analyze commit patterns (types, work cadence, collaboration role) for the user.
+    Analyze commit patterns (types, work cadence, collaboration role) for the user via Azure OpenAI.
     Produces:
       - COMMIT_TYPE_DISTRIBUTION   (dict[str, float])
       - WORK_PATTERN               (str)
@@ -696,6 +696,11 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                 "Skipping contribution pattern analysis: no repo or email")
             return []
 
+        if not azure_openai_enabled():
+            logger.info(
+                "Skipping contribution pattern analysis: Azure OpenAI disabled")
+            return []
+
         try:
             user_commits = [
                 c for c in report.project_repo.iter_commits()
@@ -707,23 +712,7 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                     f"No commits found for {report.email} in {report.project_name}")
                 return []
 
-            commit_messages = [c.message for c in user_commits]
-            commit_dates = [datetime.fromtimestamp(
-                c.authored_date) for c in user_commits]
-
-            # ML-based commit classification using zero-shot learning
-            classifier = CommitClassifier()
-            commit_counts = classifier.classify_commits(commit_messages)
-            commit_pct = classifier.get_commit_distribution(commit_messages)
-
-            # ML-based pattern detection using DBSCAN clustering
-            pattern_detector = PatternDetector()
-            work_pattern = pattern_detector.detect_pattern(commit_dates)
-            activity_metrics = pattern_detector.get_activity_metrics(
-                commit_dates)
-
-            # ML-based role inference using zero-shot classification
-            role_analyzer = RoleAnalyzer()
+            # Extract context for the LLM
             user_commit_pct = report.get_value(
                 ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
             total_authors = report.get_value(
@@ -731,37 +720,69 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
             is_group = report.get_value(
                 ProjectStatCollection.IS_GROUP_PROJECT.value) or False
 
-            role = role_analyzer.infer_role(
-                user_commit_pct,
-                total_authors,
-                commit_counts,
-                is_group
-            )
-            role_description = role_analyzer.generate_role_description(
-                role,
-                commit_counts,
-                user_commit_pct
+            # Cap commits to avoid token limit bloat (e.g., take the most recent 100)
+            # You can adjust this limit based on your Azure deployment's context window.
+            commit_data = [
+                {
+                    "message": c.message.strip(),
+                    "date": str(datetime.fromtimestamp(c.authored_date))
+                }
+                for c in user_commits[:100]
+            ]
+
+            # Assemble the facts payload
+            facts = {
+                "project_name": report.project_name,
+                "user_email": report.email,
+                "user_commit_percentage": user_commit_pct,
+                "total_authors": total_authors,
+                "is_group_project": is_group,
+                "total_user_commits_analyzed": len(commit_data),
+                "commits_sample": commit_data
+            }
+
+            # Call the Foundry Manager
+            foundry = AzureFoundryManager()
+            response = foundry.process_request(
+                user_input=f"FACTS_JSON: {json.dumps(facts, ensure_ascii=True)}",
+                system_prompt=CONTRIBUTION_PATTERN_PROMPT,
+                response_model=ContributionPatternOutput,
+                schema_name="contribution_patterns",
+                max_tokens=400,  # Increased slightly to accommodate dicts and descriptions
+                temperature=0.1  # Keep low for analytical consistency
             )
 
-            logger.info(f"ML contribution pattern analysis completed for {report.project_name}: "
-                        f"role={role.value}, pattern={work_pattern.value}")
+            if response is None:
+                logger.warning(
+                    f"Azure generation returned no structured response for {report.project_name}"
+                )
+                return []
 
+            logger.info(
+                f"Azure contribution pattern analysis completed for {report.project_name}: "
+                f"role={response.collaboration_role}, pattern={response.work_pattern}"
+            )
+
+            # Map the Pydantic response back to your Statistic objects
             stats = [
-                Statistic(
-                    ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value, commit_pct),
+                Statistic(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value,
+                          response.commit_type_distribution),
                 Statistic(ProjectStatCollection.WORK_PATTERN.value,
-                          work_pattern.value),
-                Statistic(
-                    ProjectStatCollection.COLLABORATION_ROLE.value, role.value),
+                          response.work_pattern),
+                Statistic(ProjectStatCollection.COLLABORATION_ROLE.value,
+                          response.collaboration_role),
                 Statistic(ProjectStatCollection.ACTIVITY_METRICS.value,
-                          activity_metrics),
+                          response.activity_metrics),
                 Statistic(ProjectStatCollection.ROLE_DESCRIPTION.value,
-                          role_description),
+                          response.role_description),
             ]
             return stats
+
         except Exception as e:
             logger.error(
-                f"ML contribution pattern analysis failed for {report.project_name}: {e}", exc_info=True)
+                f"Azure contribution pattern analysis failed for {report.project_name}: {e}",
+                exc_info=True
+            )
             return []
 
 
