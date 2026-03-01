@@ -24,4 +24,5 @@ def test_pdf_extraction():
     os.remove(filepath)
 
     # Helper pdf is created, delete it
-    os.remove("helper.pdf")
+    if os.path.exists("helper.pdf"):
+        os.remove("helper.pdf")

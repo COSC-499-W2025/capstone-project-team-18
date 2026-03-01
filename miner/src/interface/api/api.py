@@ -8,6 +8,7 @@ For a more interactive experience, go to
 http:http://127.0.0.1:<port>/docs
 """
 
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -22,6 +23,7 @@ from src.interface.api.routers import (
     portfolio,
     skills,
     user_config,
+    privacy_consent,
 )
 
 app = FastAPI(
@@ -64,6 +66,10 @@ app.include_router(resume)
 app.include_router(portfolio)
 app.include_router(skills)
 app.include_router(user_config)
+app.include_router(privacy_consent)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 # Error handlers. If these errors are ever raised in our code, return the following JSON

@@ -45,6 +45,7 @@ coverage.xml
 # dotenv environment variables
 .env
 .env.*
+!.env.example
 
 # creatde test files
 test_unzip.tar.gz
@@ -68,7 +69,7 @@ miner/src/infrastructure/log/*.log
 # =====================
 
 # Dependencies
-ui/node_modules/
+node_modules/
 
 # Build outputs
 ui/dist/
