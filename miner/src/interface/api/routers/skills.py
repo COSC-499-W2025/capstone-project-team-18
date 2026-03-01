@@ -17,16 +17,22 @@ class WeightedUserSkills(SQLModel):
 @router.get("", response_model=dict[str, list[WeightedUserSkills]])
 def get_skills_endpoint():
     """
-    Retrieve user skills and format them for the API response.
+    GET /skills
+
+    The skills endpoint will retieve the skills that the user has
+    achieved across all their projects. We do this by retieving and
+    aggregating all the project skills and then returnting them as
+    user skills.
+
+    Returns a list of WeightedUserSkills.
     """
-    # 1. Fetch raw skills from the service layer
     raw_skills = get_skills()
 
-    # 2. Map the dataclass (skill_name) to the response model (name)
+    # Map the dataclass (skill_name) to the response model (name)
     formatted_skills = [
         WeightedUserSkills(name=skill.skill_name, weight=skill.weight)
         for skill in raw_skills
     ]
 
-    # 3. Return the mapped data
+    # Return the mapped data
     return {"skills": formatted_skills}
