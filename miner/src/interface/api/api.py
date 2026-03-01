@@ -21,6 +21,7 @@ from src.interface.api.routers import (
     portfolio,
     skills,
     user_config,
+    privacy_consent,
 )
 
 app = FastAPI(
@@ -63,6 +64,7 @@ app.include_router(resume)
 app.include_router(portfolio)
 app.include_router(skills)
 app.include_router(user_config)
+app.include_router(privacy_consent)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -3,7 +3,7 @@ This file initializes `Base`, a class that all of our models (tables)
 inherit and defines a function to use the database's `engine`.
 '''
 
-from sqlmodel import create_engine
+from sqlmodel import create_engine, inspect
 
 DB_PATH = "sqlite:///src/database/data.db"
 
@@ -22,3 +22,10 @@ def get_engine():
         ENGINE_CACHE = create_engine(DB_PATH, future=True)
 
     return ENGINE_CACHE
+
+
+def table_exists(table_name: str, engine=None) -> bool:
+    if engine is None:
+        engine = get_engine()
+    inspector = inspect(engine)
+    return inspector.has_table(table_name)

@@ -5,12 +5,17 @@ import shutil
 import pytest
 
 from src.utils.pathing_utils import unzip_file
-from src.core.analyzer import extract_file_reports
+from src.core.analyzer import extract_file_reports, analyzer_util
 from src.core.project_discovery.project_discovery import discover_projects, ProjectLayout
 from src.core.statistic import ProjectStatCollection
 from src.core.report import ProjectReport
 from src.core.report.project.project_statistics import ProjectTotalContributionPercentage
 from src.database.api.models import UserConfigModel
+
+
+@pytest.fixture(autouse=True)
+def mock_analyzer_db_engine(monkeypatch, blank_db):
+    monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
 
 
 @pytest.fixture

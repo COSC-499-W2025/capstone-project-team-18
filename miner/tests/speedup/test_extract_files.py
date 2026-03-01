@@ -8,15 +8,28 @@ from src.core.statistic import StatisticIndex
 from src.database.api.models import UserConfigModel
 
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def mock_analyzer_db_engine(monkeypatch, blank_db):
+    monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
+
+
 class DummyAnalyzer:
     def __init__(self, relative_path: str):
         self.relative_path = relative_path
+        self.filepath = "path/dummyFile"
+        self.hashed_content = b'0'
 
     def should_analyze_file(self) -> bool:
         return True
 
     def is_info_file(self) -> bool:
         return False
+
+    def compare_hashes(self) -> bool:
+        return b'0' == b'0'
 
     def create_info_file(self) -> FileReport:
         return FileReport(StatisticIndex(), self.relative_path)
@@ -70,6 +83,8 @@ def test_extract_file_reports_parallel_speedup(project_realistic, monkeypatch):
         "get_appropriate_analyzer",
         fake_get_appropriate_analyzer,
     )
+    monkeypatch.setattr(analyzer_util, "filepath_exists_in_db",
+                        lambda *_args, **_kwargs: False)
     monkeypatch.setattr(analyzer_util, "Pool", mp_dummy.Pool)
     monkeypatch.setattr(analyzer_util, "cpu_count", lambda: 4)
 

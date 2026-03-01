@@ -68,7 +68,7 @@ miner/src/infrastructure/log/*.log
 # =====================
 
 # Dependencies
-ui/node_modules/
+node_modules/
 
 # Build outputs
 ui/dist/

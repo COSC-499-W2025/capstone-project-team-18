@@ -6,11 +6,15 @@ import pytest
 
 from src.core.report import ProjectReport
 from src.core.statistic import ProjectStatCollection
-from src.core.statistic import FileStatCollection
-from src.core.analyzer import extract_file_reports
+from src.core.analyzer import extract_file_reports, analyzer_util
 from src.core.project_discovery.project_discovery import ProjectLayout
 from src.core.report.project.project_statistics import ProjectAnalyzeGitAuthorship, ProjectTotalContributionPercentage
 from src.database.api.models import UserConfigModel
+
+
+@pytest.fixture(autouse=True)
+def mock_analyzer_db_engine(monkeypatch, blank_db):
+    monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
 
 
 @pytest.fixture

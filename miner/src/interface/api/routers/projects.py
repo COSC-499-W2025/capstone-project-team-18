@@ -1,16 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import shutil
+import tempfile
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import SQLModel
 from typing import Optional
 from datetime import datetime
 
 from src.interface.api.routers.util import get_session
 from src.database.api.CRUD.projects import get_project_report_model_by_name
+from src.services.mining_service import start_miner_service
+from src.database.api.models import UserConfigModel as UserConfig
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/projects",
     tags=["projects"],
 )
 
+SUPPORTED_FORMATS = [".tar.gz", ".gz", ".7z", ".zip"]
 
 class ProjectReportResponse(SQLModel):
     project_name: str
@@ -19,10 +29,67 @@ class ProjectReportResponse(SQLModel):
     created_at: datetime
     last_updated: datetime
 
+class UploadProjectResponse(SQLModel):
+    message: str
+    portfolio_name: str
 
-@router.post("/upload")
-def upload_project():
-    return {"message": "Project uploaded"}
+
+@router.post("/upload", response_model=UploadProjectResponse)
+def upload_project(
+    file: UploadFile = File(...),
+    email: Optional[str] = None,
+    portfolio_name: Optional[str] = None,
+    session=Depends(get_session)
+):
+    """Upload a zipped project file for analysis."""
+    filename = file.filename or ""
+    matched_format = next(
+        (fmt for fmt in SUPPORTED_FORMATS if filename.endswith(fmt)), None
+    )
+
+    if not matched_format:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type. Supported formats: {', '.join(SUPPORTED_FORMATS)}"
+        )
+
+    try:
+        file_bytes = file.file.read()
+
+        # Use provided portfolio_name, otherwise derive from filename
+        if not portfolio_name:
+            portfolio_name = filename
+            for fmt in SUPPORTED_FORMATS:
+                if portfolio_name.endswith(fmt):
+                    portfolio_name = portfolio_name[: -len(fmt)]
+                    break
+
+        user_config = UserConfig(
+            consent=True,
+            user_email=email,
+        )
+
+        start_miner_service(
+            zipped_bytes=file_bytes,
+            zipped_format=matched_format,
+            user_config=user_config
+        )
+
+        return UploadProjectResponse(
+            message="Project uploaded and analyzed successfully",
+            portfolio_name=portfolio_name
+        )
+
+    except ValueError as e:
+        logger.warning("Invalid input during project upload: %s", str(e))
+        raise HTTPException(status_code=422, detail=str(e))
+
+    except Exception as e:
+        logger.error("Unexpected error during project upload: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process project: {str(e)}"
+        )
 
 
 @router.get("")
