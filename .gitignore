@@ -45,6 +45,7 @@ coverage.xml
 # dotenv environment variables
 .env
 .env.*
+!.env.example
 
 # creatde test files
 test_unzip.tar.gz

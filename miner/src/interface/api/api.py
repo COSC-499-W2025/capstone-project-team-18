@@ -8,6 +8,7 @@ For a more interactive experience, go to
 http:http://127.0.0.1:<port>/docs
 """
 
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -82,3 +83,6 @@ async def universal_exception_handler(request: Request, exc: Exception):
         content={"message": "An internal error occurred", "details": str(exc)},
     )
 app.include_router(privacy_consent)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

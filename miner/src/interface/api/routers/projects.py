@@ -1,14 +1,14 @@
-import os
-import shutil
-import tempfile
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import SQLModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 from src.interface.api.routers.util import get_session
-from src.database.api.CRUD.projects import get_project_report_model_by_name
+from src.database.api.CRUD.projects import (
+    get_project_report_model_by_name,
+    get_project_report_by_name,
+)
 from src.services.mining_service import start_miner_service
 from src.database.api.models import UserConfigModel as UserConfig
 from src.infrastructure.log.logging import get_logger
@@ -22,6 +22,7 @@ router = APIRouter(
 
 SUPPORTED_FORMATS = [".tar.gz", ".gz", ".7z", ".zip"]
 
+
 class ProjectReportResponse(SQLModel):
     project_name: str
     user_config_used: Optional[int]
@@ -29,9 +30,18 @@ class ProjectReportResponse(SQLModel):
     created_at: datetime
     last_updated: datetime
 
+
 class UploadProjectResponse(SQLModel):
     message: str
     portfolio_name: str
+
+
+class ProjectShowcaseResponse(SQLModel):
+    project_name: str
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    frameworks: List[str] = []
+    bullet_points: List[str] = []
 
 
 @router.post("/upload", response_model=UploadProjectResponse)
@@ -116,3 +126,51 @@ def get_project(project_name: str, session=Depends(get_session)):
         )
 
     return result
+
+
+@router.get("/{project_name}/showcase", response_model=ProjectShowcaseResponse)
+def get_project_showcase(project_name: str, session=Depends(get_session)):
+    """
+    GET /{project_name}/showcase
+
+    This endpoint will retieve a passed in project_name and format it
+    for a showcase. The idea is that user can select which project they
+    would like to showcase through the UI, and the portfolio will call
+    this endpoint to format that project for a showcase.
+
+    Returns the project_name fromatted for project showcase.
+    """
+    try:
+        report = get_project_report_by_name(session, project_name)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve project report {e}"
+        )
+
+    if not report:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No project report named {project_name}"
+        )
+
+    resume_item = report.generate_resume_item()
+
+    # Helper to normalize date → datetime
+    def _to_datetime(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        try:
+            return datetime.combine(value, datetime.min.time())
+        except Exception:
+            return None
+
+    return ProjectShowcaseResponse(
+        project_name=report.project_name,
+        start_date=_to_datetime(resume_item.start_date),
+        end_date=_to_datetime(resume_item.end_date),
+        frameworks=list(resume_item.frameworks or []),
+        bullet_points=list(resume_item.bullet_points or []),
+    )

@@ -1,9 +1,10 @@
+from datetime import datetime
 from sqlmodel import Session, select
 from typing import Optional
 from sqlmodel import Session
-from src.database.api.models import ProjectReportModel
+from src.database.api.models import ProjectReportModel, FileReportModel
 from src.core.report import ProjectReport
-from src.database.core.model_serializer import serialize_project_report
+from src.database.core.model_serializer import serialize_project_report, serialize_file_report
 from src.database.core.model_deserializer import deserialize_project_report
 
 
@@ -38,11 +39,36 @@ def save_project_report(
         The saved ProjectReportModel instance
     """
 
-    project_model = serialize_project_report(project_report, user_config_id)
+    incoming_model = serialize_project_report(project_report, user_config_id)
+    incoming_files = [serialize_file_report(
+        fr) for fr in project_report.file_reports]
 
-    session.add(project_model)
+    existing = get_project_report_model_by_name(
+        session, incoming_model.project_name)
+    if existing is None:
+        incoming_model.file_reports = incoming_files
+        session.add(incoming_model)
+        return incoming_model
 
-    return project_model
+    # Upsert behavior: refresh existing project row and replace child file rows.
+    # This prevents UNIQUE(project_name) crashes on repeated analyses.
+    existing.user_config_used = user_config_id
+    existing.statistic = incoming_model.statistic
+    existing.last_updated = datetime.now()
+
+    stale_files = session.exec(
+        select(FileReportModel).where(
+            FileReportModel.project_name == existing.project_name)
+    ).all()
+    for row in stale_files:
+        session.delete(row)
+
+    for file_model in incoming_files:
+        file_model.project_name = existing.project_name
+        session.add(file_model)
+
+    session.add(existing)
+    return existing
 
 
 def get_project_report_model_by_name(

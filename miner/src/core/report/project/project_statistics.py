@@ -6,6 +6,7 @@ to create and compute various statistics related to projects.
 
 from typing import List, Type
 import os
+import re
 from pathlib import Path
 from src.core.statistic import Statistic, FileStatCollection, ProjectStatCollection, WeightedSkills
 from src.core.report import ProjectReport
@@ -272,6 +273,103 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
         ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
         return ranked[0][0]
 
+    def _infer_tags_from_paths(self, file_reports) -> list[str]:
+        """
+        Infer feature/domain tags when README signals are missing.
+        """
+        inferred: list[str] = []
+        seen: set[str] = set()
+
+        def _push(tag: str):
+            label = str(tag or "").strip()
+            if not label:
+                return
+            key = label.lower()
+            if key in seen:
+                return
+            seen.add(key)
+            inferred.append(label)
+
+        low_signal = {
+            "base", "main", "app", "application", "activity", "fragment",
+            "screen", "view", "utils", "helper", "model", "service",
+        }
+
+        for fr in file_reports:
+            path_text = str(getattr(fr, "filepath", "") or "")
+            lowered = path_text.lower()
+            name = Path(path_text).name
+
+            if "androidmanifest.xml" in lowered:
+                _push("Android Application")
+            if "trip" in lowered:
+                _push("Trip Creation")
+            if "itinerary" in lowered:
+                _push("Itinerary")
+            if "event" in lowered:
+                _push("Event Search")
+            if "admin" in lowered:
+                _push("Admin Panel")
+            if "student" in lowered:
+                _push("Student Records")
+            if "course" in lowered:
+                _push("Course Management")
+
+            # Convert Activity class names into high-level feature hints.
+            if name.endswith("Activity.java") or name.endswith("Activity.kt"):
+                stem = name.rsplit(".", 1)[0]
+                stem = stem.replace("Activity", "")
+                words = re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)", stem)
+                label = " ".join(w for w in words if w and w.lower() not in {"main"})
+                if label and label.lower() not in low_signal:
+                    _push(label)
+
+        return inferred[:20]
+
+    def _infer_themes_from_tags(self, tags: list[str]) -> list[str]:
+        """
+        Infer concise themes from tags when theme extraction is unavailable.
+        """
+        theme_candidates: list[str] = []
+        seen: set[str] = set()
+        for tag in tags:
+            term = str(tag or "").strip()
+            if not term:
+                continue
+            lowered = term.lower()
+            if lowered in seen:
+                continue
+            # Keep concise, human-readable thematic terms.
+            if len(term.split()) <= 4 and len(term) <= 40:
+                seen.add(lowered)
+                theme_candidates.append(term)
+        return theme_candidates[:10]
+
+    def _infer_tone_fallback(self, tags: list[str], themes: list[str], file_reports) -> str | None:
+        """
+        Infer a conservative project tone when README tone is unavailable.
+        """
+        corpus_parts: list[str] = [str(x) for x in (tags + themes) if str(x).strip()]
+        for fr in file_reports:
+            corpus_parts.append(str(getattr(fr, "filepath", "") or ""))
+        corpus = " ".join(corpus_parts).lower()
+
+        educational_terms = {
+            "tutorial", "learning", "phonics", "education", "student",
+            "course", "training", "reference", "paper", "analysis",
+        }
+        experimental_terms = {
+            "prototype", "experiment", "research", "bayesian", "evaluation",
+            "benchmark", "lab", "model",
+        }
+        if any(term in corpus for term in experimental_terms):
+            return "Experimental"
+        if any(term in corpus for term in educational_terms):
+            return "Educational"
+        if corpus.strip():
+            return "Professional"
+        return None
+
     def calculate(self, report: ProjectReport) -> list[Statistic]:
         tags: list[str] = []
         tag_seen: set[str] = set()
@@ -341,6 +439,28 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
                 report.project_name,
             )
 
+        # Dynamic fallback: infer tags/themes from source structure when README
+        # signals are missing (e.g., mobile projects without README files).
+        if not tags:
+            inferred_tags = self._infer_tags_from_paths(report.file_reports)
+            if inferred_tags:
+                tags.extend(inferred_tags)
+                logger.info(
+                    "[README_INSIGHTS][%s] inferred %d tags from file paths",
+                    report.project_name,
+                    len(inferred_tags),
+                )
+        if not theme_counts and tags:
+            inferred_themes = self._infer_themes_from_tags(tags)
+            for theme in inferred_themes:
+                theme_counts[theme] = 1
+            if inferred_themes:
+                logger.info(
+                    "[README_INSIGHTS][%s] inferred %d themes from non-README signals",
+                    report.project_name,
+                    len(inferred_themes),
+                )
+
         stats: list[Statistic] = []
 
         if tags:
@@ -360,11 +480,33 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
             )
 
         majority_tone = self._pick_majority(tone_counts)
+        if not majority_tone:
+            majority_tone = self._infer_tone_fallback(
+                tags,
+                [name for name in theme_counts.keys()],
+                report.file_reports,
+            )
+            if majority_tone:
+                logger.info(
+                    "[README_INSIGHTS][%s] inferred fallback tone=%s from non-README signals",
+                    report.project_name,
+                    majority_tone,
+                )
         if majority_tone:
             stats.append(
                 Statistic(ProjectStatCollection.PROJECT_TONE.value,
                           majority_tone)
             )
+
+        logger.info(
+            "[README_INSIGHTS][%s] readmes=%d tags=%d themes=%d tones=%d majority_tone=%s",
+            report.project_name,
+            len(readme_texts),
+            len(tags),
+            len(theme_counts),
+            sum(tone_counts.values()),
+            majority_tone or "None",
+        )
 
         return stats
 
