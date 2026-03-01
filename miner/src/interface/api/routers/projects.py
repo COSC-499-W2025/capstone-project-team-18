@@ -130,7 +130,16 @@ def get_project(project_name: str, session=Depends(get_session)):
 
 @router.get("/{project_name}/showcase", response_model=ProjectShowcaseResponse)
 def get_project_showcase(project_name: str, session=Depends(get_session)):
+    """
+    GET /{project_name}/showcase
 
+    This endpoint will retieve a passed in project_name and format it
+    for a showcase. The idea is that user can select which project they
+    would like to showcase through the UI, and the portfolio will call
+    this endpoint to format that project for a showcase.
+
+    Returns the project_name fromatted for project showcase.
+    """
     try:
         report = get_project_report_by_name(session, project_name)
     except Exception as e:
