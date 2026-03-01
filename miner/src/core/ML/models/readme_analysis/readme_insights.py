@@ -289,6 +289,30 @@ def _extract_themes_small_corpus(texts: list[str], max_themes: int) -> list[list
         return _theme_fallback_keyphrases(texts, max_themes)
 
 
+def _extract_topics(text: str, max_topics: int) -> list[str]:
+    """
+    Backward-compatible single-README topic extractor.
+
+    Kept for tests and call sites that monkeypatch this helper directly.
+    """
+    if not text or not text.strip():
+        return []
+    model = _get_topic_model()
+    if model is None:
+        return []
+    try:
+        topics, _ = model.fit_transform([text])
+        topic_id = topics[0]
+        if topic_id == -1:
+            return []
+        topic_terms = model.get_topic(topic_id) or []
+        labels = [term for term, _score in topic_terms][:max_topics]
+        return _clean_theme_terms(labels)
+    except Exception:
+        logger.exception("Failed to extract BERTopic themes from README")
+        return []
+
+
 def _corpus_cache_key(texts: list[str]) -> int:
     """Compute a stable cache key for a corpus of README texts."""
     normalized = [" ".join(text.split()) for text in texts]
