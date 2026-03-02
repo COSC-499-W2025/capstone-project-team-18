@@ -17,10 +17,15 @@ from src.core.statistic import \
     ProjectStatCollection  # type: ignore  # noqa: E402
 from src.database.api.models import UserConfigModel
 
+from src.core.project_discovery import project_discovery as pd
+
 
 @pytest.fixture(autouse=True)
 def mock_analyzer_db_engine(monkeypatch, blank_db):
     monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
+    monkeypatch.setattr(pd, "get_engine", lambda: blank_db)
+    monkeypatch.setattr(
+        pd, "get_project_report_model_by_name", lambda session, _: None)
 
 
 @pytest.fixture
@@ -306,13 +311,14 @@ def test_info_files_exist(tmp_path: Path):
         root_path=project_dir,
         file_paths=[Path("a1.py"), Path("a2.py"),
                     Path("c1.py"), Path("c2.py")],
-        repo=repo
+        repo=repo,
+        pre_analyzed=False
     )
 
     user_config = UserConfigModel()
     user_config.user_email = "charlie@example.com"
 
-    fr = extract_file_reports(project_files, user_config)
+    fr, _ = extract_file_reports(project_files, user_config)
 
     # Four file reports included
     assert len(fr) == 4
@@ -375,11 +381,11 @@ def test_partial_project_contribution(tmp_path: Path):
     # below is mock of start_miner behaviour
     layouts = [
         ProjectLayout(name="ProjectA", root_path=proj_a,
-                      file_paths=[Path("main.py")], repo=repo_a),
+                      file_paths=[Path("main.py")], repo=repo_a, pre_analyzed=False),
         ProjectLayout(name="ProjectB", root_path=proj_b, file_paths=[
-                      Path("lib.py"), Path("util.py")], repo=repo_b),
+                      Path("lib.py"), Path("util.py")], repo=repo_b, pre_analyzed=False),
         ProjectLayout(name="ProjectC", root_path=proj_c,
-                      file_paths=[Path("only.py")], repo=repo_c),
+                      file_paths=[Path("only.py")], repo=repo_c, pre_analyzed=False),
     ]
 
     reports = []
@@ -389,7 +395,7 @@ def test_partial_project_contribution(tmp_path: Path):
         user_config = UserConfigModel()
         user_config.user_email = "charlie@example.com"
 
-        fr = extract_file_reports(layout, user_config)
+        fr, _ = extract_file_reports(layout, user_config)
         pr = ProjectReport(file_reports=fr,
                            project_path=str(layout.root_path),
                            project_name=layout.name,

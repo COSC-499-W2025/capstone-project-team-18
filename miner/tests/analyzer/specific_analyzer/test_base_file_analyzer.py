@@ -83,9 +83,10 @@ def test_extract_file_reports_returns_project(tmp_path, create_temp_file):
         root_path=tmp_path,
         file_paths=[Path(f) for f in files],
         repo=None,
+        pre_analyzed=False,
     )
 
-    listReport = extract_file_reports(
+    listReport, _ = extract_file_reports(
         user_config=UserConfigModel(), project_file=project_file
     )
     assert listReport is not None
@@ -128,9 +129,10 @@ def test_extract_file_reports_recieves_project_with_subfolder(
         file_paths=[Path("a_1.txt"), Path("a_2.txt"),
                     Path("subfolder/a_3.txt")],
         repo=None,
+        pre_analyzed=False,
     )
 
-    listReport = extract_file_reports(
+    listReport, _ = extract_file_reports(
         user_config=UserConfigModel(), project_file=project_file
     )
 

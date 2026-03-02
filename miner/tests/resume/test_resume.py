@@ -74,3 +74,33 @@ def test_userreport_can_create_resume(project_report_from_stats):
     assert resume_item.items[0].title == "TESTING ONLY SHOULD SEE THIS IN PYTEST"
     assert resume_item.items[0].start_date == datetime(2020, 1, 1)
     assert resume_item.items[0].end_date == datetime(2021, 1, 1)
+
+
+def test_userreport_adds_since_last_analysis_item(project_report_from_stats):
+    project_statistics = [
+        Statistic(ProjectStatCollection.PROJECT_START_DATE.value,
+                  datetime(2020, 1, 1)),
+        Statistic(ProjectStatCollection.PROJECT_END_DATE.value,
+                  datetime(2021, 1, 1)),
+        Statistic(ProjectStatCollection.PREVIOUS_ANALYSIS_PROJECT.value,
+                  "Project1_2"),
+        Statistic(ProjectStatCollection.PROJECT_STATISTICS_DELTA.value,
+                  {
+                      "TOTAL_PROJECT_LINES": 120.0,
+                      "USER_COMMIT_PERCENTAGE": 10.0,
+                  }),
+    ]
+
+    user_report = UserReport(
+        [project_report_from_stats(project_statistics, project_name="Project1_3")],
+        "UserReport1"
+    )
+
+    resume = user_report.generate_resume(None, None)
+
+    assert len(resume.items) == 2
+    assert resume.items[1].title == "Project1 metrics since last analysis"
+    assert any(
+        "TOTAL_PROJECT_LINES increased by 120.00" in bullet
+        for bullet in resume.items[1].bullet_points
+    )

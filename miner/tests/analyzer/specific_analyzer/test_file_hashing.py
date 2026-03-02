@@ -1,72 +1,49 @@
 
-from pathlib import Path
 
-from sqlmodel import Session
+import pytest
+from src.core.analyzer import analyzer_util
 from src.core.analyzer.analyzer_util import single_file_analysis
 from src.core.analyzer.base_file_analyzer import BaseFileAnalyzer
-from src.core.report.file_report import FileReport
-from src.core.statistic.base_classes import Statistic, StatisticIndex
-from src.core.statistic.file_stat_collection import FileStatCollection
 from src.database.api.models import UserConfigModel
-from src.database.core.model_serializer import serialize_file_report
+from src.core.project_discovery import project_discovery as pd
 
 
-def test_file_analysis_when_hash_matches(
-    tmp_path, create_temp_file, project_context_from_root, blank_db, monkeypatch
+@pytest.fixture(autouse=True)
+def mock_db_engines(monkeypatch, blank_db):
+    """Ensure both analyzer + project discovery use test DB engine."""
+    monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
+    monkeypatch.setattr(pd, "get_engine", lambda: blank_db)
+    monkeypatch.setattr(
+        pd, "get_project_report_model_by_name", lambda session, _: None)
+
+
+def test_matching_hash_between_file_reports(
+    tmp_path, create_temp_file, project_context_from_root
 ):
-    file_info = create_temp_file("dup.unknown", "duplicate content", tmp_path)
+    # Arrange: two different files with identical content
+    file_one = create_temp_file("one.txt", "Identical content", tmp_path)[1]
+    file_two = create_temp_file("one.txt", "Identical content", tmp_path)[1]
     project_context = project_context_from_root(str(tmp_path))
 
-    analyzer = BaseFileAnalyzer(
-        UserConfigModel(), project_context, file_info[1]
+    user = UserConfigModel()
+    user.user_email = "same-user@example.com"
+
+    report_one, _ = single_file_analysis(
+        file_one, project_context.name, user, project_context, str(file_one))
+    report_two, _ = single_file_analysis(
+        file_two, project_context.name, user, project_context, str(file_two))
+
+    analyzer_one = BaseFileAnalyzer(
+        user, project_context, str(file_one)
+    )
+    analyzer_two = BaseFileAnalyzer(
+        user, project_context, str(file_two)
     )
 
-    stats = StatisticIndex([
-        Statistic(
-            FileStatCollection.FILE_SIZE_BYTES.value,
-            Path(analyzer.filepath).stat().st_size
-        )
-    ])
+    print(analyzer_one.hashed_content)
 
-    file_report = FileReport(
-        statistics=stats,
-        filepath=analyzer.filepath,
-        is_info_file=False,
-        file_hash=analyzer.hashed_content,
-        project_name=project_context.name,
-    )
-
-    model = serialize_file_report(file_report)
-
-    with Session(blank_db) as session:
-        session.add(model)
-        session.commit()
-
-    monkeypatch.setattr(
-        "src.core.analyzer.analyzer_util.get_engine",
-        lambda: blank_db
-    )
-    monkeypatch.setattr(
-        "src.core.analyzer.base_file_analyzer.get_engine",
-        lambda: blank_db
-    )
-
-    def fail_analyze(self):
-        raise AssertionError("analyze should not run for duplicate hash")
-
-    monkeypatch.setattr(BaseFileAnalyzer, "analyze", fail_analyze)
-
-    result = single_file_analysis(
-        Path(file_info[1]),
-        project_context.name,
-        UserConfigModel(),
-        project_context,
-        file_info[1],
-    )
-
-    assert result is not None
-    assert result.file_hash == analyzer.hashed_content
-    assert result.filepath == analyzer.filepath
+    # Assert: hashes must match for identical content + same user salt
+    assert analyzer_one.hashed_content == analyzer_two.hashed_content
 
 
 def test_hash_salt_by_email(

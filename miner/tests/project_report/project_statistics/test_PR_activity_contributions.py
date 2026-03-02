@@ -34,12 +34,13 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_l
             Path("code2.py"),
             Path("code3.py")
         ],
-        repo=None
+        repo=None,
+        pre_analyzed=False,
     )
 
     make_project_layout(pf)
 
-    frs = extract_file_reports(pf, UserConfigModel())
+    frs, _ = extract_file_reports(pf, UserConfigModel())
 
     pr_email = ProjectReport(
         file_reports=frs,
@@ -79,7 +80,7 @@ def test_activity_contribution_from_git_project(project_realistic, mock_readme_a
     uc = UserConfigModel()
     uc.user_email = "bob@example.com"
 
-    frs = extract_file_reports(project_realistic, uc)
+    frs, _ = extract_file_reports(project_realistic, uc)
 
     pr = ProjectReport(
         file_reports=frs,
