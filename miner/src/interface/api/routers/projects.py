@@ -367,7 +367,7 @@ def clear_project_showcase_customization(project_name: str, session=Depends(get_
         project_model.showcase_end_date = None
         project_model.showcase_frameworks = []
         project_model.showcase_bullet_points = []
-        project_model.showcase_last_user_edit_at = datetime.now()
+        project_model.showcase_last_user_edit_at = None
         project_model.last_updated = datetime.now()
 
         session.add(project_model)
@@ -432,80 +432,3 @@ def get_project_resume_item(project_name: str, session=Depends(get_session)):
         bullet_points=list(resume_item.bullet_points or []),
     )
 
-@router.get("/{project_name}/showcase/customization")
-def get_showcase_customization(project_name: str, session=Depends(get_session)):
-    project_model = get_project_report_model_by_name(session, project_name)
-    if not project_model:
-        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
-
-    return {
-        "project_name": project_model.project_name,
-        "title": project_model.showcase_title,
-        "start_date": project_model.showcase_start_date,
-        "end_date": project_model.showcase_end_date,
-        "frameworks": list(project_model.showcase_frameworks or []),
-        "bullet_points": list(project_model.showcase_bullet_points or []),
-        "last_user_edit_at": project_model.showcase_last_user_edit_at,
-    }
-
-@router.put("/{project_name}/showcase/customization")
-def save_showcase_customization(
-    project_name: str,
-    request: SaveShowcaseCustomizationRequest,
-    session=Depends(get_session),
-):
-    project_model = get_project_report_model_by_name(session, project_name)
-    if not project_model:
-        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
-
-    try:
-        if request.title is not None:
-            project_model.showcase_title = request.title
-
-        if request.start_date is not None:
-            project_model.showcase_start_date = request.start_date
-
-        if request.end_date is not None:
-            project_model.showcase_end_date = request.end_date
-
-        if request.frameworks is not None:
-            # same structure used for customizing resume item 
-            project_model.showcase_frameworks = list(request.frameworks)
-
-        if request.bullet_points is not None:
-            project_model.showcase_bullet_points = list(request.bullet_points)
-
-        project_model.showcase_last_user_edit_at = datetime.now()
-        project_model.last_updated = datetime.now()
-
-        session.add(project_model)
-        session.commit()
-        session.refresh(project_model)
-
-        return {"ok": True}
-
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to save showcase customization: {str(e)}")
-
-@router.delete("/{project_name}/showcase/customization")
-def clear_showcase_customization(project_name: str, session=Depends(get_session)):
-    project_model = get_project_report_model_by_name(session, project_name)
-    if not project_model:
-        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
-
-    try:
-        project_model.showcase_title = None
-        project_model.showcase_start_date = None
-        project_model.showcase_end_date = None
-        project_model.showcase_frameworks = []
-        project_model.showcase_bullet_points = []
-        project_model.showcase_last_user_edit_at = datetime.now()
-        project_model.last_updated = datetime.now()
-
-        session.add(project_model)
-        session.commit()
-        return {"ok": True}
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to clear customization: {str(e)}")
