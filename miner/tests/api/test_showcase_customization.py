@@ -10,12 +10,6 @@ projects_module = importlib.import_module("src.interface.api.routers.projects")
 
 
 def _insert_project(engine, project_name: str = "Demo Project") -> None:
-    """
-    Insert a minimal ProjectReportModel row so customization endpoints
-    have something to update.
-
-    NOTE: `blank_db` fixture in this repo provides an Engine (sqlite://).
-    """
     with Session(engine) as session:
         model = ProjectReportModel(
             project_name=project_name,
