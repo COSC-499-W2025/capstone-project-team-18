@@ -1,4 +1,5 @@
 from datetime import date
+import pytest
 
 
 from src.core.report import UserReport, ProjectReport
