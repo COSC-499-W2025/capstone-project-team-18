@@ -181,34 +181,3 @@ def is_valid_filepath_to_zip(filepath: str) -> int:
     return 0
 
 
-def normalize_path(user_path: str) -> str:
-    r"""
-    Normalize a user-provided file path so it works cross-platform.
-    - Expands ~ to home directory
-    - Converts backslashes and slashes for consistency
-    - Normalizes redundant separators and up-level references
-    - On Windows, maps Mac-style /Users/<username>/ paths to C:\\Users\\<username>\\
-    - On Mac, maps Windows-style C:\\Users\\<username>\\ paths to /Users/<username>/
-    """
-    if not user_path:
-        return user_path
-    # On Mac, map C:\Users\<username>\... or C:/Users/<username>/... to /Users/<username>/...
-    if sys.platform == 'darwin':
-        match = re.match(
-            r'^[cC]:[\\/]+Users[\\/]+([^\\/]+)[\\/]+(.+)', user_path)
-        if match:
-            username, rest = match.groups()
-            user_path = f"/Users/{username}/{rest}"
-    # Expand ~ to home directory
-    user_path = os.path.expanduser(user_path)
-    # On Windows, map /Users/<username>/... to C:\Users\<username>\...
-    if os.name == 'nt':
-        match = re.match(r'^/Users/([^/\\]+)/(.+)', user_path)
-        if match:
-            username, rest = match.groups()
-            user_path = f"C:\\Users\\{username}\\{rest}"
-    # Convert all slashes to OS separator
-    user_path = user_path.replace('\\', os.sep).replace('/', os.sep)
-    # Normalize path (removes redundant .., . etc.)
-    user_path = os.path.normpath(user_path)
-    return user_path

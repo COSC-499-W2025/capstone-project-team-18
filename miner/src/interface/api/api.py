@@ -66,8 +66,9 @@ app.include_router(portfolio)
 app.include_router(skills)
 app.include_router(user_config)
 
-
 # Error handlers. If these errors are ever raised in our code, return the following JSON
+
+
 @app.exception_handler(KeyNotFoundError)
 async def key_not_found_exception_handler(request: Request, exc: KeyNotFoundError):
     return JSONResponse(
