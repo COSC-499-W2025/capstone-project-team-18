@@ -3,14 +3,52 @@
 ## **[This Week](#week-2-0112---0118)**
 
 ## Table of Contents
-
-- **[Week 3/4, 01/19 - 2/8](#week-34-0119---28)**
+- **[Week 8, 2/23 - 3/1](#week-8223---31)**
+- **[Week 4-5 01/26 - 02/08](#week-4-5-0126---0208)**
+- **[Week 3 01/19 - 01/25](#week-3-0119-0125)**
 - **[Week 2, 01/12 - 01/18](#week-2-0112---0118)**
 - **[Week 1, 01/05 - 01/11](#week-1-0105---0111--winter-break)**
 
 ---
 
-## Week 3/4 01/19 - 2/8
+## Week 8 2/23 - 3/1
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week4_log.png)
+
+### Coding Tasks
+
+This week, I filled a lot of holes that were needed for Milestone 2. The biggest of which was the use cases for the portfolio object. While I had designed the portfolio system, I needed to hook the system up to the API and database. Besides that PR, I created a skills endpoint, documented our endpoints, updated the README, and refactor a ML pipline to use the new Azure models.
+
+[PR #434 Major Use Cases for the Portofolio Object](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/434)
+[PR #435 Get Skills Endpoint](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/434)
+[PR #442 Extra Documentation for Endpoints](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/442)
+[PR #445 Commit Contributions to Azure](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/445)
+[PR #452 Readme updates](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/452)
+
+### Testing Tasks
+
+Each PR was test or was documentation.
+
+### Review Tasks
+
+I reviewed the following PRs:
+
+[PR #451](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/451)
+[PR #450](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/450)
+[PR #446](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/446)
+[PR #444](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/444)
+[PR #441](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/441)
+[PR #440](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/440)
+[PR #437](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/437)
+[PR #429](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/429)
+[PR #429](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/COSC-499-W2025/capstone-project-team-18/pull/429)
+
+## Summary
+
+Milestone 2 is done woo hoo!
+
+
+## Week 4-5 01/26 - 02/08
 
 ![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week4_log.png)
 
@@ -41,6 +79,7 @@ I reviewed the following PRs:
 ### Summary
 
 As talked about last week these weeks were focused on big architercure changes the portfolio system and an entire DB rework. Moving forward, look to start getting specific requirements for Milestone #2 done. I will do this by levelaging these new changes.
+
 ## Week 3 01/19-01/25
 
 ![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week3_log.png)
