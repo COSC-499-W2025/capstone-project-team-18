@@ -8,6 +8,7 @@ from src.interface.api.routers.util import get_session
 from src.database.api.CRUD.projects import (
     get_project_report_model_by_name,
     get_project_report_by_name,
+    get_all_project_report_models
 )
 from src.services.mining_service import start_miner_service
 from src.database.api.models import UserConfigModel as UserConfig
@@ -28,12 +29,18 @@ class ProjectReportResponse(SQLModel):
     user_config_used: Optional[int]
     image_data: Optional[bytes]
     created_at: datetime
+    statistic: dict
     last_updated: datetime
 
 
 class UploadProjectResponse(SQLModel):
     message: str
     portfolio_name: str
+
+
+class ProjectListResponse(SQLModel):
+    projects: List[ProjectReportResponse]
+    count: int
 
 
 class ProjectShowcaseResponse(SQLModel):
@@ -102,9 +109,29 @@ def upload_project(
         )
 
 
-@router.get("")
-def list_projects():
-    return {"projects": []}
+@router.get(
+    "/",
+    response_model=ProjectListResponse,
+)
+def list_projects(session=Depends(get_session)):
+    """
+    Get all project reports without pagination.
+    """
+    try:
+
+        all_projects = get_all_project_report_models(session)
+
+        return ProjectListResponse(
+            projects=all_projects,
+            count=len(all_projects)
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching project list: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve the list of projects from the database."
+        )
 
 
 @router.get("/{project_name}", response_model=ProjectReportResponse)
