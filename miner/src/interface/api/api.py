@@ -25,12 +25,6 @@ from src.interface.api.routers import (
     privacy_consent,
 )
 
-app = FastAPI(
-    title="Capstone Project API",
-    version="1.0.0",
-)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Commands to run on startup
@@ -39,6 +33,12 @@ async def lifespan(app: FastAPI):
     yield
 
     # Anything to be cleaned up after the app
+
+app = FastAPI(
+    title="Capstone Project API",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
