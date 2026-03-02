@@ -2,12 +2,43 @@
 
 ## Table of Contents
 
-**[Week 4, Feb, 02 - 08](#week-4-feb-02---08)**
+**[Week 8, Feb, 24 - Mar 01](#week-8-feb-24---mar-01)**
+**[Week 5, Feb, 02 - 08](#week-4-feb-02---08)**
 **[Week 3, Jan. 19 - 25](#week-3-jan-19---25)**
 **[Week 2, Jan. 12 - 18](#week-2-jan-12---18)**
 **[Week 1, Jan. 05 - 11](#week-1-jan-05---11)**
 
 ---
+
+## Week 8, Feb, 24 - Mar 01
+
+### Peer Eval
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/jimi/jimi_week8_log.png)
+
+
+### Recap
+
+Last week, we were focused on integrating all functionality from API service calls. In addition to this we needed to implement additional requirements defined for Milestone 2.
+
+### This Week
+
+This week we met to finalize all requirements for the milestone. This meant cleaning up the repository, working on the front-end, presentation and the video demo. Additoinally, we worked to ensure we covered all necessary API endpoints for our project.
+
+### Coding Tasks
+Personally, I was working on dealing with checking against duplicated files and adding incremental information to portfolio / reports. This was finalized but due to the lasting nature of the PR, was shifted to a new branch to resolve conflicts and can be found at [COSC-499-W2025/capstone-project-team-18#362](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/362). Secondly, I worked on an additional requirement which was to allow for incremental changes given a file uploaded at a future time. This was done by adding a parent object to ProjectReports and measuring the changes in statistcs between points in analysis.
+
+### Testing Tasks
+Testing tasks for this week can be found in all above PRs. The hashing was tested to ensure they matched correctly, teh database flow was as expected and that the salting of user's hash was of impact. The incremental file changes was tested to ensure each inccrement had teh correct parent refernce, with statsitics outputting as expected. We needed to ensure both that the DB changes were relevant and the reuslitng output was sensical. Additionally, the continued passing of all tests displays no breaking changes or corrupted data.
+
+
+### Reviewing Tasks
+This week I reviewed:
+- [Proposal] New Resume Class System [410](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/437)
+- New Database System [#412](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/430)
+
+### Next Week
+Next week, we will be working on cleaning up the codebase, testing the remaining code and expanding endpoints. Further more, the frontend needs to be fleshed out to better serve a non-technical userbase.
 
 ## Week 5, Feb, 02 - 08
 
