@@ -9,6 +9,7 @@ from enum import Enum
 
 class ErrorCode(str, Enum):
     """Error codes for frontend/backend communication"""
+    ID_NOT_FOUND = "ID_NOT_FOUND"
     NO_RELEVANT_FILES = "NO_RELEVANT_FILES"
     NO_DISCOVERED_PROJECTS = "NO_DISCOVERED_PROJECTS"
     MISSING_CONSENT = "MISSING_CONSENT"
@@ -19,6 +20,11 @@ class ErrorCode(str, Enum):
     UNKNOWN_DESERIALIZATION_CLASS = "UNKNOWN_DESERIALIZATION_CLASS"
     UNHANDLE_VALUE = "UNHANDLE_VALUE"
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
+
+
+class KeyNotFoundError(Exception):
+    """Can't find object in database with key"""
+    error_code: ErrorCode = ErrorCode.ID_NOT_FOUND
 
 
 class SerializationError(Exception):

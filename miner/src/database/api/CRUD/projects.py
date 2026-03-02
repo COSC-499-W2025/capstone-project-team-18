@@ -28,9 +28,11 @@ def save_project_report(
     """
 
     incoming_model = serialize_project_report(project_report, user_config_id)
-    incoming_files = [serialize_file_report(fr) for fr in project_report.file_reports]
+    incoming_files = [serialize_file_report(
+        fr) for fr in project_report.file_reports]
 
-    existing = get_project_report_model_by_name(session, incoming_model.project_name)
+    existing = get_project_report_model_by_name(
+        session, incoming_model.project_name)
     if existing is None:
         incoming_model.file_reports = incoming_files
         session.add(incoming_model)
@@ -43,7 +45,8 @@ def save_project_report(
     existing.last_updated = datetime.now()
 
     stale_files = session.exec(
-        select(FileReportModel).where(FileReportModel.project_name == existing.project_name)
+        select(FileReportModel).where(
+            FileReportModel.project_name == existing.project_name)
     ).all()
     for row in stale_files:
         session.delete(row)

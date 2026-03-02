@@ -84,7 +84,7 @@ class PortfolioSection:
         return [tag for tag in self.block_order if self.blocks_by_tag[tag].is_in_conflict()]
 
 
-def merge_section(existing: PortfolioSection, generated: PortfolioSection):
+def merge_section(existing: PortfolioSection, generated: PortfolioSection) -> PortfolioSection:
     """
     Merge a newly generated section into an existing section.
     Conflicts are recorded in the respective blocks.
@@ -104,3 +104,5 @@ def merge_section(existing: PortfolioSection, generated: PortfolioSection):
             existing.add_block(new_block)
             logger.info(
                 f"New block '{new_block_tag}' added to section '{existing.title}'")
+
+    return existing

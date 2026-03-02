@@ -6,9 +6,19 @@ from src.database.api.models import ResumeModel, ResumeItemModel
 from typing import Optional
 
 from src.core.report import FileReport, ProjectReport
+from src.core.portfolio.portfolio import Portfolio, PortfolioSection
 from src.core.resume.resume import Resume, ResumeItem
-from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
+from src.database.api.models import (
+    FileReportModel,
+    ProjectReportModel,
+    ResumeItemModel,
+    ResumeModel,
+    PortfolioModel,
+    PortfolioSectionModel,
+    BlockModel
+)
 from src.utils.errors import DomainClassToModelConverisonError
+from src.core.portfolio.sections.block.block import Block, BlockContent
 
 
 def serialize_file_report(file_report: FileReport) -> FileReportModel:
@@ -75,11 +85,18 @@ def serialize_project_report(
         raise DomainClassToModelConverisonError(
             "project_statistics is None, cannot save ProjectReport")
 
-    return ProjectReportModel(
+    project_model = ProjectReportModel(
         project_name=project_name,
         user_config_used=user_config_id,
         statistic=project_statistics
     )
+
+    file_models = [serialize_file_report(fr)
+                   for fr in project_report.file_reports]
+
+    project_model.file_reports = file_models
+
+    return project_model
 
 
 def serialize_resume(resume: Resume) -> ResumeModel:
@@ -113,3 +130,44 @@ def serialize_resume_item(
         start_date=resume_item.start_date,
         end_date=resume_item.end_date,
     )
+
+
+def serialize_block(block: Block[BlockContent]) -> BlockModel:
+    return BlockModel(
+        tag=block.tag,
+        content_type=block.current_content.content_type if block.current_content else "Unknown",
+        last_generated_at=block.metadata.last_generated_at,
+        last_user_edit_at=block.metadata.last_user_edit_at,
+        in_conflict=block.metadata.in_conflict,
+        current_content=block.current_content.raw_value() if block.current_content else None,
+        conflict_content=block.metadata.conflict_content.raw_value(
+        ) if block.metadata.conflict_content else None
+    )
+
+
+def serialize_portfolio_section(section: PortfolioSection) -> PortfolioSectionModel:
+    section_model = PortfolioSectionModel(
+        section_id=section.id,
+        title=section.title,
+        order=section.order,
+        block_order=section.block_order
+    )
+
+    # Map the dictionary of blocks to a list of models
+    section_model.blocks = [serialize_block(
+        b) for b in section.blocks_by_tag.values()]
+    return section_model
+
+
+def serialize_portfolio(portfolio: Portfolio) -> PortfolioModel:
+    portfolio_model = PortfolioModel(
+        title=portfolio.title,
+        creation_time=portfolio.metadata.creation_time,
+        last_updated_at=portfolio.metadata.last_updated_at,
+        project_ids_include=portfolio.metadata.project_ids_include
+    )
+
+    portfolio_model.sections = [
+        serialize_portfolio_section(s) for s in portfolio.sections]
+
+    return portfolio_model

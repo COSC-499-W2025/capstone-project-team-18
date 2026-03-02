@@ -38,7 +38,10 @@ class BlockContent(ABC, Generic[RawValue]):
 
     @abstractmethod
     def raw_value(self) -> RawValue:
-        """Return the "raw" Python type representing the content."""
+        """
+        Return the "raw" Python type representing the content. Must
+        also be JSON serializable!
+        """
         pass
 
 

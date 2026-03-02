@@ -1,7 +1,6 @@
-import os
 from datetime import date
-
 import pytest
+
 
 from src.core.report import UserReport, ProjectReport
 from src.core.statistic import (
@@ -32,9 +31,11 @@ def _make_project_report(
     if cadence is not None:
         stats.add(Statistic(ProjectStatCollection.WORK_PATTERN.value, cadence))
     if commit_focus is not None:
-        stats.add(Statistic(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value, commit_focus))
+        stats.add(
+            Statistic(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value, commit_focus))
     if frameworks is not None:
-        stats.add(Statistic(ProjectStatCollection.PROJECT_FRAMEWORKS.value, frameworks))
+        stats.add(
+            Statistic(ProjectStatCollection.PROJECT_FRAMEWORKS.value, frameworks))
     if themes is not None:
         stats.add(Statistic(ProjectStatCollection.PROJECT_THEMES.value, themes))
     if tone is not None:
@@ -125,6 +126,7 @@ def test_summary_section_uses_ml_when_available(tmp_path, monkeypatch):
 
     assert len(blocks) == 1
     assert "Summary" in builder.section_title
+    assert blocks[0].current_content
     assert "Data-driven developer" in blocks[0].current_content.render()
 
     # Verify key facts passed to generator
@@ -165,7 +167,8 @@ def test_summary_section_skips_when_ml_required_and_missing(tmp_path, monkeypatc
         blocks = builder.create_blocks(report)
         assert blocks == []
     finally:
-        monkeypatch.delenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", raising=False)
+        monkeypatch.delenv(
+            "ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", raising=False)
 
 
 def test_summary_section_handles_missing_data(tmp_path, monkeypatch):
@@ -208,11 +211,13 @@ def test_summary_section_no_projects_no_stats(monkeypatch):
 def test_summary_section_aggregates_tools_across_projects(tmp_path, monkeypatch):
     project_a = _make_project_report(
         tmp_path,
-        frameworks=[WeightedSkills("FastAPI", 1.0), WeightedSkills("SQLAlchemy", 0.5)],
+        frameworks=[WeightedSkills("FastAPI", 1.0),
+                    WeightedSkills("SQLAlchemy", 0.5)],
     )
     project_b = _make_project_report(
         tmp_path,
-        frameworks=[WeightedSkills("FastAPI", 0.8), WeightedSkills("Pandas", 0.9)],
+        frameworks=[WeightedSkills("FastAPI", 0.8),
+                    WeightedSkills("Pandas", 0.9)],
     )
 
     report = _make_user_report([project_a, project_b])
@@ -283,7 +288,8 @@ def test_summary_section_commit_focus_aggregates(tmp_path, monkeypatch):
 def test_summary_section_focus_inference_uses_skills_and_tools(tmp_path, monkeypatch):
     project = _make_project_report(
         tmp_path,
-        frameworks=[WeightedSkills("Power BI", 1.0), WeightedSkills("Pandas", 0.7)],
+        frameworks=[WeightedSkills("Power BI", 1.0),
+                    WeightedSkills("Pandas", 0.7)],
     )
     report = _make_user_report([project])
 

@@ -9,11 +9,13 @@ http:http://127.0.0.1:<port>/docs
 """
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-
 from sqlmodel import SQLModel
+
+from src.utils.errors import KeyNotFoundError
 from src.database.core.base import get_engine
 from src.interface.api.routers import (
     projects,
@@ -68,3 +70,20 @@ app.include_router(privacy_consent)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# Error handlers. If these errors are ever raised in our code, return the following JSON
+@app.exception_handler(KeyNotFoundError)
+async def key_not_found_exception_handler(request: Request, exc: KeyNotFoundError):
+    return JSONResponse(
+        status_code=404,
+        content={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+@app.exception_handler(Exception)
+async def universal_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"message": "An internal error occurred", "details": str(exc)},
+    )
