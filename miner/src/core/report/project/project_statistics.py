@@ -6,20 +6,19 @@ to create and compute various statistics related to projects.
 
 from typing import List, Type
 import os
+import json
+import re
 from pathlib import Path
 from src.core.statistic import Statistic, FileStatCollection, ProjectStatCollection, WeightedSkills
 from src.core.report import ProjectReport
 from src.core.report.statistic_builder import StatisticCalculation, StatisticReportBuilder
+from src.core.ML.models.azure_foundry_manager import AzureFoundryManager, azure_openai_enabled
 from src.core.statistic.skills import SkillMapper
 from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis import readme_insights
-from src.core.ML.models.contribution_analysis import (
-    CommitClassifier,
-    PatternDetector,
-    RoleAnalyzer
-)
+from src.core.ML.models.contribution_analysis.commit_classifier import ContributionPatternOutput, CONTRIBUTION_PATTERN_PROMPT
 from src.core.project_discovery.ignore_constants import *
 from typing import Optional
 
@@ -272,6 +271,105 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
         ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
         return ranked[0][0]
 
+    def _infer_tags_from_paths(self, file_reports) -> list[str]:
+        """
+        Infer feature/domain tags when README signals are missing.
+        """
+        inferred: list[str] = []
+        seen: set[str] = set()
+
+        def _push(tag: str):
+            label = str(tag or "").strip()
+            if not label:
+                return
+            key = label.lower()
+            if key in seen:
+                return
+            seen.add(key)
+            inferred.append(label)
+
+        low_signal = {
+            "base", "main", "app", "application", "activity", "fragment",
+            "screen", "view", "utils", "helper", "model", "service",
+        }
+
+        for fr in file_reports:
+            path_text = str(getattr(fr, "filepath", "") or "")
+            lowered = path_text.lower()
+            name = Path(path_text).name
+
+            if "androidmanifest.xml" in lowered:
+                _push("Android Application")
+            if "trip" in lowered:
+                _push("Trip Creation")
+            if "itinerary" in lowered:
+                _push("Itinerary")
+            if "event" in lowered:
+                _push("Event Search")
+            if "admin" in lowered:
+                _push("Admin Panel")
+            if "student" in lowered:
+                _push("Student Records")
+            if "course" in lowered:
+                _push("Course Management")
+
+            # Convert Activity class names into high-level feature hints.
+            if name.endswith("Activity.java") or name.endswith("Activity.kt"):
+                stem = name.rsplit(".", 1)[0]
+                stem = stem.replace("Activity", "")
+                words = re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)", stem)
+                label = " ".join(
+                    w for w in words if w and w.lower() not in {"main"})
+                if label and label.lower() not in low_signal:
+                    _push(label)
+
+        return inferred[:20]
+
+    def _infer_themes_from_tags(self, tags: list[str]) -> list[str]:
+        """
+        Infer concise themes from tags when theme extraction is unavailable.
+        """
+        theme_candidates: list[str] = []
+        seen: set[str] = set()
+        for tag in tags:
+            term = str(tag or "").strip()
+            if not term:
+                continue
+            lowered = term.lower()
+            if lowered in seen:
+                continue
+            # Keep concise, human-readable thematic terms.
+            if len(term.split()) <= 4 and len(term) <= 40:
+                seen.add(lowered)
+                theme_candidates.append(term)
+        return theme_candidates[:10]
+
+    def _infer_tone_fallback(self, tags: list[str], themes: list[str], file_reports) -> str | None:
+        """
+        Infer a conservative project tone when README tone is unavailable.
+        """
+        corpus_parts: list[str] = [str(x)
+                                   for x in (tags + themes) if str(x).strip()]
+        for fr in file_reports:
+            corpus_parts.append(str(getattr(fr, "filepath", "") or ""))
+        corpus = " ".join(corpus_parts).lower()
+
+        educational_terms = {
+            "tutorial", "learning", "phonics", "education", "student",
+            "course", "training", "reference", "paper", "analysis",
+        }
+        experimental_terms = {
+            "prototype", "experiment", "research", "bayesian", "evaluation",
+            "benchmark", "lab", "model",
+        }
+        if any(term in corpus for term in experimental_terms):
+            return "Experimental"
+        if any(term in corpus for term in educational_terms):
+            return "Educational"
+        if corpus.strip():
+            return "Professional"
+        return None
+
     def calculate(self, report: ProjectReport) -> list[Statistic]:
         tags: list[str] = []
         tag_seen: set[str] = set()
@@ -341,6 +439,28 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
                 report.project_name,
             )
 
+        # Dynamic fallback: infer tags/themes from source structure when README
+        # signals are missing (e.g., mobile projects without README files).
+        if not tags:
+            inferred_tags = self._infer_tags_from_paths(report.file_reports)
+            if inferred_tags:
+                tags.extend(inferred_tags)
+                logger.info(
+                    "[README_INSIGHTS][%s] inferred %d tags from file paths",
+                    report.project_name,
+                    len(inferred_tags),
+                )
+        if not theme_counts and tags:
+            inferred_themes = self._infer_themes_from_tags(tags)
+            for theme in inferred_themes:
+                theme_counts[theme] = 1
+            if inferred_themes:
+                logger.info(
+                    "[README_INSIGHTS][%s] inferred %d themes from non-README signals",
+                    report.project_name,
+                    len(inferred_themes),
+                )
+
         stats: list[Statistic] = []
 
         if tags:
@@ -360,11 +480,33 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
             )
 
         majority_tone = self._pick_majority(tone_counts)
+        if not majority_tone:
+            majority_tone = self._infer_tone_fallback(
+                tags,
+                [name for name in theme_counts.keys()],
+                report.file_reports,
+            )
+            if majority_tone:
+                logger.info(
+                    "[README_INSIGHTS][%s] inferred fallback tone=%s from non-README signals",
+                    report.project_name,
+                    majority_tone,
+                )
         if majority_tone:
             stats.append(
                 Statistic(ProjectStatCollection.PROJECT_TONE.value,
                           majority_tone)
             )
+
+        logger.info(
+            "[README_INSIGHTS][%s] readmes=%d tags=%d themes=%d tones=%d majority_tone=%s",
+            report.project_name,
+            len(readme_texts),
+            len(tags),
+            len(theme_counts),
+            sum(tone_counts.values()),
+            majority_tone or "None",
+        )
 
         return stats
 
@@ -536,7 +678,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
 
 class ProjectContributionPatterns(ProjectStatisticCalculation):
     """
-    Analyze commit patterns (types, work cadence, collaboration role) for the user.
+    Analyze commit patterns (types, work cadence, collaboration role) for the user via Azure OpenAI.
     Produces:
       - COMMIT_TYPE_DISTRIBUTION   (dict[str, float])
       - WORK_PATTERN               (str)
@@ -554,6 +696,11 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                 "Skipping contribution pattern analysis: no repo or email")
             return []
 
+        if not azure_openai_enabled():
+            logger.info(
+                "Skipping contribution pattern analysis: Azure OpenAI disabled")
+            return []
+
         try:
             user_commits = [
                 c for c in report.project_repo.iter_commits()
@@ -565,23 +712,7 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                     f"No commits found for {report.email} in {report.project_name}")
                 return []
 
-            commit_messages = [c.message for c in user_commits]
-            commit_dates = [datetime.fromtimestamp(
-                c.authored_date) for c in user_commits]
-
-            # ML-based commit classification using zero-shot learning
-            classifier = CommitClassifier()
-            commit_counts = classifier.classify_commits(commit_messages)
-            commit_pct = classifier.get_commit_distribution(commit_messages)
-
-            # ML-based pattern detection using DBSCAN clustering
-            pattern_detector = PatternDetector()
-            work_pattern = pattern_detector.detect_pattern(commit_dates)
-            activity_metrics = pattern_detector.get_activity_metrics(
-                commit_dates)
-
-            # ML-based role inference using zero-shot classification
-            role_analyzer = RoleAnalyzer()
+            # Extract context for the LLM
             user_commit_pct = report.get_value(
                 ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
             total_authors = report.get_value(
@@ -589,37 +720,78 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
             is_group = report.get_value(
                 ProjectStatCollection.IS_GROUP_PROJECT.value) or False
 
-            role = role_analyzer.infer_role(
-                user_commit_pct,
-                total_authors,
-                commit_counts,
-                is_group
-            )
-            role_description = role_analyzer.generate_role_description(
-                role,
-                commit_counts,
-                user_commit_pct
+            # Cap commits to avoid token limit bloat (e.g., take the most recent 100)
+            # You can adjust this limit based on your Azure deployment's context window.
+            commit_data = [
+                {
+                    "message": c.message.strip(),
+                    "date": str(datetime.fromtimestamp(c.authored_date))
+                }
+                for c in user_commits[:100]
+            ]
+
+            # Assemble the facts payload
+            facts = {
+                "project_name": report.project_name,
+                "user_email": report.email,
+                "user_commit_percentage": user_commit_pct,
+                "total_authors": total_authors,
+                "is_group_project": is_group,
+                "total_user_commits_analyzed": len(commit_data),
+                "commits_sample": commit_data
+            }
+
+            # Call the Foundry Manager
+            foundry = AzureFoundryManager()
+            response = foundry.process_request(
+                user_input=f"FACTS_JSON: {json.dumps(facts, ensure_ascii=True)}",
+                system_prompt=CONTRIBUTION_PATTERN_PROMPT,
+                response_model=ContributionPatternOutput,
+                schema_name="contribution_patterns",
+                max_tokens=400,  # Increased slightly to accommodate dicts and descriptions
+                temperature=0.1  # Keep low for analytical consistency
             )
 
-            logger.info(f"ML contribution pattern analysis completed for {report.project_name}: "
-                        f"role={role.value}, pattern={work_pattern.value}")
+            if response is None:
+                logger.warning(
+                    f"Azure generation returned no structured response for {report.project_name}"
+                )
+                return []
+
+            logger.info(
+                f"Azure contribution pattern analysis completed for {report.project_name}: "
+                f"role={response.collaboration_role}, pattern={response.work_pattern}"
+            )
 
             stats = [
                 Statistic(
-                    ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value, commit_pct),
-                Statistic(ProjectStatCollection.WORK_PATTERN.value,
-                          work_pattern.value),
+                    ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value,
+                    response.commit_type_distribution.model_dump()
+                ),
                 Statistic(
-                    ProjectStatCollection.COLLABORATION_ROLE.value, role.value),
-                Statistic(ProjectStatCollection.ACTIVITY_METRICS.value,
-                          activity_metrics),
-                Statistic(ProjectStatCollection.ROLE_DESCRIPTION.value,
-                          role_description),
+                    ProjectStatCollection.WORK_PATTERN.value,
+                    response.work_pattern
+                ),
+                Statistic(
+                    ProjectStatCollection.COLLABORATION_ROLE.value,
+                    response.collaboration_role
+                ),
+                Statistic(
+                    ProjectStatCollection.ACTIVITY_METRICS.value,
+                    response.activity_metrics.model_dump()
+                ),
+                Statistic(
+                    ProjectStatCollection.ROLE_DESCRIPTION.value,
+                    response.role_description
+                ),
             ]
             return stats
+
         except Exception as e:
             logger.error(
-                f"ML contribution pattern analysis failed for {report.project_name}: {e}", exc_info=True)
+                f"Azure contribution pattern analysis failed for {report.project_name}: {e}",
+                exc_info=True
+            )
             return []
 
 
@@ -743,7 +915,8 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
     def build(self, report: ProjectReport) -> List[Statistic]:
         """
         Compile all the project level statistics together into one
-        statistic list
+        statistic list. We overide build because the statistic index
+        attribute is called "project_statistics" in a project report.
         """
 
         stats: List[Statistic] = []

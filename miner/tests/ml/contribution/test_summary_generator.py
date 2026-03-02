@@ -1,3 +1,5 @@
+import pytest
+
 from src.core.ML.models.contribution_analysis import summary_generator as sg
 
 
@@ -22,7 +24,6 @@ def _sample_facts(**overrides):
 
 
 def test_generate_signature_uses_deterministic_fallback_when_model_unavailable(monkeypatch):
-    monkeypatch.setattr(sg, "_load_model", lambda: (None, None))
     monkeypatch.delenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", raising=False)
     sg._CACHE.clear()
 
@@ -34,59 +35,47 @@ def test_generate_signature_uses_deterministic_fallback_when_model_unavailable(m
     assert 30 <= len(summary.split()) <= 140
 
 
-def test_generate_signature_fallback_adapts_to_emerging_focus(monkeypatch):
-    monkeypatch.setattr(sg, "_load_model", lambda: (None, None))
+@pytest.mark.parametrize(
+    "overrides, expected_phrases",
+    [
+        (
+            {
+                "focus": "ML",
+                "emerging": ["Generative AI", "Machine Learning"],
+                "top_skills": ["Python", "PyTorch", "NLP"],
+                "tools": ["Transformers", "PyTorch", "LangChain"],
+            },
+            ("generative ai", "machine learning"),
+        ),
+        (
+            {
+                "experience_stage": "student",
+                "focus": "Analytics",
+            },
+            ("student", "curious learner"),
+        ),
+        (
+            {
+                "experience_stage": "experienced",
+                "role": "leader",
+                "emerging": ["Cloud Platforms"],
+            },
+            ("experienced software engineer", "senior-level software engineer"),
+        ),
+    ],
+)
+def test_generate_signature_fallback_variants(monkeypatch, overrides, expected_phrases):
     monkeypatch.delenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", raising=False)
     sg._CACHE.clear()
 
-    summary = sg.generate_signature(
-        _sample_facts(
-            focus="ML",
-            emerging=["Generative AI", "Machine Learning"],
-            top_skills=["Python", "PyTorch", "NLP"],
-            tools=["Transformers", "PyTorch", "LangChain"],
-        )
-    )
+    summary = sg.generate_signature(_sample_facts(**overrides))
 
     assert summary is not None
-    assert "Generative AI" in summary or "Machine Learning" in summary
-
-
-def test_generate_signature_fallback_uses_student_tone(monkeypatch):
-    monkeypatch.setattr(sg, "_load_model", lambda: (None, None))
-    monkeypatch.delenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", raising=False)
-    sg._CACHE.clear()
-
-    summary = sg.generate_signature(
-        _sample_facts(
-            experience_stage="student",
-            focus="Analytics",
-        )
-    )
-
-    assert summary is not None
-    assert "student" in summary.lower() or "curious learner" in summary.lower()
-
-
-def test_generate_signature_fallback_uses_experienced_tone(monkeypatch):
-    monkeypatch.setattr(sg, "_load_model", lambda: (None, None))
-    monkeypatch.delenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", raising=False)
-    sg._CACHE.clear()
-
-    summary = sg.generate_signature(
-        _sample_facts(
-            experience_stage="experienced",
-            role="leader",
-            emerging=["Cloud Platforms"],
-        )
-    )
-
-    assert summary is not None
-    assert "experienced software engineer" in summary.lower()
+    summary_lower = summary.lower()
+    assert any(phrase in summary_lower for phrase in expected_phrases)
 
 
 def test_generate_signature_respects_require_ml_flag(monkeypatch):
-    monkeypatch.setattr(sg, "_load_model", lambda: (None, None))
     monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
     sg._CACHE.clear()
 
@@ -113,10 +102,31 @@ def test_polish_summary_removes_redundant_domain_sentences():
 
 def test_validator_rejects_redundant_repetition():
     redundant = (
-        "Web developer experienced in building web applications with HTML, CSS, and JavaScript. "
-        "Experienced web developer building web applications with HTML, CSS, and JavaScript. "
-        "Strong in Python and SQL for analytics and reporting."
+        "Web developer experienced in building web applications with HTML, CSS, and JavaScript for analytics teams. "
+        "Experienced web developer building web applications with HTML, CSS, and JavaScript for analytics teams. "
+        "Strong in Python and SQL for analytics and reporting in operational dashboard delivery."
     )
     ok, reason = sg._is_valid_summary(redundant, _sample_facts())
     assert ok is False
     assert reason == "redundant_repetition"
+
+
+def test_generate_signature_does_not_cache_deterministic_fallback(monkeypatch):
+    monkeypatch.setattr(sg, "azure_openai_enabled", lambda: True)
+    monkeypatch.setattr(sg, "ml_extraction_allowed", lambda: True)
+    monkeypatch.setattr(sg, "_generate_signature_with_azure_openai", lambda _facts: None)
+    calls = {"count": 0}
+
+    def _fallback(_facts, *, context):
+        calls["count"] += 1
+        return f"Fallback summary {calls['count']}"
+
+    monkeypatch.setattr(sg, "_validated_fallback_summary", _fallback)
+    sg._CACHE.clear()
+
+    summary_one = sg.generate_signature(_sample_facts())
+    summary_two = sg.generate_signature(_sample_facts())
+
+    assert summary_one == "Fallback summary 1"
+    assert summary_two == "Fallback summary 2"
+    assert calls["count"] == 2

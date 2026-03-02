@@ -3,7 +3,7 @@ User-level statistic calculation classes and a report builder.
 
 Mirrors the structure used for project statistics.
 """
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Type, Optional
 from datetime import datetime
 
 from src.core.report.statistic_builder import StatisticCalculation, StatisticReportBuilder
@@ -162,11 +162,11 @@ class UserWeightedSkills(UserStatisticCalculation):
 
 
 class UserStatisticReportBuilder(StatisticReportBuilder["UserReport"]):
-    """Builds user-level statistics by running configured calculators."""
+    ALL_CALCULATORS = [
+        UserDates,
+        UserCodingLanguageRatio,
+        UserWeightedSkills
+    ]
 
-    def __init__(self) -> None:
-        self.calculators = [
-            UserDates(),
-            UserCodingLanguageRatio(),
-            UserWeightedSkills(),
-        ]
+    def __init__(self, calculator_classes: Optional[list[Type]] = None) -> None:
+        super().__init__(self.ALL_CALCULATORS, calculator_classes)

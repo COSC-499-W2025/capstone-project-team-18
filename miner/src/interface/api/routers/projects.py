@@ -1,15 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import SQLModel
-from typing import Optional
+from typing import Optional, List, Any
 from datetime import datetime
 
 from src.interface.api.routers.util import get_session
-from src.database.api.CRUD.projects import get_project_report_model_by_name
+from src.database.api.CRUD.projects import (
+    get_project_report_model_by_name,
+    get_project_report_by_name,
+)
+from src.services.mining_service import start_miner_service
+from src.database.api.models import UserConfigModel as UserConfig
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/projects",
     tags=["projects"],
 )
+
+SUPPORTED_FORMATS = [".tar.gz", ".gz", ".7z", ".zip"]
 
 
 class ProjectReportResponse(SQLModel):
@@ -20,15 +31,115 @@ class ProjectReportResponse(SQLModel):
     last_updated: datetime
 
 
-@router.post("/upload")
-def upload_project():
-    return {"message": "Project uploaded"}
+class UploadProjectResponse(SQLModel):
+    message: str
+    portfolio_name: str
 
+class ProjectShowcaseResponse(SQLModel):
+    project_name: str
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    frameworks: List[str] = []
+    bullet_points: List[str] = []
+
+class ProjectResumeItemResponse(SQLModel):
+    title: str
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    frameworks: List[str] = []
+    bullet_points: List[str] = []
+
+def _frameworks_to_strings(value: Any) -> List[str]:
+    if not value:
+        return []
+    out: List[str] = []
+    for item in value:
+        if isinstance(item, str):
+            out.append(item)
+        elif isinstance(item, dict):
+            out.append(item.get("name") or item.get("skill") or str(item))
+        else:
+            out.append(
+                getattr(item, "name", None)
+                or getattr(item, "skill", None)
+                or str(item)
+            )
+    seen = set()
+    deduped = []
+    for x in out:
+        if x and x not in seen:
+            seen.add(x)
+            deduped.append(x)
+    return deduped
+
+@router.post("/upload", response_model=UploadProjectResponse)
+def upload_project(
+    file: UploadFile = File(...),
+    email: Optional[str] = None,
+    portfolio_name: Optional[str] = None,
+    session=Depends(get_session)
+):
+    """
+    POST /upload
+
+    This endpoint will intake a zipped file. This zipped file will then
+    be analyzed for projects. These projects will be analyzed, then saved
+    to the database.
+
+    Errors will be thrown if the zipped file does not match the accepted formats.
+    """
+    filename = file.filename or ""
+    matched_format = next(
+        (fmt for fmt in SUPPORTED_FORMATS if filename.endswith(fmt)), None
+    )
+
+    if not matched_format:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type. Supported formats: {', '.join(SUPPORTED_FORMATS)}"
+        )
+
+    try:
+        file_bytes = file.file.read()
+
+        # Use provided portfolio_name, otherwise derive from filename
+        if not portfolio_name:
+            portfolio_name = filename
+            for fmt in SUPPORTED_FORMATS:
+                if portfolio_name.endswith(fmt):
+                    portfolio_name = portfolio_name[: -len(fmt)]
+                    break
+
+        user_config = UserConfig(
+            consent=True,
+            user_email=email,
+        )
+
+        start_miner_service(
+            zipped_bytes=file_bytes,
+            zipped_format=matched_format,
+            user_config=user_config
+        )
+
+        return UploadProjectResponse(
+            message="Project uploaded and analyzed successfully",
+            portfolio_name=portfolio_name
+        )
+
+    except ValueError as e:
+        logger.warning("Invalid input during project upload: %s", str(e))
+        raise HTTPException(status_code=422, detail=str(e))
+
+    except Exception as e:
+        logger.error("Unexpected error during project upload: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process project: {str(e)}"
+        )
 
 @router.get("")
 def list_projects():
     return {"projects": []}
-
 
 @router.get("/{project_name}", response_model=ProjectReportResponse)
 def get_project(project_name: str, session=Depends(get_session)):
@@ -49,3 +160,108 @@ def get_project(project_name: str, session=Depends(get_session)):
         )
 
     return result
+
+@router.get("/{project_name}/showcase", response_model=ProjectShowcaseResponse)
+def get_project_showcase(project_name: str, session=Depends(get_session)):
+    """
+    GET /{project_name}/showcase
+
+    This endpoint will retieve a passed in project_name and format it
+    for a showcase. The idea is that user can select which project they
+    would like to showcase through the UI, and the portfolio will call
+    this endpoint to format that project for a showcase.
+
+    Returns the project_name fromatted for project showcase.
+    """
+    try:
+        report = get_project_report_by_name(session, project_name)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve project report {e}"
+        )
+
+    if not report:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No project report named {project_name}"
+        )
+
+    resume_item = report.generate_resume_item()
+
+    # Helper to normalize date → datetime
+    def _to_datetime(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        try:
+            return datetime.combine(value, datetime.min.time())
+        except Exception as e:
+            logger.warning(
+                "Failed to convert value '%s' to datetime in project endpoint: %s",
+                value,
+                str(e),
+            )
+            return None
+
+    return ProjectShowcaseResponse(
+        project_name=report.project_name,
+        start_date=_to_datetime(resume_item.start_date),
+        end_date=_to_datetime(resume_item.end_date),
+        frameworks=_frameworks_to_strings(resume_item.frameworks),
+        bullet_points=list(resume_item.bullet_points or []),
+    )
+
+@router.get("/{project_name}/resume-item", response_model=ProjectResumeItemResponse)
+def get_project_resume_item(project_name: str, session=Depends(get_session)):
+    """
+    GET /{project_name}/resume-item
+    
+    This endpoint will retrieve a passed in project_name and format it
+    as a résumé item. The idea is that a user can select which project
+    they would like to include in their résumé through the UI, and the
+    system will call this endpoint to generate a structured résumé entry
+    for that project.
+    
+    Returns the project formatted as a résumé item, including title,
+    date range, frameworks used, and descriptive bullet points.
+    """
+    try:
+        report = get_project_report_by_name(session, project_name)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve project report {e}"
+        )
+
+    if not report:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No project report named {project_name}"
+        )
+
+    resume_item = report.generate_resume_item()
+
+    def _to_datetime(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        try:
+            return datetime.combine(value, datetime.min.time())
+        except Exception as e:
+            logger.warning(
+                "Failed to convert value '%s' to datetime in project endpoint: %s",
+                value,
+                str(e),
+            )
+            return None
+
+    return ProjectResumeItemResponse(
+        title=resume_item.title,
+        start_date=_to_datetime(resume_item.start_date),
+        end_date=_to_datetime(resume_item.end_date),
+        frameworks=_frameworks_to_strings(resume_item.frameworks),
+        bullet_points=list(resume_item.bullet_points or []),
+    )

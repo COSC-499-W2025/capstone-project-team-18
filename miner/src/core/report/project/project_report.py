@@ -113,7 +113,7 @@ class ProjectReport(BaseReport):
         norm_date = 0.0
 
         if isinstance(start_date, (datetime, date)) and isinstance(end_date, (datetime, date)):
-            days = (end_date - start_date).days
+            days = (end_date - start_date).days  # type: ignore
             norm_date = min(days / 365, 1.0) if days > 0 else 0.0
 
         # Individual contribution normalization

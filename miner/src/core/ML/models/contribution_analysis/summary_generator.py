@@ -4,15 +4,14 @@ import hashlib
 import re
 from typing import Any
 
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from pydantic import BaseModel
 
+from src.core.ML.models.azure_foundry_manager import AzureFoundryManager
+from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.contribution_analysis.summary_constants import (
     SUMMARY_STYLE_EXAMPLE,
-    SUMMARY_EXAMPLE_GUIDANCE,
-    SUMMARY_BASE_PROMPT,
     SUMMARY_BANNED_PHRASES,
     SUMMARY_DOMAIN_KEYWORDS,
     SUMMARY_PHRASE_NORMALIZATION_REPLACEMENTS,
@@ -20,10 +19,66 @@ from src.core.ML.models.contribution_analysis.summary_constants import (
 
 logger = get_logger(__name__)
 
-_MODEL = None
-_TOKENIZER = None
-_MODEL_FAILED = False
+
+class UserSummaryOutput(BaseModel):
+    summary: str
+
+
+class ExperienceStageOutput(BaseModel):
+    stage: str
+    confidence: float
+
+
+USER_SUMMARY_PROMPT = """
+You write concise professional portfolio summaries. Return strict JSON matching the provided schema.
+Task: write a first-person developer summary using only FACTS_JSON.
+Constraints:
+- Exactly 3 sentences.
+- 36 to 92 words total.
+- Mention at least two anchors from facts across skills, languages, tools, role, or activities.
+- Include delivery/outcome wording.
+- Do not mention project names.
+"""
+
+
+EXPERIENCE_STAGE_PROMPT = """
+Classify career stage from structured profile facts. Return strict JSON.
+Pick one stage from: student, early-career, experienced.
+Confidence must be between 0.0 and 1.0.
+"""
+
+USER_SUMMARY_DIVERSITY_REWRITE_PROMPT = """
+Rewrite the user summary using the same facts but with clearly different wording and sentence flow.
+Return strict JSON matching the provided schema.
+Constraints:
+- Exactly 3 sentences.
+- Keep factual meaning aligned with FACTS_JSON.
+- Do not mention project names.
+- Do not include percentages.
+"""
+
 _CACHE: dict[str, str] = {}
+_RECENT_USER_SUMMARIES: list[str] = []
+
+_PROMPT_ECHO_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^\s*example\b", re.IGNORECASE),
+    re.compile(r"\bexample\s*\d+\b", re.IGNORECASE),
+    re.compile(r"\binput\s+draft\b", re.IGNORECASE),
+    re.compile(r"\boutput\s+draft\b", re.IGNORECASE),
+    re.compile(r"\boutput\s*:", re.IGNORECASE),
+    re.compile(r"\bfollowing\s+context\b", re.IGNORECASE),
+    re.compile(r"\byou\s+will\s+see\b", re.IGNORECASE),
+    re.compile(r"\bafter\s+reading\b", re.IGNORECASE),
+    re.compile(r"\bfacts_json\b", re.IGNORECASE),
+    re.compile(r"\bhard\s+constraints?\b", re.IGNORECASE),
+    re.compile(r"\breturn\s+exactly\b", re.IGNORECASE),
+    re.compile(r"\bvalid\s+json\b", re.IGNORECASE),
+    re.compile(r"\bjson\s+object\b", re.IGNORECASE),
+    re.compile(r"\bschema\b", re.IGNORECASE),
+    re.compile(r"\bdo\s+not\s+copy\b", re.IGNORECASE),
+    re.compile(r"^\s*rewritten\b", re.IGNORECASE),
+    re.compile(r"^\s*rewrite[d]?\s*:", re.IGNORECASE),
+)
 
 
 def _ml_required() -> bool:
@@ -36,58 +91,15 @@ def _ml_required() -> bool:
     return os.environ.get("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML") == "1"
 
 
-def _get_model_name() -> str:
-    # If no explicit override, choose a smaller model on CPU to avoid OOM.
-    override = os.environ.get("ARTIFACT_MINER_SIGNATURE_MODEL")
-    if override:
-        return override
-
-    if torch.cuda.is_available():
-        return "microsoft/Phi-3-mini-4k-instruct"
-
-    # CPU-friendly default (smaller, faster, lower memory)
-    return "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+def _signature_diagnostics_enabled() -> bool:
+    """Enable detailed signature-validator diagnostics via env."""
+    raw = os.environ.get("ARTIFACT_MINER_SIGNATURE_DIAGNOSTICS")
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _load_model():
-    global _MODEL, _TOKENIZER, _MODEL_FAILED
-
-    if not ml_extraction_allowed():
-        return None, None
-
-    if os.environ.get("ARTIFACT_MINER_DISABLE_SIGNATURE_MODEL") == "1":
-        logger.info("Signature model disabled via env variable")
-        return None, None
-
-    if _MODEL_FAILED:
-        return None, None
-
-    if _MODEL is not None and _TOKENIZER is not None:
-        return _MODEL, _TOKENIZER
-
-    try:
-        model_name = _get_model_name()
-        logger.info("Loading signature model: %s", model_name)
-
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-        use_cuda = torch.cuda.is_available()
-        dtype = torch.float16 if use_cuda else torch.float32
-        device_map = "auto" if use_cuda else "cpu"
-
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=dtype,
-            device_map=device_map,
-            low_cpu_mem_usage=True,
-        )
-
-        _MODEL = model
-        _TOKENIZER = tokenizer
-        return _MODEL, _TOKENIZER
-    except Exception:
-        logger.exception("Failed to load signature model")
-        _MODEL_FAILED = True
-        return None, None
+    """Compatibility shim; local non-Azure model generation is removed."""
+    return None, None
 
 
 def _facts_hash(facts: dict[str, Any]) -> str:
@@ -96,30 +108,387 @@ def _facts_hash(facts: dict[str, Any]) -> str:
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
-def _build_prompt(facts: dict[str, Any], strict: bool = False, include_example: bool = True) -> str:
+def _cache_enabled() -> bool:
+    """Allow disabling summary cache for strict per-run ML generation checks."""
+    return os.environ.get("ARTIFACT_MINER_SUMMARY_CACHE_DISABLE", "0") != "1"
+
+
+def _env_int(name: str, default: int) -> int:
+    """Read integer env var safely."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    """Read float env var safely."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _summary_similarity(a: str, b: str) -> float:
+    """Token-level Jaccard similarity for diversity checks."""
+    a_tokens = set(re.findall(r"[a-z0-9]+", (a or "").lower()))
+    b_tokens = set(re.findall(r"[a-z0-9]+", (b or "").lower()))
+    if not a_tokens or not b_tokens:
+        return 0.0
+    return len(a_tokens & b_tokens) / len(a_tokens | b_tokens)
+
+
+def _summary_similarity_threshold() -> float:
+    """Similarity threshold above which we attempt a rewrite."""
+    return max(0.55, min(0.9, _env_float("ARTIFACT_MINER_USER_SUMMARY_SIMILARITY_THRESHOLD", 0.72)))
+
+
+def _looks_too_similar_to_recent(summary: str) -> bool:
+    """Return True if summary is too close to recent generated summaries."""
+    if not summary or not _RECENT_USER_SUMMARIES:
+        return False
+    threshold = _summary_similarity_threshold()
+    return any(_summary_similarity(summary, prev) >= threshold for prev in _RECENT_USER_SUMMARIES)
+
+
+def _remember_user_summary(summary: str) -> None:
+    """Store recent summaries for diversity checks."""
+    if not summary:
+        return
+    _RECENT_USER_SUMMARIES.append(summary)
+    if len(_RECENT_USER_SUMMARIES) > 20:
+        del _RECENT_USER_SUMMARIES[0: len(_RECENT_USER_SUMMARIES) - 20]
+
+
+def _stage_classifier_enabled() -> bool:
+    """Enable optional ML stage classification (default on)."""
+    raw = os.environ.get("ARTIFACT_MINER_STAGE_CLASSIFIER_ENABLE", "1")
+    return str(raw).strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _stage_classifier_min_confidence() -> float:
+    """Minimum confidence required to allow ML stage override."""
+    return max(0.5, min(0.95, _env_float("ARTIFACT_MINER_STAGE_CLASSIFIER_MIN_CONF", 0.75)))
+
+
+def _normalize_stage_label(value: str | None) -> str | None:
+    """Normalize free-form stage labels into canonical values."""
+    if not value:
+        return None
+    lowered = str(value).strip().lower()
+    lowered = lowered.replace("_", " ").replace("-", " ")
+    lowered = " ".join(lowered.split())
+
+    if not lowered:
+        return None
+
+    if lowered in {"student", "entry level", "entry", "junior"}:
+        return "student"
+    if lowered in {"early career", "early", "entry to mid level", "mid level", "intermediate"}:
+        return "early-career"
+    if lowered in {"experienced", "senior", "advanced", "lead", "principal"}:
+        return "experienced"
+
+    if "entry" in lowered and "mid" in lowered:
+        return "early-career"
+    if "early" in lowered and "career" in lowered:
+        return "early-career"
+    if "student" in lowered or "junior" in lowered:
+        return "student"
+    if any(token in lowered for token in ("senior", "experienced", "lead", "principal", "advanced")):
+        return "experienced"
+    return None
+
+
+def _parse_confidence(value: Any) -> float | None:
+    """Parse confidence values from flexible numeric/string formats."""
+    if value is None:
+        return None
+    try:
+        if isinstance(value, (int, float)):
+            raw = float(value)
+        else:
+            text = str(value).strip()
+            if not text:
+                return None
+            percent_match = re.search(r"(-?\d+(?:\.\d+)?)\s*%", text)
+            if percent_match:
+                raw = float(percent_match.group(1)) / 100.0
+            else:
+                numeric_match = re.search(r"(-?\d+(?:\.\d+)?)", text)
+                if not numeric_match:
+                    return None
+                raw = float(numeric_match.group(1))
+        if raw > 1.0:
+            raw = raw / 100.0
+        if raw < 0.0 or raw > 1.0:
+            return None
+        return raw
+    except Exception:
+        return None
+
+
+def resolve_experience_stage_with_ml(
+    *,
+    baseline_stage: str,
+    project_count: int | None,
+    active_months: float | None,
+    role: str | None,
+    top_skills: list[str] | None,
+    top_languages: list[str] | None,
+    tools: list[str] | None,
+    professional_project_count: int | None = None,
+    experimental_project_count: int | None = None,
+    educational_project_count: int | None = None,
+) -> str:
     """
-    Build a constrained prompt that forces narrative output and avoids list repetition.
-    Remove project names/tags from the prompt to prevent leakage.
+    Resolve stage using baseline + optional ML override with strict safety gates.
+
+    ML may refine the stage only when confidence is high and it differs by at most
+    one level from the deterministic baseline.
     """
-    prompt_facts = dict(facts)
-    prompt_facts.pop("project_names", None)
-    prompt_facts.pop("tags", None)
-    facts_json = json.dumps(prompt_facts, ensure_ascii=True)
-    style_example = f"{SUMMARY_EXAMPLE_GUIDANCE}{SUMMARY_STYLE_EXAMPLE}"
-    base = SUMMARY_BASE_PROMPT
-    if strict:
-        must_mention = ", ".join([str(x) for x in facts.get("top_skills", []) + facts.get("top_languages", []) + facts.get("tools", [])][:4])
-        base += (
-            " Follow this structure strictly: "
-            "Sentence 1: identity + focus. "
-            "Sentence 2: experience + impact. "
-            "Sentence 3: strengths (skills/tools) + communication/insights. "
-            "Sentence 4-6 (optional): only if each adds distinct, non-redundant information supported by facts."
-            f" You MUST mention at least one of these terms verbatim: {must_mention}."
+    baseline = _normalize_stage_label(baseline_stage) or "early-career"
+    if not _stage_classifier_enabled():
+        return baseline
+    if azure_openai_enabled() and ml_extraction_allowed():
+        foundry = AzureFoundryManager()
+        stage_facts: dict[str, Any] = {
+            "baseline_stage": baseline,
+            "project_count": int(project_count or 0),
+            "active_months": round(float(active_months), 1) if active_months is not None else None,
+            "role": role or "",
+            "top_skills": (top_skills or [])[:4],
+            "top_languages": (top_languages or [])[:4],
+            "tools": (tools or [])[:4],
+            "tone_counts": {
+                "professional": int(professional_project_count or 0),
+                "experimental": int(experimental_project_count or 0),
+                "educational": int(educational_project_count or 0),
+            },
+        }
+        response = foundry.process_request(
+            user_input=f"FACTS_JSON: {json.dumps(stage_facts, ensure_ascii=True)}",
+            system_prompt=EXPERIENCE_STAGE_PROMPT,
+            response_model=ExperienceStageOutput,
+            schema_name="experience_stage",
+            max_tokens=80,
+            temperature=0.0,
         )
-    if include_example:
-        return f"{base}\n{style_example}\n\nFacts (JSON): {facts_json}\n\nSummary:"
-    return f"{base}\n\nFacts (JSON): {facts_json}\n\nSummary:"
+        if response:
+            normalized = _normalize_stage_label(response.stage)
+            if normalized and response.confidence >= _stage_classifier_min_confidence():
+                stage_levels = {"student": 0,
+                                "early-career": 1, "experienced": 2}
+                if normalized in stage_levels and baseline in stage_levels:
+                    if abs(stage_levels[normalized] - stage_levels[baseline]) <= 1:
+                        return normalized
+        return baseline
+    return baseline
+
+
+def _proficiency_level_from_stage(experience_stage: str | None) -> str | None:
+    """Map normalized stage to professional proficiency wording."""
+    stage = _normalize_stage_label(experience_stage)
+    if stage == "student":
+        return "Entry-level"
+    if stage == "early-career":
+        return "Entry-to-mid-level"
+    if stage == "experienced":
+        return "Senior-level"
+    return None
+
+
+def _opening_mentions_proficiency(summary: str, facts: dict[str, Any]) -> bool:
+    """Check if sentence 1 contains the expected proficiency phrase."""
+    level = str(facts.get("proficiency_level") or "").strip()
+    if not level:
+        return True
+    sentences = _split_sentences(summary)
+    if not sentences:
+        return False
+    return level.lower() in sentences[0].lower()
+
+
+def _ensure_proficiency_in_opening(summary: str, facts: dict[str, Any]) -> str:
+    """
+    Ensure sentence 1 carries proficiency level wording when available.
+
+    This is a soft reshape and does not introduce new rejection paths.
+    """
+    level = str(facts.get("proficiency_level") or "").strip()
+    if not level:
+        return summary
+    sentences = _split_sentences(summary)
+    if not sentences:
+        return summary
+    first = sentences[0].strip()
+    if not first:
+        return summary
+    if level.lower() in first.lower():
+        return summary
+
+    stage = _normalize_stage_label(facts.get("experience_stage"))
+
+    if stage == "early-career" and re.search(r"(?i)^early-career\b", first):
+        updated = re.sub(r"(?i)^early-career\b", level, first, count=1)
+    elif stage == "experienced" and re.search(r"(?i)^experienced\b", first):
+        updated = re.sub(r"(?i)^experienced\b", level, first, count=1)
+    elif stage == "student" and re.search(r"(?i)\bcomputer science student\b", first):
+        updated = re.sub(r"(?i)\bcomputer science student\b",
+                         f"{level} Computer Science student", first, count=1)
+    elif re.search(r"(?i)\bsoftware contributor\b", first):
+        updated = re.sub(r"(?i)\bsoftware contributor\b",
+                         f"{level} software contributor", first, count=1)
+    elif re.search(r"(?i)\bsoftware engineer\b", first):
+        updated = re.sub(r"(?i)\bsoftware engineer\b",
+                         f"{level} software engineer", first, count=1)
+    elif re.search(r"(?i)\b(top skills include|preferred language|coding projects)\b", first):
+        updated = (
+            f"{_stage_identity_phrase(stage, facts.get('role'))} "
+            f"focused on {_focus_phrase(facts.get('focus'))}"
+        )
+    else:
+        updated = (
+            f"{_stage_identity_phrase(stage, facts.get('role'))} "
+            f"focused on {_focus_phrase(facts.get('focus'))}"
+        )
+
+    sentences[0] = updated.strip()
+    rebuilt = ". ".join(sentence.strip()
+                        for sentence in sentences if sentence.strip())
+    return f"{rebuilt}." if rebuilt else summary
+
+
+def _finalize_summary_text(
+    text: str,
+    facts: dict[str, Any],
+    *,
+    max_sentences: int = 3,
+    restore_anchor_casing: bool = True,
+) -> str:
+    """Run the shared summary cleanup pipeline."""
+    normalized = _normalize_summary(text or "")
+    normalized = _remove_invalid_sentences(
+        normalized, facts.get("project_names", []))
+    normalized = _polish_summary(normalized)
+    normalized = _trim_to_sentences(normalized, max_sentences=max_sentences)
+    if restore_anchor_casing:
+        normalized = _restore_anchor_casing(normalized, facts)
+    normalized = _ensure_proficiency_in_opening(normalized, facts)
+    return _normalize_summary(normalized)
+
+
+def _stage_identity_phrase(stage: str | None, role: Any) -> str:
+    """Return a stable identity phrase for deterministic fallbacks."""
+    normalized_stage = _normalize_stage_label(stage)
+    role_text = str(role or "").strip().lower()
+    if "engineer" not in role_text and "developer" not in role_text and "contributor" not in role_text:
+        role_text = "software engineer"
+
+    if normalized_stage == "student":
+        return "Entry-level Computer Science student"
+    if normalized_stage == "experienced":
+        return f"Senior-level {role_text}"
+    return f"Entry-to-mid-level {role_text}"
+
+
+def _focus_phrase(focus: Any) -> str:
+    """Normalize focus into natural fallback wording."""
+    raw = str(focus or "").strip().lower()
+    if not raw:
+        return "software delivery"
+    mapping = {
+        "ml": "machine learning systems",
+        "machine learning": "machine learning systems",
+        "ai": "applied AI systems",
+        "analytics": "analytics platforms",
+        "backend": "backend services",
+    }
+    return mapping.get(raw, raw)
+
+
+def _build_grounded_fallback_summary(facts: dict[str, Any]) -> str:
+    """Build deterministic 3-sentence summary when ML output is unavailable."""
+    stage = facts.get("experience_stage")
+    role = facts.get("role")
+    focus = _focus_phrase(facts.get("focus"))
+    sentence_one = (
+        f"{_stage_identity_phrase(stage, role)} focused on {focus}, "
+        "with hands-on experience delivering practical software solutions"
+    )
+
+    anchors: list[str] = []
+    for group in ("top_skills", "top_languages", "tools"):
+        for item in (facts.get(group) or []):
+            token = str(item).strip()
+            if token and token.lower() not in {a.lower() for a in anchors}:
+                anchors.append(token)
+            if len(anchors) >= 3:
+                break
+        if len(anchors) >= 3:
+            break
+    stack_text = ", ".join(anchors[:3]) if anchors else "core engineering tools"
+    sentence_two = (
+        f"I build and maintain solutions using {stack_text}, "
+        "turning requirements into reliable implementations and measurable outcomes"
+    )
+
+    activities = [str(a).strip() for a in (facts.get("activities") or []) if str(a).strip()]
+    activity_text = ", ".join(activities[:2]) if activities else "steady delivery and clear collaboration"
+    emerging = [str(e).strip() for e in (facts.get("emerging") or []) if str(e).strip()]
+    if emerging:
+        sentence_three = (
+            f"I deliver reliable outcomes through {activity_text} while continuing to grow in {emerging[0]}"
+        )
+    else:
+        sentence_three = (
+            f"I deliver reliable outcomes through {activity_text} and disciplined engineering execution"
+        )
+
+    return f"{sentence_one}. {sentence_two}. {sentence_three}."
+
+
+def _repair_summary_with_grounded_fallback(
+    summary: str,
+    facts: dict[str, Any],
+    *,
+    allow_fallback: bool = True,
+) -> str | None:
+    """Normalize model text; optionally return deterministic fallback when empty."""
+    repair_facts = dict(facts)
+    recalculated_level = _proficiency_level_from_stage(repair_facts.get("experience_stage"))
+    if recalculated_level:
+        repair_facts["proficiency_level"] = recalculated_level
+
+    normalized = _finalize_summary_text(summary, repair_facts)
+    if normalized:
+        injected = _inject_delivery_signal(normalized, repair_facts)
+        return injected or normalized
+
+    if not allow_fallback:
+        return None
+
+    fallback = _finalize_summary_text(
+        _build_grounded_fallback_summary(repair_facts), repair_facts)
+    return fallback or None
+
+
+def _validated_fallback_summary(facts: dict[str, Any], *, context: str) -> str | None:
+    """Build deterministic fallback summary and keep only validator-approved output."""
+    fallback = _repair_summary_with_grounded_fallback("", facts, allow_fallback=True)
+    if not fallback:
+        return None
+    ok, reason = _is_valid_summary(fallback, facts)
+    if ok:
+        return fallback
+    logger.warning("Signature summary fallback rejected%s (%s)", context, reason)
+    return None
 
 
 def _normalize_summary(text: str) -> str:
@@ -130,9 +499,450 @@ def _normalize_summary(text: str) -> str:
     validator checks operate on predictable formatting.
     """
     cleaned = text.strip()
+
+    # Strip prompt-echo artifacts when the model leaks instruction blocks.
+    marker_patterns = (
+        r"\bquestion\s*:",
+        r"\banswer\s*:",
+        r"\boutput\s*:",
+        r"\bfacts_json\s*:",
+        r"\bfacts\s*\(json\)\s*:",
+        r"\bfinal\s+summary\s*:",
+        r"\btask\s*:",
+        r"\bconstraints\s*:",
+    )
+    first_marker: int | None = None
+    for pattern in marker_patterns:
+        match = re.search(pattern, cleaned, flags=re.IGNORECASE)
+        if not match:
+            continue
+        marker_index = match.start()
+        if first_marker is None or marker_index < first_marker:
+            first_marker = marker_index
+    if first_marker is not None:
+        cleaned = cleaned[:first_marker].strip()
+
+    cleaned = re.sub(r"^\s*(?:final\s+)?summary\s*:\s*",
+                     "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:final\s+)?summary\s*:\s*",
+                     "", cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.replace("Skills:", "").replace("Tools:", "")
     cleaned = cleaned.replace("Languages:", "")
     return " ".join(cleaned.split())
+
+
+def _restore_anchor_casing(summary: str, facts: dict[str, Any]) -> str:
+    """
+    Restore original anchor casing (e.g., FastAPI) after normalization/rewrite.
+    """
+    if not summary:
+        return summary
+
+    anchors: list[str] = []
+    for key in ("top_skills", "top_languages", "tools"):
+        values = facts.get(key, []) or []
+        for value in values:
+            if isinstance(value, str) and value.strip():
+                anchors.append(value.strip())
+
+    restored = summary
+    seen: set[str] = set()
+    for anchor in anchors:
+        lowered = anchor.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        pattern = re.compile(
+            rf"(?<![A-Za-z0-9]){re.escape(lowered)}(?![A-Za-z0-9])", re.IGNORECASE)
+        restored = pattern.sub(anchor, restored)
+    return restored
+
+
+def _is_prompt_echo_sentence(sentence: str) -> bool:
+    """Return True when a sentence looks like leaked prompt/instruction text."""
+    text = (sentence or "").strip()
+    if not text:
+        return False
+    if re.match(r"^\s*rewritten\b", text, flags=re.IGNORECASE):
+        return True
+    return any(pattern.search(text) for pattern in _PROMPT_ECHO_PATTERNS)
+
+
+def _contains_prompt_echo(summary: str) -> bool:
+    """Detect prompt-echo artifacts anywhere in the summary body."""
+    return any(_is_prompt_echo_sentence(sentence) for sentence in _split_sentences(summary))
+
+
+def _needs_resume_style_polish(summary: str) -> tuple[bool, str]:
+    """
+    Detect prompt-leak/instructional artifacts that should trigger an ML rewrite.
+    """
+    lowered = summary.lower()
+    if _contains_prompt_echo(summary):
+        return True, "prompt_echo"
+    if _contains_noise_artifact(summary):
+        return True, "noise_artifact"
+    if re.search(r"\b(question|answer)\s*[:\-]", lowered):
+        return True, "qa_artifact"
+    if re.search(r"\b(?:final\s+)?summary\s*[:\-]", lowered):
+        return True, "summary_artifact"
+    if "you can say" in lowered or "you should say" in lowered:
+        return True, "instructional_tone"
+    if _contains_second_person_profile_voice(summary):
+        return True, "second_person_tone"
+    if _has_mixed_person_voice(summary):
+        return True, "mixed_person_voice"
+    if _contains_meta_narration(summary):
+        return True, "meta_narration"
+    if "?" in summary:
+        return True, "question_like_tone"
+    question_starters = (
+        "what", "how", "why", "which", "when", "where",
+        "can", "could", "should", "would", "do", "does", "is", "are",
+    )
+    for sentence in _split_sentences(summary):
+        starter = sentence.strip().lower()
+        if starter.startswith(question_starters):
+            return True, "question_like_tone"
+    return False, "ok"
+
+
+def _contains_generic_resume_phrasing(summary: str) -> bool:
+    """Detect generic phrasing that weakens resume quality."""
+    lowered = summary.lower()
+    generic_patterns = (
+        "specializing primarily",
+        "proficient primarily",
+        "expertise extends to",
+        "emerging interest in",
+        "i am proficient",
+        "with a steady cadence in",
+        "focused primarily on",
+    )
+    return any(pattern in lowered for pattern in generic_patterns)
+
+
+def _contains_second_person_profile_voice(summary: str) -> bool:
+    """Detect second-person profile narration that reads like model noise."""
+    for sentence in _split_sentences(summary):
+        lowered = sentence.strip().lower()
+        if lowered.startswith("your "):
+            return True
+        if re.search(r"\bhoning your skills\b", lowered):
+            return True
+        if re.search(
+            r"\byour (?:entry|early|senior|professional) (?:experience|background|profile)\b",
+            lowered,
+        ):
+            return True
+    return False
+
+
+def _contains_meta_narration(summary: str) -> bool:
+    """Detect meta commentary about the summary/profile instead of resume content."""
+    lowered = summary.lower()
+    meta_patterns = (
+        r"\bthis (?:summary|profile|description)\b",
+        r"\bthe (?:summary|profile|description)\b",
+        r"\bbased on (?:the )?(?:facts|data|information)\b",
+        r"\baccording to (?:the )?(?:facts|data|information)\b",
+        r"\bthe user(?:'s)? profile\b",
+        r"\bcandidate profile\b",
+    )
+    return any(re.search(pattern, lowered) for pattern in meta_patterns)
+
+
+def _has_mixed_person_voice(summary: str) -> bool:
+    """Reject mixed first-person and second-person voice in one summary."""
+    lowered = summary.lower()
+    has_first_person = bool(re.search(r"\b(i|my|me)\b", lowered))
+    has_second_person = bool(re.search(r"\b(you|your)\b", lowered))
+    return has_first_person and has_second_person
+
+
+def _has_mixed_person_voice_with_you(summary: str) -> bool:
+    """
+    Detect mixed voice when second-person *subject* voice ("you") appears.
+
+    This intentionally ignores possessive-only phrasing ("your profile ...")
+    so those can be classified as second_person_tone when appropriate.
+    """
+    lowered = summary.lower()
+    has_first_person = bool(re.search(r"\b(i|my|me)\b", lowered))
+    has_second_person_you = bool(re.search(r"\byou\b", lowered))
+    return has_first_person and has_second_person_you
+
+
+def _contains_question_like_tone(summary: str) -> bool:
+    """Detect question-like phrasing even when punctuation is normalized."""
+    if "?" in summary:
+        return True
+    question_starters = (
+        "what", "how", "why", "which", "when", "where",
+        "can", "could", "should", "would", "do", "does", "is", "are",
+    )
+    for sentence in _split_sentences(summary):
+        starter = sentence.strip().lower()
+        if starter.startswith(question_starters):
+            return True
+    return False
+
+
+def _log_signature_validation_rejection(reason: str, summary: str) -> None:
+    """Emit validator diagnostics when enabled."""
+    if not _signature_diagnostics_enabled():
+        return
+    logger.info(
+        "Signature validator rejected summary (reason=%s, chars=%d, words=%d)",
+        reason,
+        len(summary or ""),
+        len((summary or "").split()),
+    )
+    if reason == "mixed_person_voice":
+        lowered = (summary or "").lower()
+        logger.info(
+            "Signature validator mixed-person details (has_first_person=%s, has_you=%s, has_your=%s)",
+            bool(re.search(r"\b(i|my|me)\b", lowered)),
+            bool(re.search(r"\byou\b", lowered)),
+            bool(re.search(r"\byour\b", lowered)),
+        )
+
+
+def _contains_summary_artifact_marker(summary: str | None) -> bool:
+    """Detect leaked formatting markers that should never appear in final prose."""
+    lowered = (summary or "").lower()
+    return bool(re.search(r"\b(?:final\s+)?summary\s*[:\-]", lowered))
+
+
+def _has_incomplete_sentence_fragment(summary: str) -> bool:
+    """Detect malformed fragment sentences (e.g., 'With an.')."""
+    starters = {"with", "and", "or", "but",
+                "so", "because", "while", "although"}
+    dangling_endings = {
+        "a", "an", "the",
+        "and", "or", "but",
+        "to", "for", "with", "of", "in", "on", "at", "by", "from",
+    }
+    for sentence in _split_sentences(summary):
+        tokens = _tokenize_words(sentence)
+        if not tokens:
+            return True
+        if tokens[-1] in dangling_endings:
+            return True
+        if len(tokens) <= 4 and tokens[0] in starters:
+            return True
+    return False
+
+
+def _has_delivery_or_outcome_signal(summary: str) -> bool:
+    """Require at least one concrete delivery/outcome signal."""
+    lowered = summary.lower()
+    direct_keywords = (
+        "delivered",
+        "delivering",
+        "delivery",
+        "ship",
+        "shipped",
+        "built",
+        "implemented",
+        "developed",
+        "improved",
+        "optimized",
+        "automated",
+        "scaled",
+        "streamlined",
+        "reliable",
+        "reliability",
+        "outcome",
+        "outcomes",
+        "impact",
+        "measurable",
+        "performance",
+        "production",
+        "results",
+        "implementation",
+        "execution",
+        "improvement",
+        "improvements",
+        "gains",
+    )
+    if any(keyword in lowered for keyword in direct_keywords):
+        return True
+
+    action_verbs = (
+        "reflects",
+        "reflect",
+        "demonstrates",
+        "demonstrate",
+        "shows",
+        "show",
+        "drives",
+        "drive",
+        "supports",
+        "support",
+        "advances",
+        "advance",
+        "maintains",
+        "maintain",
+        "applies",
+        "apply",
+    )
+    engineering_nouns = (
+        "outcome",
+        "outcomes",
+        "impact",
+        "results",
+        "reliability",
+        "quality",
+        "performance",
+        "implementation",
+        "execution",
+        "workflow",
+        "workflows",
+        "service",
+        "services",
+        "system",
+        "systems",
+        "pipeline",
+        "pipelines",
+        "feature",
+        "features",
+    )
+    has_action_verb = any(verb in lowered for verb in action_verbs)
+    has_engineering_noun = any(noun in lowered for noun in engineering_nouns)
+    return has_action_verb and has_engineering_noun
+
+
+def _has_transition_phrase(sentence: str) -> bool:
+    """Detect explicit transition phrases that smooth topic shifts."""
+    lowered = sentence.lower()
+    transition_patterns = (
+        r"\balso\b",
+        r"\bin addition\b",
+        r"\balongside\b",
+        r"\bas well\b",
+        r"\bbeyond\b",
+        r"\bwhile\b",
+    )
+    return any(re.search(pattern, lowered) for pattern in transition_patterns)
+
+
+def _coherence_issues(summary: str) -> list[str]:
+    """Return soft coherence issues used for ranking and optional polish."""
+    sentences = _split_sentences(summary)
+    if len(sentences) < 3:
+        return ["missing_three_sentence_shape"]
+
+    s1, s2, s3 = sentences[0], sentences[1], sentences[2]
+    s1_lower = s1.lower()
+    s3_lower = s3.lower()
+    issues: list[str] = []
+
+    # Penalize "third sentence starts a brand new summary" phrasing.
+    restart_markers = (
+        "with a strong foundation",
+        "my journey",
+        "leveraging ",
+        "as an early-career",
+        "as a ",
+        "as an ",
+        "focused on ",
+        "specializing in",
+    )
+    if any(s3_lower.startswith(marker) for marker in restart_markers):
+        issues.append("third_sentence_restart")
+
+    # Penalize repeated identity framing across sentence 1 and 3.
+    identity_markers = (
+        "early-career",
+        "experienced",
+        "software contributor",
+        "software engineer",
+        "computer science student",
+    )
+    if any(marker in s1_lower for marker in identity_markers) and any(marker in s3_lower for marker in identity_markers):
+        issues.append("repeated_identity")
+
+    # Penalize abrupt domain switch in final sentence without transition.
+    s2_domains = _sentence_domains(s2)
+    s3_domains = _sentence_domains(s3)
+    if s2_domains and s3_domains and not (s2_domains & s3_domains) and not _has_transition_phrase(s3):
+        issues.append("abrupt_domain_shift")
+
+    return issues
+
+
+def _resume_quality_score(summary: str, facts: dict[str, Any]) -> int:
+    """Score candidate summaries so the best ML phrasing is selected."""
+    score = 0
+    words = len(summary.split())
+    sentences = _sentence_count(summary)
+    anchors = (facts.get("top_skills", []) or []) + \
+        (facts.get("top_languages", []) or []) + (facts.get("tools", []) or [])
+
+    if sentences == 3:
+        score += 3
+    elif sentences in {2, 4}:
+        score += 1
+
+    if 45 <= words <= 85:
+        score += 3
+    elif 42 <= words <= 92:
+        score += 2
+
+    if anchors and _summary_mentions_any(summary, anchors):
+        score += 2
+    if _has_delivery_or_outcome_signal(summary):
+        score += 2
+    if not _contains_generic_resume_phrasing(summary):
+        score += 2
+    if not _contains_project_name(summary, facts.get("project_names", []) or []):
+        score += 1
+    needs_polish, _ = _needs_resume_style_polish(summary)
+    if not needs_polish:
+        score += 1
+    if _opening_mentions_proficiency(summary, facts):
+        score += 2
+    elif facts.get("proficiency_level"):
+        score -= 1
+
+    coherence_issue_count = len(_coherence_issues(summary))
+    if coherence_issue_count == 0:
+        score += 2
+    else:
+        score -= min(6, coherence_issue_count * 2)
+
+    return score
+
+
+def _inject_delivery_signal(summary: str, facts: dict[str, Any]) -> str | None:
+    """
+    Add a minimal grounded delivery/outcome clause when that is the sole blocker.
+
+    This keeps ML phrasing intact while satisfying the validator's requirement
+    for a concrete delivery signal.
+    """
+    if not summary:
+        return None
+    if _has_delivery_or_outcome_signal(summary):
+        return summary
+
+    sentences = _split_sentences(summary)
+    if not sentences:
+        return None
+
+    target_idx = 1 if len(sentences) >= 2 else 0
+    target = sentences[target_idx].strip().rstrip(".")
+    if not target:
+        return None
+
+    patched = f"{target} delivering measurable outcomes through reliable implementation."
+    sentences[target_idx] = patched
+    rebuilt = ". ".join(s.strip().rstrip(".")
+                        for s in sentences if s.strip()) + "."
+    rebuilt = _finalize_summary_text(
+        rebuilt, facts, restore_anchor_casing=False)
+    return rebuilt or None
 
 
 def _is_list_like(text: str) -> bool:
@@ -140,9 +950,59 @@ def _is_list_like(text: str) -> bool:
     lowered = text.lower()
     if "skills:" in lowered or "tools:" in lowered or "languages:" in lowered:
         return True
+    if re.search(r"\b(question|answer)\s*[:\-]", lowered):
+        return True
+    if "you can say" in lowered or "you should say" in lowered:
+        return True
     if "\n-" in text or "\n•" in text:
         return True
     return False
+
+
+def _is_noisy_sentence(sentence: str) -> bool:
+    """
+    Detect broad prompt/instruction/meta noise patterns in a sentence.
+
+    This intentionally combines multiple weak heuristics to catch new variants
+    without relying on one fixed phrase.
+    """
+    text = (sentence or "").strip()
+    if not text:
+        return True
+    lowered = text.lower()
+
+    if _is_prompt_echo_sentence(text):
+        return True
+    if _contains_second_person_profile_voice(text):
+        return True
+    if _contains_meta_narration(text):
+        return True
+    if _has_mixed_person_voice(text):
+        return True
+
+    # Common rewrite/meta lead-ins produced by polishing prompts.
+    if re.match(r"^\s*(?:rewritten?|revised|refined|improved|updated)\b", lowered):
+        return True
+
+    # Label-like artifacts: "Rewrite:", "Response:", "Version 2:", etc.
+    if re.match(
+        r"^\s*(?:rewrite|rewritten|revision|response|output|draft|version(?:\s*\d+)?)\s*[:\-]",
+        lowered,
+    ):
+        return True
+
+    # Keep question-style and direct instruction language out of final prose.
+    if "?" in text:
+        return True
+    if re.search(r"\b(?:you can|you should|please|ensure|make sure|must)\b", lowered):
+        return True
+
+    return False
+
+
+def _contains_noise_artifact(summary: str) -> bool:
+    """Return True if any sentence contains generalized noise artifacts."""
+    return any(_is_noisy_sentence(sentence) for sentence in _split_sentences(summary))
 
 
 def _remove_invalid_sentences(text: str, project_names: list[str] | None = None) -> str:
@@ -156,7 +1016,23 @@ def _remove_invalid_sentences(text: str, project_names: list[str] | None = None)
     kept = []
     for s in sentences:
         lowered = s.lower()
+        if _is_noisy_sentence(s):
+            continue
         if any(bad in lowered for bad in SUMMARY_BANNED_PHRASES):
+            continue
+        if _is_prompt_echo_sentence(s):
+            continue
+        if re.search(r"\b(question|answer)\s*[:\-]", lowered):
+            continue
+        if re.search(r"\b(?:final\s+)?summary\s*[:\-]", lowered):
+            continue
+        if lowered.startswith("you can say ") or lowered.startswith("you should say "):
+            continue
+        if _contains_second_person_profile_voice(s):
+            continue
+        if _has_mixed_person_voice(s):
+            continue
+        if _contains_meta_narration(s):
             continue
         if project_names and _contains_project_name(s, project_names):
             continue
@@ -190,6 +1066,11 @@ def _tokenize_words(text: str) -> list[str]:
 def _split_sentences(text: str) -> list[str]:
     """Split free-form text into sentence-like chunks."""
     return [s.strip() for s in re.split(r"[.!?]+", text) if s.strip()]
+
+
+def _sentence_count(text: str) -> int:
+    """Count sentence-like segments using punctuation boundaries."""
+    return len(_split_sentences(text))
 
 
 def _jaccard_similarity(a: set[str], b: set[str]) -> float:
@@ -292,13 +1173,79 @@ def _summary_mentions_any(summary: str, items: list[str]) -> bool:
     """Check whether summary references at least one expected anchor term."""
     lowered = summary.lower()
     normalized_summary = _normalize_token(summary)
+    summary_tokens = {_normalize_token(
+        tok) for tok in re.findall(r"[a-zA-Z0-9]+", summary)}
+    summary_tokens.discard("")
+    low_signal_tokens = {
+        "tool", "tools", "skill", "skills", "language", "languages",
+        "stack", "tech", "technology", "technologies", "framework", "frameworks",
+    }
     for item in items:
         if not item:
             continue
-        item_lower = item.lower()
+        item_lower = str(item).lower()
         if item_lower in lowered:
             return True
-        if _normalize_token(item) and _normalize_token(item) in normalized_summary:
+        normalized_item = _normalize_token(item_lower)
+        if normalized_item and normalized_item in normalized_summary:
+            return True
+
+        item_tokens = {_normalize_token(tok) for tok in re.findall(
+            r"[a-zA-Z0-9]+", item_lower)}
+        item_tokens.discard("")
+        if not item_tokens or not summary_tokens:
+            continue
+
+        informative_tokens = {
+            tok for tok in item_tokens if len(tok) >= 4 and tok not in low_signal_tokens
+        }
+        required_tokens = informative_tokens or item_tokens
+        overlap = required_tokens & summary_tokens
+        if not overlap:
+            continue
+
+        coverage = len(overlap) / len(required_tokens)
+        if coverage >= 0.5:
+            return True
+        if len(required_tokens) >= 3 and len(overlap) >= 2:
+            return True
+        if len(required_tokens) == 1:
+            return True
+    return False
+
+
+def _anchor_coverage_count(summary: str, facts: dict[str, Any]) -> int:
+    """Count how many distinct anchor groups are referenced in the summary."""
+    groups = {
+        "skills": facts.get("top_skills", []) or [],
+        "languages": facts.get("top_languages", []) or [],
+        "tools": facts.get("tools", []) or [],
+        "role": [facts.get("role")] if facts.get("role") else [],
+        "activities": facts.get("activities", []) or [],
+    }
+    covered = 0
+    for items in groups.values():
+        normalized_items = [str(x).strip() for x in items if str(x).strip()]
+        if normalized_items and _summary_mentions_any(summary, normalized_items):
+            covered += 1
+    return covered
+
+
+def _has_redundant_repetition(summary: str) -> bool:
+    """Detect repeated sentence content in generated summaries."""
+    sentences = [s.strip().lower() for s in _split_sentences(summary) if s.strip()]
+    if len(sentences) < 2:
+        return False
+    if len(set(sentences)) != len(sentences):
+        return True
+
+    for idx in range(1, len(sentences)):
+        prev_tokens = set(_tokenize_words(sentences[idx - 1]))
+        curr_tokens = set(_tokenize_words(sentences[idx]))
+        if not prev_tokens or not curr_tokens:
+            continue
+        overlap = len(prev_tokens & curr_tokens) / len(prev_tokens | curr_tokens)
+        if overlap >= 0.85:
             return True
     return False
 
@@ -324,23 +1271,116 @@ def _contains_example_overlap(summary: str) -> bool:
 
 
 def _contains_project_name(summary: str, project_names: list[str]) -> bool:
-    """Return true if summary leaks a project name from the input facts."""
+    """Return true if summary leaks a project name or close alias from facts."""
     lowered = summary.lower()
+    summary_tokens = _tokenize_words(summary)
+    summary_joined = f" {' '.join(summary_tokens)} "
+    generic_tokens = {
+        "app",
+        "apps",
+        "service",
+        "services",
+        "project",
+        "projects",
+        "backend",
+        "frontend",
+        "mobile",
+        "web",
+        "portal",
+        "tracker",
+        "pipeline",
+        "lab",
+    }
+
     for name in project_names:
-        if name and name.lower() in lowered:
+        if not name:
+            continue
+        name_lower = str(name).lower()
+        if name_lower in lowered:
             return True
+
+        name_tokens = [
+            _normalize_token(tok)
+            for tok in re.findall(r"[A-Za-z0-9]+", name_lower)
+        ]
+        name_tokens = [tok for tok in name_tokens if tok]
+        if len(name_tokens) < 2:
+            continue
+
+        full_alias = " ".join(name_tokens)
+        if f" {full_alias} " in summary_joined:
+            return True
+
+        tail_pair = name_tokens[-2:]
+        if len(tail_pair) == 2:
+            if not (tail_pair[0] in generic_tokens and tail_pair[1] in generic_tokens):
+                tail_alias = " ".join(tail_pair)
+                if f" {tail_alias} " in summary_joined:
+                    return True
     return False
 
 
+def _strip_markdown_fence(text: str) -> str:
+    """Remove single code-fence wrappers around model output."""
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+
+    lines = stripped.splitlines()
+    if len(lines) < 3:
+        return stripped
+    if not lines[0].startswith("```") or lines[-1].strip() != "```":
+        return stripped
+    return "\n".join(lines[1:-1]).strip()
+
+
 def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
+    if not isinstance(summary, str):
+        return False, "not_string"
+    if not summary.strip():
+        return False, "empty_summary"
     if _is_list_like(summary):
         return False, "list_like"
+    if _contains_prompt_echo(summary):
+        return False, "prompt_echo"
+    if _contains_question_like_tone(summary):
+        return False, "question_like_tone"
+    if re.search(r"\byour\s+profile\b", summary.lower()):
+        return False, "second_person_tone"
+    if _has_mixed_person_voice_with_you(summary):
+        _log_signature_validation_rejection("mixed_person_voice", summary)
+        return False, "mixed_person_voice"
+    if _contains_noise_artifact(summary):
+        return False, "noise_artifact"
+    if _contains_summary_artifact_marker(summary):
+        return False, "meta_summary_marker"
+    if _has_incomplete_sentence_fragment(summary):
+        return False, "fragment_sentence"
+    needs_polish, polish_reason = _needs_resume_style_polish(summary)
+    if needs_polish:
+        return False, polish_reason
+    min_words = 38 if _ml_required() else 36
+    max_words = 92 if _ml_required() else 110
     word_count = len(summary.split())
-    if word_count < 30 or word_count > 140:
+    if word_count < min_words or word_count > max_words:
         return False, f"word_count={word_count}"
-    sentence_count = summary.count(".")
-    if not (2 <= sentence_count <= 6):
+    sentence_count = _sentence_count(summary)
+    if sentence_count != 3:
         return False, f"sentence_count={sentence_count}"
+
+    if _contains_generic_resume_phrasing(summary):
+        if _anchor_coverage_count(summary, facts) < 2:
+            return False, "generic_resume_tone"
+    if re.search(r"(?i)\b\d{1,3}(?:\.\d+)?\s*%|\b\d{1,3}(?:\.\d+)?\s*percent\b", summary):
+        return False, "contains_percentage"
+    if _contains_second_person_profile_voice(summary):
+        return False, "second_person_profile_voice"
+    if _has_mixed_person_voice(summary):
+        return False, "mixed_person_voice"
+    if _contains_meta_narration(summary):
+        return False, "meta_narration"
+    if not _has_delivery_or_outcome_signal(summary):
+        return False, "missing_delivery_signal"
 
     project_names = facts.get("project_names", [])
     if _contains_project_name(summary, project_names):
@@ -352,6 +1392,8 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     anchors = skills + langs + tools
     if anchors and not _summary_mentions_any(summary, anchors):
         return False, "no_skill_language_tool_anchor"
+    if _anchor_coverage_count(summary, facts) < 2:
+        return False, "insufficient_anchor_coverage"
     if _contains_example_overlap(summary):
         return False, "example_overlap"
     if _has_redundant_repetition(summary):
@@ -359,158 +1401,113 @@ def _is_valid_summary(summary: str, facts: dict[str, Any]) -> tuple[bool, str]:
     return True, "ok"
 
 
-def _has_redundant_repetition(summary: str) -> bool:
-    """
-    Detect substantial repetition at sentence and phrase level.
+def _generate_signature_with_azure_openai(facts: dict[str, Any]) -> str | None:
+    """Generate signature summary via Azure OpenAI structured outputs."""
+    if not azure_openai_enabled() or not ml_extraction_allowed():
+        return None
+    if os.environ.get("ARTIFACT_MINER_DISABLE_SIGNATURE_MODEL") == "1":
+        return None
 
-    We reject summaries that restate the same domain point with high lexical
-    overlap or repeated 4-gram phrases.
-    """
-    sentences = _split_sentences(summary)
-    if len(sentences) >= 2:
-        for i in range(len(sentences)):
-            left_tokens = set(_tokenize_words(sentences[i]))
-            left_domains = _sentence_domains(sentences[i])
-            for j in range(i + 1, len(sentences)):
-                right_tokens = set(_tokenize_words(sentences[j]))
-                right_domains = _sentence_domains(sentences[j])
-                if not (left_domains & right_domains):
-                    continue
-                if _jaccard_similarity(left_tokens, right_tokens) >= 0.62:
-                    return True
-
-    tokens = _tokenize_words(summary)
-    if len(tokens) < 12:
-        return False
-
-    seen_ngrams: set[tuple[str, str, str, str]] = set()
-    for i in range(len(tokens) - 3):
-        ngram = (tokens[i], tokens[i + 1], tokens[i + 2], tokens[i + 3])
-        if ngram in seen_ngrams:
-            return True
-        seen_ngrams.add(ngram)
-
-    return False
-
-
-def _join_phrases(items: list[str], limit: int = 3) -> str:
-    """Join short phrase lists with readable English conjunctions."""
-    trimmed = [item for item in items if item][:limit]
-    if not trimmed:
-        return ""
-    if len(trimmed) == 1:
-        return trimmed[0]
-    if len(trimmed) == 2:
-        return f"{trimmed[0]} and {trimmed[1]}"
-    return f"{', '.join(trimmed[:-1])}, and {trimmed[-1]}"
-
-
-def _role_phrase(role: str | None) -> str:
-    """Map internal role labels to resume-friendly identity phrases."""
-    if not role:
-        return "software contributor"
-    lowered = role.lower()
-    if "leader" in lowered:
-        return "technical contributor with leadership experience"
-    if "solo" in lowered:
-        return "independent software contributor"
-    if "core" in lowered:
-        return "core engineering contributor"
-    return "software contributor"
-
-
-def _stage_identity_phrase(experience_stage: str | None, role: str | None) -> str:
-    """Select stage-aware opening identity text for the summary."""
-    stage = (experience_stage or "").lower()
-    role_phrase = _role_phrase(role)
-
-    if stage == "student":
-        return "Data-driven Computer Science student"
-    if stage == "early-career":
-        return f"Early-career {role_phrase}"
-    if stage == "experienced":
-        return "Experienced software engineer"
-    return role_phrase.capitalize()
-
-
-def _focus_phrase(focus: str | None) -> str:
-    """Map inferred focus categories to polished narrative focus phrases."""
-    focus_map = {
-        "Analytics": "data and analytics delivery",
-        "Backend": "backend systems and service reliability",
-        "Frontend": "product interface quality and usability",
-        "ML": "applied machine learning and model-driven workflows",
-        "DevOps": "delivery pipelines and platform operations",
-    }
-    return focus_map.get(focus, "practical software development")
-
-
-def _build_professional_fallback(facts: dict[str, Any]) -> str | None:
-    """Deterministic summary when model output is unavailable or rejected."""
-    top_skills = facts.get("top_skills", []) or []
-    top_languages = facts.get("top_languages", []) or []
-    tools = facts.get("tools", []) or []
-    activities = facts.get("activities", []) or []
-    emerging = facts.get("emerging", []) or []
-    commit_focus = facts.get("commit_focus")
-    cadence = facts.get("cadence")
-    focus = facts.get("focus")
-    role = facts.get("role")
-    experience_stage = facts.get("experience_stage")
-
-    stack_items = list(dict.fromkeys([*top_skills[:2], *top_languages[:1], *tools[:1]]))
-    stack = _join_phrases(stack_items, limit=4)
-    activity_phrase = _join_phrases(activities, limit=2)
-    emerging_phrase = _join_phrases(emerging, limit=2)
-
-    sentence_1 = (
-        f"{_stage_identity_phrase(experience_stage, role)} with applied experience in {_focus_phrase(focus)}."
+    foundry = AzureFoundryManager()
+    prompt_facts = dict(facts)
+    prompt_facts.pop("project_names", None)
+    prompt_facts.pop("tags", None)
+    response = foundry.process_request(
+        user_input=f"FACTS_JSON: {json.dumps(prompt_facts, ensure_ascii=True)}",
+        system_prompt=USER_SUMMARY_PROMPT,
+        response_model=UserSummaryOutput,
+        schema_name="signature_summary",
+        max_tokens=180,
+        temperature=0.0,
     )
+    if response is None:
+        logger.warning(
+            "[TASK=USER_SUMMARY] Azure generation returned no structured response")
+        return None
+    repaired = _repair_summary_with_grounded_fallback(
+        response.summary, facts, allow_fallback=False)
+    if not repaired:
+        logger.warning(
+            "[TASK=USER_SUMMARY] Azure output could not be repaired")
+        return None
+    ok, reason = _is_valid_summary(repaired, facts)
+    if not ok:
+        logger.warning(
+            "[TASK=USER_SUMMARY] Azure output rejected by validator (reason=%s)", reason)
+        if reason == "generic_resume_tone":
+            # One targeted retry to make the summary more fact-anchored.
+            retry = foundry.process_request(
+                user_input=(
+                    f"FACTS_JSON: {json.dumps(prompt_facts, ensure_ascii=True)}\n\n"
+                    f"DRAFT_SUMMARY: {repaired}\n\n"
+                    "Rewrite to be specific to this profile. Mention at least two concrete anchors "
+                    "from skills/languages/tools/role/activities."
+                ),
+                system_prompt=USER_SUMMARY_DIVERSITY_REWRITE_PROMPT,
+                response_model=UserSummaryOutput,
+                schema_name="signature_summary_generic_retry",
+                max_tokens=180,
+                temperature=0.0,
+            )
+            if retry and retry.summary:
+                retried = _repair_summary_with_grounded_fallback(
+                    retry.summary, facts, allow_fallback=False)
+                if retried:
+                    retry_ok, retry_reason = _is_valid_summary(retried, facts)
+                    if retry_ok:
+                        logger.info(
+                            "[TASK=USER_SUMMARY] Azure generic-tone retry accepted")
+                        return retried
+                    logger.warning(
+                        "[TASK=USER_SUMMARY] Azure generic-tone retry rejected (reason=%s)", retry_reason)
+    return repaired if ok else None
 
-    delivery_parts: list[str] = []
-    if commit_focus:
-        delivery_parts.append(f"{commit_focus} delivery")
-    if cadence and cadence not in {"steady", "unknown"}:
-        delivery_parts.append(f"{cadence} execution patterns")
-    if activity_phrase:
-        delivery_parts.append(activity_phrase)
-    if not delivery_parts:
-        delivery_parts.append("measurable engineering outcomes")
-    sentence_2 = (
-        f"Recent work reflects {_join_phrases(delivery_parts, limit=2)}, with emphasis on clear, outcome-oriented implementation."
-    )
 
-    if stack:
-        sentence_3 = (
-            f"Strong in {stack}, with a proven ability to explain complex results clearly for both engineering and business audiences."
+def _rewrite_summary_for_diversity_if_needed(summary: str, facts: dict[str, Any]) -> str:
+    """
+    When summary is too similar to recent outputs, try one Azure rewrite pass.
+
+    Falls back to the original summary on any failure to preserve safety.
+    """
+    if not summary:
+        return summary
+    if not _looks_too_similar_to_recent(summary):
+        return summary
+    if not (azure_openai_enabled() and ml_extraction_allowed()):
+        return summary
+
+    try:
+        foundry = AzureFoundryManager()
+        prompt_facts = dict(facts)
+        prompt_facts.pop("project_names", None)
+        prompt_facts.pop("tags", None)
+        response = foundry.process_request(
+            user_input=(
+                f"FACTS_JSON: {json.dumps(prompt_facts, ensure_ascii=True)}\n\n"
+                f"CURRENT_SUMMARY: {summary}"
+            ),
+            system_prompt=USER_SUMMARY_DIVERSITY_REWRITE_PROMPT,
+            response_model=UserSummaryOutput,
+            schema_name="signature_summary_diversity_rewrite",
+            max_tokens=180,
+            temperature=0.4,
         )
-    else:
-        sentence_3 = (
-            "Builds maintainable solutions and explains technical decisions clearly for both engineering and business audiences."
-        )
-
-    sentences = [sentence_1, sentence_2, sentence_3]
-    if emerging_phrase:
-        stage = (experience_stage or "").lower()
-        if stage == "student":
-            sentences.append(
-                f"Curious learner with growing exposure to {emerging_phrase} through portfolio projects."
-            )
-        elif stage == "experienced":
-            sentences.append(
-                f"Brings mature technical judgment while continuing to expand applied depth in {emerging_phrase}."
-            )
-        else:
-            sentences.append(
-                f"Currently expanding applied experience in {emerging_phrase} through portfolio projects."
-            )
-
-    summary = " ".join(sentences[:4]).strip()
-    summary = _normalize_summary(summary)
-    summary = _remove_invalid_sentences(summary, facts.get("project_names", []))
-    summary = _polish_summary(summary)
-    summary = _trim_to_sentences(summary, max_sentences=6)
-    return summary if summary else None
+        if response is None or not response.summary:
+            return summary
+        candidate = _repair_summary_with_grounded_fallback(
+            response.summary, facts, allow_fallback=False)
+        if not candidate:
+            return summary
+        ok, _reason = _is_valid_summary(candidate, facts)
+        if not ok:
+            return summary
+        if _summary_similarity(candidate, summary) >= _summary_similarity_threshold():
+            return summary
+        logger.info("[TASK=USER_SUMMARY] Diversity rewrite applied")
+        return candidate
+    except Exception:
+        logger.exception("User summary diversity rewrite failed")
+        return summary
 
 
 def generate_signature(facts: dict[str, Any]) -> str | None:
@@ -522,113 +1519,43 @@ def generate_signature(facts: dict[str, Any]) -> str | None:
         return None
 
     cache_key = _facts_hash(facts)
-    if cache_key in _CACHE:
+    if _cache_enabled() and cache_key in _CACHE:
         logger.info("Signature summary cache hit")
-        return _CACHE[cache_key]
+        cached = _CACHE[cache_key]
+        _remember_user_summary(cached)
+        return cached
 
-    model, tokenizer = _load_model()
-    if model is None or tokenizer is None:
-        logger.warning("Signature summary skipped: model not available")
+    if azure_openai_enabled():
+        azure_summary = _generate_signature_with_azure_openai(facts)
+        if azure_summary:
+            azure_summary = _rewrite_summary_for_diversity_if_needed(
+                azure_summary, facts)
+            if _cache_enabled():
+                _CACHE[cache_key] = azure_summary
+            _remember_user_summary(azure_summary)
+            logger.info(
+                "[TASK=USER_SUMMARY] Generated successfully via Azure OpenAI")
+            return azure_summary
         if _ml_required():
             return None
-        fallback_summary = _build_professional_fallback(facts)
-        if not fallback_summary:
-            return None
-        is_ok, reason = _is_valid_summary(fallback_summary, facts)
-        if is_ok:
-            _CACHE[cache_key] = fallback_summary
-            logger.info("Signature summary generated from deterministic fallback")
+        fallback_summary = _validated_fallback_summary(
+            facts, context=" after Azure generation failure")
+        if fallback_summary:
+            _remember_user_summary(fallback_summary)
+            logger.info(
+                "[TASK=USER_SUMMARY] Generated from deterministic fallback")
             return fallback_summary
-        logger.warning("Fallback summary rejected (%s): %s", reason, fallback_summary[:200])
         return None
 
-    prompt = _build_prompt(facts, strict=False, include_example=True)
-
-    try:
-        reason = "unknown"
-        inputs = tokenizer(prompt, return_tensors="pt")
-        output = model.generate(
-            **inputs,
-            max_new_tokens=140,
-            do_sample=False,
-            temperature=0.0,
-            top_p=1.0,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-
-        decoded = tokenizer.decode(output[0], skip_special_tokens=True)
-        if "Summary:" in decoded:
-            decoded = decoded.split("Summary:", 1)[-1].strip()
-        summary = _normalize_summary(decoded)
-        summary = _remove_invalid_sentences(summary, facts.get("project_names", []))
-        summary = _polish_summary(summary)
-        summary = _trim_to_sentences(summary, max_sentences=6)
-
-        if summary:
-            is_ok, reason = _is_valid_summary(summary, facts)
-            if is_ok:
-                _CACHE[cache_key] = summary
-                logger.info("Signature summary generated successfully")
-                return summary
-            logger.warning("Summary rejected by validator (%s): %s", reason, summary[:200])
-
-        # Retry once with a stricter prompt
-        logger.warning("Signature summary rejected on first pass; retrying with strict prompt")
-        # Retry without the example to avoid copying if overlap was detected.
-        include_example = False if reason == "example_overlap" else True
-        strict_prompt = _build_prompt(facts, strict=True, include_example=include_example)
-        inputs = tokenizer(strict_prompt, return_tensors="pt")
-        output = model.generate(
-            **inputs,
-            max_new_tokens=140,
-            do_sample=False,
-            temperature=0.0,
-            top_p=1.0,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-        decoded = tokenizer.decode(output[0], skip_special_tokens=True)
-        if "Summary:" in decoded:
-            decoded = decoded.split("Summary:", 1)[-1].strip()
-        summary = _normalize_summary(decoded)
-        summary = _remove_invalid_sentences(summary, facts.get("project_names", []))
-        summary = _polish_summary(summary)
-        summary = _trim_to_sentences(summary, max_sentences=6)
-
-        if summary:
-            is_ok, reason = _is_valid_summary(summary, facts)
-            if is_ok:
-                _CACHE[cache_key] = summary
-                logger.info("Signature summary generated successfully (strict pass)")
-                return summary
-            logger.warning("Summary rejected after strict pass (%s): %s", reason, summary[:200])
-        else:
-            logger.warning("Summary rejected after strict pass: empty output")
-        if _ml_required():
-            return None
-        fallback_summary = _build_professional_fallback(facts)
-        if not fallback_summary:
-            return None
-        is_ok, reason = _is_valid_summary(fallback_summary, facts)
-        if is_ok:
-            _CACHE[cache_key] = fallback_summary
-            logger.info("Signature summary generated from deterministic fallback after ML rejection")
-            return fallback_summary
-        logger.warning("Fallback summary rejected after ML failure (%s): %s", reason, fallback_summary[:200])
+    logger.info("Signature local-model path removed; using deterministic fallback")
+    if _ml_required():
         return None
-    except Exception:
-        logger.exception("Signature generation failed")
-        if _ml_required():
-            return None
-        fallback_summary = _build_professional_fallback(facts)
-        if not fallback_summary:
-            return None
-        is_ok, reason = _is_valid_summary(fallback_summary, facts)
-        if is_ok:
-            _CACHE[cache_key] = fallback_summary
-            logger.info("Signature summary generated from deterministic fallback after exception")
-            return fallback_summary
-        logger.warning("Fallback summary rejected after exception (%s): %s", reason, fallback_summary[:200])
-        return None
+    fallback_summary = _validated_fallback_summary(facts, context="")
+    if fallback_summary:
+        _remember_user_summary(fallback_summary)
+        logger.info("Signature summary generated from deterministic fallback")
+        return fallback_summary
+    return None
 
 
 def build_signature_facts(
@@ -650,6 +1577,8 @@ def build_signature_facts(
     Build a minimal facts payload for signature generation.
     Keep fields compact to reduce hallucination risk.
     """
+    normalized_stage = _normalize_stage_label(experience_stage)
+    proficiency_level = _proficiency_level_from_stage(normalized_stage)
     facts: dict[str, Any] = {
         "focus": focus,
         "top_skills": top_skills[:3],
@@ -663,6 +1592,7 @@ def build_signature_facts(
         "emerging": emerging[:3] if emerging else [],
         "project_names": project_names[:6] if project_names else [],
         "tags": tags[:8] if tags else [],
-        "experience_stage": experience_stage,
+        "experience_stage": normalized_stage,
+        "proficiency_level": proficiency_level,
     }
     return facts

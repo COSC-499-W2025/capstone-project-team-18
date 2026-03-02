@@ -1,6 +1,8 @@
+from datetime import datetime
 from sqlmodel import Session, select
 from typing import Optional
-from src.database.api.models import ProjectReportModel
+from sqlmodel import Session
+from src.database.api.models import ProjectReportModel, FileReportModel
 from src.core.report import ProjectReport
 from src.database.core.model_serializer import serialize_project_report, serialize_file_report
 from src.database.core.model_deserializer import deserialize_project_report
@@ -55,6 +57,16 @@ def get_latest_related_project_report(
         return None
 
     return deserialize_project_report(latest_model)
+def get_all_project_ids(
+    session: Session
+) -> list[str]:
+    """
+    Returns all the project report names
+    """
+    statement = select(ProjectReportModel.project_name)
+    results = session.exec(statement).all()
+
+    return list(results)
 
 
 def save_project_report(
@@ -76,8 +88,17 @@ def save_project_report(
         The saved ProjectReportModel instance
     """
 
-    project_model = serialize_project_report(project_report, user_config_id)
+    incoming_model = serialize_project_report(project_report, user_config_id)
+    incoming_files = [serialize_file_report(
+        fr) for fr in project_report.file_reports]
 
+    existing = get_project_report_model_by_name(
+        session, incoming_model.project_name)
+    if existing is None:
+        incoming_model.file_reports = incoming_files
+        session.add(incoming_model)
+        return incoming_model
+      
     latest_related_project = _get_latest_related_project_model(
         session=session,
         base_project_name=project_report.project_name
@@ -85,21 +106,33 @@ def save_project_report(
 
     if latest_related_project is not None:
         next_count = (latest_related_project.analyzed_count or 1) + 1
-        project_model.project_name = f"{project_report.project_name}_{next_count}"
-        project_model.analyzed_count = next_count
-        project_model.parent = latest_related_project.project_name
+        existing.project_name = f"{project_report.project_name}_{next_count}"
+        existing.analyzed_count = next_count
+        existing.parent = latest_related_project.project_name
     else:
-        project_model.project_name = project_report.project_name
-        project_model.analyzed_count = 1
-        project_model.parent = None
+        existing.project_name = project_report.project_name
+        existing.analyzed_count = 1
+        existing.parent = None
 
-    file_models = [serialize_file_report(fr)
-                   for fr in project_report.file_reports]
-    project_model.file_reports = file_models
+    # Upsert behavior: refresh existing project row and replace child file rows.
+    # This prevents UNIQUE(project_name) crashes on repeated analyses.
+    existing.user_config_used = user_config_id
+    existing.statistic = incoming_model.statistic
+    existing.last_updated = datetime.now()
 
-    session.add(project_model)
+    stale_files = session.exec(
+        select(FileReportModel).where(
+            FileReportModel.project_name == existing.project_name)
+    ).all()
+    for row in stale_files:
+        session.delete(row)
 
-    return project_model
+    for file_model in incoming_files:
+        file_model.project_name = existing.project_name
+        session.add(file_model)
+
+    session.add(existing)
+    return existing
 
 
 def get_project_report_model_by_name(

@@ -1,3 +1,4 @@
+from pydantic import BaseModel, Field
 import os
 from transformers import pipeline
 from src.infrastructure.log.logging import get_logger
@@ -8,8 +9,10 @@ _CLASSIFIER_PIPELINE = None
 _CLASSIFIER_FAILED = False
 
 # Model configuration constants
-_MAX_COMMIT_MESSAGE_LENGTH = 256  # BART model has 1024 token limit; 256 chars provides a safe margin for tokenization
-_MIN_CONFIDENCE_THRESHOLD = 0.3  # Minimum confidence score to accept ML classification (0-1 scale)
+# BART model has 1024 token limit; 256 chars provides a safe margin for tokenization
+_MAX_COMMIT_MESSAGE_LENGTH = 256
+# Minimum confidence score to accept ML classification (0-1 scale)
+_MIN_CONFIDENCE_THRESHOLD = 0.3
 
 
 # Commit type labels for zero-shot classification
@@ -100,7 +103,8 @@ class CommitClassifier:
                 # Use first line of commit message, truncated to model's input limit
                 # BART tokenizer can handle ~1024 tokens; 256 chars provides a safe margin for tokenization
                 # and captures essential commit message as commits are typically <100 chars
-                first_line = msg.split('\n')[0].strip()[:_MAX_COMMIT_MESSAGE_LENGTH]  # Truncate for model
+                first_line = msg.split('\n')[0].strip()[
+                    :_MAX_COMMIT_MESSAGE_LENGTH]  # Truncate for model
 
                 result = self.model(
                     first_line,
@@ -176,3 +180,40 @@ class CommitClassifier:
             for key, count in counts.items()
             if count > 0
         }
+
+
+class CommitTypeDistribution(BaseModel):
+    feat: float = Field(description="Percentage of feature commits")
+    fix: float = Field(description="Percentage of bug fixes")
+    docs: float = Field(description="Percentage of documentation")
+    refactor: float = Field(description="Percentage of refactoring")
+    chore: float = Field(description="Percentage of maintenance/chore")
+
+
+class ActivityMetrics(BaseModel):
+    commits_per_day: float = Field(description="Average commits per day")
+    avg_message_length: float = Field(description="average message length")
+
+
+class ContributionPatternOutput(BaseModel):
+    commit_type_distribution: CommitTypeDistribution
+    work_pattern: str = Field(
+        description="A short label describing the work cadence (e.g., 'consistent', 'bursty', 'weekend-warrior')"
+    )
+    collaboration_role: str = Field(
+        description="The inferred role of the user (e.g., 'Lead', 'Contributor', 'Maintainer')"
+    )
+    activity_metrics: ActivityMetrics
+    role_description: str = Field(
+        description="A 1-2 sentence description explaining their role and pattern based on the data."
+    )
+
+
+CONTRIBUTION_PATTERN_PROMPT = """You are an expert repository analyst.
+Analyze the provided JSON containing a user's commit history, project metadata, and contribution statistics.
+Based on the commit messages, timestamps, and overall project context, infer their contribution patterns.
+
+Produce a structured JSON response that carefully categorizes their commit types, detects their working cadence,
+infers their collaboration role within the team, and provides a brief summary description of their impact.
+Ensure all distributions add up to 100 where applicable.
+"""

@@ -3,9 +3,15 @@ import hashlib
 import re
 from typing import Iterable
 
+from pydantic import BaseModel
+
+from src.core.ML.models.azure_foundry_manager import AzureFoundryManager
+from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
+from src.core.ML.models.model_runtime import get_zero_shot_pipeline
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
+from src.core.ML.models.readme_analysis.readme_remote_client import remote_extract_themes_bulk
 
 """
 README insights:
@@ -25,7 +31,6 @@ _TOPIC_MODEL = None
 _TOPIC_FAILED = False
 _EMBEDDING_MODEL = None
 _EMBEDDING_FAILED = False
-_TOPIC_SINGLE_CACHE: dict[int, list[str]] = {}
 _TOPIC_CORPUS_CACHE: dict[int, list[list[str]]] = {}
 
 # BERTopic is slow and noisy on tiny corpora; skip below these thresholds.
@@ -93,6 +98,26 @@ _THEME_SHORT_ALLOWLIST = {
     "ai",
 }
 
+
+class ReadmeThemesOutput(BaseModel):
+    themes: list[str]
+
+
+class ReadmeToneOutput(BaseModel):
+    tone: str
+
+
+README_THEMES_PROMPT = """
+Extract concise technical themes from README content.
+Return strict JSON.
+"""
+
+
+README_TONE_PROMPT = """
+Classify README tone. Return strict JSON.
+Tone must be exactly one of: Professional, Educational, Experimental.
+"""
+
 def _clean_theme_terms(terms: list[str]) -> list[str]:
     """Filter URL-like and low-signal tokens from theme terms."""
     cleaned: list[str] = []
@@ -142,29 +167,18 @@ def _get_classifier():
         return None
     if _ZSC_PIPELINE is None:
         try:
-            from transformers import pipeline
             model_name = os.environ.get(
                 "ARTIFACT_MINER_ZSC_MODEL", "facebook/bart-large-mnli")
-            _ZSC_PIPELINE = pipeline(
-                "zero-shot-classification", model=model_name)
+            _ZSC_PIPELINE = get_zero_shot_pipeline(model_name)
+            if _ZSC_PIPELINE is None:
+                _ZSC_FAILED = True
+                return None
         except Exception:
             logger.exception("Failed to initialize zero-shot classifier")
             _ZSC_FAILED = True
             return None
     return _ZSC_PIPELINE
 
-
-def _classify_labels(text: str, labels: list[str], threshold: float, max_labels: int) -> list[str]:
-    """Score text against labels and return top matches above threshold."""
-    classifier = _get_classifier()
-    if classifier is None:
-        return []
-    result = classifier(text, labels, multi_label=True)
-    ranked = [
-        label for label, score in zip(result["labels"], result["scores"])
-        if score >= threshold
-    ]
-    return ranked[:max_labels]
 
 def _get_topic_model():
     global _TOPIC_MODEL, _TOPIC_FAILED
@@ -276,16 +290,16 @@ def _extract_themes_small_corpus(texts: list[str], max_themes: int) -> list[list
 
 
 def _extract_topics(text: str, max_topics: int) -> list[str]:
-    """Extract top topic terms from BERTopic for a single README.
-    Uses an in-memory cache to avoid recomputing for the same text.
     """
+    Backward-compatible single-README topic extractor.
+
+    Kept for tests and call sites that monkeypatch this helper directly.
+    """
+    if not text or not text.strip():
+        return []
     model = _get_topic_model()
     if model is None:
         return []
-    cache_key = hash(text)
-    cached = _TOPIC_SINGLE_CACHE.get(cache_key)
-    if cached is not None:
-        return cached[:max_topics]
     try:
         topics, _ = model.fit_transform([text])
         topic_id = topics[0]
@@ -293,9 +307,7 @@ def _extract_topics(text: str, max_topics: int) -> list[str]:
             return []
         topic_terms = model.get_topic(topic_id) or []
         labels = [term for term, _score in topic_terms][:max_topics]
-        labels = _clean_theme_terms(labels)
-        _TOPIC_SINGLE_CACHE[cache_key] = labels
-        return labels
+        return _clean_theme_terms(labels)
     except Exception:
         logger.exception("Failed to extract BERTopic themes from README")
         return []
@@ -312,6 +324,34 @@ def extract_readme_themes_bulk(texts: list[str], max_themes: int = 5) -> list[li
     """Extract themes for a README corpus with BERTopic and robust fallbacks."""
     if not texts:
         return []
+    if azure_openai_enabled():
+        foundry = AzureFoundryManager()
+        results: list[list[str]] = []
+        for text in texts:
+            if not text or not text.strip():
+                results.append([])
+                continue
+            response = foundry.process_request(
+                system_prompt=README_THEMES_PROMPT,
+                user_input=(
+                    f"Return up to {int(max(1, max_themes))} short themes, no duplicates.\n"
+                    f"README_TEXT:\n{text}"
+                ),
+                response_model=ReadmeThemesOutput,
+                schema_name="readme_themes",
+                max_tokens=180,
+                temperature=0.0,
+            )
+            if response is None:
+                logger.warning("[TASK=README_THEMES] Azure generation returned no structured response for one README")
+                results.append([])
+                continue
+            results.append(_clean_theme_terms(response.themes)[:max_themes])
+        return results
+
+    remote_themes = remote_extract_themes_bulk(texts, max_themes)
+    if remote_themes is not None:
+        return remote_themes
 
     if len(texts) < 2:
         logger.info("Single README detected; using keyphrase fallback for themes")
@@ -367,6 +407,26 @@ def classify_readme_tone(text: str) -> str | None:
     """Return the dominant tone label or None if unclassified."""
     if not text or not text.strip():
         logger.info("Skipping README tone classification for empty text")
+        return None
+    if azure_openai_enabled():
+        foundry = AzureFoundryManager()
+        response = foundry.process_request(
+            system_prompt=README_TONE_PROMPT,
+            user_input=f"README_TEXT:\n{text}",
+            response_model=ReadmeToneOutput,
+            schema_name="readme_tone",
+            max_tokens=48,
+            temperature=0.0,
+        )
+        if response:
+            normalized = str(response.tone).strip().lower()
+            mapping = {
+                "professional": "Professional",
+                "educational": "Educational",
+                "experimental": "Experimental",
+            }
+            return mapping.get(normalized)
+        logger.warning("[TASK=README_TONE] Azure generation returned no structured response")
         return None
 
     classifier = _get_classifier()

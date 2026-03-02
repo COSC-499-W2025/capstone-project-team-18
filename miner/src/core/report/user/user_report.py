@@ -2,10 +2,7 @@
 This file defines the UserReport class.
 """
 
-from typing import Optional
-from pathlib import Path
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from typing import Optional, Type
 
 from src.core.report.base_report import BaseReport
 from src.core.report import ProjectReport
@@ -14,6 +11,7 @@ from src.core.statistic import (
     UserStatCollection,
 )
 from src.core.resume.resume import Resume
+from src.core.portfolio.builder.build_system import PortfolioBuilder
 
 
 class UserReport(BaseReport):
@@ -22,7 +20,12 @@ class UserReport(BaseReport):
     from many different ReportReports
     """
 
-    def __init__(self, project_reports: list[ProjectReport], report_name: str, statistics: Optional[StatisticIndex] = None):
+    def __init__(self,
+                 project_reports: list[ProjectReport],
+                 report_name: str = "",  # deperacted
+                 statistics: Optional[StatisticIndex] = None,
+                 calculator_classes: Optional[list[Type]] = None
+                 ):
         """
         Initialize UserReport with project reports to calculate user-level statistics.
 
@@ -60,7 +63,8 @@ class UserReport(BaseReport):
 
         from src.core.report.user.user_statistics import UserStatisticReportBuilder
 
-        builder = UserStatisticReportBuilder()
+        builder = UserStatisticReportBuilder(
+            calculator_classes=calculator_classes)
         builder.build(self)
 
     def generate_resume(self, email: Optional[str], github: Optional[str]) -> Resume:
@@ -80,132 +84,9 @@ class UserReport(BaseReport):
 
         return resume
 
-    @staticmethod
-    def delete_portfolio(identifier: str) -> tuple[bool, str]:
+    def generate_portfolio(self, section_builders: Optional[list[type]] = None, portfolio_title: Optional[str] = None):
         """
-        Delete a user report and its associated project reports from the database.
-
-        Args:
-            identifier: Either a portfolio title or filepath (extracts folder name from path)
-
-        Returns:
-            tuple: (success: bool, message: str)
-        """
-        raise ValueError("Deprecation")
-        from src.database.utils.database_modify import delete_user_report_and_related_data
-
-        engine = get_engine()
-
-        try:
-            with Session(engine) as session:
-                # Extract folder name from path if it's a path
-                if '/' in identifier or '\\' in identifier:
-                    folder_name = Path(identifier).stem
-                else:
-                    folder_name = identifier
-
-                # Find by title to get project count before deletion
-                stmt = select(UserReportTable).where(
-                    UserReportTable.title == folder_name
-                )
-                user_report = session.scalar(stmt)
-
-                if not user_report:
-                    return False, f"Portfolio '{folder_name}' not found in database"
-
-                # Store info for return message
-                title = user_report.title
-                project_count = len(user_report.project_reports)
-
-            # Use database_modify function for deletion (outside the session)
-            success = delete_user_report_and_related_data(title=title)
-
-            if success:
-                return True, f"Successfully deleted '{title}' and {project_count} associated project(s)"
-            else:
-                return False, f"Failed to delete portfolio '{title}' from database"
-
-        except ValueError as e:
-            # Handle "User report not found" from database_modify
-            return False, str(e)
-        except Exception as e:
-            return False, f"Database error: {str(e)}"
-
-    @staticmethod
-    def get_portfolio_info(identifier: str) -> tuple[bool, dict]:
-        """
-        Get information about a portfolio without deleting it.
-
-        Args:
-            identifier: Either a portfolio title or filepath (extracts folder name from path)
-
-        Returns:
-            tuple: (found: bool, info: dict with title and project_count)
-        """
-        raise ValueError("Deprecation")
-        engine = get_engine()
-
-        try:
-            with Session(engine) as session:
-                # Extract folder name from path if it's a path
-                if '/' in identifier or '\\' in identifier:
-                    folder_name = Path(identifier).stem
-                else:
-                    folder_name = identifier
-
-                # Find by title
-                stmt = select(UserReportTable).where(
-                    UserReportTable.title == folder_name
-                )
-                user_report = session.scalar(stmt)
-
-                if not user_report:
-                    return False, {}
-
-                info = {
-                    'title': user_report.title,
-                    'project_count': len(user_report.project_reports)
-                }
-
-                return True, info
-
-        except Exception:
-            return False, {}
-
-    @staticmethod
-    def list_all_portfolios() -> list[dict]:
-        """
-        Get a list of all portfolios in the database.
-
-        Returns:
-            list: List of dicts with portfolio info (title, project_count)
-        """
-        raise ValueError("Deprecation")
-        engine = get_engine()
-
-        try:
-            with Session(engine) as session:
-                # Force fresh query, don't use cache
-                session.expire_all()
-
-                stmt = select(UserReportTable)
-                portfolios = session.scalars(stmt).all()
-
-                portfolio_list = []
-                for portfolio in portfolios:
-                    portfolio_list.append({
-                        'title': portfolio.title,
-                        'project_count': len(portfolio.project_reports)
-                    })
-
-                return portfolio_list
-
-        except Exception:
-            return []
-
-    def to_user_readable_string(self) -> str:
-        """
-        Generate a user-readable portfolio using the portfolio builder system.
+        Generate a portfolio using the portfolio builder system.
         This delegates to concrete builders for flexible, modular portfolio generation.
         """
         from src.core.portfolio.builder.concrete_builders import (
@@ -221,24 +102,37 @@ class UserReport(BaseReport):
             ProjectActivityMetricsSectionBuilder,
             ProjectCommitFocusSectionBuilder,
         )
-        from src.core.portfolio.builder.build_system import PortfolioBuilder
 
-        # Create portfolio builder with all section builders
         builder = PortfolioBuilder()
-        builder.register_section_builder(UserSummarySectionBuilder())
-        builder.register_section_builder(UserSkillsSectionBuilder())
-        builder.register_section_builder(
-            UserCodingLanguageRatioSectionBuilder())
-        builder.register_section_builder(UserGenericStatisticsSectionBuilder())
-        builder.register_section_builder(ChronologicalProjectsSectionBuilder())
-        builder.register_section_builder(ProjectSummariesSectionBuilder())
-        builder.register_section_builder(ProjectTagsSectionBuilder())
-        builder.register_section_builder(ProjectThemesSectionBuilder())
-        builder.register_section_builder(ProjectTonesSectionBuilder())
-        builder.register_section_builder(
-            ProjectActivityMetricsSectionBuilder())
-        builder.register_section_builder(ProjectCommitFocusSectionBuilder())
 
-        # Build and render portfolio
-        portfolio = builder.build(self)
-        return portfolio.render()
+        if section_builders:
+            # Case we want to include only limited amount of sections
+            for section_builder in section_builders:
+                builder.register_section_builder(section_builder())
+        else:
+            # Case we want to include every section
+            builder.register_section_builder(UserSummarySectionBuilder())
+            builder.register_section_builder(UserSkillsSectionBuilder())
+            builder.register_section_builder(
+                UserCodingLanguageRatioSectionBuilder())
+            builder.register_section_builder(
+                UserGenericStatisticsSectionBuilder())
+            builder.register_section_builder(
+                ChronologicalProjectsSectionBuilder())
+            builder.register_section_builder(ProjectSummariesSectionBuilder())
+            builder.register_section_builder(ProjectTagsSectionBuilder())
+            builder.register_section_builder(ProjectThemesSectionBuilder())
+            builder.register_section_builder(ProjectTonesSectionBuilder())
+            builder.register_section_builder(
+                ProjectActivityMetricsSectionBuilder())
+            builder.register_section_builder(
+                ProjectCommitFocusSectionBuilder())
+
+        return builder.build(self)
+
+    def to_user_readable_string(self, section_builders: Optional[list[type]] = None) -> str:
+        """
+        Generate a user-readable portfolio.
+        """
+
+        return self.generate_portfolio(section_builders).render()

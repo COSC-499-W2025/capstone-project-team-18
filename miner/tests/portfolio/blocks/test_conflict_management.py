@@ -40,6 +40,7 @@ def test_text_list_block_conflict():
 
     assert block.is_in_conflict() is True
     assert block.metadata.conflict_content is not None
+    assert block.current_content is not None
     assert block.current_content.raw_value() == ["a", "b", "c"]
     assert block.metadata.conflict_content.raw_value() == ["x", "y"]
 
