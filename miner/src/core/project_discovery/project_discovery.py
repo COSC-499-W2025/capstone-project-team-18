@@ -4,7 +4,6 @@ a zipped file, with directories are projects? Which files
 should be considered?
 """
 
-import os
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
@@ -74,14 +73,14 @@ def discover_projects(unzipped_dir: str) -> list[ProjectLayout]:
             engine = get_engine()
             with Session(engine) as session:
                 pre_analyzed = True if get_project_report_model_by_name(
-                    session, str(dir_path.name)) is not None else False
+                    session, str(dir_path.name) is not None else False
 
-            file_paths = filter_files(dir_path)
+            file_paths=filter_files(dir_path)
 
             # Check to see if the project is a git repository
-            repo = None
+            repo=None
             try:
-                repo = Repo(dir_path)
+                repo=Repo(dir_path)
             except Exception as e:
                 logger.debug(f"No git repository found in {dir_path}: {e}")
 
@@ -125,7 +124,7 @@ def dir_is_project(dir_path: Path) -> bool:
             return True
 
     # Check if there are any files (excluding junk files)
-    files = [f for f in dir_path.iterdir() if f.is_file()
+    files=[f for f in dir_path.iterdir() if f.is_file()
              and f.name not in JUNK_FILES]
 
     if len(files) == 0:
@@ -146,19 +145,19 @@ def filter_files(project_path: Path) -> list[Path]:
     """
 
     # We ignore the ignore files and the files in the IGNORE_DIRS directories
-    file_paths = []
+    file_paths=[]
 
     for root, dirs, files in os.walk(project_path):
         # Modify dirs in-place to skip ignored directories
-        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+        dirs[:]=[d for d in dirs if d not in IGNORE_DIRS]
 
         for file in files:
             if file not in IGNORE_FILES:
 
                 # Check if file has an ignored extension
                 if not any(file.endswith(ext) for ext in IGNORE_EXTENSIONS):
-                    full_path = Path(root) / file
-                    relative_path = full_path.relative_to(project_path)
+                    full_path=Path(root) / file
+                    relative_path=full_path.relative_to(project_path)
                     file_paths.append(relative_path)
 
     return file_paths
