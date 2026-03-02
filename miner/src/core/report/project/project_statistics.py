@@ -763,18 +763,27 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                 f"role={response.collaboration_role}, pattern={response.work_pattern}"
             )
 
-            # Map the Pydantic response back to your Statistic objects
             stats = [
-                Statistic(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value,
-                          response.commit_type_distribution),
-                Statistic(ProjectStatCollection.WORK_PATTERN.value,
-                          response.work_pattern),
-                Statistic(ProjectStatCollection.COLLABORATION_ROLE.value,
-                          response.collaboration_role),
-                Statistic(ProjectStatCollection.ACTIVITY_METRICS.value,
-                          response.activity_metrics),
-                Statistic(ProjectStatCollection.ROLE_DESCRIPTION.value,
-                          response.role_description),
+                Statistic(
+                    ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value,
+                    response.commit_type_distribution.model_dump()
+                ),
+                Statistic(
+                    ProjectStatCollection.WORK_PATTERN.value,
+                    response.work_pattern
+                ),
+                Statistic(
+                    ProjectStatCollection.COLLABORATION_ROLE.value,
+                    response.collaboration_role
+                ),
+                Statistic(
+                    ProjectStatCollection.ACTIVITY_METRICS.value,
+                    response.activity_metrics.model_dump()
+                ),
+                Statistic(
+                    ProjectStatCollection.ROLE_DESCRIPTION.value,
+                    response.role_description
+                ),
             ]
             return stats
 

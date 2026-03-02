@@ -183,20 +183,19 @@ class CommitClassifier:
 
 
 class CommitTypeDistribution(BaseModel):
-    feat: float = Field(0.0)
-    fix: float = Field(0.0)
-    docs: float = Field(0.0)
-    refactor: float = Field(0.0)
-    chore: float = Field(0.0)
+    feat: float = Field(description="Percentage of feature commits")
+    fix: float = Field(description="Percentage of bug fixes")
+    docs: float = Field(description="Percentage of documentation")
+    refactor: float = Field(description="Percentage of refactoring")
+    chore: float = Field(description="Percentage of maintenance/chore")
 
 
 class ActivityMetrics(BaseModel):
-    commits_per_day: float = Field(0.0)
-    avg_message_length: float = Field(0.0)  # Add specific metrics you want
+    commits_per_day: float = Field(description="Average commits per day")
+    avg_message_length: float = Field(description="average message length")
 
 
 class ContributionPatternOutput(BaseModel):
-    # Use the new models instead of dict
     commit_type_distribution: CommitTypeDistribution
     work_pattern: str = Field(
         description="A short label describing the work cadence (e.g., 'consistent', 'bursty', 'weekend-warrior')"
