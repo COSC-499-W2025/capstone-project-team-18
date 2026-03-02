@@ -6,7 +6,6 @@ from sqlmodel import Session
 
 from src.database.api.models import ProjectReportModel
 
-# ✅ IMPORTANT: import the actual module (your routers/__init__.py likely re-exports the APIRouter)
 projects_module = importlib.import_module("src.interface.api.routers.projects")
 
 
@@ -22,7 +21,7 @@ def _insert_project(engine, project_name: str = "Demo Project") -> None:
             project_name=project_name,
             user_config_used=None,
             image_data=None,
-            statistic={"dummy": True},  # required non-null JSON field
+            statistic={"dummy": True},  
             created_at=datetime.datetime.now(),
             last_updated=datetime.datetime.now(),
             # showcase fields default to None
@@ -44,7 +43,6 @@ def test_put_customization_persists_and_get_returns_saved(client, blank_db):
         "title": "My Custom Title",
         "frameworks": ["HTML", "CSS", "JavaScript"],
         "bullet_points": ["A", "B", "C"],
-        # If your request model supports dates, keep these; otherwise delete them.
         "start_date": "2026-01-01T00:00:00",
         "end_date": "2026-02-01T00:00:00",
     }
@@ -72,7 +70,6 @@ def test_get_customization_404_when_project_missing(client):
 def test_delete_customization_clears_fields(client, blank_db):
     _insert_project(blank_db, "Demo Project")
 
-    # Pre-seed customization values directly in DB
     with Session(blank_db) as session:
         model = session.get(ProjectReportModel, "Demo Project")
         assert model is not None
@@ -125,7 +122,6 @@ def test_showcase_merges_overrides_over_defaults(client, blank_db, monkeypatch):
             generate_resume_item=lambda: fake_resume_item,
         )
 
-    # ✅ Patch the function name in the module used by the endpoint
     monkeypatch.setattr(projects_module, "get_project_report_by_name", fake_get_project_report_by_name)
 
     r2 = client.get("/projects/Demo%20Project/showcase")
@@ -133,9 +129,9 @@ def test_showcase_merges_overrides_over_defaults(client, blank_db, monkeypatch):
     out = r2.json()
 
     assert out["project_name"] == "Demo Project"
-    assert out["title"] == "Portfolio Showcase: Demo Project"  # override wins
-    assert out["frameworks"] == ["FastAPI", "React"]           # override wins
-    assert out["bullet_points"] == ["Custom 1", "Custom 2"]    # override wins
+    assert out["title"] == "Portfolio Showcase: Demo Project"  
+    assert out["frameworks"] == ["FastAPI", "React"]           
+    assert out["bullet_points"] == ["Custom 1", "Custom 2"]    
 
     # Dates should still be present via defaults if not overridden
     assert out["start_date"] is not None
