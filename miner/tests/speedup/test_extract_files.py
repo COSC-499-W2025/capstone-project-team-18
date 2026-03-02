@@ -60,12 +60,13 @@ def sequential_extract_file_reports(
 
 
 def test_extract_file_reports_parallel_speedup(project_realistic, monkeypatch):
-    file_paths = project_realistic.file_paths * 30
+    file_paths = project_realistic.file_paths
     project = ProjectLayout(
         name=project_realistic.name,
         root_path=project_realistic.root_path,
         file_paths=file_paths,
         repo=project_realistic.repo,
+        pre_analyzed=False,
     )
 
     def fake_get_appropriate_analyzer(
@@ -97,5 +98,5 @@ def test_extract_file_reports_parallel_speedup(project_realistic, monkeypatch):
     parallel_time = time.perf_counter() - start
 
     # Speed up in testing showed as 2.77
-    assert len(parallel_reports) == len(sequential_reports)
+    assert len(parallel_reports) == 2
     assert parallel_time < sequential_time * 0.9

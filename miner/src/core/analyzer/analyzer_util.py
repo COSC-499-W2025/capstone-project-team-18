@@ -38,11 +38,13 @@ def single_file_analysis(
         user_config,
         project_context,
         relative_path
-) -> Optional[FileReport]:
+) -> tuple[Optional[FileReport], bool]:
     """
     Method to anlayze a single file. Grabs appropriate analyzer, checks if it should be included
     only as `INFO_FILE` and returns the analyzed fileReport.
     """
+
+    project_needs_recomputation = False
 
     analyzer = get_appropriate_analyzer(
         user_config, project_context, relative_path
@@ -50,22 +52,24 @@ def single_file_analysis(
 
     if not analyzer.should_analyze_file():
         logger.info("Skipping file %s in project %s", file, project_name)
-        return analyzer.create_info_file()
+        return analyzer.create_info_file(), False
 
-    engine = get_engine()
-    with Session(engine) as session:
-        if filepath_exists_in_db(session, analyzer.filepath):
-            if analyzer.compare_hashes():
-                logger.info("Skipping already analyzed file: %s", file)
-                return get_file_report_by_hash(session, analyzer.hashed_content)
-            else:
-                delete_file_report_by_hash(
-                    session, analyzer.hashed_content)
-                session.commit()
-                return analyzer.analyze()
+    if project_context.pre_analyzed:
+        engine = get_engine()
+        with Session(engine) as session:
+            if filepath_exists_in_db(session, analyzer.filepath):
+                if analyzer.compare_hashes():
+                    logger.info("Skipping already analyzed file: %s", file)
+                    return get_file_report_by_hash(session, analyzer.hashed_content), project_needs_recomputation
+                else:
+                    project_needs_recomputation = True
+                    delete_file_report_by_hash(
+                        session, analyzer.hashed_content)
+                    session.commit()
+                    return analyzer.analyze(), project_needs_recomputation
 
     try:
-        return analyzer.analyze()
+        return analyzer.analyze(), project_needs_recomputation
 
     except Exception:
         logger.exception("Error analyzing file %s in %s", file, project_name)
@@ -75,7 +79,7 @@ def single_file_analysis(
 def extract_file_reports(
     project_file: ProjectLayout,
     user_config: UserConfig
-) -> list[FileReport]:
+) -> tuple[list[FileReport], bool]:
     """
     Method to extract individual `FileReports` within each project
     """
@@ -103,7 +107,19 @@ def extract_file_reports(
     with Pool(processes=workers) as pool:
         results = pool.starmap(single_file_analysis, args)
 
-    return [r for r in results if r is not None]
+    file_reports = []
+    project_needs_recomputation = False
+
+    for result in results:
+        if result is None:
+            continue
+        file_report, needs_recomputation = result
+        if file_report is not None:
+            file_reports.append(file_report)
+        if needs_recomputation:
+            project_needs_recomputation = True
+
+    return file_reports, project_needs_recomputation
 
 
 def get_appropriate_analyzer(user_config: UserConfig,

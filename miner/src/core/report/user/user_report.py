@@ -52,8 +52,12 @@ class UserReport(BaseReport):
         ranked_project_reports = sorted(
             project_reports, key=lambda p: p.get_project_weight(), reverse=True)
 
-        self.resume_items = [report.generate_resume_item()
-                             for report in ranked_project_reports]
+        self.resume_items = []
+        for report in ranked_project_reports:
+            self.resume_items.append(report.generate_resume_item())
+            since_last_analysis_item = report.generate_since_last_analysis_item()
+            if since_last_analysis_item is not None:
+                self.resume_items.append(since_last_analysis_item)
 
         super().__init__(StatisticIndex())  # list of user-level statistics
 

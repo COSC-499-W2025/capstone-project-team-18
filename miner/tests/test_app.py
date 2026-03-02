@@ -8,6 +8,7 @@ import pytest
 from src.core.analyzer import analyzer_util
 from src.interface.cli.cli_service_handler import start_miner_cli
 from src.utils.errors import NoDiscoveredProjects, ErrorCode
+from src.core.project_discovery import project_discovery as pd
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -29,6 +30,9 @@ def mock_engine(monkeypatch, blank_db):
 @pytest.fixture(autouse=True)
 def mock_analyzer_db_engine(monkeypatch, blank_db):
     monkeypatch.setattr(analyzer_util, "get_engine", lambda: blank_db)
+    monkeypatch.setattr(pd, "get_engine", lambda: blank_db)
+    monkeypatch.setattr(
+        pd, "get_project_report_model_by_name", lambda session, _: None)
 
 
 def test_app_runs(mock_engine, mock_readme_analysis, resource_dir):

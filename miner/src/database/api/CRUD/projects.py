@@ -1,11 +1,62 @@
 from datetime import datetime
 from sqlmodel import Session, select
 from typing import Optional
-from sqlmodel import Session
 from src.database.api.models import ProjectReportModel, FileReportModel
 from src.core.report import ProjectReport
 from src.database.core.model_serializer import serialize_project_report, serialize_file_report
 from src.database.core.model_deserializer import deserialize_project_report
+
+
+def _get_latest_related_project_model(
+    session: Session,
+    base_project_name: str
+) -> Optional[ProjectReportModel]:
+    """
+    Get the latest saved project in a version chain.
+
+    A related project is either:
+    - Exact base name (e.g. "ProjectA")
+    - Versioned name (e.g. "ProjectA_2", "ProjectA_3", ...)
+    """
+    statement = select(ProjectReportModel).where(
+        (ProjectReportModel.project_name == base_project_name) |
+        (ProjectReportModel.project_name.like(f"{base_project_name}_%"))
+    )
+    related_projects = session.exec(statement).all()
+
+    if not related_projects:
+        return None
+
+    return max(
+        related_projects,
+        key=lambda project: (
+            project.analyzed_count if project.analyzed_count is not None else 1,
+            project.created_at
+        )
+    )
+
+
+def get_latest_related_project_report(
+    session: Session,
+    base_project_name: str
+) -> Optional[ProjectReport]:
+    """
+    Retrieve the latest saved ProjectReport in a version chain by base project name.
+
+    Args:
+        session: SQLModel Session
+        base_project_name: Unversioned project name (e.g. "ProjectA")
+
+    Returns:
+        Latest related ProjectReport if found, else None
+    """
+    latest_model = _get_latest_related_project_model(
+        session, base_project_name)
+
+    if latest_model is None:
+        return None
+
+    return deserialize_project_report(latest_model)
 
 
 def get_all_project_ids(
@@ -45,10 +96,28 @@ def save_project_report(
 
     existing = get_project_report_model_by_name(
         session, incoming_model.project_name)
-    if existing is None:
+    latest_related_project = _get_latest_related_project_model(
+        session=session,
+        base_project_name=project_report.project_name
+    )
+
+    if existing is None and latest_related_project is None:
         incoming_model.file_reports = incoming_files
         session.add(incoming_model)
         return incoming_model
+
+    existing = existing or latest_related_project
+    previous_project_name = existing.project_name
+
+    if latest_related_project is not None:
+        next_count = (latest_related_project.analyzed_count or 1) + 1
+        existing.project_name = f"{project_report.project_name}_{next_count}"
+        existing.analyzed_count = next_count
+        existing.parent = previous_project_name
+    else:
+        existing.project_name = project_report.project_name
+        existing.analyzed_count = 1
+        existing.parent = None
 
     # Upsert behavior: refresh existing project row and replace child file rows.
     # This prevents UNIQUE(project_name) crashes on repeated analyses.
@@ -58,7 +127,7 @@ def save_project_report(
 
     stale_files = session.exec(
         select(FileReportModel).where(
-            FileReportModel.project_name == existing.project_name)
+            FileReportModel.project_name == previous_project_name)
     ).all()
     for row in stale_files:
         session.delete(row)
