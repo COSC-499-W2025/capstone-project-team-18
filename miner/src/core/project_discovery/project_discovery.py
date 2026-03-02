@@ -9,6 +9,10 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 from git import Repo
+from sqlmodel import Session
+
+from src.database.api.CRUD.projects import get_project_report_model_by_name
+from src.database.core.base import get_engine
 from .ignore_constants import *
 from src.infrastructure.log.logging import get_logger
 
@@ -21,6 +25,7 @@ class ProjectLayout:
     root_path: Path  # The absolute path to the top-level directory
     file_paths: list[Path]  # File paths relative to the root_path
     repo: Optional[Repo]  # The git repository object if applicable
+    pre_analyzed: bool  # defines whether a project has undergone prior analysis
 
 
 def discover_projects(unzipped_dir: str) -> list[ProjectLayout]:
@@ -66,6 +71,11 @@ def discover_projects(unzipped_dir: str) -> list[ProjectLayout]:
         if dir_is_project(dir_path):
             logger.info("Directory %s is a project.", dir_path)
 
+            engine = get_engine()
+            with Session(engine) as session:
+                pre_analyzed = True if get_project_report_model_by_name(
+                    session, dir_path) is not None else False
+
             file_paths = filter_files(dir_path)
 
             # Check to see if the project is a git repository
@@ -79,7 +89,8 @@ def discover_projects(unzipped_dir: str) -> list[ProjectLayout]:
                 name=dir_path.name,
                 root_path=dir_path,
                 file_paths=file_paths,
-                repo=repo
+                repo=repo,
+                pre_analyzed=pre_analyzed,
             ))
 
         else:

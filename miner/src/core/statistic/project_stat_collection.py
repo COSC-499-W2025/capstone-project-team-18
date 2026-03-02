@@ -13,6 +13,18 @@ class ProjectStatisticTemplate(StatisticTemplate):
 
 
 class ProjectStatCollection(Enum):
+    PREVIOUS_ANALYSIS_PROJECT = ProjectStatisticTemplate(
+        name="PREVIOUS_ANALYSIS_PROJECT",
+        description="name of the previous analyzed project version used for comparison",
+        expected_type=str,
+    )
+
+    PROJECT_STATISTICS_DELTA = ProjectStatisticTemplate(
+        name="PROJECT_STATISTICS_DELTA",
+        description="flattened numeric deltas in project-level statistics since previous analysis",
+        expected_type=dict[str, float],
+    )
+
     PROJECT_START_DATE = ProjectStatisticTemplate(
         name="PROJECT_START_DATE",
         description="the first start date of the project",

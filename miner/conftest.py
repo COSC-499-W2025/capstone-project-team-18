@@ -134,7 +134,8 @@ def project_context_from_root():
             file_paths=[],
             root_path=Path(root_path),
             name="test_project",
-            repo=repo
+            repo=repo,
+            pre_analyzed=False
         )
 
     return _create
@@ -292,7 +293,8 @@ def project_shared_file(tmp_path: Path) -> ProjectLayout:
         name="SharedFile",
         root_path=project_dir,
         file_paths=[Path(filename)],
-        repo=repo
+        repo=repo,
+        pre_analyzed=False
     )
 
 
@@ -423,7 +425,8 @@ def project_realistic(tmp_path: Path, create_temp_file) -> ProjectLayout:
             Path("scripts/bootstrap.sh"),
             Path("docs/README.md"),
         ],
-        repo=repo
+        repo=repo,
+        pre_analyzed=False
     )
 
 
@@ -445,5 +448,6 @@ def project_no_git_dir(tmp_path: Path) -> ProjectLayout:
         name="NoGitProject",
         root_path=project_dir,
         file_paths=[Path("main.py"), Path("utils.py")],
-        repo=None
+        repo=None,
+        pre_analyzed=False
     )

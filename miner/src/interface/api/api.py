@@ -13,7 +13,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-
 from src.utils.errors import KeyNotFoundError
 from src.app import init_system
 from src.interface.api.routers import (
@@ -65,13 +64,10 @@ app.include_router(resume)
 app.include_router(portfolio)
 app.include_router(skills)
 app.include_router(user_config)
-app.include_router(privacy_consent)
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
 
 # Error handlers. If these errors are ever raised in our code, return the following JSON
+
+
 @app.exception_handler(KeyNotFoundError)
 async def key_not_found_exception_handler(request: Request, exc: KeyNotFoundError):
     return JSONResponse(
@@ -86,3 +82,7 @@ async def universal_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "An internal error occurred", "details": str(exc)},
     )
+app.include_router(privacy_consent)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

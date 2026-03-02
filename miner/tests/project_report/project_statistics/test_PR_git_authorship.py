@@ -529,13 +529,14 @@ def test_file_report_none_for_uncommitted_files_by_user(tmp_path: Path):
         name="SelectiveProject",
         root_path=project_dir,
         file_paths=[Path("fileA.py"), Path("fileB.py"), Path("fileC.py")],
-        repo=repo
+        repo=repo,
+        pre_analyzed=False
     )
 
     uc = UserConfigModel()
     uc.user_email = "charlie@example.com"
 
-    fr = extract_file_reports(project_files, uc)
+    fr, _ = extract_file_reports(project_files, uc)
 
     # create a project report for Charlie, should only contain files B & C
     pr = ProjectReport(file_reports=fr,
@@ -580,13 +581,14 @@ def test_total_contribution_percentage_negative_zero_contribution(tmp_path: Path
         name="NoContributionProject",
         root_path=project_dir,
         file_paths=[Path("fileA.py"), Path("fileB.py")],
-        repo=repo
+        repo=repo,
+        pre_analyzed=False
     )
 
     uc = UserConfigModel()
     uc.user_email = "charlie@example.com"
 
-    fr = extract_file_reports(project_files, uc)
+    fr, _ = extract_file_reports(project_files, uc)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),
@@ -622,13 +624,14 @@ def test_total_contribution_percentage_single_file_full_contribution(tmp_path: P
         name="SingleAuthorProject",
         root_path=project_dir,
         file_paths=[Path("main.py")],
-        repo=repo
+        repo=repo,
+        pre_analyzed=False
     )
 
     uc = UserConfigModel()
     uc.user_email = "alice@example.com"
 
-    fr = extract_file_reports(project_files, uc)
+    fr, _ = extract_file_reports(project_files, uc)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),
@@ -668,13 +671,14 @@ def test_total_contribution_percentage_three_way_split(tmp_path: Path):
         name="ThreeWayProject",
         root_path=project_dir,
         file_paths=[Path("fileA.py"), Path("fileB.py"), Path("fileC.py")],
-        repo=repo
+        repo=repo,
+        pre_analyzed=False
     )
 
     uc = UserConfigModel()
     uc.user_email = "alice@example.com"
 
-    fr = extract_file_reports(project_files, uc)
+    fr, _ = extract_file_reports(project_files, uc)
 
     pr = ProjectReport(file_reports=fr,
                        project_path=str(project_dir),

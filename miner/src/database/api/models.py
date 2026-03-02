@@ -34,6 +34,8 @@ class ProjectReportModel(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now())
     last_updated: datetime = Field(default_factory=lambda: datetime.now())
+    analyzed_count: int = 1
+    parent: Optional[str] = None
 
     # Relationships
 

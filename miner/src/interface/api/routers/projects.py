@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import SQLModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 
 from src.interface.api.routers.util import get_session
@@ -51,6 +51,38 @@ class ProjectShowcaseResponse(SQLModel):
     bullet_points: List[str] = []
 
 
+class ProjectResumeItemResponse(SQLModel):
+    title: str
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    frameworks: List[str] = []
+    bullet_points: List[str] = []
+
+
+def _frameworks_to_strings(value: Any) -> List[str]:
+    if not value:
+        return []
+    out: List[str] = []
+    for item in value:
+        if isinstance(item, str):
+            out.append(item)
+        elif isinstance(item, dict):
+            out.append(item.get("name") or item.get("skill") or str(item))
+        else:
+            out.append(
+                getattr(item, "name", None)
+                or getattr(item, "skill", None)
+                or str(item)
+            )
+    seen = set()
+    deduped = []
+    for x in out:
+        if x and x not in seen:
+            seen.add(x)
+            deduped.append(x)
+    return deduped
+
+
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
     file: UploadFile = File(...),
@@ -58,7 +90,15 @@ def upload_project(
     portfolio_name: Optional[str] = None,
     session=Depends(get_session)
 ):
-    """Upload a zipped project file for analysis."""
+    """
+    POST /upload
+
+    This endpoint will intake a zipped file. This zipped file will then
+    be analyzed for projects. These projects will be analyzed, then saved
+    to the database.
+
+    Errors will be thrown if the zipped file does not match the accepted formats.
+    """
     filename = file.filename or ""
     matched_format = next(
         (fmt for fmt in SUPPORTED_FORMATS if filename.endswith(fmt)), None
@@ -191,13 +231,72 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
             return value
         try:
             return datetime.combine(value, datetime.min.time())
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "Failed to convert value '%s' to datetime in project endpoint: %s",
+                value,
+                str(e),
+            )
             return None
 
     return ProjectShowcaseResponse(
         project_name=report.project_name,
         start_date=_to_datetime(resume_item.start_date),
         end_date=_to_datetime(resume_item.end_date),
-        frameworks=list(resume_item.frameworks or []),
+        frameworks=_frameworks_to_strings(resume_item.frameworks),
+        bullet_points=list(resume_item.bullet_points or []),
+    )
+
+
+@router.get("/{project_name}/resume-item", response_model=ProjectResumeItemResponse)
+def get_project_resume_item(project_name: str, session=Depends(get_session)):
+    """
+    GET /{project_name}/resume-item
+
+    This endpoint will retrieve a passed in project_name and format it
+    as a résumé item. The idea is that a user can select which project
+    they would like to include in their résumé through the UI, and the
+    system will call this endpoint to generate a structured résumé entry
+    for that project.
+
+    Returns the project formatted as a résumé item, including title,
+    date range, frameworks used, and descriptive bullet points.
+    """
+    try:
+        report = get_project_report_by_name(session, project_name)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve project report {e}"
+        )
+
+    if not report:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No project report named {project_name}"
+        )
+
+    resume_item = report.generate_resume_item()
+
+    def _to_datetime(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        try:
+            return datetime.combine(value, datetime.min.time())
+        except Exception as e:
+            logger.warning(
+                "Failed to convert value '%s' to datetime in project endpoint: %s",
+                value,
+                str(e),
+            )
+            return None
+
+    return ProjectResumeItemResponse(
+        title=resume_item.title,
+        start_date=_to_datetime(resume_item.start_date),
+        end_date=_to_datetime(resume_item.end_date),
+        frameworks=_frameworks_to_strings(resume_item.frameworks),
         bullet_points=list(resume_item.bullet_points or []),
     )

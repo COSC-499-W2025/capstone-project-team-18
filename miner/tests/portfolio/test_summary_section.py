@@ -413,7 +413,8 @@ def test_summary_section_emerging_signals_use_skillmapper_keywords(tmp_path, mon
             False,
         ),
         (
-            ["leader", "core_contributor", "core_contributor", "core_contributor", "core_contributor"],
+            ["leader", "core_contributor", "core_contributor",
+                "core_contributor", "core_contributor"],
             date(2019, 1, 1),
             date(2026, 1, 1),
             (
