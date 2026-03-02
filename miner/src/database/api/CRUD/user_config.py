@@ -1,5 +1,6 @@
-
 from sqlmodel import Session, select, desc
+from pydantic import BaseModel
+from typing import Optional
 from src.database.api.models import UserConfigModel
 
 
@@ -30,13 +31,28 @@ def get_most_recent_user_config(session: Session) -> UserConfigModel:
     return user_config
 
 
-def save_user_config(session: Session, user_config: UserConfigModel) -> UserConfigModel | None:
+class UserConfigUpdate(BaseModel):
+    consent: Optional[bool] = None
+    user_email: Optional[str] = None
+    github: Optional[str] = None
+
+
+def save_user_config(
+    session: Session,
+    db_config: UserConfigModel,
+    update_data: UserConfigUpdate
+) -> UserConfigModel:
     """
     Write the passed UserConfigModel to the database. This config will
     then become the defacto configuration. DOES NOT COMMIT THE
     SESSION! YOU MUST COMMIT.
     """
 
-    session.add(user_config)
+    # Convert the update model to a dict, excluding unset values
+    data = update_data.model_dump(exclude_unset=True)
 
-    return user_config
+    for key, value in data.items():
+        setattr(db_config, key, value)
+
+    session.add(db_config)
+    return db_config

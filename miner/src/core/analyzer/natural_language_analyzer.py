@@ -49,7 +49,7 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         filename = Path(self.filepath).name.lower()
         if filename.startswith("readme"):
             keyphrases = extract_readme_keyphrases(self.text_content)
-            if keyphrases:
+            if keyphrases is not None:
                 stats.append(
                     Statistic(FileStatCollection.README_KEYPHRASES.value,
                               keyphrases)

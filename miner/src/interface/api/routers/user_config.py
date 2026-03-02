@@ -4,11 +4,13 @@ from sqlmodel import Session
 
 from src.interface.api.routers.util import get_session
 from src.database import get_most_recent_user_config, save_user_config, UserConfigModel
+from src.database.api.CRUD.user_config import UserConfigUpdate
 
 router = APIRouter(
     prefix="",
     tags=["user-config"],
 )
+
 
 def get_user_config_safe(
     session: Session,
@@ -46,12 +48,20 @@ def get_user_config(session=Depends(get_session)) -> UserConfigModel:
     return user_config
 
 
-@router.put("/user-config")
+@router.put("/user-config/{config_id}")
 def update_user_config(
-    config_update: UserConfigModel,
+    config_id: int,
+    config_update: UserConfigUpdate,
     session=Depends(get_session)
 ):
-    save_user_config(session, config_update)
-    session.commit()
+    # Fetch the existing record
+    db_config = session.get(UserConfigModel, config_id)
+    if not db_config:
+        raise HTTPException(status_code=404, detail="Config not found")
 
-    return config_update
+    # Update and save
+    updated_config = save_user_config(session, db_config, config_update)
+    session.commit()
+    session.refresh(updated_config)
+
+    return updated_config

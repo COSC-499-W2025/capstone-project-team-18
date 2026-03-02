@@ -1,6 +1,7 @@
 from sqlmodel import Session, select
 from src.database.api.CRUD.user_config import get_most_recent_user_config, save_user_config
 from src.database.api.models import UserConfigModel
+from src.database.api.CRUD.user_config import UserConfigUpdate
 
 
 def test_user_config_auto_created(temp_db):
@@ -23,44 +24,34 @@ def test_user_config_auto_created(temp_db):
 
 
 def test_saving_user_config_object(temp_db):
-
-    uc = UserConfigModel()
-    uc.user_email = "sam@gmail.com"
-    uc.github = "sam-github"
+    update_data = UserConfigUpdate(
+        user_email="sam@gmail.com", github="sam-github")
 
     with Session(temp_db) as session:
-        updated_uc = save_user_config(session, uc)
-        session.commit()
-        user_config = get_most_recent_user_config(session)
+        db_config = get_most_recent_user_config(session)
 
-        assert updated_uc is not None
-        assert user_config is not None
-        assert updated_uc.id == user_config.id
-        assert user_config.user_email == "sam@gmail.com"
-        assert user_config.github == "sam-github"
+        updated_uc = save_user_config(session, db_config, update_data)
+        session.commit()
+
+        session.refresh(updated_uc)
+        assert updated_uc.user_email == "sam@gmail.com"
+        assert updated_uc.github == "sam-github"
 
 
 def test_many_different_user_config_object(temp_db):
-
-    uc1 = UserConfigModel()
-    uc1.user_email = "sam@gmail.com"
-    uc1.github = "sam-github"
-
-    uc2 = UserConfigModel()
-    uc2.user_email = "spencer@gmail.com"
-    uc2.github = "spencer-github"
+    update1 = UserConfigUpdate(user_email="sam@gmail.com", github="sam-github")
+    update2 = UserConfigUpdate(
+        user_email="spencer@gmail.com", github="spencer-github")
 
     with Session(temp_db) as session:
-        updated_uc1 = save_user_config(session, uc1)
-        updated_uc2 = save_user_config(session, uc2)
+        db_config = get_most_recent_user_config(session)
+        save_user_config(session, db_config, update1)
         session.commit()
 
-        user_config = get_most_recent_user_config(session)
+        db_config = get_most_recent_user_config(session)
+        save_user_config(session, db_config, update2)
+        session.commit()
 
-        assert updated_uc1 is not None
-        assert updated_uc2 is not None
-        assert user_config is not None
-        assert updated_uc1 != updated_uc2
-        assert updated_uc2.id == user_config.id
-        assert user_config.user_email == "spencer@gmail.com"
-        assert user_config.github == "spencer-github"
+        latest = get_most_recent_user_config(session)
+        assert latest.user_email == "spencer@gmail.com"
+        assert latest.github == "spencer-github"
