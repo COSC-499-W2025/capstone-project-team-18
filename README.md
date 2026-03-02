@@ -484,3 +484,296 @@ The firing clause is a severe right given to the team. Suppose a team member is 
 - [x] Delete previously generated insights and ensure files that are shared across multiple reports do not get affected
 - [x] Produce a chronological list of projects
 - [x] Produce a chronological list of skills exercised
+
+
+
+# Project Miner: Milestone 2
+
+Team 18's project miner. This README has been updated with Milestone 2 requirements. This guide will walk you through the set up.
+
+## Setup
+
+This project is built with a API running in a docker container, and a front end built locally.
+
+### Backend
+
+The easiest way to start the back-end for the project is through a Dev Container.
+
+**Prerequisites:**
+- Docker
+- Dev Container Extension on VSCode
+
+**Steps:**
+1. Clone, and open the repo folder in VSCode.
+2. Accept the prompt to create a Dev Container or run the command `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all pip packages within the contianer.
+3. Once you are within the container run `cd miner && fastapi dev ./src/interface/api/api.py` to start the API.
+
+Verify the API and container is running by going to http://127.0.0.1:8000/ping in your browser. You should see "pong". To view the Swagger UI docs vist http://127.0.0.1:8000/docs.
+
+### Frontend
+
+While M2 may be run and verified straight from Swagger, we also do have a in-progress front end. While it is not fully fleshed out, it provides an interactive experience and providing here for completeness.
+
+**Prerequisites:**
+- NPM
+
+**Steps:**
+1. Clone the repo and cd into the `ui/` folder.
+2. Install the packages with `npm install`.
+3. Then, run the webserver with `npm run dev`.
+
+Vite will print `http://localhost:5173` for the web renderer. For the Electron app, use the Electron window that opens when running npm run dev.
+
+If you run into errors, check the `ui/README.md` for more detailed instructions.
+
+## Requirements
+
+The full list of Milestone 2 requirements has been completed
+
+
+## Endpoints
+
+All endpoints can be explored interactively via Swagger at http://127.0.0.1:8000/docs.
+
+---
+
+### `POST /privacy-consent`
+
+Sets the user's privacy consent and profile information. This must be completed before uploading projects.
+
+**Request body:**
+```json
+{
+  "consent": true,
+  "user_email": "user@example.com",
+  "github": "myusername"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Consent granted",
+  "consent": true,
+  "user_email": "user@example.com",
+  "github": "myusername"
+}
+```
+
+---
+
+### `POST /projects/upload`
+
+Uploads a zipped project file for analysis. The miner will extract the zip, discover projects inside, analyze each file for skills, languages, and commit patterns, then save the results to the database.
+
+**Supported formats:** `.zip`, `.7z`, `.tar.gz`, `.gz`
+
+**Query parameters:**
+- `email` (optional) — associates an email with the upload
+- `portfolio_name` (optional) — overrides the name derived from the filename
+
+**Request body:** `multipart/form-data` with a `file` field.
+
+**Response:**
+```json
+{
+  "message": "Project uploaded and analyzed successfully",
+  "portfolio_name": "MyProject"
+}
+```
+
+---
+
+### `GET /projects`
+
+Returns a list of all analyzed projects stored in the database.
+
+**Response:**
+```json
+{
+  "projects": []
+}
+```
+
+---
+
+### `GET /projects/{project_name}`
+
+Retrieves the full analysis report for a specific project by name.
+
+**Response:**
+```json
+{
+  "project_name": "MyProject",
+  "user_config_used": 1,
+  "image_data": null,
+  "created_at": "2026-02-25T10:00:00",
+  "last_updated": "2026-02-25T10:00:00"
+}
+```
+
+---
+
+### `GET /projects/{project_name}/showcase`
+
+Returns a project formatted for showcase display — including dates, frameworks, and bullet points derived from the project analysis.
+
+**Response:**
+```json
+{
+  "project_name": "MyProject",
+  "start_date": "2025-01-01T00:00:00",
+  "end_date": "2025-06-01T00:00:00",
+  "frameworks": ["Python", "FastAPI"],
+  "bullet_points": ["Implemented REST API", "Designed database schema"]
+}
+```
+
+---
+
+### `GET /skills`
+
+Returns all skills extracted across all analyzed projects, weighted by how prominently they appear.
+
+**Response:**
+```json
+{
+  "skills": [
+    { "name": "Machine Learning", "weight": 3.96 },
+    { "name": "Database", "weight": 2.4 }
+  ]
+}
+```
+
+---
+
+### `GET /user-config`
+
+Returns the current user configuration including consent status, email, and GitHub username.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "consent": true,
+  "user_email": "user@example.com",
+  "github": "myusername"
+}
+```
+
+---
+
+### `PUT /user-config`
+
+Updates the user configuration.
+
+**Request body:** Full `UserConfig` object.
+
+---
+
+### `POST /resume/generate`
+
+Generates a resume from a list of previously analyzed projects.
+
+**Request body:**
+```json
+{
+  "project_names": ["ProjectA", "ProjectB"],
+  "user_config_id": 1
+}
+```
+
+**Response:** Full resume object with items, skills, email, and GitHub.
+
+---
+
+### `GET /resume/{resume_id}`
+
+Retrieves a previously generated resume by ID.
+
+---
+
+### `POST /resume/{resume_id}/edit/metadata`
+
+Updates the email and GitHub username on an existing resume.
+
+**Request body:**
+```json
+{
+  "email": "new@example.com",
+  "github_username": "newusername"
+}
+```
+
+---
+
+### `POST /resume/{resume_id}/edit/bullet_point`
+
+Edits or appends a bullet point on a specific resume item.
+
+**Request body:**
+```json
+{
+  "resume_id": 1,
+  "item_index": 0,
+  "new_content": "Built a REST API with FastAPI",
+  "append": true,
+  "bullet_point_index": null
+}
+```
+
+---
+
+### `POST /resume/{resume_id}/edit/resume_item`
+
+Edits the metadata (title, start date, end date) of a specific resume item.
+
+---
+
+### `POST /resume/{resume_id}/refresh`
+
+Re-runs the resume generation pipeline using the same projects, producing an updated resume with the latest analysis data.
+
+---
+
+### `GET /portfolio/{portfolio_id}`
+
+Retrieves a generated portfolio by ID.
+
+---
+
+### `POST /portfolio/generate`
+
+Generates a portfolio from a list of previously analyzed projects.
+
+**Request body:**
+```json
+{
+  "project_names": ["ProjectA", "ProjectB"],
+  "portfolio_title": "My Portfolio"
+}
+```
+
+---
+
+### `POST /portfolio/{portfolio_id}/refresh`
+
+Re-runs portfolio generation for an existing portfolio using the same projects.
+
+---
+
+### `POST /portfolio/{portfolio_id}/sections/{section_id}/block/{block_tag}/edit`
+
+Edits a specific block within a portfolio section.
+
+---
+
+### `GET /portfolio/{portfolio_id}/conflicts`
+
+Returns all blocks currently in a conflict state, for the UI to highlight edits that differ from the system-generated version.
+
+---
+
+### `POST /portfolio/{portfolio_id}/sections/{section_id}/blocks/{block_tag}/resolve-accept`
+
+Resolves a conflict by accepting the system-generated version of a block.
