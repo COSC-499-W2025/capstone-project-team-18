@@ -140,7 +140,10 @@ def edit_resume_metadata(
     request: EditResumeMetadataRequest,
     session=Depends(get_session)
 ):
-    """Edit an existing resume."""
+    """
+    Edit an existing resume. Note, the user config ID is optional. It is not needed
+    and will cause an error if used without a corresponding ID.
+    """
 
     # Load as domain object (uses deserialize_resume)
 

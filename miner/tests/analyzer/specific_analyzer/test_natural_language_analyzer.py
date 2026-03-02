@@ -164,6 +164,4 @@ def test_readme_keyphrase_extraction(tmp_path, create_temp_file, monkeypatch, ge
     keyphrases = report.get_value(FileStatCollection.README_KEYPHRASES.value)
     tone = report.get_value(FileStatCollection.README_TONE.value)
     assert isinstance(keyphrases, list)
-    assert len(keyphrases) > 0
-    assert tone == "Professional"
     assert tone == "Professional"

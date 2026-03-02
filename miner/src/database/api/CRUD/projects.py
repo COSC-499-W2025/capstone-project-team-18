@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlmodel import Session, select
-from typing import Optional
+from typing import Optional, List
+from sqlmodel import Session
 from src.database.api.models import ProjectReportModel, FileReportModel
 from src.core.report import ProjectReport
 from src.database.core.model_serializer import serialize_project_report, serialize_file_report
@@ -198,3 +199,17 @@ def delete_project_report_by_name(
 
     session.delete(project)
     return True
+
+
+def get_all_project_report_models(session: Session) -> List[ProjectReportModel]:
+    """
+    Retrieve all ProjectReportModel records from the database.
+
+    Args:
+        session: SQLModel Session
+
+    Returns:
+        A list of ProjectReportModel instances.
+    """
+    statement = select(ProjectReportModel)
+    return list(session.exec(statement).all())

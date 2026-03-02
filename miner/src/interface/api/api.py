@@ -13,9 +13,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from sqlmodel import SQLModel
 from src.utils.errors import KeyNotFoundError
-from src.database.core.base import get_engine
+from src.app import init_system
 from src.interface.api.routers import (
     projects,
     resume,
@@ -28,7 +27,7 @@ from src.interface.api.routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Commands to run on startup
-    SQLModel.metadata.create_all(get_engine())
+    init_system()
 
     yield
 

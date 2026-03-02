@@ -9,6 +9,7 @@ from src.interface.api.routers.util import get_session
 from src.database.api.CRUD.projects import (
     get_project_report_model_by_name,
     get_project_report_by_name,
+    get_all_project_report_models
 )
 from src.services.mining_service import start_miner_service
 from src.database.api.models import UserConfigModel as UserConfig
@@ -29,12 +30,19 @@ class ProjectReportResponse(SQLModel):
     user_config_used: Optional[int]
     image_data: Optional[bytes]
     created_at: datetime
+    statistic: dict
     last_updated: datetime
 
 
 class UploadProjectResponse(SQLModel):
     message: str
     portfolio_name: str
+
+
+class ProjectListResponse(SQLModel):
+    projects: List[ProjectReportResponse]
+    count: int
+
 
 class ProjectShowcaseResponse(SQLModel):
     project_name: str
@@ -43,6 +51,7 @@ class ProjectShowcaseResponse(SQLModel):
     end_date: Optional[datetime] = None
     frameworks: List[str] = []
     bullet_points: List[str] = []
+
 
 class ProjectResumeItemResponse(SQLModel):
     title: str
@@ -119,6 +128,7 @@ def _frameworks_to_strings(value: Any) -> List[str]:
             deduped.append(x)
     return deduped
 
+
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
     file: UploadFile = File(...),
@@ -184,9 +194,31 @@ def upload_project(
             detail=f"Failed to process project: {str(e)}"
         )
 
-@router.get("")
-def list_projects():
-    return {"projects": []}
+
+@router.get(
+    "/",
+    response_model=ProjectListResponse,
+)
+def list_projects(session=Depends(get_session)):
+    """
+    Get all project reports without pagination.
+    """
+    try:
+
+        all_projects = get_all_project_report_models(session)
+
+        return ProjectListResponse(
+            projects=all_projects,
+            count=len(all_projects)
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching project list: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve the list of projects from the database."
+        )
+
 
 @router.get("/{project_name}", response_model=ProjectReportResponse)
 def get_project(project_name: str, session=Depends(get_session)):
@@ -207,6 +239,7 @@ def get_project(project_name: str, session=Depends(get_session)):
         )
 
     return result
+
 
 @router.get("/{project_name}/showcase", response_model=ProjectShowcaseResponse)
 def get_project_showcase(project_name: str, session=Depends(get_session)):
@@ -383,13 +416,13 @@ def clear_project_showcase_customization(project_name: str, session=Depends(get_
 def get_project_resume_item(project_name: str, session=Depends(get_session)):
     """
     GET /{project_name}/resume-item
-    
+
     This endpoint will retrieve a passed in project_name and format it
     as a résumé item. The idea is that a user can select which project
     they would like to include in their résumé through the UI, and the
     system will call this endpoint to generate a structured résumé entry
     for that project.
-    
+
     Returns the project formatted as a résumé item, including title,
     date range, frameworks used, and descriptive bullet points.
     """
