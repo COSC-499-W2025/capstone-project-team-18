@@ -1,0 +1,159 @@
+"""
+Tests for the general-purpose JSON serializer/deserializer
+to ensure non-primitive types (enums, dataclasses, nested structures,
+dict keys/values) serialize and deserialize correctly.
+"""
+
+from typing import Dict, Any
+import pytest
+import json
+
+from src.core.statistic.statistic_models import WeightedSkills, CodingLanguage, FileDomain
+from src.core.statistic.statistic_serializer import serialize, deserialize
+
+
+def test_dataclass_direct_serialize_deserialize():
+    ws = WeightedSkills("Python", 0.9)
+    serialized = serialize(ws)
+
+    assert isinstance(serialized, dict)
+    assert serialized["__type__"] == "dataclass"
+    assert serialized["class"] == "WeightedSkills"
+    assert serialized["value"] == {"skill_name": "Python", "weight": 0.9}
+
+    recovered = deserialize(serialized)
+    assert isinstance(recovered, WeightedSkills)
+    assert recovered == ws
+
+
+@pytest.mark.parametrize(
+    "value, expected_type",
+    [
+        # --- enums ---
+        (FileDomain.CODE, FileDomain),
+        (CodingLanguage.PYTHON, CodingLanguage),
+
+        # --- dataclass ---
+        (WeightedSkills("Python", 0.9), WeightedSkills),
+
+        # --- lists ---
+        (["python", "testing"], list),
+        ([WeightedSkills("Python", 0.9), WeightedSkills("SQL", 0.7)], list),
+
+        # --- dicts ---
+        ({"file1.py": 3, "file2.py": 2}, dict),
+        ({FileDomain.CODE: 0.4, FileDomain.TEST: 0.6}, dict),
+        ({CodingLanguage.PYTHON: 0.8, CodingLanguage.SQL: 0.2}, dict),
+    ],
+    ids=[
+        "file-domain-enum",
+        "coding-language-enum",
+        "weighted-skills",
+        "list-of-str",
+        "list-of-weighted-skills",
+        "plain-dict",
+        "dict-filedomain-float",
+        "dict-codinglanguage-float",
+    ],
+)
+def test_non_trivial_serialize_deserialize(value, expected_type):
+    """
+    Try to serialize and then deserialize every non-trivial
+    expected_type in the statistics.
+    """
+    serialized = serialize(value)
+    json_serialize = json.dumps(serialized)
+    json_loaded_to_dict = json.loads(json_serialize)
+    recovered = deserialize(json_loaded_to_dict)
+
+    assert isinstance(recovered, expected_type)
+    assert recovered == value
+
+
+def test_enum_direct_serialize_deserialize():
+    lang = CodingLanguage.PYTHON
+    serialized = serialize(lang)
+
+    assert isinstance(serialized, dict)
+    assert serialized["__type__"] == "enum"
+    assert serialized["class"] == "CodingLanguage"
+    assert serialized["value"] == lang.value
+
+    recovered = deserialize(serialized)
+    assert isinstance(recovered, CodingLanguage)
+    assert recovered == lang
+
+
+def test_list_of_enums_serialize_deserialize():
+    langs = [CodingLanguage.PYTHON, CodingLanguage.JAVASCRIPT] \
+        if len(list(CodingLanguage)) > 1 else [CodingLanguage.PYTHON]
+    serialized = serialize(langs)
+
+    assert isinstance(serialized, list)
+    assert all(isinstance(e, dict) and e.get(
+        "__type__") == "enum" for e in serialized)
+
+    recovered = deserialize(serialized)
+    assert isinstance(recovered, list)
+    assert recovered == langs
+    assert all(isinstance(e, CodingLanguage) for e in recovered)
+
+
+def test_dict_enum_to_dataclass_serialize_deserialize():
+    # map enum -> dataclass
+    mapping: Dict[CodingLanguage, WeightedSkills] = {
+        CodingLanguage.PYTHON: WeightedSkills("Python", 1.0)
+    }
+    langs = list(CodingLanguage)
+    if len(langs) > 1:
+        mapping[langs[1]] = WeightedSkills("Other", 0.5)
+
+    serialized = serialize(mapping)
+    # keys must be string representations of enums, values dataclass serialized dicts
+    assert isinstance(serialized, dict)
+    for k, v in serialized.items():
+        assert isinstance(k, str)
+        assert k.startswith("__enum__:")
+        assert isinstance(v, dict) and v.get("__type__") == "dataclass"
+
+    recovered = deserialize(serialized)
+    assert isinstance(recovered, dict)
+    assert recovered == mapping
+    for k, v in recovered.items():
+        assert isinstance(k, CodingLanguage)
+        assert isinstance(v, WeightedSkills)
+
+
+def test_nested_structure_serialize_deserialize():
+    nested: Any = [
+        {"lang_ratio": {CodingLanguage.PYTHON: 0.8, CodingLanguage.JAVASCRIPT: 0.2}},
+        WeightedSkills("React", 0.7),
+        {"domains": [FileDomain.CODE, FileDomain.DESIGN]
+         if len(list(FileDomain)) > 1 else [FileDomain.CODE]},
+    ]
+
+    serialized = serialize(nested)
+
+    # ensure we serialized nested enums/dataclasses appropriately
+    assert isinstance(serialized, list)
+    assert isinstance(serialized[0], dict)
+    assert "lang_ratio" in serialized[0]
+    assert all(isinstance(k, str) and k.startswith("__enum__:")
+               for k in serialized[0]["lang_ratio"].keys())
+    assert isinstance(serialized[1], dict) and serialized[1].get(
+        "__type__") == "dataclass"
+    assert isinstance(serialized[2], dict)
+    domains_serialized = serialized[2]["domains"]
+    assert isinstance(domains_serialized, list)
+    assert all(isinstance(d, dict) and d.get("__type__") == "enum"
+               for d in domains_serialized)
+
+    recovered = deserialize(serialized)
+    assert recovered is not None
+    assert isinstance(recovered, list)
+    assert isinstance(recovered[0]["lang_ratio"], dict)
+    assert all(isinstance(k, CodingLanguage)
+               for k in recovered[0]["lang_ratio"].keys())
+    assert isinstance(recovered[1], WeightedSkills)
+    assert isinstance(recovered[2]["domains"], list)
+    assert all(isinstance(d, FileDomain) for d in recovered[2]["domains"])

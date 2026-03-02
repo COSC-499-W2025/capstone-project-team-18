@@ -45,6 +45,7 @@ coverage.xml
 # dotenv environment variables
 .env
 .env.*
+!.env.example
 
 # creatde test files
 test_unzip.tar.gz
@@ -54,5 +55,37 @@ test_unzip_extract/*
 
 
 #database
-src/database/data.db
-src/database/preferences.json
+miner/src/database/data.db
+miner/src/database/preferences.json
+
+resume.tex
+miner/src/classes/database/preferences.json
+miner/src/interface/cli/preferences.json
+.gitignore
+miner/src/infrastructure/log/*.log
+
+# =====================
+# Electron / UI (Node)
+# =====================
+
+# Dependencies
+node_modules/
+
+# Build outputs
+ui/dist/
+ui/dist-electron/
+ui/dist-renderer/
+ui/out/
+ui/.vite/
+
+# Logs (if any appear later)
+ui/*.log
+*.log
+
+*.db
+miner/src/database/schema.sql
+miner/src/database/example.py
+miner/src/infrastructure/log/*
+miner/src/infrastructure/log/app.log
+
+.hf_cache/

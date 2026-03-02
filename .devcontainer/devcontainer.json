@@ -11,7 +11,7 @@
 	},
 
     "remoteEnv": {
-        "PYTHONPATH": "${containerWorkspaceFolder}"
+        "PYTHONPATH": "${containerWorkspaceFolder}/miner"
     },
 
     // The extensions installed in the resulting VSCode Version
@@ -24,10 +24,19 @@
                 "qwtel.sqlite-viewer"
             ],
             "settings": {
+                "python.analysis.autoSearchPaths": false,
+                "python.analysis.extraPaths": [
+                    "${containerWorkspaceFolder}/miner"
+                ],
                 "files.trimTrailingWhitespace": true,
+                "autoDocstring.docstringFormat": "sphinx",
                 "[python]": {
                     "editor.defaultFormatter": "ms-python.autopep8",
-                    "editor.formatOnSave": true
+                    "editor.formatOnSave": true,
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports": "explicit",
+                        "source.unusedImports": "explicit"
+                    }
                 }
             }
         }
