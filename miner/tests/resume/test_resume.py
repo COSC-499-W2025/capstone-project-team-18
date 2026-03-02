@@ -92,7 +92,8 @@ def test_userreport_adds_since_last_analysis_item(project_report_from_stats):
     ]
 
     user_report = UserReport(
-        [project_report_from_stats(project_statistics, project_name="Project1_3")],
+        [project_report_from_stats(
+            project_statistics, project_name="Project1_3")],
         "UserReport1"
     )
 
