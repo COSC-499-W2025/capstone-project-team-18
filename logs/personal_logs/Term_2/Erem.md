@@ -2,15 +2,51 @@
 
 ## Table of Contents
 
-**[T2 Week 4-5, Jan 26 - Feb 8](#t2-week-2-jan-26--feb-8)**
+**[T2 Week 8, Feb 8](#t2-week-8-feb-23--mar-1)**
 
-**[T2 Week 3, Jan 19 - 25](#t2-week-2-jan-19--jan-25)**
+**[T2 Week 4-5, Jan 26 - Feb 8](#t2-week-4/5-jan-26--feb-8)**
+
+**[T2 Week 3, Jan 19 - 25](#t2-week-3-jan-19--jan-25)**
 
 **[T2 Week 2, Jan 12 - 18](#t2-week-2-jan-12--jan-18)**
 
 **[Week 1, Jan 05 - 11](#week-1-jan-05---11)**
 
 ---
+
+## T2 Week 8, Feb 23 - Mar 1
+
+### Peer Eval
+
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/Erem/erem_t2_week8_log.png)
+
+### Recap
+
+This week the team focused on completing Milestone 2 requirements. My work centred on shipping the remaining API endpoints - project upload, privacy consent, and the full resume management suite — as well as fixing a performance regression in the ML contribution analysis pipeline.
+
+#### Coding Tasks
+
+I implemented and merged [PR #437 - POST /projects/upload & POST /privacy-consent endpoints](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/437), closing [Issue #410](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/410). `POST /projects/upload` accepts a zipped project file (`.zip`, `.7z`, `.tar.gz`, `.gz`), reads it as bytes, and passes it into `start_miner_service` along with a `UserConfig` built from optional query params. The miner handles project discovery, file analysis, and saving results to the database. `POST /privacy-consent` lets the frontend record whether the user has agreed to data collection — it fetches the existing `UserConfigModel` and updates it in place, returning the saved consent state, email, and GitHub username so the client can confirm what was stored. Both endpoints include full test coverage and proper error handling (400, 422, 500).
+
+I also implemented and merged [PR #429 - Resume API Endpoints](https://github.com/COSC-799-W2025/capstone-project-team-18/pull/429), closing [Issue #416](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/416). This adds three endpoints for resume management: `GET /resume/{id}` retrieves a stored resume by ID, `POST /resume/generate` runs the full `UserReport.generate_resume()` pipeline from a list of project names and saves the result, and `POST /resume/{id}/edit` updates metadata on an existing resume. Key fixes included date serialization (using `date` type instead of `str` in response models), removing problematic `session.delete()` and `session.refresh()` calls that broke with mocked objects, and extracting a reusable `get_user_config_safe()` helper into `user_config.py` following a PR review suggestion from Sam.
+
+Additionally I investigated and fixed a performance issue where the ML contribution analysis pipeline (`ProjectContributionPatterns`) was extremly slow loading the original `facebook/bart-large-mnli` locally, and thus we switched it over to Azure OpenAI similar to the configuration of the other ML analysis
+
+
+#### Reviewing Tasks
+
+I reviewed [PR #444 - Display Textual Information About A Project As A Resume Item](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/444) by Jimi, which adds natural language project descriptions as resume bullet points derived from project analysis.
+
+I reviewed [PR #443 - Week 8 Log](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/443) by Priyansh.
+
+I reviewed [PR #442 - Extra Documentation for Endpoints](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/442) by Sam, which adds clear documentation for all current development endpoints.
+
+I reviewed [PR #438 - Fix FILE_HASH merge conflicts](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/438) by Jimi.
+
+#### Goals for Next Week
+
+- Start working on Milestone 3
+- Look into authentication for the API endpoints
 
 ## T2 Week 4-5, Jan 19 - 25
 
