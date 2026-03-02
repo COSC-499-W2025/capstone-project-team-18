@@ -8,6 +8,18 @@ from src.database.core.model_serializer import serialize_project_report, seriali
 from src.database.core.model_deserializer import deserialize_project_report
 
 
+def get_all_project_ids(
+    session: Session
+) -> list[str]:
+    """
+    Returns all the project report names
+    """
+    statement = select(ProjectReportModel.project_name)
+    results = session.exec(statement).all()
+
+    return list(results)
+
+
 def save_project_report(
     session: Session,
     project_report: ProjectReport,

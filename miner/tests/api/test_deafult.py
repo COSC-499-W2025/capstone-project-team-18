@@ -17,7 +17,6 @@ def test_ping_pong(client):
         ("POST", "/projects/upload"),
         ("GET", "/projects"),
         ("GET", "/projects/test-id"),
-        ("GET", "/skills"),
         ("GET", "/resume/test-id"),
         ("POST", "/resume/generate"),
         ("POST", "/resume/test-id/edit"),

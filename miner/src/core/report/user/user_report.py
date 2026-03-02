@@ -2,7 +2,7 @@
 This file defines the UserReport class.
 """
 
-from typing import Optional
+from typing import Optional, Type
 
 from src.core.report.base_report import BaseReport
 from src.core.report import ProjectReport
@@ -20,7 +20,12 @@ class UserReport(BaseReport):
     from many different ReportReports
     """
 
-    def __init__(self, project_reports: list[ProjectReport], report_name: str, statistics: Optional[StatisticIndex] = None):
+    def __init__(self,
+                 project_reports: list[ProjectReport],
+                 report_name: str = "",  # deperacted
+                 statistics: Optional[StatisticIndex] = None,
+                 calculator_classes: Optional[list[Type]] = None
+                 ):
         """
         Initialize UserReport with project reports to calculate user-level statistics.
 
@@ -54,7 +59,8 @@ class UserReport(BaseReport):
 
         from src.core.report.user.user_statistics import UserStatisticReportBuilder
 
-        builder = UserStatisticReportBuilder()
+        builder = UserStatisticReportBuilder(
+            calculator_classes=calculator_classes)
         builder.build(self)
 
     def generate_resume(self, email: Optional[str], github: Optional[str]) -> Resume:
