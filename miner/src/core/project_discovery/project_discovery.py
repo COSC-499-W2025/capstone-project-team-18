@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Optional
 from git import Repo
 from sqlmodel import Session
+import os
 
 from src.database.api.CRUD.projects import get_project_report_model_by_name
 from src.database.core.base import get_engine
