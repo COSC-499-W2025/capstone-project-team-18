@@ -203,12 +203,16 @@ def _analyze_project_files(
 
         return project_report
     else:
-        if previous_report is None:
-            raise NoRevelantFiles(
-                f"{project_layout.name} had no previous analyzed project to load"
-            )
+        project_report = ProjectReport(
+            project_name=project_layout.name,
+            project_path=str(project_layout.root_path),
+            project_repo=project_layout.repo,
+            file_reports=file_reports,
+            user_email=user_config.user_email,
+            user_github=user_config.github
+        )
 
-        return previous_report
+        return project_report
 
 
 def _save_project_report_to_db(project_report: list[ProjectReport], user_config_id: Optional[int]) -> None:
