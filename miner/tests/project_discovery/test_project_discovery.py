@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 import zipfile
+import os
 from pathlib import Path
 
 import pytest

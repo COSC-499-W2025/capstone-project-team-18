@@ -37,6 +37,14 @@ class ProjectReportModel(SQLModel, table=True):
     analyzed_count: int = 1
     parent: Optional[str] = None
 
+    # These fields allow users to override the auto-generated showcase portfolio
+    showcase_title: Optional[str] = None
+    showcase_start_date: Optional[datetime] = None
+    showcase_end_date: Optional[datetime] = None
+    showcase_frameworks: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    showcase_bullet_points: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    showcase_last_user_edit_at: Optional[datetime] = None
+
     # Relationships
 
     # Idea here is that user gets a warning if PR is outdate with current config
