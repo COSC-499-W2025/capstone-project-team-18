@@ -10,10 +10,29 @@
 
 **[Week 4–5, 01/26 - 02/08](#week-4-5-0126---0208)**
 
+**[Week 8, 02/23 - 03/01](#week-8-0223---0301)**
+
 ---
+
+# Week 8 02/23 - 03/01
+[Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week8_log.png)
+
+This week, I focused on extending the FastAPI backend to support rendering project data as structured resume and portfolio entries. I implemented new endpoints to expose presentation-ready project information derived from the existing ProjectReport model, including proper date normalization and strongly typed response schemas.
+
+I introduced the GET /projects/{project_name}/showcase endpoint to generate portfolio-style project representations and the GET /projects/{project_name}/resume-item endpoint to generate resume-formatted entries. Both endpoints include unit tests covering 200, 404, and 500 behaviors, with mocked CRUD layers to isolate endpoint logic from database state. This work was completed in:
+[PR `#441` Display Textual Information About A Project As A Portfolio Showcase](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/441) and [PR `#444` Display Textual Information About A Project As A Resume Item](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/444)
+
+I then extended this functionality to allow users to customize and persist showcase content through new override endpoints under /projects/{project_name}/showcase/customization. This included schema extensions, override merge logic, framework filtering, and FastAPI lifespan integration for automatic schema initialization. Unit tests were added to validate persistence and merge behavior. This was implemented in:
+[PR `#451` Customize And Save Information About A Portfolio Showcase Project](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/451).
+
+These updates establish backend support for structured, editable portfolio and resume presentation features, with frontend integration planned next.
+Additionally, I reviewed the following PRs:
+1. [PR `#438` Fix FILE_HASH merge conflicts](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/438)
+2. [PR `#446` Allow report updates](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/446)
 
 # Week 4-5 01/26 - 02/08
 [Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week4-5_log.png)
+
 Over Weeks 4–5, I expanded the Electron-based UI beyond the initial scaffold by implementing basic frontend pages for browsing projects and skills and wiring them to the existing FastAPI endpoints. I added client-side routing for project lists and project detail views, with appropriate loading, empty-state, and error handling aligned with the current backend contracts.
 
 I also extended the centralized API client to support fetching individual projects and updated the backend connectivity check to use the lightweight /ping endpoint, decoupling UI checks from database-backed routes. Alongside this, I expanded Vitest unit test coverage for the API client to validate URL construction, parameter encoding, and error handling without requiring the backend to be running. This was done in the following PR: [PR `#425` Add basic Electron UI with projects and skills Pages](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/425)
