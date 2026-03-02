@@ -3,6 +3,7 @@ import tempfile
 from git import Repo
 import shutil
 import pytest
+import os
 
 from src.utils.pathing_utils import unzip_file
 from src.core.analyzer import extract_file_reports, analyzer_util

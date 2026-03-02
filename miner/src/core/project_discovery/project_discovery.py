@@ -4,12 +4,12 @@ a zipped file, with directories are projects? Which files
 should be considered?
 """
 
-import os
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 from git import Repo
 from sqlmodel import Session
+import os
 
 from src.database.api.CRUD.projects import get_project_report_model_by_name
 from src.database.core.base import get_engine
@@ -74,7 +74,7 @@ def discover_projects(unzipped_dir: str) -> list[ProjectLayout]:
             engine = get_engine()
             with Session(engine) as session:
                 pre_analyzed = True if get_project_report_model_by_name(
-                    session, dir_path) is not None else False
+                    session, str(dir_path.name)) is not None else False
 
             file_paths = filter_files(dir_path)
 

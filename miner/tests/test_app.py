@@ -4,6 +4,7 @@ More detailed tests will be in their respective modules.
 """
 
 import pytest
+import os
 
 from src.core.analyzer import analyzer_util
 from src.interface.cli.cli_service_handler import start_miner_cli
