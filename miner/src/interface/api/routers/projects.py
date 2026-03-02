@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import SQLModel
 from typing import Optional, List, Any
 from datetime import datetime
+import os
 
 from src.interface.api.routers.util import get_session
 from src.database.api.CRUD.projects import (
