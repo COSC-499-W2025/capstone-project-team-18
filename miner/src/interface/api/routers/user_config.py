@@ -37,6 +37,12 @@ def get_user_config_safe(
 
 @router.get("/user-config")
 def get_user_config(session=Depends(get_session)) -> UserConfigModel:
+    """
+    GET /user-config
+
+    This endpoint retieves the in-use user config. It will respond with
+    the config and it's ID.
+    """
 
     user_config = get_most_recent_user_config(session)
 
@@ -51,6 +57,13 @@ def update_user_config(
     config_update: UserConfigModel,
     session=Depends(get_session)
 ):
+    """
+    PUT /user-config
+
+    This endpoint updates the user's config. The values are given in the
+    payload, then we save that exact payload to the database and set it
+    as the current in use user config (with new id).
+    """
     save_user_config(session, config_update)
     session.commit()
 
