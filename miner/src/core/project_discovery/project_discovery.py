@@ -74,7 +74,7 @@ def discover_projects(unzipped_dir: str) -> list[ProjectLayout]:
             engine = get_engine()
             with Session(engine) as session:
                 pre_analyzed = True if get_project_report_model_by_name(
-                    session, str(dir_path)) is not None else False
+                    session, str(dir_path.name)) is not None else False
 
             file_paths = filter_files(dir_path)
 
