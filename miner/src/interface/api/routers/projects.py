@@ -1,6 +1,5 @@
-
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 from typing import Optional, List, Any
 from datetime import datetime
 import os
@@ -49,16 +48,16 @@ class ProjectShowcaseResponse(SQLModel):
     title: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    frameworks: List[str] = []
-    bullet_points: List[str] = []
+    frameworks: List[str] = Field(default_factory=list)
+    bullet_points: List[str] = Field(default_factory=list)
 
 
 class ProjectResumeItemResponse(SQLModel):
     title: str
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    frameworks: List[str] = []
-    bullet_points: List[str] = []
+    frameworks: List[str] = Field(default_factory=list)
+    bullet_points: List[str] = Field(default_factory=list)
 
 class SaveShowcaseCustomizationRequest(SQLModel):
     title: Optional[str] = None
@@ -66,6 +65,17 @@ class SaveShowcaseCustomizationRequest(SQLModel):
     end_date: Optional[datetime] = None
     frameworks: Optional[List[str]] = None
     bullet_points: Optional[List[str]] = None
+
+class ReorderProjectsRequest(SQLModel):
+    project_names: List[str]  # ordered, index 0 is highest priority
+
+class UpdateProjectRepresentationRequest(SQLModel):
+    representation_rank: Optional[int] = None
+    chrono_start_override: Optional[datetime] = None
+    chrono_end_override: Optional[datetime] = None
+    showcase_selected: Optional[bool] = None
+    compare_attributes: Optional[List[str]] = None
+    highlight_skills: Optional[List[str]] = None
 
 # Helper function to polish extracted framework tokens by removing
 # URLs, file paths, asset references, and other non-technology noise.
@@ -206,6 +216,15 @@ def list_projects(session=Depends(get_session)):
     try:
 
         all_projects = get_all_project_report_models(session)
+        incoming = set(req.project_names)
+        
+        for p in all_projects:
+            if p.project_name not in incoming:
+                p.representation_rank = None
+                session.add(p)
+
+        # rank first (None ranks go after)
+        all_projects.sort(key=lambda p: (p.representation_rank is None, p.representation_rank or 10**9, p.created_at))
 
         return ProjectListResponse(
             projects=all_projects,
@@ -465,3 +484,104 @@ def get_project_resume_item(project_name: str, session=Depends(get_session)):
         bullet_points=list(resume_item.bullet_points or []),
     )
 
+@router.put("/representation/reorder")
+def reorder_projects(req: ReorderProjectsRequest, session=Depends(get_session)):
+    try:
+        # validate all exist
+        for name in req.project_names:
+            if not get_project_report_model_by_name(session, name):
+                raise HTTPException(status_code=404, detail=f"No project report named {name}")
+
+        now = datetime.now()
+        for idx, name in enumerate(req.project_names):
+            m = get_project_report_model_by_name(session, name)
+            m.representation_rank = idx
+            m.representation_last_user_edit_at = now
+            m.last_updated = now
+            session.add(m)
+
+        session.commit()
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reorder projects: {str(e)}")
+
+@router.patch("/{project_name}/representation")
+def update_project_representation(project_name: str, req: UpdateProjectRepresentationRequest, session=Depends(get_session)):
+    m = get_project_report_model_by_name(session, project_name)
+    if not m:
+        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
+
+    # validate dates if both provided
+    if req.chrono_start_override and req.chrono_end_override:
+        if req.chrono_end_override < req.chrono_start_override:
+            raise HTTPException(status_code=422, detail="chrono_end_override must be >= chrono_start_override")
+
+    try:
+        if req.representation_rank is not None:
+            m.representation_rank = req.representation_rank
+
+        if req.chrono_start_override is not None:
+            m.chrono_start_override = req.chrono_start_override
+        if req.chrono_end_override is not None:
+            m.chrono_end_override = req.chrono_end_override
+
+        if req.showcase_selected is not None:
+            m.showcase_selected = req.showcase_selected
+
+        if req.compare_attributes is not None:
+            m.compare_attributes = list(req.compare_attributes)
+
+        if req.highlight_skills is not None:
+            m.highlight_skills = list(req.highlight_skills)
+
+        now = datetime.now()
+        m.representation_last_user_edit_at = now
+        m.last_updated = now
+
+        session.add(m)
+        session.commit()
+        return {"ok": True}
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update representation: {str(e)}")
+    
+@router.get("/chronology")
+def get_project_chronology(session=Depends(get_session)):
+    # uses domain report for start/end from statistics
+    projects = get_all_project_report_models(session)
+
+    out = []
+    for m in projects:
+        report = get_project_report_by_name(session, m.project_name)
+        if not report:
+            continue
+        item = report.generate_resume_item()
+
+        def _to_dt(v):
+            if v is None:
+                return None
+            if isinstance(v, datetime):
+                return v
+            return datetime.combine(v, datetime.min.time())
+
+        default_start = _to_dt(item.start_date)
+        default_end = _to_dt(item.end_date)
+
+        start = m.chrono_start_override or default_start
+        end = m.chrono_end_override or default_end
+
+        out.append({
+            "project_name": m.project_name,
+            "start_date": start,
+            "end_date": end,
+            "overridden": (m.chrono_start_override is not None or m.chrono_end_override is not None),
+        })
+
+    # sort by start_date then end_date
+    out.sort(key=lambda x: (x["start_date"] is None, x["start_date"] or datetime.max, x["end_date"] or datetime.max))
+    return {"projects": out, "count": len(out)}
