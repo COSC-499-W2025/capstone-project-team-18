@@ -34,9 +34,8 @@ def get_skills_endpoint(session=Depends(get_session)):
     # Return the mapped data
     return {"skills": formatted_skills}
 
-@router.get("/highlighted")
+@router.get("/highlighted", response_model=dict[str, list[WeightedUserSkills]])
 def get_highlighted_skills(session=Depends(get_session)):
-    # aggregate highlights from project models that are showcase_selected OR all
     from src.database.api.CRUD.projects import get_all_project_report_models
 
     projects = get_all_project_report_models(session)
@@ -45,7 +44,9 @@ def get_highlighted_skills(session=Depends(get_session)):
         for s in (p.highlight_skills or []):
             highlighted.add(s)
 
-    # return weights from computed skills list
     raw = get_skills(session)
     weights = {s.skill_name: s.weight for s in raw}
-    return {"skills": [{"name": k, "weight": weights.get(k, 0.0)} for k in sorted(highlighted)]}
+
+    return {
+        "skills": [WeightedUserSkills(name=k, weight=weights.get(k, 0.0)) for k in sorted(highlighted)]
+    }
