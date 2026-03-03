@@ -15,14 +15,12 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from src.utils.errors import KeyNotFoundError
 from src.app import init_system
-from src.interface.api.routers import (
-    projects,
-    resume,
-    portfolio,
-    skills,
-    user_config,
-    privacy_consent,
-)
+from src.interface.api.routers.projects import router as projects_router
+from src.interface.api.routers.resume import router as resume_router
+from src.interface.api.routers.portfolio import router as portfolio_router
+from src.interface.api.routers.skills import router as skills_router
+from src.interface.api.routers.user_config import router as user_config_router
+from src.interface.api.routers.privacy_consent import router as privacy_consent_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -59,11 +57,12 @@ def ping_pong():
 
 
 # Register routers
-app.include_router(projects)
-app.include_router(resume)
-app.include_router(portfolio)
-app.include_router(skills)
-app.include_router(user_config)
+app.include_router(projects_router)
+app.include_router(resume_router)
+app.include_router(portfolio_router)
+app.include_router(skills_router)
+app.include_router(user_config_router)
+app.include_router(privacy_consent_router)
 
 # Error handlers. If these errors are ever raised in our code, return the following JSON
 
@@ -82,7 +81,7 @@ async def universal_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "An internal error occurred", "details": str(exc)},
     )
-app.include_router(privacy_consent)
+app.include_router(privacy_consent_router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

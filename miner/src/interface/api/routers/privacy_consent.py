@@ -53,13 +53,7 @@ def set_privacy_consent(
         if request.github is not None:
             config.github = request.github
 
-        update_data = {
-            "consent": config.consent,
-            "user_email": config.user_email,
-            "github": config.github,
-            }
-        
-        save_user_config(session, config, update_data)
+        save_user_config(session, config, request)
         session.commit()
 
         message = "Consent granted" if request.consent else "Consent revoked"
