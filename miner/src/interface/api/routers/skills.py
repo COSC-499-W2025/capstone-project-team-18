@@ -1,6 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlmodel import SQLModel
 
+from src.interface.api.routers.util import get_session
 from src.services.skills_service import get_skills
 
 router = APIRouter(
@@ -13,9 +14,8 @@ class WeightedUserSkills(SQLModel):
     name: str
     weight: float
 
-
 @router.get("", response_model=dict[str, list[WeightedUserSkills]])
-def get_skills_endpoint():
+def get_skills_endpoint(session=Depends(get_session)):
     """
     GET /skills
 
@@ -26,13 +26,10 @@ def get_skills_endpoint():
 
     Returns a list of WeightedUserSkills.
     """
-    raw_skills = get_skills()
+    raw_skills = get_skills(session)
 
     # Map the dataclass (skill_name) to the response model (name)
-    formatted_skills = [
-        WeightedUserSkills(name=skill.skill_name, weight=skill.weight)
-        for skill in raw_skills
-    ]
+    formatted_skills = [WeightedUserSkills(name=s.skill_name, weight=s.weight) for s in raw_skills]
 
     # Return the mapped data
     return {"skills": formatted_skills}
