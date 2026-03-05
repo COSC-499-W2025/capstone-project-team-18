@@ -14,6 +14,7 @@ from src.database.api.CRUD.projects import (
 from src.services.mining_service import start_miner_service
 from src.database.api.models import UserConfigModel as UserConfig
 from src.infrastructure.log.logging import get_logger
+from src.database.api.models import ProjectReportModel
 
 logger = get_logger(__name__)
 
@@ -150,7 +151,10 @@ def _frameworks_to_strings(value: Any) -> List[str]:
     return deduped
 
 # Helper function to combine logic of GET/projects{project_name}/showcase and GET /projects/selected
-def _build_project_showcase_response(project_model, report) -> ProjectShowcaseResponse:
+def _build_project_showcase_response(
+    project_model: Optional["ProjectReportModel"],  # or concrete type if imported
+    report,
+) -> ProjectShowcaseResponse:
     resume_item = report.generate_resume_item()
 
     def _to_datetime(value):
@@ -158,50 +162,50 @@ def _build_project_showcase_response(project_model, report) -> ProjectShowcaseRe
             return None
         if isinstance(value, datetime):
             return value
-        return datetime.combine(value, datetime.min.time())
+        try:
+            return datetime.combine(value, datetime.min.time())
+        except Exception:
+            return None
 
+    # defaults from generator
     default_title = resume_item.title
     default_start = _to_datetime(resume_item.start_date)
     default_end = _to_datetime(resume_item.end_date)
-    chrono_start = project_model.chrono_start_override or default_start
-    chrono_end = project_model.chrono_end_override or default_end
     default_frameworks = _frameworks_to_strings(resume_item.frameworks)
     default_bullets = list(resume_item.bullet_points or [])
 
+    # If no DB model exists, return defaults (no overrides)
+    if project_model is None:
+        return ProjectShowcaseResponse(
+            project_name=report.project_name,
+            title=default_title,
+            start_date=default_start,
+            end_date=default_end,
+            frameworks=default_frameworks,
+            bullet_points=default_bullets,
+        )
+
+    # overrides if present
     title_out = project_model.showcase_title or default_title
-    
-    start_out = (
-    project_model.showcase_start_date
-    if project_model and project_model.showcase_start_date
-    else chrono_start
-    )
-    end_out = (
-    project_model.showcase_end_date
-    if project_model and project_model.showcase_end_date
-    else chrono_end
-    )
+    start_out = project_model.showcase_start_date or default_start
+    end_out = project_model.showcase_end_date or default_end
+    frameworks_out = list(project_model.showcase_frameworks) if project_model.showcase_frameworks else default_frameworks
+    bullets_out = list(project_model.showcase_bullet_points) if project_model.showcase_bullet_points else default_bullets
 
-    frameworks_out = (
-        list(project_model.showcase_frameworks)
-        if project_model.showcase_frameworks
-        else default_frameworks
-    )
-
-    bullets_out = (
-        list(project_model.showcase_bullet_points)
-        if project_model.showcase_bullet_points
-        else default_bullets
-    )
+    # chronology overrides respected (“last bullet”)
+    if project_model.chrono_start_override is not None:
+        start_out = project_model.chrono_start_override
+    if project_model.chrono_end_override is not None:
+        end_out = project_model.chrono_end_override
 
     return ProjectShowcaseResponse(
-        project_name=project_model.project_name,
+        project_name=report.project_name,
         title=title_out,
         start_date=start_out,
         end_date=end_out,
         frameworks=frameworks_out,
         bullet_points=bullets_out,
     )
-
 
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
@@ -417,14 +421,15 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
 
     Returns the project_name fromatted for project showcase.
     """
-    report = get_project_report_by_name(session, project_name)
+    try:
+        report = get_project_report_by_name(session, project_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     if not report:
         raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
 
-    project_model = get_project_report_model_by_name(session, project_name)
-    if not project_model:
-        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
-
+    project_model = get_project_report_model_by_name(session, project_name)  
     return _build_project_showcase_response(project_model, report)
 
 @router.get("/{project_name}/showcase/customization")
