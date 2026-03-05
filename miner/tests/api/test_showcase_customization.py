@@ -143,8 +143,9 @@ def test_showcase_returns_500_when_crud_raises(client, monkeypatch):
 
     monkeypatch.setattr(projects_module, "get_project_report_by_name", boom)
 
-    with pytest.raises(RuntimeError, match="DB failed"):
-        client.get("/projects/Demo/showcase")
+    r = client.get("/projects/Demo/showcase")
+    assert r.status_code == 500
+    assert "Failed to retrieve project report" in r.json().get("detail", "")
 
 def test_showcase_defaults_when_no_overrides(client, blank_db, monkeypatch):
     _insert_project(blank_db, "Demo Project")

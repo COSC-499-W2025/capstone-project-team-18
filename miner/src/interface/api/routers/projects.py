@@ -424,13 +424,16 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
     try:
         report = get_project_report_by_name(session, project_name)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve project report {e}")
 
     if not report:
         raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
 
     project_model = get_project_report_model_by_name(session, project_name)  
-    return _build_project_showcase_response(project_model, report)
+    try:
+        return _build_project_showcase_response(project_model, report)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to build showcase response: {e}")
 
 @router.get("/{project_name}/showcase/customization")
 def get_project_showcase_customization(project_name: str, session=Depends(get_session)):
