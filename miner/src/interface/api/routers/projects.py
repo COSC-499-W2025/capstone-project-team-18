@@ -593,6 +593,9 @@ def update_project_representation(project_name: str, req: UpdateProjectRepresent
     if req.chrono_start_override and req.chrono_end_override:
         if req.chrono_end_override < req.chrono_start_override:
             raise HTTPException(status_code=422, detail="chrono_end_override must be >= chrono_start_override")
+        
+    if req.representation_rank is not None and req.representation_rank < 0:
+        raise HTTPException(status_code=422, detail="representation_rank must be >= 0")
 
     try:
         if req.representation_rank is not None:
