@@ -175,3 +175,38 @@ def test_showcase_defaults_when_no_overrides(client, blank_db, monkeypatch):
     assert out["bullet_points"] == ["Generated bullet"]
     assert out["start_date"].startswith("2025-01-01")
     assert out["end_date"].startswith("2025-12-31")
+
+def test_showcase_respects_chronology_override(client, blank_db, monkeypatch):
+    _insert_project(blank_db, "Demo Project")
+
+    from sqlmodel import Session
+    from src.database.api.models import ProjectReportModel
+
+    with Session(blank_db) as session:
+        m = session.get(ProjectReportModel, "Demo Project")
+        m.chrono_start_override = datetime.datetime(2024, 1, 1)
+        m.chrono_end_override = datetime.datetime(2024, 2, 1)
+        session.add(m)
+        session.commit()
+
+    def fake_get_project_report_by_name(_session, project_name):
+        fake_resume_item = SimpleNamespace(
+            title="Generated",
+            start_date=datetime.date(2025, 1, 1),
+            end_date=datetime.date(2025, 2, 1),
+            frameworks=["Python"],
+            bullet_points=["A"],
+        )
+        return SimpleNamespace(
+            project_name=project_name,
+            generate_resume_item=lambda: fake_resume_item,
+        )
+
+    monkeypatch.setattr(projects_module, "get_project_report_by_name", fake_get_project_report_by_name)
+
+    r = client.get("/projects/Demo%20Project/showcase")
+    assert r.status_code == 200
+    out = r.json()
+
+    assert out["start_date"].startswith("2024-01-01")
+    assert out["end_date"].startswith("2024-02-01")

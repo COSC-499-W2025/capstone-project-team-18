@@ -163,12 +163,23 @@ def _build_project_showcase_response(project_model, report) -> ProjectShowcaseRe
     default_title = resume_item.title
     default_start = _to_datetime(resume_item.start_date)
     default_end = _to_datetime(resume_item.end_date)
+    chrono_start = project_model.chrono_start_override or default_start
+    chrono_end = project_model.chrono_end_override or default_end
     default_frameworks = _frameworks_to_strings(resume_item.frameworks)
     default_bullets = list(resume_item.bullet_points or [])
 
     title_out = project_model.showcase_title or default_title
-    start_out = project_model.showcase_start_date or default_start
-    end_out = project_model.showcase_end_date or default_end
+    
+    start_out = (
+    project_model.showcase_start_date
+    if project_model and project_model.showcase_start_date
+    else chrono_start
+    )
+    end_out = (
+    project_model.showcase_end_date
+    if project_model and project_model.showcase_end_date
+    else chrono_end
+    )
 
     frameworks_out = (
         list(project_model.showcase_frameworks)
