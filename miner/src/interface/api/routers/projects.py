@@ -149,6 +149,48 @@ def _frameworks_to_strings(value: Any) -> List[str]:
             deduped.append(x)
     return deduped
 
+# Helper function to combine logic of GET/projects{project_name}/showcase and GET /projects/selected
+def _build_project_showcase_response(project_model, report) -> ProjectShowcaseResponse:
+    resume_item = report.generate_resume_item()
+
+    def _to_datetime(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        return datetime.combine(value, datetime.min.time())
+
+    default_title = resume_item.title
+    default_start = _to_datetime(resume_item.start_date)
+    default_end = _to_datetime(resume_item.end_date)
+    default_frameworks = _frameworks_to_strings(resume_item.frameworks)
+    default_bullets = list(resume_item.bullet_points or [])
+
+    title_out = project_model.showcase_title or default_title
+    start_out = project_model.showcase_start_date or default_start
+    end_out = project_model.showcase_end_date or default_end
+
+    frameworks_out = (
+        list(project_model.showcase_frameworks)
+        if project_model.showcase_frameworks
+        else default_frameworks
+    )
+
+    bullets_out = (
+        list(project_model.showcase_bullet_points)
+        if project_model.showcase_bullet_points
+        else default_bullets
+    )
+
+    return ProjectShowcaseResponse(
+        project_name=project_model.project_name,
+        title=title_out,
+        start_date=start_out,
+        end_date=end_out,
+        frameworks=frameworks_out,
+        bullet_points=bullets_out,
+    )
+
 
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
@@ -307,6 +349,30 @@ def compare_projects(projects: Optional[str] = None, session=Depends(get_session
         count=len(out_projects),
     )
 
+@router.get("/showcase/selected")
+def get_selected_showcase_projects(session=Depends(get_session)):
+    """
+    Return all projects marked showcase_selected=True, ordered by representation_rank.
+    Each project is returned in the same merged format as GET /projects/{name}/showcase.
+    """
+    models = [p for p in get_all_project_report_models(session) if p.showcase_selected]
+    models.sort(
+        key=lambda p: (
+            p.representation_rank is None,
+            p.representation_rank if p.representation_rank is not None else 10**9,
+            p.created_at,
+        )
+    )
+
+    out = []
+    for m in models:
+        report = get_project_report_by_name(session, m.project_name)
+        if not report:
+            continue
+        out.append(_build_project_showcase_response(m, report))
+
+    return {"projects": out, "count": len(out)}
+
 @router.get("/{project_name}", response_model=ProjectReportResponse)
 def get_project(project_name: str, session=Depends(get_session)):
 
@@ -340,75 +406,15 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
 
     Returns the project_name fromatted for project showcase.
     """
-    try:
-        report = get_project_report_by_name(session, project_name)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve project report {e}"
-        )
-
+    report = get_project_report_by_name(session, project_name)
     if not report:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No project report named {project_name}"
-        )
+        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
 
-    resume_item = report.generate_resume_item()
     project_model = get_project_report_model_by_name(session, project_name)
+    if not project_model:
+        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
 
-    # Helper to normalize date → datetime
-    def _to_datetime(value):
-        if value is None:
-            return None
-        if isinstance(value, datetime):
-            return value
-        try:
-            return datetime.combine(value, datetime.min.time())
-        except Exception as e:
-            logger.warning(
-                "Failed to convert value '%s' to datetime in project endpoint: %s",
-                value,
-                str(e),
-            )
-            return None
-
-    # Default generated fields
-    default_title = resume_item.title
-    default_start = _to_datetime(resume_item.start_date)
-    default_end = _to_datetime(resume_item.end_date)
-    default_frameworks = _frameworks_to_strings(resume_item.frameworks)
-    default_bullets = list(resume_item.bullet_points or [])
-
-    # Apply overrides
-    title_out = (
-        project_model.showcase_title
-        if (project_model and project_model.showcase_title)
-        else default_title
-        )
-
-    start_out = project_model.showcase_start_date if (project_model and project_model.showcase_start_date) else default_start
-    end_out = project_model.showcase_end_date if (project_model and project_model.showcase_end_date) else default_end
-
-    frameworks_out = (
-        list(project_model.showcase_frameworks)
-        if (project_model and project_model.showcase_frameworks)
-        else default_frameworks
-    )
-    bullets_out = (
-        list(project_model.showcase_bullet_points)
-        if (project_model and project_model.showcase_bullet_points)
-        else default_bullets
-    )
-
-    return ProjectShowcaseResponse(
-        project_name=report.project_name,
-        title=title_out,
-        start_date=start_out,
-        end_date=end_out,
-        frameworks=frameworks_out,
-        bullet_points=bullets_out,
-    )
+    return _build_project_showcase_response(project_model, report)
 
 @router.get("/{project_name}/showcase/customization")
 def get_project_showcase_customization(project_name: str, session=Depends(get_session)):
@@ -653,96 +659,6 @@ def get_project_chronology(session=Depends(get_session)):
     # sort by start_date then end_date
     out.sort(key=lambda x: (x["start_date"] is None, x["start_date"] or datetime.max, x["end_date"] or datetime.max))
     return {"projects": out, "count": len(out)}
-
-@router.get("/showcase/selected")
-def get_selected_showcase_projects(session=Depends(get_session)):
-    """
-    Return all projects marked showcase_selected=True, ordered by representation_rank.
-    Each project is returned in the same merged format as GET /projects/{name}/showcase.
-    """
-    try:
-        all_projects = get_all_project_report_models(session)
-
-        selected = [p for p in all_projects if getattr(p, "showcase_selected", False) is True]
-
-        # rank first (None ranks go after)
-        selected.sort(
-            key=lambda p: (
-                p.representation_rank is None,
-                p.representation_rank if p.representation_rank is not None else 10**9,
-                p.created_at,
-            )
-        )
-
-        out: list[ProjectShowcaseResponse] = []
-
-        for project_model in selected:
-            project_name = project_model.project_name
-
-            report = get_project_report_by_name(session, project_name)
-            if not report:
-                # If DB row exists but domain deserialize fails, skip it (or you can 500)
-                continue
-
-            resume_item = report.generate_resume_item()
-
-            def _to_datetime(value):
-                if value is None:
-                    return None
-                if isinstance(value, datetime):
-                    return value
-                try:
-                    return datetime.combine(value, datetime.min.time())
-                except Exception as e:
-                    logger.warning(
-                        "Failed to convert value '%s' to datetime in selected showcase endpoint: %s",
-                        value,
-                        str(e),
-                    )
-                    return None
-
-            default_title = resume_item.title
-            default_start = _to_datetime(resume_item.start_date)
-            default_end = _to_datetime(resume_item.end_date)
-            default_frameworks = _frameworks_to_strings(resume_item.frameworks)
-            default_bullets = list(resume_item.bullet_points or [])
-
-            title_out = project_model.showcase_title or default_title
-            start_out = project_model.showcase_start_date or default_start
-            end_out = project_model.showcase_end_date or default_end
-
-            frameworks_out = (
-                list(project_model.showcase_frameworks)
-                if project_model.showcase_frameworks
-                else default_frameworks
-            )
-            bullets_out = (
-                list(project_model.showcase_bullet_points)
-                if project_model.showcase_bullet_points
-                else default_bullets
-            )
-
-            out.append(
-                ProjectShowcaseResponse(
-                    project_name=project_name,
-                    title=title_out,
-                    start_date=start_out,
-                    end_date=end_out,
-                    frameworks=frameworks_out,
-                    bullet_points=bullets_out,
-                )
-            )
-
-        return {"projects": out, "count": len(out)}
-
-    except Exception as e:
-        logger.error("Error building selected showcase projects: %s", str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve selected showcase projects: {type(e).__name__}: {str(e)}",
-        )
-
-from urllib.parse import unquote
 
 def _resolve_compare_attribute(attr: str, project_model, report) -> Any:
     """
