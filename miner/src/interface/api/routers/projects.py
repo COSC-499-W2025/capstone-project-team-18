@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import SQLModel, Field
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
+from urllib.parse import unquote
 from datetime import datetime
 import os
 
@@ -76,6 +77,16 @@ class UpdateProjectRepresentationRequest(SQLModel):
     showcase_selected: Optional[bool] = None
     compare_attributes: Optional[List[str]] = None
     highlight_skills: Optional[List[str]] = None
+
+class CompareProjectItem(SQLModel):
+    project_name: str
+    representation_rank: Optional[int] = None
+    attributes: Dict[str, Any] = Field(default_factory=dict)
+
+class CompareProjectsResponse(SQLModel):
+    attributes: List[str] = Field(default_factory=list) #union of selected items
+    projects: List[CompareProjectItem] = Field(default_factory=list)
+    count: int
 
 # Helper function to polish extracted framework tokens by removing
 # URLs, file paths, asset references, and other non-technology noise.
@@ -238,6 +249,63 @@ def list_projects(session=Depends(get_session)):
             detail=f"Failed to retrieve the list of projects from the database: {type(e).__name__}: {str(e)}"
         )
 
+@router.get("/compare", response_model=CompareProjectsResponse)
+def compare_projects(projects: Optional[str] = None, session=Depends(get_session)):
+    """
+    Compare projects using saved compare_attributes.
+    Query param: ?projects=A,B,C
+    If not provided, compares all projects that have any compare_attributes selected.
+    """
+    all_models = get_all_project_report_models(session)
+
+    # Filter target set
+    if projects:
+        wanted = [unquote(x.strip()) for x in projects.split(",") if x.strip()]
+        wanted_set = set(wanted)
+        models = [m for m in all_models if m.project_name in wanted_set]
+
+        if len(models) != len(wanted_set):
+            missing = sorted(list(wanted_set - {m.project_name for m in models}))
+            raise HTTPException(status_code=404, detail=f"Missing project(s): {', '.join(missing)}")
+    else:
+        models = [m for m in all_models if (m.compare_attributes or [])]
+
+    # Determine union of attributes (stable order)
+    attr_set = set()
+    for m in models:
+        for a in (m.compare_attributes or []):
+            attr_set.add(a)
+
+    attributes = sorted(attr_set)
+
+    # Sort projects
+    models.sort(
+        key=lambda p: (
+            p.representation_rank is None,
+            p.representation_rank if p.representation_rank is not None else 10**9,
+            p.created_at,
+        )
+    )
+
+    out_projects: List[CompareProjectItem] = []
+    for m in models:
+        report = get_project_report_by_name(session, m.project_name)
+
+        resolved = {a: _resolve_compare_attribute(a, m, report) for a in attributes}
+
+        out_projects.append(
+            CompareProjectItem(
+                project_name=m.project_name,
+                representation_rank=m.representation_rank,
+                attributes=resolved,
+            )
+        )
+
+    return CompareProjectsResponse(
+        attributes=attributes,
+        projects=out_projects,
+        count=len(out_projects),
+    )
 
 @router.get("/{project_name}", response_model=ProjectReportResponse)
 def get_project(project_name: str, session=Depends(get_session)):
@@ -673,3 +741,50 @@ def get_selected_showcase_projects(session=Depends(get_session)):
             status_code=500,
             detail=f"Failed to retrieve selected showcase projects: {type(e).__name__}: {str(e)}",
         )
+
+from urllib.parse import unquote
+
+def _resolve_compare_attribute(attr: str, project_model, report) -> Any:
+    """
+    Resolve a compare attribute value for a given project.
+    Priority:
+    1) If attr is start/end, respect overrides and fallback to report resume item.
+    2) frameworks from resume_item
+    3) weight from report.get_project_weight (if exists)
+    4) fallback: try project_model.statistic[attr]
+    """
+    # Handle start/end with overrides
+    if attr in {"start_date", "end_date"}:
+        resume_item = report.generate_resume_item() if report else None
+
+        def _to_dt(v):
+            if v is None:
+                return None
+            if isinstance(v, datetime):
+                return v
+            return datetime.combine(v, datetime.min.time())
+
+        default_start = _to_dt(getattr(resume_item, "start_date", None)) if resume_item else None
+        default_end = _to_dt(getattr(resume_item, "end_date", None)) if resume_item else None
+
+        if attr == "start_date":
+            return project_model.chrono_start_override or default_start
+        return project_model.chrono_end_override or default_end
+
+    if attr == "frameworks":
+        resume_item = report.generate_resume_item() if report else None
+        return _frameworks_to_strings(getattr(resume_item, "frameworks", None)) if resume_item else []
+
+    if attr == "weight":
+        if report and hasattr(report, "get_project_weight"):
+            return report.get_project_weight()
+        return None
+
+    # Fallback to statistics dict if present
+    try:
+        if getattr(project_model, "statistic", None) and attr in project_model.statistic:
+            return project_model.statistic[attr]
+    except Exception:
+        pass
+
+    return None
