@@ -18,20 +18,20 @@ def azure_openai_enabled() -> bool:
     return os.environ.get("ARTIFACT_MINER_ML_PROVIDER", "").strip().lower() == "azure_openai"
 
 
-def _config_valid() -> bool:
+def _config_valid(deployment: str | None = None) -> bool:
     return bool(
         os.environ.get("AZURE_OPENAI_ENDPOINT")
         and os.environ.get("AZURE_OPENAI_API_KEY")
         and os.environ.get("AZURE_OPENAI_API_VERSION")
-        and os.environ.get("AZURE_OPENAI_DEPLOYMENT")
+        and ((deployment or "").strip() or os.environ.get("AZURE_OPENAI_DEPLOYMENT"))
     )
 
 
-def _request_url() -> str:
+def _request_url(deployment: str | None = None) -> str:
     endpoint = os.environ["AZURE_OPENAI_ENDPOINT"].strip().rstrip("/")
-    deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"].strip()
+    active_deployment = (deployment or os.environ["AZURE_OPENAI_DEPLOYMENT"]).strip()
     api_version = os.environ["AZURE_OPENAI_API_VERSION"].strip()
-    return f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version={api_version}"
+    return f"{endpoint}/openai/deployments/{active_deployment}/chat/completions?api-version={api_version}"
 
 
 def _model_schema(model: type[BaseModel]) -> dict[str, Any]:
@@ -75,13 +75,14 @@ def azure_chat_parse(
     schema_name: str,
     max_tokens: int = 280,
     temperature: float = 0.0,
+    deployment: str | None = None,
 ) -> BaseModel | None:
     """
     Request a structured JSON response from Azure OpenAI and parse to Pydantic.
     """
     if not azure_openai_enabled():
         return None
-    if not _config_valid():
+    if not _config_valid(deployment):
         logger.warning("Azure OpenAI provider selected but required env vars are missing")
         return None
 
@@ -103,7 +104,7 @@ def azure_chat_parse(
     }
     body = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
-        url=_request_url(),
+        url=_request_url(deployment),
         data=body,
         headers={
             "Content-Type": "application/json",
@@ -128,6 +129,87 @@ def azure_chat_parse(
             logger.warning("Azure OpenAI returned empty content for schema=%s", schema_name)
             return None
         return _model_validate_json(response_model, content.strip())
+    except urllib.error.HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        logger.error(
+            "Azure OpenAI HTTP error for schema=%s (status=%s, body=%s)",
+            schema_name,
+            getattr(exc, "code", "unknown"),
+            body[:300],
+        )
+    except (urllib.error.URLError, OSError, TimeoutError):
+        logger.exception("Azure OpenAI request failed for schema=%s", schema_name)
+    except Exception:
+        logger.exception("Azure OpenAI response parsing failed for schema=%s", schema_name)
+    return None
+
+
+def azure_chat_json(
+    *,
+    system_prompt: str,
+    user_prompt: str,
+    response_schema: dict[str, Any],
+    schema_name: str,
+    max_tokens: int = 280,
+    temperature: float = 0.0,
+    deployment: str | None = None,
+) -> dict[str, Any] | None:
+    """
+    Request a structured JSON response from Azure OpenAI and parse to a dict.
+    """
+    if not azure_openai_enabled():
+        return None
+    if not _config_valid(deployment):
+        logger.warning("Azure OpenAI provider selected but required env vars are missing")
+        return None
+
+    payload = {
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": max(0.0, float(temperature)),
+        "max_tokens": max(32, int(max_tokens)),
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": schema_name,
+                "strict": True,
+                "schema": _normalize_schema_for_azure(response_schema),
+            },
+        },
+    }
+    body = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url=_request_url(deployment),
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "api-key": os.environ["AZURE_OPENAI_API_KEY"].strip(),
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=45.0) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+        parsed = json.loads(raw)
+        choices = parsed.get("choices", [])
+        if not choices:
+            logger.warning("Azure OpenAI returned no choices for schema=%s", schema_name)
+            return None
+        message = choices[0].get("message", {}) if isinstance(choices[0], dict) else {}
+        content = message.get("content")
+        if isinstance(content, list):
+            content = "".join(str(part.get("text", "")) for part in content if isinstance(part, dict))
+        if not isinstance(content, str) or not content.strip():
+            logger.warning("Azure OpenAI returned empty content for schema=%s", schema_name)
+            return None
+        parsed_content = json.loads(content.strip())
+        return parsed_content if isinstance(parsed_content, dict) else None
     except urllib.error.HTTPError as exc:
         body = ""
         try:

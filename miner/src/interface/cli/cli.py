@@ -9,7 +9,10 @@ from tqdm import tqdm
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-from src.interface.cli.cli_service_handler import start_miner_cli
+from src.interface.cli.cli_service_handler import (
+    start_miner_cli,
+    analyze_job_readiness_cli,
+)
 from src.core.resume.bullet_point_builder import BulletPointBuilder
 from src.utils.pathing_utils import is_valid_filepath_to_zip
 from src.interface.cli.user_preferences import UserPreferences
@@ -41,6 +44,7 @@ class ArtifactMiner(cmd.Cmd):
             "(9) Retrieve a Portfolio\n"
             "(10) Get resume bullet point\n"
             "(11) Warm up summary model\n"
+            "(12) Job readiness analysis\n"
 
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
@@ -1113,6 +1117,8 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_portfolio_retrieve("from_back")
                 case "resume_bullet_point":
                     return self.do_resume_bullet_point("from_back")
+                case "job_readiness":
+                    return self.do_job_readiness("from_back")
         else:
             print("\n", self.options)
 
@@ -1206,6 +1212,7 @@ class ArtifactMiner(cmd.Cmd):
             "9": self.do_portfolio_retrieve,
             "10": self.do_resume_bullet_point,
             "11": self.do_warmup,
+            "12": self.do_job_readiness,
         }
 
         # Make commands case-insensitive
@@ -1276,4 +1283,117 @@ class ArtifactMiner(cmd.Cmd):
         print("\nWarming up summary model...")
         _, status_message = init_system()
         print(status_message)
+        print("\n" + self.options)
+
+    def do_job_readiness(self, arg):
+        """Run the simplified job readiness analysis from the CLI."""
+
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "job_readiness")
+
+        print("\n=== Job Readiness Analysis ===")
+        print("Paste the job description and the CLI will use your stored evidence automatically.")
+
+        print("\nPaste the job description. Submit an empty line to finish.")
+        job_lines: list[str] = []
+        while True:
+            line = input()
+
+            if not job_lines and line.strip().lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+
+            if not job_lines and line.strip().lower() == 'cancel':
+                if self._handle_cancel_input(line, "main"):
+                    print("\n" + self.options)
+                    return
+
+            if not job_lines and line.strip().lower() == 'back':
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+
+            if not line.strip():
+                break
+            job_lines.append(line)
+
+        job_description = "\n".join(job_lines).strip()
+        if not job_description:
+            print("Job description cannot be empty.")
+            print("\n" + self.options)
+            return
+
+        try:
+            result, user_profile, debug_info = analyze_job_readiness_cli(
+                job_description=job_description,
+            )
+        except KeyError as exc:
+            print(f"\nMissing project evidence: {exc.args[0]}")
+            print("\n" + self.options)
+            return
+        except ValueError as exc:
+            print(f"\n{exc}")
+            print("\n" + self.options)
+            return
+        except Exception as exc:
+            print("\nJob readiness analysis failed:")
+            print(exc)
+            print("\n" + self.options)
+            return
+
+        if result is None:
+            print(
+                "\nJob readiness analysis is unavailable. Confirm Azure OpenAI is enabled and "
+                "the configured deployment targets GPT-4o mini."
+            )
+            print("\n" + self.options)
+            return
+
+        print("\nEvidence Used\n")
+        print(f"source: {debug_info['evidence_source']}")
+        if debug_info["resume_id"] is not None:
+            print(f"resume_id: {debug_info['resume_id']}")
+        if debug_info["project_names"]:
+            print(f"project_names: {', '.join(debug_info['project_names'])}")
+        print(f"resume_text_present: {'yes' if user_profile.get('resume_text') else 'no'}")
+        print(f"project_summaries: {len(user_profile.get('project_summaries', []))}")
+        print(f"tags: {len(user_profile.get('tags', []))}")
+        print(f"extracted_skills: {len(user_profile.get('extracted_skills', []))}")
+        print(f"repository_history_summary: {len(user_profile.get('repository_history_summary', []))}")
+        print(f"repository_file_evidence: {len(user_profile.get('repository_file_evidence', []))}")
+        print(f"collaboration_signals: {len(user_profile.get('collaboration_signals', []))}")
+
+        if user_profile.get("resume_text"):
+            print("\nresume_text preview:")
+            print(user_profile["resume_text"][:800])
+
+        if user_profile.get("project_summaries"):
+            print("\nproject_summaries preview:")
+            for idx, summary in enumerate(user_profile["project_summaries"][:3], start=1):
+                print(f"  {idx}. {summary[:300]}")
+
+        if user_profile.get("extracted_skills"):
+            print("\nextracted_skills preview:")
+            print(", ".join(user_profile["extracted_skills"][:25]))
+
+        if user_profile.get("collaboration_signals"):
+            print("\ncollaboration_signals preview:")
+            for idx, signal in enumerate(user_profile["collaboration_signals"][:5], start=1):
+                print(f"  {idx}. {signal}")
+
+        print("\nJob Readiness Result\n")
+        print(f"fit_score: {result.fit_score}")
+        print(f"summary: {result.summary}")
+
+        print("\nstrengths:")
+        for item in result.strengths:
+            print(f"  {item.rank}. {item.item} - {item.reason}")
+
+        print("\nweaknesses:")
+        for item in result.weaknesses:
+            print(f"  {item.rank}. {item.item} - {item.reason}")
+
+        print("\nsuggestions:")
+        for item in result.suggestions:
+            print(f"  {item.priority}. {item.item} - {item.reason}")
+
         print("\n" + self.options)

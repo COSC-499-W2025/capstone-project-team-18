@@ -22,6 +22,7 @@ from src.interface.api.routers import (
     skills,
     user_config,
     privacy_consent,
+    job_readiness,
 )
 
 @asynccontextmanager
@@ -64,6 +65,7 @@ app.include_router(resume)
 app.include_router(portfolio)
 app.include_router(skills)
 app.include_router(user_config)
+app.include_router(job_readiness)
 
 # Error handlers. If these errors are ever raised in our code, return the following JSON
 
