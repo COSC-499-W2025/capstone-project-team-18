@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from typing import Optional, List
 from sqlmodel import Session
@@ -148,6 +149,26 @@ def get_project_report_model_by_name(
     statement = select(ProjectReportModel).where(
         ProjectReportModel.project_name == project_name)
     return session.exec(statement).first()
+
+
+def get_project_report_models_by_names(
+    session: Session,
+    project_names: list[str],
+) -> list[ProjectReportModel]:
+    if not project_names:
+        return []
+
+    statement = (
+        select(ProjectReportModel)
+        .where(ProjectReportModel.project_name.in_(project_names))
+        .options(selectinload(ProjectReportModel.file_reports))  # pyright: ignore
+    )
+    projects = list(session.exec(statement).all())
+    projects_by_name = {project.project_name: project for project in projects}
+    missing = [name for name in project_names if name not in projects_by_name]
+    if missing:
+        raise KeyError(", ".join(missing))
+    return [projects_by_name[name] for name in project_names]
 
 
 def get_project_report_by_name(

@@ -9,7 +9,10 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from src.infrastructure.log.logging import get_logger
+from sqlalchemy.orm import selectinload
+from sqlalchemy import desc
+from sqlmodel import Session, select
+
 from src.services.mining_service import start_miner_service, MinerResults
 from src.services.preferences.preference_service import UserConfig
 from src.interface.cli.user_preferences import UserPreferences
@@ -17,9 +20,14 @@ from src.core.report import UserReport
 from src.interface.cli.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
 from src.core.resume.render import ResumeLatexRenderer
 from src.database.api.models import UserConfigModel as UserConfig
-
-
-logger = get_logger(__name__)
+from src.database.api.models import ProjectReportModel, ResumeModel
+from src.database.core.base import get_engine
+from src.services.job_readiness_service import (
+    JobReadinessUserProfileInput,
+    JobReadinessResult,
+    build_user_profile,
+    run_job_readiness_analysis,
+)
 
 
 def start_miner_cli(
@@ -106,3 +114,49 @@ def start_miner_cli(
     portfolio_CLI_stringify(user_report)
 
     return miner_results
+
+
+def list_project_names_for_cli() -> list[str]:
+    """Return stored project names for CLI prompts."""
+    with Session(get_engine()) as session:
+        statement = select(ProjectReportModel.project_name).order_by(ProjectReportModel.project_name)
+        return list(session.exec(statement).all())
+
+
+def analyze_job_readiness_cli(
+    *,
+    job_description: str,
+) -> JobReadinessResult | None:
+    """
+    Run job readiness analysis using stored evidence automatically.
+    Prefer the most recent resume when available; otherwise use all stored projects.
+    """
+    with Session(get_engine()) as session:
+        latest_resume = session.exec(
+            select(ResumeModel)
+            .options(selectinload(ResumeModel.items))
+            .order_by(desc(ResumeModel.created_at), desc(ResumeModel.id))
+            .limit(1)
+        ).first()
+
+        project_names: list[str]
+        resume_id: int | None
+        evidence_source: str
+        if latest_resume is not None and latest_resume.id is not None:
+            resume_id = latest_resume.id
+            project_names = []
+        else:
+            resume_id = None
+            project_names = list_project_names_for_cli()
+
+        user_profile = build_user_profile(
+            session=session,
+            resume_id=resume_id,
+            project_names=project_names,
+            user_profile_input=JobReadinessUserProfileInput(),
+        )
+    result = run_job_readiness_analysis(
+        job_description=job_description,
+        user_profile=user_profile,
+    )
+    return result
