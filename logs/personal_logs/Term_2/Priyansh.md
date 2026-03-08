@@ -1,4 +1,4 @@
-# Priyansh Mathur Personal Logs Term 2
+2# Priyansh Mathur Personal Logs Term 2
 
 ## Table of Contents
 
@@ -11,6 +11,8 @@
 **[Week 4-5, Jan. 26-Feb. 08](#week-4-5-jan-26-feb-08)**
 
 **[Week 8, Feb. 22-Mar. 01](#week-6-feb-23-mar-01)**
+
+**[Week 9, Mar. 02-08](#week-9-mar-02-08)**
 
 ---
 
@@ -132,3 +134,23 @@ I also reviewed [PR #442 - Extra Documentation for Endpoints](https://github.com
 
 - Start Working on Milestone 3
 
+## Week 9, Mar. 02-08
+
+### Peer Eval
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/priyansh/priyansh_week9_term2_log.png)
+
+### Recap
+
+This week the team started work on Milestone 3 implementation tasks. The focus was on continuing feature development, reviewing new code changes, and making steady progress toward the next milestone deliverables.
+
+#### Coding Tasks
+
+I completed [PR #463 - Simplified Job Readiness Analysis Feature](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/463). This PR introduces a new end-to-end job readiness analysis flow powered by Azure OpenAI with GPT-4o mini. The purpose of the feature is to help users understand how close their current evidence is to a target role and what practical next steps would move them closer to that role. It collects stored user evidence, builds a profile from resume and project data, sends the packaged input to the LLM, validates the structured JSON response,and returns a simplified output with fit score, summary, strengths, weaknesses, and actionable suggestions.
+
+#### Reviewing Tasks
+
+I reviewed [PR #464 - Double Analysis Fix](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/464). My reviews focused on ensuring code quality, proper error handling, test coverage, and alignment with our system architecture.
+
+#### Goals for Next Week
+- Continue Working on ML Related Changes
+- Milestone 3 Implementations
