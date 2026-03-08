@@ -103,6 +103,8 @@ def save_project_report(
     )
 
     if existing is None and latest_related_project is None:
+        incoming_model.analyzed_count = incoming_model.analyzed_count or 1
+        incoming_model.parent = None
         incoming_model.file_reports = incoming_files
         session.add(incoming_model)
         return incoming_model

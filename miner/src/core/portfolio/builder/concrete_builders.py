@@ -206,7 +206,11 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
             experimental_project_count=tone_counts.get("experimental", 0),
             educational_project_count=tone_counts.get("educational", 0),
         )
-        project_names = [pr.project_name for pr in report.project_reports if getattr(pr, "project_name", None)]
+        project_count = len(getattr(report, "project_reports", []) or [])
+        if project_count <= 2 and experience_stage == "experienced":
+            experience_stage = "early-career"
+        project_names = [pr.project_name for pr in report.project_reports if getattr(
+            pr, "project_name", None)]
 
         facts = build_signature_facts(
             focus=focus,
@@ -269,7 +273,8 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
             if cadence is None:
                 continue
             cadence_key = getattr(cadence, "value", str(cadence))
-            cadence_counts[cadence_key] = cadence_counts.get(cadence_key, 0) + 1
+            cadence_counts[cadence_key] = cadence_counts.get(
+                cadence_key, 0) + 1
         if not cadence_counts:
             return None
         return max(cadence_counts.items(), key=lambda kv: kv[1])[0]
@@ -293,7 +298,8 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         """Aggregate framework/tool usage by weight and return top entries."""
         tools: dict[str, float] = {}
         for pr in report.project_reports:
-            frameworks = pr.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value)
+            frameworks = pr.get_value(
+                ProjectStatCollection.PROJECT_FRAMEWORKS.value)
             if not frameworks:
                 continue
             for ws in frameworks:
@@ -325,7 +331,8 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         """Return most frequent inferred project themes across repositories."""
         themes: dict[str, int] = {}
         for pr in report.project_reports:
-            project_themes = pr.get_value(ProjectStatCollection.PROJECT_THEMES.value)
+            project_themes = pr.get_value(
+                ProjectStatCollection.PROJECT_THEMES.value)
             if not project_themes:
                 continue
             for t in project_themes:
@@ -339,7 +346,8 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         """Return most frequent README-derived project tags across repositories."""
         tags: dict[str, int] = {}
         for pr in report.project_reports:
-            project_tags = pr.get_value(ProjectStatCollection.PROJECT_TAGS.value)
+            project_tags = pr.get_value(
+                ProjectStatCollection.PROJECT_TAGS.value)
             if not project_tags:
                 continue
             for t in project_tags:
@@ -425,7 +433,8 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         commits_per_week: list[float] = []
         consistency_scores: list[float] = []
         for pr in report.project_reports:
-            activity = pr.get_value(ProjectStatCollection.ACTIVITY_METRICS.value)
+            activity = pr.get_value(
+                ProjectStatCollection.ACTIVITY_METRICS.value)
             if not activity:
                 continue
             cpw = activity.get("avg_commits_per_week")
@@ -464,7 +473,8 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
         These hints are used for optional forward-looking summary language.
         """
-        corpus = " ".join(str(x) for x in (top_skills + tools + themes + tags) if x).lower()
+        corpus = " ".join(str(x) for x in (
+            top_skills + tools + themes + tags) if x).lower()
         signals: list[str] = []
 
         for label, keywords in SkillMapper.summary_emerging_keywords().items():
@@ -702,7 +712,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         summary_lines = self.get_project_summaries(report)
 
         if summary_lines:
-            block = Block("project_summaries", TextListBlock(items=summary_lines))
+            block = Block("project_summaries",
+                          TextListBlock(items=summary_lines))
             return [block]
 
         return []
@@ -741,7 +752,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                     getattr(project_report, "project_name", "unknown-project"),
                 )
             return None
-        require_ml = os.environ.get("ARTIFACT_MINER_PROJECT_SUMMARY_REQUIRE_ML") == "1"
+        require_ml = os.environ.get(
+            "ARTIFACT_MINER_PROJECT_SUMMARY_REQUIRE_ML") == "1"
         if _summary_diagnostics_enabled():
             logger.info(
                 "[PROJECT_SUMMARY][%s] facts: goals=%d frameworks=%d languages=%d stack_hints=%d activity=%d allow_percentages=%s",
@@ -754,12 +766,15 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 facts.get("allow_percentages"),
             )
         summary = generate_project_summary(facts)
-        project_name = getattr(project_report, "project_name", "unknown-project")
-        is_well_formed = bool(summary and self._is_summary_well_formed(summary))
+        project_name = getattr(
+            project_report, "project_name", "unknown-project")
+        is_well_formed = bool(
+            summary and self._is_summary_well_formed(summary))
         goal_ok = stack_ok = contribution_ok = True
         covers_requirements = False
         if summary:
-            goal_ok, stack_ok, contribution_ok = self._summary_requirement_checks(summary, facts)
+            goal_ok, stack_ok, contribution_ok = self._summary_requirement_checks(
+                summary, facts)
             covers_requirements = goal_ok and stack_ok and contribution_ok
         if (
             summary
@@ -823,11 +838,14 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """Extract trusted stats into a compact facts payload for summary generation."""
         project_name = getattr(project_report, "project_name", None)
 
-        themes = project_report.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
-        tags = project_report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+        themes = project_report.get_value(
+            ProjectStatCollection.PROJECT_THEMES.value) or []
+        tags = project_report.get_value(
+            ProjectStatCollection.PROJECT_TAGS.value) or []
         goal_terms = self._select_goal_terms(project_name, themes, tags)
 
-        frameworks = project_report.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value)
+        frameworks = project_report.get_value(
+            ProjectStatCollection.PROJECT_FRAMEWORKS.value)
         framework_names: list[str] = []
         if frameworks:
             ranked_frameworks = sorted(
@@ -844,20 +862,28 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 framework_names.append(hint)
         framework_names = framework_names[:5]
 
-        lang_ratio = project_report.get_value(ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
+        lang_ratio = project_report.get_value(
+            ProjectStatCollection.CODING_LANGUAGE_RATIO.value)
         language_names: list[str] = []
         if lang_ratio:
-            ranked_langs = sorted(lang_ratio.items(), key=lambda kv: kv[1], reverse=True)
-            language_names = [getattr(lang, "value", str(lang)) for lang, _ in ranked_langs[:2]]
+            ranked_langs = sorted(lang_ratio.items(),
+                                  key=lambda kv: kv[1], reverse=True)
+            language_names = [getattr(lang, "value", str(lang))
+                              for lang, _ in ranked_langs[:2]]
 
-        role = project_report.get_value(ProjectStatCollection.COLLABORATION_ROLE.value)
+        role = project_report.get_value(
+            ProjectStatCollection.COLLABORATION_ROLE.value)
         role_text = str(getattr(role, "value", role)) if role else None
-        role_description = project_report.get_value(ProjectStatCollection.ROLE_DESCRIPTION.value)
+        role_description = project_report.get_value(
+            ProjectStatCollection.ROLE_DESCRIPTION.value)
 
-        commit_dist = project_report.get_value(ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
+        commit_dist = project_report.get_value(
+            ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
         commit_focus = self._top_commit_focus(commit_dist)
-        commit_pct = project_report.get_value(ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
-        line_pct = project_report.get_value(ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value)
+        commit_pct = project_report.get_value(
+            ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
+        line_pct = project_report.get_value(
+            ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value)
         activity_breakdown = self._activity_breakdown(project_report)
 
         if not goal_terms and not framework_names and not language_names and not role_description and not activity_breakdown:
@@ -871,10 +897,12 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
             stack_hints=stack_hints,
             role=role_text,
             commit_focus=commit_focus,
-            commit_pct=commit_pct if isinstance(commit_pct, (int, float)) else None,
+            commit_pct=commit_pct if isinstance(
+                commit_pct, (int, float)) else None,
             line_pct=line_pct if isinstance(line_pct, (int, float)) else None,
             activity_breakdown=activity_breakdown,
-            role_description=str(role_description).strip() if role_description else None,
+            role_description=str(role_description).strip(
+            ) if role_description else None,
         )
 
     def _build_project_summary_deterministic(self, facts: dict) -> str | None:
@@ -900,7 +928,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         else:
             project_name = str(facts.get("project_name", "")).strip()
             if project_name:
-                normalized_name = project_name.replace("-", " ").replace("_", " ").lower()
+                normalized_name = project_name.replace(
+                    "-", " ").replace("_", " ").lower()
                 goal_sentence = f"The project targeted {normalized_name} outcomes."
             else:
                 goal_sentence = "The project targeted a clearly scoped product outcome."
@@ -931,7 +960,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 allow_percentages=allow_percentages,
             )
 
-        sentences = [s for s in [goal_sentence, stack_sentence, contribution_sentence] if s]
+        sentences = [s for s in [goal_sentence,
+                                 stack_sentence, contribution_sentence] if s]
         if len(sentences) < 2:
             return None
         return " ".join(sentences[:3])
@@ -941,7 +971,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         Select concise goal terms and filter repeated project-name variants.
         """
         project_tokens = self._token_set(project_name or "")
-        raw_terms = [str(x).strip() for x in list(themes) + list(tags) if str(x).strip()]
+        raw_terms = [str(x).strip()
+                     for x in list(themes) + list(tags) if str(x).strip()]
         deprioritize = {
             "ci", "cicd", "testing", "test", "configuration", "requirements", "known bugs",
             "startup scripts", "docker compose", "windows support", "macos support",
@@ -986,7 +1017,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
 
     def _extract_stack_hints(self, themes, tags) -> list[str]:
         """Extract likely technical stack/service hints from README-derived terms."""
-        terms = [str(x).strip() for x in list(themes) + list(tags) if str(x).strip()]
+        terms = [str(x).strip()
+                 for x in list(themes) + list(tags) if str(x).strip()]
         hints: list[str] = []
         seen: set[str] = set()
         tech_keywords = {
@@ -1003,7 +1035,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
                 continue
             if len(token_set) > 4:
                 continue
-            normalized = term.replace("next.js", "next").replace("typescript", "TypeScript").strip()
+            normalized = term.replace("next.js", "next").replace(
+                "typescript", "TypeScript").strip()
             key = normalized.lower()
             if key in seen:
                 continue
@@ -1015,13 +1048,15 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
 
     def _activity_breakdown(self, project_report) -> list[tuple[str, float]]:
         """Return sorted contribution activity breakdown as (domain, percentage)."""
-        activity = project_report.get_value(ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)
+        activity = project_report.get_value(
+            ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)
         if not activity:
             return []
 
         pairs: list[tuple[str, float]] = []
         for domain, value in activity.items():
-            name = str(getattr(domain, "value", domain)).replace("_", " ").lower()
+            name = str(getattr(domain, "value", domain)
+                       ).replace("_", " ").lower()
             pct = float(value) * 100 if float(value) <= 1.0 else float(value)
             pairs.append((name, pct))
         pairs.sort(key=lambda x: x[1], reverse=True)
@@ -1043,7 +1078,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """
         Ensure summary reflects available goal, stack, and contribution facts.
         """
-        goal_ok, stack_ok, contribution_ok = self._summary_requirement_checks(summary, facts)
+        goal_ok, stack_ok, contribution_ok = self._summary_requirement_checks(
+            summary, facts)
         return goal_ok and stack_ok and contribution_ok
 
     def _summary_requirement_checks(self, summary: str, facts: dict) -> tuple[bool, bool, bool]:
@@ -1052,22 +1088,27 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """
         lowered = str(summary or "").lower()
 
-        goal_terms = [str(x).lower() for x in facts.get("goal_terms", []) if str(x).strip()]
-        goal_ok = (not goal_terms) or self._goal_anchor_matches(summary, goal_terms)
+        goal_terms = [str(x).lower()
+                      for x in facts.get("goal_terms", []) if str(x).strip()]
+        goal_ok = (not goal_terms) or self._goal_anchor_matches(
+            summary, goal_terms)
 
         stack_terms = [
             str(x).lower()
             for x in facts.get("frameworks", []) + facts.get("languages", []) + facts.get("stack_hints", [])
             if str(x).strip()
         ]
-        stack_ok = (not stack_terms) or any(term in lowered for term in stack_terms)
+        stack_ok = (not stack_terms) or any(
+            term in lowered for term in stack_terms)
 
         contribution_terms = self._contribution_anchor_terms(facts)
         if not self._has_strong_contribution_signals(facts):
             contribution_ok = True
         else:
-            has_anchor = (not contribution_terms) or any(term in lowered for term in contribution_terms)
-            contribution_ok = has_anchor or self._has_generic_contribution_phrase(summary)
+            has_anchor = (not contribution_terms) or any(
+                term in lowered for term in contribution_terms)
+            contribution_ok = has_anchor or self._has_generic_contribution_phrase(
+                summary)
         return goal_ok, stack_ok, contribution_ok
 
     def _has_generic_contribution_phrase(self, summary: str) -> bool:
@@ -1077,7 +1118,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         text = str(summary or "").lower()
         if not text:
             return False
-        contribution_verbs = ("contributed", "contribution", "worked on", "focused on", "implemented", "built")
+        contribution_verbs = ("contributed", "contribution",
+                              "worked on", "focused on", "implemented", "built")
         contribution_domains = (
             "code", "coding", "documentation", "docs", "testing", "test",
             "development", "implementation", "delivery",
@@ -1153,17 +1195,20 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         role = facts.get("role")
         if role:
             role_tokens = str(role).replace("_", " ").lower().split()
-            terms.extend([t for t in role_tokens if len(t) >= 4 and t not in stopwords])
+            terms.extend([t for t in role_tokens if len(t)
+                         >= 4 and t not in stopwords])
 
         commit_focus = facts.get("commit_focus")
         if commit_focus:
             focus_tokens = str(commit_focus).replace("_", " ").lower().split()
-            terms.extend([t for t in focus_tokens if len(t) >= 4 and t not in stopwords])
+            terms.extend([t for t in focus_tokens if len(t)
+                         >= 4 and t not in stopwords])
 
         role_description = facts.get("role_description")
         if role_description:
             desc_tokens = self._token_set(str(role_description))
-            terms.extend([t for t in desc_tokens if len(t) >= 4 and t not in stopwords])
+            terms.extend([t for t in desc_tokens if len(t)
+                         >= 4 and t not in stopwords])
 
         commit_pct = facts.get("commit_pct")
         if isinstance(commit_pct, (int, float)):
@@ -1178,7 +1223,8 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         for domain, _pct in facts.get("activity_breakdown", [])[:2]:
             if domain:
                 domain_tokens = str(domain).lower().split()
-                terms.extend([t for t in domain_tokens if len(t) >= 4 and t not in stopwords])
+                terms.extend([t for t in domain_tokens if len(t)
+                             >= 4 and t not in stopwords])
 
         return [t for t in terms if t]
 
@@ -1230,15 +1276,18 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
 
         detail_phrases: list[str] = []
         if allow_percentages and isinstance(commit_pct, (int, float)):
-            detail_phrases.append(f"authoring about {commit_pct:.0f}% of commits")
+            detail_phrases.append(
+                f"authoring about {commit_pct:.0f}% of commits")
         elif allow_percentages and isinstance(line_pct, (int, float)):
-            detail_phrases.append(f"accounting for about {line_pct:.0f}% of authored lines")
+            detail_phrases.append(
+                f"accounting for about {line_pct:.0f}% of authored lines")
 
         if commit_focus:
             focus = str(commit_focus).replace("_", " ").strip().lower()
             detail_phrases.append(f"focusing on {focus} changes")
 
-        activity_phrase = self._activity_phrase(activity_breakdown or [], allow_percentages=allow_percentages)
+        activity_phrase = self._activity_phrase(
+            activity_breakdown or [], allow_percentages=allow_percentages)
         if activity_phrase:
             detail_phrases.append(activity_phrase)
 
@@ -1362,7 +1411,8 @@ class ProjectTagsSectionBuilder(PortfolioSectionBuilder):
         for tag in tags:
             _push(tag)
 
-        frameworks = project_report.get_value(ProjectStatCollection.PROJECT_FRAMEWORKS.value) or []
+        frameworks = project_report.get_value(
+            ProjectStatCollection.PROJECT_FRAMEWORKS.value) or []
         for ws in frameworks:
             name = str(getattr(ws, "skill_name", ws)).strip()
             if len(name) >= 2:
@@ -1412,7 +1462,8 @@ class ProjectThemesSectionBuilder(PortfolioSectionBuilder):
 
         lines = []
         for pr in user_report.project_reports:
-            themes = pr.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
+            themes = pr.get_value(
+                ProjectStatCollection.PROJECT_THEMES.value) or []
             themes = self._augment_themes(pr, themes)
             if not themes:
                 continue
@@ -1438,7 +1489,8 @@ class ProjectThemesSectionBuilder(PortfolioSectionBuilder):
         for theme in themes:
             _push(theme)
 
-        tags = project_report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+        tags = project_report.get_value(
+            ProjectStatCollection.PROJECT_TAGS.value) or []
         for tag in tags:
             term = str(tag).strip()
             if not term:
