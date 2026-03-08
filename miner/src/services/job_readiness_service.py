@@ -10,10 +10,6 @@ from sqlmodel import Session, select
 
 from src.core.ML.models.azure_openai_runtime import azure_chat_json, azure_openai_enabled
 from src.database.api.models import ProjectReportModel, ResumeModel
-from src.infrastructure.log.logging import get_logger
-
-logger = get_logger(__name__)
-
 JOB_READINESS_SYSTEM_PROMPT = """You are a job readiness evaluator.
 
 Compare the provided job description against the provided user evidence and return a concise, evidence based evaluation.
@@ -237,20 +233,6 @@ def _clean_value(value: Any) -> str:
         if parts:
             return parts[-1].strip()
     return text
-
-
-def _profile_log_summary(user_profile: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "resume_text_present": bool(user_profile.get("resume_text")),
-        "resume_text_chars": len(user_profile.get("resume_text") or ""),
-        "project_summaries": len(user_profile.get("project_summaries", [])),
-        "tags": len(user_profile.get("tags", [])),
-        "extracted_skills": len(user_profile.get("extracted_skills", [])),
-        "repository_history_summary": len(user_profile.get("repository_history_summary", [])),
-        "repository_file_evidence": len(user_profile.get("repository_file_evidence", [])),
-        "collaboration_signals": len(user_profile.get("collaboration_signals", [])),
-    }
-
 
 def _suggestion_is_actionable(suggestion: PrioritizedSuggestion) -> bool:
     action_verbs = {
@@ -580,7 +562,6 @@ def _load_project_models(session: Session, project_names: list[str]) -> list[Pro
     projects_by_name = {project.project_name: project for project in projects}
     missing = [name for name in project_names if name not in projects_by_name]
     if missing:
-        logger.warning("Job readiness missing project evidence for names=%s", missing)
         raise KeyError(", ".join(missing))
     return [projects_by_name[name] for name in project_names]
 
@@ -597,7 +578,6 @@ def build_user_profile(
 
     resume = _load_resume_model(session, resume_id) if resume_id is not None else None
     if resume_id is not None and resume is None:
-        logger.warning("Job readiness requested missing resume_id=%s", resume_id)
         raise LookupError(f"No resume found with id {resume_id}")
     if resume is not None and not project_names:
         project_names = [item.project_name for item in resume.items if item.project_name]
@@ -657,19 +637,7 @@ def build_user_profile(
             user_profile["collaboration_signals"],
         ]
     ):
-        logger.warning(
-            "Job readiness build_user_profile produced no evidence (resume_id=%s, project_names=%s)",
-            resume_id,
-            project_names,
-        )
         raise ValueError("No user evidence was available to analyze")
-
-    logger.info(
-        "Job readiness built user profile (resume_id=%s, project_names=%s, summary=%s)",
-        resume_id,
-        project_names,
-        _profile_log_summary(user_profile),
-    )
     return user_profile
 
 
@@ -680,20 +648,13 @@ def _deployment_name() -> str | None:
 
 def _parse_job_readiness_payload(payload: dict[str, Any] | None) -> JobReadinessResult | None:
     if payload is None:
-        logger.warning("Job readiness received empty payload from Azure OpenAI")
         return None
     try:
         result = JobReadinessResult.model_validate(payload)
         if not _suggestions_are_actionable(result):
-            logger.warning("Job readiness payload failed actionable-suggestion validation")
             return None
         return result
     except ValidationError:
-        logger.warning(
-            "Job readiness payload failed local schema validation (keys=%s)",
-            sorted(payload.keys()) if isinstance(payload, dict) else type(payload).__name__,
-            exc_info=True,
-        )
         return None
 
 
@@ -704,22 +665,10 @@ def run_job_readiness_analysis(
     max_attempts: int = 2,
 ) -> JobReadinessResult | None:
     if not azure_openai_enabled():
-        logger.info("Job readiness skipped because Azure OpenAI provider is disabled")
         return None
 
-    logger.info(
-        "Job readiness analysis started (job_description_chars=%s, evidence=%s)",
-        len(job_description),
-        _profile_log_summary(user_profile),
-    )
     user_prompt = render_job_readiness_user_prompt(job_description, user_profile)
     for attempt in range(max_attempts):
-        logger.info(
-            "Job readiness Azure request attempt=%s schema=%s deployment=%s",
-            attempt + 1,
-            DEFAULT_JOB_READINESS_SCHEMA_NAME,
-            _deployment_name() or os.environ.get("AZURE_OPENAI_DEPLOYMENT", ""),
-        )
         payload = azure_chat_json(
             system_prompt=JOB_READINESS_SYSTEM_PROMPT,
             user_prompt=user_prompt,
@@ -731,15 +680,5 @@ def run_job_readiness_analysis(
         )
         result = _parse_job_readiness_payload(payload)
         if result is not None:
-            logger.info(
-                "Job readiness analysis succeeded on attempt=%s fit_score=%s strengths=%s weaknesses=%s suggestions=%s",
-                attempt + 1,
-                result.fit_score,
-                len(result.strengths),
-                len(result.weaknesses),
-                len(result.suggestions),
-            )
             return result
-        logger.warning("Job readiness analysis attempt %s returned invalid output", attempt + 1)
-    logger.error("Job readiness analysis failed after %s attempts", max_attempts)
     return None

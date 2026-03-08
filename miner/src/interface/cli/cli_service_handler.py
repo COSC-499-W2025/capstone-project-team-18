@@ -13,7 +13,6 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import desc
 from sqlmodel import Session, select
 
-from src.infrastructure.log.logging import get_logger
 from src.services.mining_service import start_miner_service, MinerResults
 from src.services.preferences.preference_service import UserConfig
 from src.interface.cli.user_preferences import UserPreferences
@@ -29,9 +28,6 @@ from src.services.job_readiness_service import (
     build_user_profile,
     run_job_readiness_analysis,
 )
-
-
-logger = get_logger(__name__)
 
 
 def start_miner_cli(
@@ -130,7 +126,7 @@ def list_project_names_for_cli() -> list[str]:
 def analyze_job_readiness_cli(
     *,
     job_description: str,
-) -> tuple[JobReadinessResult | None, dict, dict]:
+) -> JobReadinessResult | None:
     """
     Run job readiness analysis using stored evidence automatically.
     Prefer the most recent resume when available; otherwise use all stored projects.
@@ -149,18 +145,9 @@ def analyze_job_readiness_cli(
         if latest_resume is not None and latest_resume.id is not None:
             resume_id = latest_resume.id
             project_names = []
-            evidence_source = "latest_resume"
         else:
             resume_id = None
             project_names = list_project_names_for_cli()
-            evidence_source = "all_projects"
-
-        logger.info(
-            "CLI job readiness selected evidence source=%s resume_id=%s project_count=%s",
-            evidence_source,
-            resume_id,
-            len(project_names),
-        )
 
         user_profile = build_user_profile(
             session=session,
@@ -172,15 +159,4 @@ def analyze_job_readiness_cli(
         job_description=job_description,
         user_profile=user_profile,
     )
-    logger.info(
-        "CLI job readiness completed result_available=%s source=%s resume_id=%s project_count=%s",
-        result is not None,
-        evidence_source,
-        resume_id,
-        len(project_names),
-    )
-    return result, user_profile, {
-        "evidence_source": evidence_source,
-        "resume_id": resume_id,
-        "project_names": project_names,
-    }
+    return result

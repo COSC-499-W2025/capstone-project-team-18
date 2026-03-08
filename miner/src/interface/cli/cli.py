@@ -1323,7 +1323,7 @@ class ArtifactMiner(cmd.Cmd):
             return
 
         try:
-            result, user_profile, debug_info = analyze_job_readiness_cli(
+            result = analyze_job_readiness_cli(
                 job_description=job_description,
             )
         except KeyError as exc:
@@ -1347,38 +1347,6 @@ class ArtifactMiner(cmd.Cmd):
             )
             print("\n" + self.options)
             return
-
-        print("\nEvidence Used\n")
-        print(f"source: {debug_info['evidence_source']}")
-        if debug_info["resume_id"] is not None:
-            print(f"resume_id: {debug_info['resume_id']}")
-        if debug_info["project_names"]:
-            print(f"project_names: {', '.join(debug_info['project_names'])}")
-        print(f"resume_text_present: {'yes' if user_profile.get('resume_text') else 'no'}")
-        print(f"project_summaries: {len(user_profile.get('project_summaries', []))}")
-        print(f"tags: {len(user_profile.get('tags', []))}")
-        print(f"extracted_skills: {len(user_profile.get('extracted_skills', []))}")
-        print(f"repository_history_summary: {len(user_profile.get('repository_history_summary', []))}")
-        print(f"repository_file_evidence: {len(user_profile.get('repository_file_evidence', []))}")
-        print(f"collaboration_signals: {len(user_profile.get('collaboration_signals', []))}")
-
-        if user_profile.get("resume_text"):
-            print("\nresume_text preview:")
-            print(user_profile["resume_text"][:800])
-
-        if user_profile.get("project_summaries"):
-            print("\nproject_summaries preview:")
-            for idx, summary in enumerate(user_profile["project_summaries"][:3], start=1):
-                print(f"  {idx}. {summary[:300]}")
-
-        if user_profile.get("extracted_skills"):
-            print("\nextracted_skills preview:")
-            print(", ".join(user_profile["extracted_skills"][:25]))
-
-        if user_profile.get("collaboration_signals"):
-            print("\ncollaboration_signals preview:")
-            for idx, signal in enumerate(user_profile["collaboration_signals"][:5], start=1):
-                print(f"  {idx}. {signal}")
 
         print("\nJob Readiness Result\n")
         print(f"fit_score: {result.fit_score}")

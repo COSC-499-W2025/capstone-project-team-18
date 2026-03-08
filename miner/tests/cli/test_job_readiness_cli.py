@@ -80,14 +80,11 @@ def test_analyze_job_readiness_cli_uses_latest_resume_when_available(blank_db, m
     monkeypatch.setattr(cli_service_handler, "get_engine", lambda: blank_db)
     monkeypatch.setattr(cli_service_handler, "run_job_readiness_analysis", fake_run_job_readiness_analysis)
 
-    result, user_profile, debug_info = cli_service_handler.analyze_job_readiness_cli(
+    result = cli_service_handler.analyze_job_readiness_cli(
         job_description="Backend engineer with API experience.",
     )
 
     assert result == {"not": "used"}
-    assert user_profile == captured["user_profile"]
-    assert debug_info["evidence_source"] == "latest_resume"
-    assert debug_info["resume_id"] == 1
     assert captured["job_description"] == "Backend engineer with API experience."
     assert "candidate@example.com" in captured["user_profile"]["resume_text"]
     assert "Built APIs" in captured["user_profile"]["resume_text"]
@@ -105,14 +102,10 @@ def test_analyze_job_readiness_cli_falls_back_to_all_projects(blank_db, monkeypa
     monkeypatch.setattr(cli_service_handler, "get_engine", lambda: blank_db)
     monkeypatch.setattr(cli_service_handler, "run_job_readiness_analysis", fake_run_job_readiness_analysis)
 
-    result, user_profile, debug_info = cli_service_handler.analyze_job_readiness_cli(
+    result = cli_service_handler.analyze_job_readiness_cli(
         job_description="Backend engineer with API experience.",
     )
 
     assert result == {"fallback": True}
-    assert user_profile == captured["user_profile"]
-    assert debug_info["evidence_source"] == "all_projects"
-    assert debug_info["resume_id"] is None
-    assert debug_info["project_names"] == ["APIProject"]
     assert captured["user_profile"]["resume_text"] is None
     assert captured["user_profile"]["project_summaries"]
