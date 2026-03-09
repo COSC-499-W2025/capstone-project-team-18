@@ -126,7 +126,7 @@ def list_project_names_for_cli() -> list[str]:
 def analyze_job_readiness_cli(
     *,
     job_description: str,
-) -> JobReadinessResult | None:
+) -> JobReadinessResult:
     """
     Run job readiness analysis using stored evidence automatically.
     Prefer the most recent resume when available; otherwise use all stored projects.
@@ -159,4 +159,9 @@ def analyze_job_readiness_cli(
         job_description=job_description,
         user_profile=user_profile,
     )
+    if result is None:
+        raise RuntimeError(
+            "Job readiness analysis is unavailable. Confirm Azure OpenAI is enabled and "
+            "the configured deployment targets GPT-4o mini."
+        )
     return result

@@ -130,16 +130,10 @@ def azure_chat_parse(
             return None
         return _model_validate_json(response_model, content.strip())
     except urllib.error.HTTPError as exc:
-        body = ""
-        try:
-            body = exc.read().decode("utf-8", errors="replace")
-        except Exception:
-            body = ""
         logger.error(
-            "Azure OpenAI HTTP error for schema=%s (status=%s, body=%s)",
+            "Azure OpenAI HTTP error for schema=%s (status=%s)",
             schema_name,
             getattr(exc, "code", "unknown"),
-            body[:300],
         )
     except (urllib.error.URLError, OSError, TimeoutError):
         logger.exception("Azure OpenAI request failed for schema=%s", schema_name)
@@ -211,16 +205,10 @@ def azure_chat_json(
         parsed_content = json.loads(content.strip())
         return parsed_content if isinstance(parsed_content, dict) else None
     except urllib.error.HTTPError as exc:
-        body = ""
-        try:
-            body = exc.read().decode("utf-8", errors="replace")
-        except Exception:
-            body = ""
         logger.error(
-            "Azure OpenAI HTTP error for schema=%s (status=%s, body=%s)",
+            "Azure OpenAI HTTP error for schema=%s (status=%s)",
             schema_name,
             getattr(exc, "code", "unknown"),
-            body[:300],
         )
     except (urllib.error.URLError, OSError, TimeoutError):
         logger.exception("Azure OpenAI request failed for schema=%s", schema_name)

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import Session
 
+from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
 from src.services.job_readiness_service import (
     JobReadinessResult,
@@ -16,6 +17,7 @@ router = APIRouter(
     prefix="/job-readiness",
     tags=["job-readiness"],
 )
+logger = get_logger(__name__)
 
 
 class JobReadinessRequest(BaseModel):
@@ -25,6 +27,14 @@ class JobReadinessRequest(BaseModel):
     resume_id: int | None = None
     project_names: list[str] = Field(default_factory=list)
     user_profile: JobReadinessUserProfileInput | None = None
+
+    @field_validator("job_description")
+    @classmethod
+    def validate_job_description(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("job_description must contain non-whitespace characters")
+        return stripped
 
 
 @router.post("/analyze", response_model=JobReadinessResult)
@@ -40,14 +50,26 @@ def analyze_job_readiness(
             user_profile_input=request.user_profile,
         )
     except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Missing project evidence: {exc.args[0]}") from exc
+        logger.exception("Missing project evidence during job readiness analysis")
+        raise HTTPException(
+            status_code=404,
+            detail="Requested project evidence was not found.",
+        ) from exc
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        logger.exception("Lookup error during job readiness analysis")
+        raise HTTPException(
+            status_code=404,
+            detail="Requested resource was not found.",
+        ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        logger.exception("Invalid job readiness analysis request")
+        raise HTTPException(
+            status_code=400,
+            detail="The request did not include enough valid evidence to analyze.",
+        ) from exc
 
     result = run_job_readiness_analysis(
-        job_description=request.job_description.strip(),
+        job_description=request.job_description,
         user_profile=user_profile,
     )
     if result is None:

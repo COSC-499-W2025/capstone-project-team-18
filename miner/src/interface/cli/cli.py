@@ -1334,17 +1334,9 @@ class ArtifactMiner(cmd.Cmd):
             print(f"\n{exc}")
             print("\n" + self.options)
             return
-        except Exception as exc:
+        except RuntimeError as exc:
             print("\nJob readiness analysis failed:")
             print(exc)
-            print("\n" + self.options)
-            return
-
-        if result is None:
-            print(
-                "\nJob readiness analysis is unavailable. Confirm Azure OpenAI is enabled and "
-                "the configured deployment targets GPT-4o mini."
-            )
             print("\n" + self.options)
             return
 
