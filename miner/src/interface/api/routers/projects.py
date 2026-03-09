@@ -60,6 +60,7 @@ class ProjectResumeItemResponse(SQLModel):
     frameworks: List[str] = []
     bullet_points: List[str] = []
 
+
 class SaveShowcaseCustomizationRequest(SQLModel):
     title: Optional[str] = None
     start_date: Optional[datetime] = None
@@ -69,6 +70,7 @@ class SaveShowcaseCustomizationRequest(SQLModel):
 
 # Helper function to polish extracted framework tokens by removing
 # URLs, file paths, asset references, and other non-technology noise.
+
 
 def _clean_framework(value: str) -> Optional[str]:
     if not value:
@@ -95,10 +97,11 @@ def _clean_framework(value: str) -> Optional[str]:
 
     return s
 
+
 def _frameworks_to_strings(value: Any) -> List[str]:
     if not value:
         return []
-    
+
     out: List[str] = []
 
     for item in value:
@@ -285,7 +288,7 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
                 str(e),
             )
             return None
-        
+
     # Default generated fields
     default_title = resume_item.title
     default_start = _to_datetime(resume_item.start_date)
@@ -293,15 +296,17 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
     default_frameworks = _frameworks_to_strings(resume_item.frameworks)
     default_bullets = list(resume_item.bullet_points or [])
 
-    # Apply overrides 
+    # Apply overrides
     title_out = (
         project_model.showcase_title
         if (project_model and project_model.showcase_title)
-        else default_title   
-        )
-    
-    start_out = project_model.showcase_start_date if (project_model and project_model.showcase_start_date) else default_start
-    end_out = project_model.showcase_end_date if (project_model and project_model.showcase_end_date) else default_end
+        else default_title
+    )
+
+    start_out = project_model.showcase_start_date if (
+        project_model and project_model.showcase_start_date) else default_start
+    end_out = project_model.showcase_end_date if (
+        project_model and project_model.showcase_end_date) else default_end
 
     frameworks_out = (
         list(project_model.showcase_frameworks)
@@ -323,6 +328,7 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
         bullet_points=bullets_out,
     )
 
+
 @router.get("/{project_name}/showcase/customization")
 def get_project_showcase_customization(project_name: str, session=Depends(get_session)):
     """
@@ -331,7 +337,8 @@ def get_project_showcase_customization(project_name: str, session=Depends(get_se
     """
     project_model = get_project_report_model_by_name(session, project_name)
     if not project_model:
-        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
+        raise HTTPException(
+            status_code=404, detail=f"No project report named {project_name}")
 
     return {
         "project_name": project_model.project_name,
@@ -342,6 +349,7 @@ def get_project_showcase_customization(project_name: str, session=Depends(get_se
         "bullet_points": list(project_model.showcase_bullet_points or []),
         "last_user_edit_at": project_model.showcase_last_user_edit_at,
     }
+
 
 @router.put("/{project_name}/showcase/customization")
 def save_project_showcase_customization(
@@ -354,7 +362,8 @@ def save_project_showcase_customization(
     """
     project_model = get_project_report_model_by_name(session, project_name)
     if not project_model:
-        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
+        raise HTTPException(
+            status_code=404, detail=f"No project report named {project_name}")
 
     try:
         if request.title is not None:
@@ -383,7 +392,9 @@ def save_project_showcase_customization(
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to save showcase customization: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save showcase customization: {str(e)}")
+
 
 @router.delete("/{project_name}/showcase/customization")
 def clear_project_showcase_customization(project_name: str, session=Depends(get_session)):
@@ -392,7 +403,8 @@ def clear_project_showcase_customization(project_name: str, session=Depends(get_
     """
     project_model = get_project_report_model_by_name(session, project_name)
     if not project_model:
-        raise HTTPException(status_code=404, detail=f"No project report named {project_name}")
+        raise HTTPException(
+            status_code=404, detail=f"No project report named {project_name}")
 
     try:
         project_model.showcase_title = None
@@ -410,7 +422,9 @@ def clear_project_showcase_customization(project_name: str, session=Depends(get_
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to clear showcase customization: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to clear showcase customization: {str(e)}")
+
 
 @router.get("/{project_name}/resume-item", response_model=ProjectResumeItemResponse)
 def get_project_resume_item(project_name: str, session=Depends(get_session)):
@@ -465,3 +479,52 @@ def get_project_resume_item(project_name: str, session=Depends(get_session)):
         bullet_points=list(resume_item.bullet_points or []),
     )
 
+
+@router.post("/{project_name}/image")
+def upload_project_image(
+    project_name: str,
+    file: UploadFile = File(...),
+    session=Depends(get_session)
+):
+    """
+    POST /{project_name}/image
+
+    Uploads an image file and assigns it to the specified project.
+    Validates that the uploaded file is an image before saving.
+    """
+
+    project_model = get_project_report_model_by_name(session, project_name)
+    if not project_model:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No project report named {project_name}"
+        )
+
+    # Validate that the uploaded file is actually an image
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Please upload an image."
+        )
+
+    try:
+        # Read file bytes and update the model
+        image_bytes = file.file.read()
+
+        project_model.image_data = image_bytes
+        project_model.last_updated = datetime.now()
+
+        session.add(project_model)
+        session.commit()
+
+        return {"message": f"Image successfully assigned to project '{project_name}'."}
+
+    except Exception as e:
+        session.rollback()
+        logger.error("Error uploading image for project %s: %s",
+                     project_name, str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload image: {str(e)}"
+        )
