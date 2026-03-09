@@ -151,6 +151,8 @@ I completed [PR #463 - Simplified Job Readiness Analysis Feature](https://github
 
 I reviewed [PR #464 - Double Analysis Fix](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/464). My reviews focused on ensuring code quality, proper error handling, test coverage, and alignment with our system architecture.
 
+I also reviewed [PR #469 - Project Thumbnail](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/469). My review focused on identifying schema and API response risks, including how the new image upload support would affect existing database state and default project endpoint payload size.
+
 #### Goals for Next Week
 - Continue Working on ML Related Changes
 - Milestone 3 Implementations
