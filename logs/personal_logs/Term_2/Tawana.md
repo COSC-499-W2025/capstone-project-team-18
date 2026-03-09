@@ -12,7 +12,21 @@
 
 **[Week 8, 02/23 - 03/01](#week-8-0223---0301)**
 
+**[Week 9, 03/02 - 03/08](#week-9-0302---0308)**
+
 ---
+
+# Week 9 03/02 - 03/08
+[Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week9_log.png)
+
+This week, I implemented backend support for user-controlled information representation across portfolio projects, allowing users to customize how mined project data is presented. I extended the ProjectReportModel schema to support overrides such as project ranking, chronology corrections, highlighted skills, showcase selection, and customizable showcase metadata. I also introduced endpoints to persist these preferences and refactored showcase formatting into a shared helper to remove duplicated logic, with additional validation to prevent invalid states (e.g., negative ranking values). This work was completed in:
+[PR `#461` User Information Representation (Personalization)](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/461).
+
+I also implemented a small backend and UI hotfix to restore expected endpoint behaviour and frontend rendering. This included fixing router registrations in api.py, correcting response handling in the privacy consent endpoint, and resolving a Skills page rendering issue. This work was completed in: [PR `#460` Endpoints HotFix](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/460).
+
+Additionally, I reviewed the following PRs:
+1. [PR `#463` 462 job readiness analysis feature](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/463)
+
 
 # Week 8 02/23 - 03/01
 [Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week8_log.png)
