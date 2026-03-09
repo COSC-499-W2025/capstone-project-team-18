@@ -2,7 +2,9 @@
 
 ## Table of Contents
 
-**[T2 Week 8, Feb 8](#t2-week-8-feb-23--mar-1)**
+**[T2 Week 9, Mar 2 - Mar 8](#t2-week-9-mar-2--mar-8)**
+
+**[T2 Week 8, Feb 9](#t2-week-8-feb-23--mar-1)**
 
 **[T2 Week 4-5, Jan 26 - Feb 8](#t2-week-4/5-jan-26--feb-8)**
 
@@ -13,6 +15,32 @@
 **[Week 1, Jan 05 - 11](#week-1-jan-05---11)**
 
 ---
+
+## T2 Week 9, Mar 2 - Mar 8
+
+### Peer Eval
+
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/Erem/erem_t2_week9_log.png)
+
+### Recap
+
+This week I focused on completing the education and awards feature for user configuration and resume generation, which is part of Milestone 3's enhanced resume customization requirements.
+
+#### Coding Tasks
+
+I implemented and am finalizing [PR #467 - Add education and awards to user config and resume generation](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/467). The feature extends `UserConfigModel` with `education` and `awards` fields (stored as JSON arrays in SQLite), updates the `GET /user-config` and `PUT /user-config` endpoints to expose these fields, and plumbs them through the resume generation pipeline so `UserReport.generate_resume()` accepts and includes education/awards in the output.
+
+The feature is ~95% complete, all code is written and endpoints are working in Swagger UI. The remaining work is fixing a database initialization issue where `SQLModel.metadata.create_all()` isn't being triggered on server startup, causing "no such table" errors on fresh deploys. Once that's resolved, the feature will be ready for final testing and merge.
+
+#### Reviewing Tasks
+
+Due to a few reasons including personally being swamped with work with other classes, as well as it being the first week of M3 + Quiz 4 meaning there hasnt been too much development with the project for this group, I haven't been able to review any of my teammates PR's unfortunately. 
+
+#### Goals for Next Week
+
+- Resolve the database initialization issue and get PR #467 merged
+- Add integration tests for the education/awards endpoints
+- Begin work on the next Milestone 3 feature (authentication or advanced resume customization)
 
 ## T2 Week 8, Feb 23 - Mar 1
 
