@@ -1,4 +1,4 @@
-# Team 18 Term 2 — Week 8, Feb. 22 – Mar. 1
+# Team 18 Term 2 — Week 9, Mar. 2 - Mar. 8
 
 ## Overview
 
