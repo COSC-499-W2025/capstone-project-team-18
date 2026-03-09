@@ -526,5 +526,5 @@ def upload_project_image(
                      project_name, str(e))
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to upload image: {str(e)}"
+            detail=f"Failed to upload image."
         )

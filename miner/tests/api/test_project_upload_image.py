@@ -117,3 +117,19 @@ def test_upload_project_image_db_failure(client, seeded_project):
         assert response.status_code == 500
         assert "Failed to upload image" in response.json()["detail"]
         assert "DB connection lost" in response.json()["detail"]
+
+
+def test_upload_project_image_sneaky_extension(client, seeded_project):
+    """
+    Test that a file with an image extension but a non-image content-type is rejected.
+    This ensures we validate the MIME type and aren't fooled by the filename.
+    """
+    # The filename ends in .png, but the client explicitly declares it as text/plain
+    file_data = {
+        "file": ("sneaky.png", b"this is actually just text", "text/plain")
+    }
+
+    response = client.post("/projects/TestProject/image", files=file_data)
+
+    assert response.status_code == 400
+    assert "Invalid file type" in response.json()["detail"]
