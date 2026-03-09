@@ -313,19 +313,19 @@ def compare_projects(projects: Optional[str] = None, session=Depends(get_session
     Query param: ?projects=A,B,C
     If not provided, compares all projects that have any compare_attributes selected.
     """
-    all_models = get_all_project_report_models(session)
+    project_reports = get_all_project_report_models(session)
 
     # Filter target set
     if projects:
         wanted = [unquote(x.strip()) for x in projects.split(",") if x.strip()]
         wanted_set = set(wanted)
-        models = [m for m in all_models if m.project_name in wanted_set]
+        models = [m for m in project_reports if m.project_name in wanted_set]
 
         if len(models) != len(wanted_set):
             missing = sorted(list(wanted_set - {m.project_name for m in models}))
             raise HTTPException(status_code=404, detail=f"Missing project(s): {', '.join(missing)}")
     else:
-        models = [m for m in all_models if (m.compare_attributes or [])]
+        models = [m for m in project_reports if (m.compare_attributes or [])]
 
     # Determine union of attributes (stable order)
     attr_set = set()
