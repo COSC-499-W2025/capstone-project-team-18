@@ -3,6 +3,7 @@
 ## **[This Week](#week-2-0112---0118)**
 
 ## Table of Contents
+- **[Week 9, 3/2 - 3/8](#week-9-32---38)**
 - **[Week 8, 2/23 - 3/1](#week-8223---31)**
 - **[Week 4-5 01/26 - 02/08](#week-4-5-0126---0208)**
 - **[Week 3 01/19 - 01/25](#week-3-0119-0125)**
@@ -11,9 +12,35 @@
 
 ---
 
+## Week 9 3/2 - 3/8
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week9_log.png)
+
+## Coding Tasks
+
+The coding task I did do implemented a project thumbnail which was missing from the Milestone #2.
+
+[PR #469 Upload Project Thumbnail Endpoint](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/469)
+
+### Testing Tasks
+
+Wrote tests for the PR that tests the endpoint without running server.
+
+### Review Tasks
+
+I reviewed the following PRs:
+
+[PR #464](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/464)
+[PR #463](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/463)
+[PR #461](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/461)
+
+### Summary
+
+Because of my large time coding tasks and time commitment last week, I was only able to get one coding task achieved for this week. However, I have now caught up to my other work and I am looking forward to getting back into this project.
+
 ## Week 8 2/23 - 3/1
 
-![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week4_log.png)
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week8_log.png)
 
 ### Coding Tasks
 
