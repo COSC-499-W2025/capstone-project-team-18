@@ -22,6 +22,18 @@ class UserConfigModel(SQLModel, table=True):
     project_reports: List["ProjectReportModel"] = Relationship(
         back_populates="user_config")
 
+    # Education entries for the user stored as JSON col
+    education: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
+    # Awards/honours for the user
+    awards: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
 
 class ProjectReportModel(SQLModel, table=True):
     project_name: str = Field(primary_key=True)
@@ -74,6 +86,18 @@ class ResumeModel(SQLModel, table=True):
     email: Optional[str] = None
     github: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
+
+    # Store education and awards in resume
+    # This allows resumes to "snapshot" the user's education/awards at generation time,
+    # meaning editing user config later doesn't retroactively change old resumes
+    education: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+    awards: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now())

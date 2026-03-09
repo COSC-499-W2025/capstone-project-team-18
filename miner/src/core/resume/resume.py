@@ -45,11 +45,20 @@ class Resume:
 
     items: list[ResumeItem]
 
-    def __init__(self, email: Optional[str] = None, github: Optional[str] = None, weight_skills: Optional[list[WeightedSkills]] = None):
+    def __init__(
+        self,
+        email: Optional[str] = None,
+        github: Optional[str] = None,
+        weight_skills: Optional[list[WeightedSkills]] = None,
+        education: Optional[list[str]] = None,
+        awards: Optional[list[str]] = None,
+    ):
         self.items = []
         self.email = email if email else None
         self.github = github if github else None
         self.skills = []
+        self.education = education or []
+        self.awards = awards or []
 
         if weight_skills:
 

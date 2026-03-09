@@ -67,7 +67,13 @@ class UserReport(BaseReport):
             calculator_classes=calculator_classes)
         builder.build(self)
 
-    def generate_resume(self, email: Optional[str], github: Optional[str]) -> Resume:
+    def generate_resume(
+        self,
+        email: Optional[str],
+        github: Optional[str],
+        education: Optional[list[str]] = None,
+        awards: Optional[list[str]] = None
+    ) -> Resume:
         """
         Generates a Resume object based on the ResumeItem
         that are generated from the ProjectReports. As well
@@ -77,7 +83,13 @@ class UserReport(BaseReport):
         weighted_skills = self.statistics.get_value(
             UserStatCollection.USER_SKILLS.value)
 
-        resume = Resume(email, github, weighted_skills)
+        resume = Resume(
+            email,
+            github,
+            weighted_skills,
+            education=education,
+            awards=awards
+            )
 
         for item in self.resume_items:
             resume.add_item(item)

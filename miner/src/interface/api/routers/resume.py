@@ -71,6 +71,8 @@ class ResumeResponse(SQLModel):
     email: Optional[str] = None
     github: Optional[str] = None
     skills: List[str]
+    education: List[str] = []
+    awards: List[str] = []
     items: List[ResumeItemResponse] = []
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
@@ -119,8 +121,18 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
         user_email = user_config.user_email if user_config else None
         user_github = user_config.github if user_config else None
 
-        # Generate resume with both email and github
-        resume_domain = user_report.generate_resume(user_email, user_github)
+        # Extract education and awards from user config.
+        user_education = user_config.education if user_config else []
+        user_awards = user_config.awards if user_config else []
+
+        # Generate resume with email, github, education and awards
+        resume_domain = user_report.generate_resume(
+            user_email,
+            user_github,
+            education=user_education,
+            awards=user_awards
+
+        )
 
         # Save using serialize_resume
         resume_model = save_resume(session, resume_domain)
