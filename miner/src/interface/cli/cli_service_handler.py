@@ -9,7 +9,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from src.infrastructure.log.logging import get_logger
+from sqlmodel import Session
+
 from src.services.mining_service import start_miner_service, MinerResults
 from src.services.preferences.preference_service import UserConfig
 from src.interface.cli.user_preferences import UserPreferences
@@ -17,9 +18,6 @@ from src.core.report import UserReport
 from src.interface.cli.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
 from src.core.resume.render import ResumeLatexRenderer
 from src.database.api.models import UserConfigModel as UserConfig
-
-
-logger = get_logger(__name__)
 
 
 def start_miner_cli(
