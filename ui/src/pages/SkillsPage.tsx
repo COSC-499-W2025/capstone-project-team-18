@@ -53,21 +53,6 @@ export default function SkillsPage() {
       {!loading && !error && skills.length === 0 && (
         <div>No skills found.</div>
       )}
-
-      {!loading && !error && skills.length > 0 && (
-        <pre
-          style={{
-            background: "#f6f6f6",
-            padding: 14,
-            borderRadius: 10,
-            overflow: "auto",
-            margin: 0,
-            maxHeight: 450,
-          }}
-        >
-          {JSON.stringify(skills, null, 2)}
-        </pre>
-      )}
     </div>
   );
 }

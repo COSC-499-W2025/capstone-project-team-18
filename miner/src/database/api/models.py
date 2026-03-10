@@ -37,6 +37,15 @@ class ProjectReportModel(SQLModel, table=True):
     analyzed_count: int = 1
     parent: Optional[str] = None
 
+    # Representation (Milestone 2 human-in-the-loop)
+    representation_rank: int | None = None  
+    chrono_start_override: datetime | None = None
+    chrono_end_override: datetime | None = None
+    showcase_selected: bool = Field(default=False)
+    compare_attributes: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    highlight_skills: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    representation_last_user_edit_at: datetime | None = None
+
     # These fields allow users to override the auto-generated showcase portfolio
     showcase_title: Optional[str] = None
     showcase_start_date: Optional[datetime] = None

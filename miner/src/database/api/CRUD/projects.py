@@ -1,7 +1,9 @@
 from datetime import datetime
+from typing import Optional
+
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
-from typing import Optional, List
-from sqlmodel import Session
+
 from src.database.api.models import ProjectReportModel, FileReportModel
 from src.core.report import ProjectReport
 from src.database.core.model_serializer import serialize_project_report, serialize_file_report
@@ -150,6 +152,26 @@ def get_project_report_model_by_name(
     return session.exec(statement).first()
 
 
+def get_project_report_models_by_names(
+    session: Session,
+    project_names: list[str],
+) -> list[ProjectReportModel]:
+    if not project_names:
+        return []
+
+    statement = (
+        select(ProjectReportModel)
+        .where(ProjectReportModel.project_name.in_(project_names))
+        .options(selectinload(ProjectReportModel.file_reports))  # pyright: ignore
+    )
+    projects = list(session.exec(statement).all())
+    projects_by_name = {project.project_name: project for project in projects}
+    missing = [name for name in project_names if name not in projects_by_name]
+    if missing:
+        raise KeyError(", ".join(missing))
+    return [projects_by_name[name] for name in project_names]
+
+
 def get_project_report_by_name(
     session: Session,
     project_name: str
@@ -201,7 +223,7 @@ def delete_project_report_by_name(
     return True
 
 
-def get_all_project_report_models(session: Session) -> List[ProjectReportModel]:
+def get_all_project_report_models(session: Session) -> list[ProjectReportModel]:
     """
     Retrieve all ProjectReportModel records from the database.
 
