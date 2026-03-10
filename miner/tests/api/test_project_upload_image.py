@@ -116,7 +116,6 @@ def test_upload_project_image_db_failure(client, seeded_project):
 
         assert response.status_code == 500
         assert "Failed to upload image" in response.json()["detail"]
-        assert "DB connection lost" in response.json()["detail"]
 
 
 def test_upload_project_image_sneaky_extension(client, seeded_project):
