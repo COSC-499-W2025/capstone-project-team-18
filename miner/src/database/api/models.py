@@ -50,8 +50,10 @@ class ProjectReportModel(SQLModel, table=True):
     showcase_title: Optional[str] = None
     showcase_start_date: Optional[datetime] = None
     showcase_end_date: Optional[datetime] = None
-    showcase_frameworks: List[str] = Field(default_factory=list, sa_column=Column(JSON))
-    showcase_bullet_points: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    showcase_frameworks: List[str] = Field(
+        default_factory=list, sa_column=Column(JSON))
+    showcase_bullet_points: List[str] = Field(
+        default_factory=list, sa_column=Column(JSON))
     showcase_last_user_edit_at: Optional[datetime] = None
 
     # Relationships
