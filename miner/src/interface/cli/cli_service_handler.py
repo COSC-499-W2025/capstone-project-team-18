@@ -2,7 +2,7 @@
 Functions that allow the CLI to interact with the services
 """
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 import os
 import warnings
 import logging
@@ -12,12 +12,42 @@ from pathlib import Path
 from sqlmodel import Session
 
 from src.services.mining_service import start_miner_service, MinerResults
+from src.services.interview_service import (
+    build_interview_context,
+    evaluate_answer,
+    generate_question,
+    InterviewAnswerResult,
+    InterviewStartResult,
+)
 from src.services.preferences.preference_service import UserConfig
 from src.interface.cli.user_preferences import UserPreferences
 from src.core.report import UserReport
 from src.interface.cli.print_resume_and_portfolio import resume_CLI_stringify, portfolio_CLI_stringify
 from src.core.resume.render import ResumeLatexRenderer
 from src.database.api.models import UserConfigModel as UserConfig
+from src.database.core.base import get_engine
+from src.database.api.CRUD.projects import get_all_project_ids
+
+
+def _configure_cli_ml_runtime() -> None:
+    """Keep CLI ML output quiet and deterministic enough for terminal usage."""
+    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+    os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    root_logger = logging.getLogger()
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+    root_logger.addHandler(logging.NullHandler())
+    root_logger.setLevel(logging.CRITICAL)
+    try:
+        from transformers.utils import logging as hf_logging
+        hf_logging.set_verbosity_error()
+    except Exception:
+        pass
 
 
 def start_miner_cli(
@@ -40,26 +70,7 @@ def start_miner_cli(
     :type progress_callback: Optional[Callable[[str, int, int, str], None]]
     """
 
-    # Keep ML enabled in CLI, but silence model loading noise/progress bars.
-    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
-    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-    os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
-    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-    # Silence noisy warnings from ML stack (e.g., UMAP/BERTopic) in CLI output.
-    warnings.filterwarnings("ignore", category=RuntimeWarning)
-    warnings.filterwarnings("ignore", category=UserWarning)
-    warnings.filterwarnings("ignore", category=FutureWarning)
-    # Ensure root logger does not emit to console.
-    root_logger = logging.getLogger()
-    for handler in list(root_logger.handlers):
-        root_logger.removeHandler(handler)
-    root_logger.addHandler(logging.NullHandler())
-    root_logger.setLevel(logging.CRITICAL)
-    try:
-        from transformers.utils import logging as hf_logging
-        hf_logging.set_verbosity_error()
-    except Exception:
-        pass
+    _configure_cli_ml_runtime()
 
     prefs = UserPreferences()
     zipped_file = Path(zipped_file_path)
@@ -104,3 +115,51 @@ def start_miner_cli(
     portfolio_CLI_stringify(user_report)
 
     return miner_results
+
+
+def start_mock_interview_cli(
+    *,
+    job_description: str,
+    difficulty: str = "intermediate",
+    resume_id: int | None = None,
+    project_names: list[str] | None = None,
+) -> tuple[InterviewStartResult | None, dict[str, Any] | None]:
+    _configure_cli_ml_runtime()
+
+    engine = get_engine()
+    with Session(engine) as session:
+        selected_project_names = list(project_names or [])
+        if resume_id is None and not selected_project_names:
+            selected_project_names = get_all_project_ids(session)
+
+        interview_context = build_interview_context(
+            session=session,
+            job_description=job_description,
+            resume_id=resume_id,
+            project_names=selected_project_names,
+        )
+
+    first_question = generate_question(
+        job_description=job_description,
+        interview_context=interview_context,
+        difficulty=difficulty,
+    )
+    return first_question, interview_context
+
+
+def answer_mock_interview_cli(
+    *,
+    job_description: str,
+    interview_context: dict[str, Any],
+    current_question: str,
+    user_answer: str,
+    difficulty: str = "intermediate",
+) -> InterviewAnswerResult | None:
+    _configure_cli_ml_runtime()
+    return evaluate_answer(
+        user_answer=user_answer,
+        current_question=current_question,
+        job_description=job_description,
+        interview_context=interview_context,
+        difficulty=difficulty,
+    )

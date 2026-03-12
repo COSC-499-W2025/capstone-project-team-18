@@ -11,6 +11,8 @@ from datetime import datetime
 from typing import Optional
 from src.interface.cli.cli_service_handler import (
     start_miner_cli,
+    start_mock_interview_cli,
+    answer_mock_interview_cli,
 )
 from src.core.resume.bullet_point_builder import BulletPointBuilder
 from src.utils.pathing_utils import is_valid_filepath_to_zip
@@ -43,6 +45,7 @@ class ArtifactMiner(cmd.Cmd):
             "(9) Retrieve a Portfolio\n"
             "(10) Get resume bullet point\n"
             "(11) Warm up summary model\n"
+            "(12) Mock interview mode\n"
 
             "Type 'back' or 'cancel' to return to this main menu\n"
             "Type help or ? to list commands\n"
@@ -1115,6 +1118,8 @@ class ArtifactMiner(cmd.Cmd):
                     return self.do_portfolio_retrieve("from_back")
                 case "resume_bullet_point":
                     return self.do_resume_bullet_point("from_back")
+                case "mock_interview":
+                    return self.do_mock_interview("from_back")
         else:
             print("\n", self.options)
 
@@ -1208,6 +1213,7 @@ class ArtifactMiner(cmd.Cmd):
             "9": self.do_portfolio_retrieve,
             "10": self.do_resume_bullet_point,
             "11": self.do_warmup,
+            "12": self.do_mock_interview,
         }
 
         # Make commands case-insensitive
@@ -1279,3 +1285,103 @@ class ArtifactMiner(cmd.Cmd):
         _, status_message = init_system()
         print(status_message)
         print("\n" + self.options)
+
+    def do_mock_interview(self, arg):
+        """Start an interactive mock interview using stored project or resume evidence."""
+
+        if arg != "from_back":
+            self.update_history(self.cmd_history, "mock_interview")
+
+        print("\n=== Mock Interview Mode ===")
+        print("Practice a job-specific interview using your stored project evidence.")
+
+        while True:
+            job_description = input(
+                "Paste the job description (or 'back'/'cancel' to return): "
+            ).strip()
+
+            if job_description.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+            if job_description.lower() == 'cancel':
+                if self._handle_cancel_input(job_description, "main"):
+                    print("\n" + self.options)
+                    return
+            if job_description.lower() == 'back':
+                if len(self.cmd_history) > 0:
+                    self.cmd_history.pop()
+                return self.do_back(arg)
+            if job_description:
+                break
+            print("Job description cannot be empty.")
+
+        difficulty = input(
+            "Difficulty (beginner/intermediate/advanced) [intermediate]: "
+        ).strip().lower()
+        if difficulty in ['exit', 'quit']:
+            return self.do_exit(arg)
+        if not difficulty:
+            difficulty = "intermediate"
+        if difficulty not in {"beginner", "intermediate", "advanced"}:
+            print("Difficulty must be beginner, intermediate, or advanced.")
+            print("\n" + self.options)
+            return
+
+        try:
+            first_question, interview_context = start_mock_interview_cli(
+                job_description=job_description,
+                difficulty=difficulty,
+            )
+        except Exception as exc:
+            print(f"\nUnable to start mock interview: {exc}")
+            print("\n" + self.options)
+            return
+
+        if first_question is None or interview_context is None:
+            print("\nMock interview generation is unavailable. Check Azure OpenAI configuration.")
+            print("\n" + self.options)
+            return
+
+        current_question = first_question.question
+        print("\nInterview started.")
+        print(f"\nInterviewer ({first_question.question_category}): {current_question}")
+
+        while True:
+            user_answer = input(
+                "\nYour answer ('stop' to end, 'exit'/'quit' to close app): "
+            ).strip()
+
+            if user_answer.lower() in ['exit', 'quit']:
+                return self.do_exit(arg)
+            if user_answer.lower() == 'stop':
+                print("\nEnding mock interview.")
+                print("\n" + self.options)
+                return
+            if not user_answer:
+                print("Answer cannot be empty.")
+                continue
+
+            result = answer_mock_interview_cli(
+                job_description=job_description,
+                interview_context=interview_context,
+                current_question=current_question,
+                user_answer=user_answer,
+                difficulty=difficulty,
+            )
+
+            if result is None:
+                print("\nMock interview evaluation is unavailable. Check Azure OpenAI configuration.")
+                print("\n" + self.options)
+                return
+
+            if not result.answer_acceptable:
+                print("\nThat answer was too vague or incomplete. Please try again.")
+                print(f"\nGuidance: {result.next_question}")
+                print(f"\nOriginal question: {current_question}")
+                continue
+
+            print("\nFeedback")
+            print(f"Strengths: {result.feedback.strengths}")
+            print(f"Improvements: {result.feedback.improvements}")
+            print(f"Example answer: {result.feedback.example_answer}")
+            print(f"\nFollow up ({result.next_question_category}): {result.next_question}")
+            current_question = result.next_question
