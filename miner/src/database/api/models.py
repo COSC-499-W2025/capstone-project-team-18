@@ -63,6 +63,21 @@ class ProjectReportModel(SQLModel, table=True):
         back_populates="project_reports")
     file_reports: List["FileReportModel"] = Relationship(
         back_populates="project")
+    project_insights: Optional["ProjectInsightsModel"] = Relationship(
+        back_populates="project")
+
+
+class ProjectInsightsModel(SQLModel, table=True):
+    project_name: str = Field(
+        primary_key=True,
+        foreign_key="projectreportmodel.project_name",
+    )
+    insights: List[str] = Field(sa_column=Column(JSON, nullable=False))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now())
+
+    # Relationship
+    project: Optional["ProjectReportModel"] = Relationship(
+        back_populates="project_insights")
 
 
 class FileReportModel(SQLModel, table=True):
