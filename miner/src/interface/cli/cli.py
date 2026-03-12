@@ -9,7 +9,9 @@ from tqdm import tqdm
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-from src.interface.cli.cli_service_handler import start_miner_cli
+from src.interface.cli.cli_service_handler import (
+    start_miner_cli,
+)
 from src.core.resume.bullet_point_builder import BulletPointBuilder
 from src.utils.pathing_utils import is_valid_filepath_to_zip
 from src.interface.cli.user_preferences import UserPreferences
