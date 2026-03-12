@@ -3,6 +3,9 @@ GET /projects/{project_name}/insights
 
 Returns a list of insight prompts derived from an existing ProjectReport.
 Insights help users reflect on their contributions when writing a resume.
+
+Insights are cached in the database after the first generation so that
+expensive or ML-based generators are only invoked once per project.
 """
 
 from urllib.parse import unquote
@@ -12,6 +15,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from src.core.insight.insight_generator import InsightGenerator
+from src.database.api.CRUD.insights import get_project_insights, save_project_insights
 from src.database.api.CRUD.projects import get_project_report_by_name
 from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
@@ -34,18 +38,28 @@ class ProjectInsightsResponse(BaseModel):
 
 
 @router.get("/{project_name}/insights", response_model=ProjectInsightsResponse)
-def get_project_insights(
+def get_project_insights_endpoint(
     project_name: str,
     session: Session = Depends(get_session),
 ):
     """
     Return a list of resume-writing insight prompts for the given project.
 
-    Insights are derived at request time from already-mined statistics — no
-    new mining or database writes occur.
+    On the first call the insights are generated from the project's mined
+    statistics and persisted to the database. Subsequent calls return the
+    cached copy without re-running the generator.
     """
     decoded_name = unquote(project_name)
 
+    # Check to see if project insights are cached
+    cached = get_project_insights(session, decoded_name)
+    if cached is not None:
+        return ProjectInsightsResponse(
+            project_name=decoded_name,
+            insights=[InsightResponse(message=m) for m in cached.insights],
+        )
+
+    # Else generate insights
     report = get_project_report_by_name(session, decoded_name)
     if report is None:
         raise HTTPException(
@@ -56,13 +70,18 @@ def get_project_insights(
     try:
         insights = InsightGenerator.generate(report)
     except Exception:
-        logger.exception("Error generating insights for project '%s'", decoded_name)
+        logger.exception(
+            "Error generating insights for project '%s'", decoded_name)
         raise HTTPException(
             status_code=500,
             detail="Failed to generate insights.",
         )
 
+    messages = [i.message for i in insights]
+    save_project_insights(session, decoded_name, messages)
+    session.commit()
+
     return ProjectInsightsResponse(
         project_name=decoded_name,
-        insights=[InsightResponse(message=i.message) for i in insights],
+        insights=[InsightResponse(message=m) for m in messages],
     )
