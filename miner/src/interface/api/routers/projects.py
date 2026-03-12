@@ -321,6 +321,39 @@ def list_projects(session=Depends(get_session)):
         )
 
 
+def _resolve_compare_attribute(attr: str, model, report) -> Any:
+    """Resolve a single compare attribute to its display value."""
+    resume_item = report.generate_resume_item()
+
+    def _to_dt(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        try:
+            return datetime.combine(value, datetime.min.time())
+        except Exception:
+            return None
+
+    if attr == "start_date":
+        if model.chrono_start_override is not None:
+            return model.chrono_start_override
+        return _to_dt(resume_item.start_date)
+
+    if attr == "end_date":
+        if model.chrono_end_override is not None:
+            return model.chrono_end_override
+        return _to_dt(resume_item.end_date)
+
+    if attr == "frameworks":
+        return _frameworks_to_strings(resume_item.frameworks)
+
+    if attr == "weight":
+        return report.get_project_weight()
+
+    return getattr(resume_item, attr, None)
+
+
 @router.get("/compare", response_model=CompareProjectsResponse)
 def compare_projects(projects: Optional[str] = None, session=Depends(get_session)):
     """
@@ -489,6 +522,12 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
         project_model and project_model.showcase_start_date) else default_start
     end_out = project_model.showcase_end_date if (
         project_model and project_model.showcase_end_date) else default_end
+
+    # Chronology overrides take highest priority
+    if project_model and project_model.chrono_start_override is not None:
+        start_out = project_model.chrono_start_override
+    if project_model and project_model.chrono_end_override is not None:
+        end_out = project_model.chrono_end_override
 
     frameworks_out = (
         list(project_model.showcase_frameworks)
@@ -660,3 +699,125 @@ def get_project_resume_item(project_name: str, session=Depends(get_session)):
         frameworks=_frameworks_to_strings(resume_item.frameworks),
         bullet_points=list(resume_item.bullet_points or []),
     )
+
+
+@router.post("/{project_name}/image")
+def upload_project_image(
+    project_name: str,
+    file: UploadFile = File(...),
+    session=Depends(get_session)
+):
+    """
+    POST /{project_name}/image
+
+    Uploads an image file and assigns it to the specified project.
+    Validates that the uploaded file is an image before saving.
+    """
+
+    project_model = get_project_report_model_by_name(session, project_name)
+    if not project_model:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No project report named {project_name}"
+        )
+
+    # Validate that the uploaded file is actually an image
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Please upload an image."
+        )
+
+    try:
+        # Read file bytes and update the model
+        image_bytes = file.file.read()
+
+        project_model.image_data = image_bytes
+        project_model.last_updated = datetime.now()
+
+        session.add(project_model)
+        session.commit()
+
+        return {"message": f"Image successfully assigned to project '{project_name}'."}
+
+    except Exception as e:
+        session.rollback()
+        logger.error("Error uploading image for project %s: %s",
+                     project_name, str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload image."
+        )
+
+
+@router.put("/representation/reorder")
+def reorder_projects(request: ReorderProjectsRequest, session=Depends(get_session)):
+    """
+    Assign representation_rank to each project in the given order.
+    Index 0 gets rank 0 (highest priority).
+    """
+    try:
+        for rank, project_name in enumerate(request.project_names):
+            model = get_project_report_model_by_name(session, project_name)
+            if model is None:
+                raise HTTPException(
+                    status_code=404, detail=f"No project report named {project_name}")
+            model.representation_rank = rank
+            session.add(model)
+        session.commit()
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to reorder projects: {str(e)}")
+
+
+@router.patch("/{project_name}/representation")
+def update_project_representation(
+    project_name: str,
+    request: UpdateProjectRepresentationRequest,
+    session=Depends(get_session),
+):
+    """Update representation metadata for a project."""
+    model = get_project_report_model_by_name(session, project_name)
+    if not model:
+        raise HTTPException(
+            status_code=404, detail=f"No project report named {project_name}")
+
+    if request.representation_rank is not None and request.representation_rank < 0:
+        raise HTTPException(
+            status_code=422, detail="representation_rank must be >= 0")
+
+    if request.chrono_start_override is not None and request.chrono_end_override is not None:
+        if request.chrono_end_override < request.chrono_start_override:
+            raise HTTPException(
+                status_code=422,
+                detail="chrono_end_override must be >= chrono_start_override")
+
+    try:
+        if request.representation_rank is not None:
+            model.representation_rank = request.representation_rank
+        if request.chrono_start_override is not None:
+            model.chrono_start_override = request.chrono_start_override
+        if request.chrono_end_override is not None:
+            model.chrono_end_override = request.chrono_end_override
+        if request.showcase_selected is not None:
+            model.showcase_selected = request.showcase_selected
+        if request.compare_attributes is not None:
+            model.compare_attributes = list(request.compare_attributes)
+        if request.highlight_skills is not None:
+            model.highlight_skills = list(request.highlight_skills)
+
+        model.last_updated = datetime.now()
+        session.add(model)
+        session.commit()
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update representation: {str(e)}")
