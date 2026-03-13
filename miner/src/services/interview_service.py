@@ -199,10 +199,6 @@ def _dimension_counts(values: list[str] | None) -> dict[str, int]:
     return counts
 
 
-def _fit_context(interview_context: dict[str, Any]) -> dict[str, Any]:
-    return interview_context.get("job_fit_context", {})
-
-
 def _project_tech_stack(project: ProjectReportModel) -> list[str]:
     values: list[str] = []
     values.extend(_clean_list(list(project.showcase_frameworks or [])))
@@ -599,7 +595,7 @@ def build_interview_context(
 def _find_project_entry(interview_context: dict[str, Any], project_name: str | None) -> dict[str, Any] | None:
     if not project_name:
         return None
-    for entry in _fit_context(interview_context).get("relevant_projects", []):
+    for entry in interview_context.get("job_fit_context", {}).get("relevant_projects", []):
         if isinstance(entry, dict) and entry.get("project_name") == project_name:
             return entry
     return None
@@ -618,7 +614,7 @@ def _select_fit_dimension(
         return current_fit_dimension
 
     covered = {str(value) for value in (covered_dimensions or [])}
-    fit_context = _fit_context(interview_context)
+    fit_context = interview_context.get("job_fit_context", {})
     weak_dimensions = [str(value) for value in fit_context.get("weak_dimensions", [])]
     prioritized = fit_context.get("prioritized_dimensions", [])
 
@@ -645,7 +641,7 @@ def _select_next_dimension(
     prefer_gap: bool = False,
 ) -> str:
     counts = _dimension_counts(covered_dimensions)
-    fit_context = _fit_context(interview_context)
+    fit_context = interview_context.get("job_fit_context", {})
     prioritized = fit_context.get("prioritized_dimensions", [])
 
     if prefer_gap:
@@ -678,7 +674,7 @@ def _select_project_for_dimension(
     if current_project_name:
         return current_project_name
 
-    fit_context = _fit_context(interview_context)
+    fit_context = interview_context.get("job_fit_context", {})
     relevant_projects = [
         entry for entry in fit_context.get("relevant_projects", [])
         if isinstance(entry, dict)
@@ -802,7 +798,7 @@ def _render_prompt_context(
     retry_same_question: bool = False,
 ) -> dict[str, Any]:
     project_entry = _find_project_entry(interview_context, project_name)
-    fit_context = _fit_context(interview_context)
+    fit_context = interview_context.get("job_fit_context", {})
     prioritized = fit_context.get("prioritized_dimensions", [])
     selected_dimension = next(
         (item for item in prioritized if item.get("dimension") == fit_dimension),

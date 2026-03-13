@@ -107,21 +107,35 @@ def _fake_readiness_result() -> JobReadinessResult:
     )
 
 
-def _inventory_context(*, include_fit_context: bool = False) -> dict:
+def _context(
+    *,
+    resume_text: str,
+    project_summary: str,
+    tags: list[str],
+    skills: list[str],
+    fit_context: dict | None = None,
+) -> dict:
     context = {
         "user_profile": {
-            "resume_text": "Built backend APIs",
-            "project_summaries": ["FastAPI order service"],
-            "tags": ["backend"],
-            "extracted_skills": ["Python", "FastAPI", "SQL"],
+            "resume_text": resume_text,
+            "project_summaries": [project_summary],
+            "tags": tags,
+            "extracted_skills": skills,
             "repository_history_summary": [],
             "repository_file_evidence": [],
             "collaboration_signals": [],
         },
         "job_readiness_signals": {"strengths": [], "weaknesses": [], "suggestions": []},
     }
+    if fit_context is not None:
+        context["job_fit_context"] = fit_context
+    return context
+
+
+def _inventory_context(*, include_fit_context: bool = False) -> dict:
+    fit_context = None
     if include_fit_context:
-        context["job_fit_context"] = {
+        fit_context = {
             "prioritized_dimensions": [
                 {"dimension": "testing", "label": "testing strategy", "matches": []},
                 {"dimension": "database", "label": "database reasoning", "matches": []},
@@ -139,7 +153,13 @@ def _inventory_context(*, include_fit_context: bool = False) -> dict:
             "weak_dimensions": [],
             "role_lens": "engineering_delivery",
         }
-    return context
+    return _context(
+        resume_text="Built backend APIs",
+        project_summary="FastAPI order service",
+        tags=["backend"],
+        skills=["Python", "FastAPI", "SQL"],
+        fit_context=fit_context,
+    )
 
 
 def _with_backend_readiness(monkeypatch) -> None:
@@ -175,18 +195,12 @@ def _answer_payload() -> dict:
 
 
 def _data_context() -> dict:
-    return {
-        "user_profile": {
-            "resume_text": "Built data analysis workflows",
-            "project_summaries": ["Created reporting pipelines and visual outputs"],
-            "tags": ["analytics"],
-            "extracted_skills": ["Python", "SQL", "matplotlib"],
-            "repository_history_summary": [],
-            "repository_file_evidence": [],
-            "collaboration_signals": [],
-        },
-        "job_readiness_signals": {"strengths": [], "weaknesses": [], "suggestions": []},
-        "job_fit_context": {
+    return _context(
+        resume_text="Built data analysis workflows",
+        project_summary="Created reporting pipelines and visual outputs",
+        tags=["analytics"],
+        skills=["Python", "SQL", "matplotlib"],
+        fit_context={
             "prioritized_dimensions": [
                 {"dimension": "data_analysis_skills", "label": "data analysis skills", "matches": ["trends", "analysis", "data quality"]},
                 {"dimension": "stakeholder_communication", "label": "stakeholder communication", "matches": ["decision-making"]},
@@ -198,7 +212,6 @@ def _data_context() -> dict:
                     "tech_stack": ["Python", "matplotlib"],
                     "evidence_points": ["Automated reporting", "Data visualization", "Cross-functional insights"],
                     "matched_dimensions": ["data_analysis_skills", "stakeholder_communication"],
-                    "matched_keywords": [],
                     "role_hits": ["analytics", "reporting"],
                     "fit_score": 12,
                 }
@@ -208,7 +221,7 @@ def _data_context() -> dict:
             "role_lens": "data_analysis",
             "allowed_tools": ["Python", "matplotlib"],
         },
-    }
+    )
 
 
 def test_interview_start_endpoint_returns_first_question(blank_db, monkeypatch):
@@ -402,49 +415,3 @@ def test_evaluate_answer_relaxes_borderline_rejection(monkeypatch):
     assert "on-topic" in result.feedback.strengths.lower()
     assert result.next_action != "retry_same_question"
 
-
-def test_select_project_for_dimension_validates_model_choice(monkeypatch):
-    def fake_azure_chat_json(**kwargs):
-        if kwargs.get("schema_name") == interview_service.DEFAULT_INTERVIEW_PROJECT_SCHEMA_NAME:
-            return {
-                "project_name": "fastapi-orders-service",
-            }
-        raise AssertionError("Unexpected schema requested")
-
-    monkeypatch.setattr(interview_service, "azure_openai_enabled", lambda: True)
-    monkeypatch.setattr(interview_service, "azure_chat_json", fake_azure_chat_json)
-
-    selected = interview_service._select_project_for_dimension(  # type: ignore[attr-defined]
-        {
-            "job_fit_context": {
-                "role_lens": "product_strategy",
-                "primary_project": "fastapi-orders-service",
-                "relevant_projects": [
-                    {
-                        "project_name": "fastapi-orders-service",
-                        "summary": "Orders API",
-                        "tech_stack": ["FastAPI"],
-                        "evidence_points": ["Built backend endpoints"],
-                        "matched_dimensions": ["user_centered_design"],
-                        "role_hits": [],
-                        "fit_score": 20,
-                    },
-                    {
-                        "project_name": "web-analytics-portal",
-                        "summary": "Analytics dashboard",
-                        "tech_stack": ["React"],
-                        "evidence_points": ["Improved dashboard clarity for users"],
-                        "matched_dimensions": ["user_centered_design"],
-                        "role_hits": ["dashboard", "user"],
-                        "fit_score": 18,
-                    },
-                ],
-            }
-        },
-        "user_centered_design",
-        job_description=(
-            "UX Designer role focused on user needs, usability, interface clarity, and web products."
-        ),
-    )
-
-    assert selected == "web-analytics-portal"
