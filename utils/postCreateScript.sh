@@ -5,3 +5,6 @@
 # Update pip and install all package dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
+
+# for git push convience
+git config --global push.autoSetupRemote true

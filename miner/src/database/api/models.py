@@ -34,7 +34,7 @@ class ProjectReportModel(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now())
     last_updated: datetime = Field(default_factory=lambda: datetime.now())
-    analyzed_count: int = 1
+    analyzed_count: int = Field(default=1, nullable=False)
     parent: Optional[str] = None
 
     # Representation (Milestone 2 human-in-the-loop)
