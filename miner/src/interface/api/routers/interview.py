@@ -10,8 +10,8 @@ from src.services.interview_service import (
     InterviewAnswerResult,
     InterviewStartResult,
     build_interview_context,
-    generate_followup,
     generate_question,
+    evaluate_answer,
 )
 from src.services.job_readiness_service import JobReadinessUserProfileInput
 
@@ -135,7 +135,7 @@ def answer_interview_question(
         project_names=request.project_names,
         user_profile=request.user_profile,
     )
-    result = generate_followup(
+    result = evaluate_answer(
         user_answer=request.user_answer,
         current_question=request.current_question,
         job_description=request.job_description,

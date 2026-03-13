@@ -1304,28 +1304,3 @@ def evaluate_answer(
             attempt + 1,
         )
     return None
-
-
-def generate_followup(
-    *,
-    user_answer: str,
-    current_question: str,
-    job_description: str,
-    interview_context: dict[str, Any],
-    current_fit_dimension: str | None = None,
-    current_project_name: str | None = None,
-    covered_dimensions: list[str] | None = None,
-    retry_same_question: bool = False,
-    max_attempts: int = 2,
-) -> InterviewAnswerResult | None:
-    return evaluate_answer(
-        user_answer=user_answer,
-        current_question=current_question,
-        job_description=job_description,
-        interview_context=interview_context,
-        current_fit_dimension=current_fit_dimension,
-        current_project_name=current_project_name,
-        covered_dimensions=covered_dimensions,
-        retry_same_question=retry_same_question,
-        max_attempts=max_attempts,
-    )
