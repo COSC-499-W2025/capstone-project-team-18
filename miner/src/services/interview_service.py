@@ -155,12 +155,6 @@ class InterviewDimensionSet(BaseModel):
     dimensions: list[dict[str, Any]]
 
 
-class InterviewProjectChoice(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    project_name: str = Field(min_length=1)
-
-
 def _deployment_name() -> str | None:
     return (os.environ.get("AZURE_OPENAI_INTERVIEW_DEPLOYMENT") or "").strip() or None
 
@@ -380,11 +374,6 @@ def derive_interview_dimensions(
         )
         dimensions = _parse_dimension_payload(payload)
         if dimensions:
-            logger.info(
-                "[TASK=INTERVIEW_DIMENSIONS] Derived %d dimensions successfully on attempt %d",
-                len(dimensions),
-                attempt + 1,
-            )
             return _role_lens_guardrail(role_lens=role_lens, dimensions=dimensions)
         logger.warning(
             "[TASK=INTERVIEW_DIMENSIONS] Attempt %d returned no valid structured dimensions",
@@ -778,13 +767,9 @@ def _choose_project_with_model(
             temperature=0.1,
             deployment=_deployment_name(),
         )
-        if payload is None:
-            continue
-        try:
-            parsed = InterviewProjectChoice.model_validate(payload)
-        except ValidationError:
-            continue
-        return parsed.project_name
+        project_name = str((payload or {}).get("project_name", "")).strip() if isinstance(payload, dict) else ""
+        if project_name:
+            return project_name
     return None
 
 
@@ -1197,13 +1182,6 @@ def generate_question(
         )
         result = _parse_start_payload(payload, fit_dimension=fit_dimension, project_name=project_name)
         if result is not None:
-            logger.info(
-                "[TASK=INTERVIEW_START] Generated question successfully on attempt %d (category=%s, dimension=%s, project=%s)",
-                attempt + 1,
-                result.question_category,
-                result.fit_dimension,
-                result.project_name or "None",
-            )
             return result
         logger.warning(
             "[TASK=INTERVIEW_START] Attempt %d returned no valid structured question",
@@ -1320,14 +1298,6 @@ def evaluate_answer(
                             "next_action": "advance_dimension",
                         }
                     )
-            logger.info(
-                "[TASK=INTERVIEW_ANSWER] Evaluated answer successfully on attempt %d (acceptable=%s, action=%s, dimension=%s, project=%s)",
-                attempt + 1,
-                result.answer_acceptable,
-                result.next_action,
-                result.fit_dimension,
-                result.project_name or "None",
-            )
             return result
         logger.warning(
             "[TASK=INTERVIEW_ANSWER] Attempt %d returned no valid structured evaluation",
