@@ -1314,22 +1314,9 @@ class ArtifactMiner(cmd.Cmd):
                 break
             print("Job description cannot be empty.")
 
-        difficulty = input(
-            "Difficulty (beginner/intermediate/advanced) [intermediate]: "
-        ).strip().lower()
-        if difficulty in ['exit', 'quit']:
-            return self.do_exit(arg)
-        if not difficulty:
-            difficulty = "intermediate"
-        if difficulty not in {"beginner", "intermediate", "advanced"}:
-            print("Difficulty must be beginner, intermediate, or advanced.")
-            print("\n" + self.options)
-            return
-
         try:
             first_question, interview_context = start_mock_interview_cli(
                 job_description=job_description,
-                difficulty=difficulty,
             )
         except Exception as exc:
             print(f"\nUnable to start mock interview: {exc}")
@@ -1342,8 +1329,15 @@ class ArtifactMiner(cmd.Cmd):
             return
 
         current_question = first_question.question
+        current_project_name = first_question.project_name
+        current_fit_dimension = first_question.fit_dimension
+        covered_dimensions: list[str] = []
+        retry_same_question = False
         print("\nInterview started.")
-        print(f"\nInterviewer ({first_question.question_category}): {current_question}")
+        if current_project_name:
+            print(f"\nInterviewer ({first_question.question_category}, {current_fit_dimension}, {current_project_name}): {current_question}")
+        else:
+            print(f"\nInterviewer ({first_question.question_category}, {current_fit_dimension}): {current_question}")
 
         while True:
             user_answer = input(
@@ -1365,7 +1359,10 @@ class ArtifactMiner(cmd.Cmd):
                 interview_context=interview_context,
                 current_question=current_question,
                 user_answer=user_answer,
-                difficulty=difficulty,
+                current_project_name=current_project_name,
+                current_fit_dimension=current_fit_dimension,
+                covered_dimensions=covered_dimensions,
+                retry_same_question=retry_same_question,
             )
 
             if result is None:
@@ -1377,11 +1374,22 @@ class ArtifactMiner(cmd.Cmd):
                 print("\nThat answer was too vague or incomplete. Please try again.")
                 print(f"\nGuidance: {result.next_question}")
                 print(f"\nOriginal question: {current_question}")
+                retry_same_question = True
                 continue
 
             print("\nFeedback")
             print(f"Strengths: {result.feedback.strengths}")
             print(f"Improvements: {result.feedback.improvements}")
             print(f"Example answer: {result.feedback.example_answer}")
-            print(f"\nFollow up ({result.next_question_category}): {result.next_question}")
+            if current_fit_dimension:
+                covered_dimensions.append(current_fit_dimension)
+            current_fit_dimension = result.fit_dimension
+            current_project_name = result.project_name
+            retry_same_question = False
+            if current_project_name:
+                print(
+                    f"\nFollow up ({result.next_question_category}, {result.fit_dimension}, {current_project_name}): {result.next_question}"
+                )
+            else:
+                print(f"\nFollow up ({result.next_question_category}, {result.fit_dimension}): {result.next_question}")
             current_question = result.next_question

@@ -120,7 +120,6 @@ def start_miner_cli(
 def start_mock_interview_cli(
     *,
     job_description: str,
-    difficulty: str = "intermediate",
     resume_id: int | None = None,
     project_names: list[str] | None = None,
 ) -> tuple[InterviewStartResult | None, dict[str, Any] | None]:
@@ -142,7 +141,6 @@ def start_mock_interview_cli(
     first_question = generate_question(
         job_description=job_description,
         interview_context=interview_context,
-        difficulty=difficulty,
     )
     return first_question, interview_context
 
@@ -153,7 +151,10 @@ def answer_mock_interview_cli(
     interview_context: dict[str, Any],
     current_question: str,
     user_answer: str,
-    difficulty: str = "intermediate",
+    current_project_name: str | None = None,
+    current_fit_dimension: str | None = None,
+    covered_dimensions: list[str] | None = None,
+    retry_same_question: bool = False,
 ) -> InterviewAnswerResult | None:
     _configure_cli_ml_runtime()
     return evaluate_answer(
@@ -161,5 +162,8 @@ def answer_mock_interview_cli(
         current_question=current_question,
         job_description=job_description,
         interview_context=interview_context,
-        difficulty=difficulty,
+        current_project_name=current_project_name,
+        current_fit_dimension=current_fit_dimension,
+        covered_dimensions=covered_dimensions,
+        retry_same_question=retry_same_question,
     )

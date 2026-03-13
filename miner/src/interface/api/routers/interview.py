@@ -29,7 +29,6 @@ class InterviewBaseRequest(BaseModel):
     resume_id: int | None = None
     project_names: list[str] = Field(default_factory=list)
     user_profile: JobReadinessUserProfileInput | None = None
-    difficulty: str = "intermediate"
 
     @field_validator("job_description")
     @classmethod
@@ -37,14 +36,6 @@ class InterviewBaseRequest(BaseModel):
         stripped = value.strip()
         if not stripped:
             raise ValueError("job_description must contain non-whitespace characters")
-        return stripped
-
-    @field_validator("difficulty")
-    @classmethod
-    def validate_difficulty(cls, value: str) -> str:
-        stripped = value.strip().lower()
-        if stripped not in {"beginner", "intermediate", "advanced"}:
-            raise ValueError("difficulty must be beginner, intermediate, or advanced")
         return stripped
 
 
@@ -55,6 +46,10 @@ class InterviewStartRequest(InterviewBaseRequest):
 class InterviewAnswerRequest(InterviewBaseRequest):
     current_question: str = Field(min_length=1)
     user_answer: str = Field(min_length=1)
+    current_project_name: str | None = None
+    current_fit_dimension: str | None = None
+    covered_dimensions: list[str] = Field(default_factory=list)
+    retry_same_question: bool = False
 
     @field_validator("current_question", "user_answer")
     @classmethod
@@ -116,7 +111,6 @@ def start_interview(
     result = generate_question(
         job_description=request.job_description,
         interview_context=interview_context,
-        difficulty=request.difficulty,
     )
     if result is None:
         raise HTTPException(
@@ -146,7 +140,10 @@ def answer_interview_question(
         current_question=request.current_question,
         job_description=request.job_description,
         interview_context=interview_context,
-        difficulty=request.difficulty,
+        current_project_name=request.current_project_name,
+        current_fit_dimension=request.current_fit_dimension,
+        covered_dimensions=request.covered_dimensions,
+        retry_same_question=request.retry_same_question,
     )
     if result is None:
         raise HTTPException(
