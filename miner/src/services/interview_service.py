@@ -32,13 +32,11 @@ from src.database.api.models import ProjectReportModel
 from src.infrastructure.log.logging import get_logger
 from src.services.job_readiness_service import (
     JobReadinessUserProfileInput,
-    _clean_value,
     _project_file_signal_summary,
     _project_skills_from_stats,
     _project_stat_summary_lines,
     _project_summary,
     _project_tags_from_stats,
-    _weighted_skill_names,
     build_user_profile,
     run_job_readiness_analysis,
 )
@@ -161,7 +159,6 @@ class InterviewProjectChoice(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     project_name: str = Field(min_length=1)
-    reason: str = Field(min_length=1)
 
 
 def _deployment_name() -> str | None:
@@ -208,6 +205,10 @@ def _dimension_counts(values: list[str] | None) -> dict[str, int]:
     return counts
 
 
+def _fit_context(interview_context: dict[str, Any]) -> dict[str, Any]:
+    return interview_context.get("job_fit_context", {})
+
+
 def _project_tech_stack(project: ProjectReportModel) -> list[str]:
     values: list[str] = []
     values.extend(_clean_list(list(project.showcase_frameworks or [])))
@@ -237,7 +238,6 @@ def _extract_job_dimensions(job_description: str) -> list[dict[str, Any]]:
                     "label": _DIMENSION_LABELS[dimension],
                     "matches": matches,
                     "priority": len(matches),
-                    "source": "job_description",
                 }
             )
 
@@ -248,7 +248,6 @@ def _extract_job_dimensions(job_description: str) -> list[dict[str, Any]]:
                 "label": _DIMENSION_LABELS["architecture"],
                 "matches": [],
                 "priority": 1,
-                "source": "default",
             }
         )
 
@@ -290,7 +289,6 @@ def _parse_dimension_payload(payload: dict[str, Any] | None) -> list[dict[str, A
                 "label": label,
                 "matches": signals,
                 "priority": int(item.get("priority", index)),
-                "source": "azure",
                 "reason": reason,
                 "preferred_question_category": preferred,
             }
@@ -311,7 +309,6 @@ def _heuristic_dimension_entries(job_description: str) -> list[dict[str, Any]]:
                 "label": str(item["label"]),
                 "matches": list(item.get("matches", [])),
                 "priority": int(item.get("priority", 1)),
-                "source": str(item.get("source", "heuristic")),
                 "reason": f"This role appears to value {item['label']}.",
                 "preferred_question_category": "project_based",
             }
@@ -340,7 +337,6 @@ def _role_lens_guardrail(
         "label": "business problem framing and stakeholder communication",
         "matches": ["business problem", "stakeholder needs", "recommendation", "workflow improvement"],
         "priority": 1,
-        "source": "role_lens_guardrail",
         "reason": "This consulting-oriented role should assess how the candidate explains technical work in business and stakeholder terms.",
         "preferred_question_category": "project_based",
     }
@@ -428,7 +424,6 @@ def _project_fit_entry(
 ) -> dict[str, Any]:
     evidence_blob = _project_evidence_blob(project)
     matched_dimensions: list[str] = []
-    matched_keywords: list[str] = []
     score = 0
     for item in dimensions:
         dimension = str(item["dimension"])
@@ -444,11 +439,9 @@ def _project_fit_entry(
         ]
         if dimension_matches:
             matched_dimensions.append(dimension)
-            matched_keywords.extend(dimension_matches)
             score += len(dimension_matches) * 3
         elif overlap:
             matched_dimensions.append(dimension)
-            matched_keywords.extend(overlap[:4])
             score += min(len(overlap), 2)
 
     tech_stack = _project_tech_stack(project)
@@ -483,7 +476,6 @@ def _project_fit_entry(
             + list(project.showcase_bullet_points or [])[:4]
         )[:8],
         "matched_dimensions": _clean_list(matched_dimensions),
-        "matched_keywords": _clean_list(matched_keywords)[:10],
         "role_hits": _clean_list(role_hits)[:8],
         "fit_score": score,
     }
@@ -526,18 +518,6 @@ def _derive_allowed_tools(
         seen.add(lowered)
         normalized.append(value)
     return normalized[:10]
-
-
-def _select_dimensions_for_project(
-    project_entry: dict[str, Any],
-    prioritized_dimensions: list[dict[str, Any]],
-) -> list[str]:
-    matched = {str(value) for value in project_entry.get("matched_dimensions", [])}
-    if matched:
-        ordered = [item["dimension"] for item in prioritized_dimensions if item["dimension"] in matched]
-        if ordered:
-            return ordered
-    return [item["dimension"] for item in prioritized_dimensions[:3]]
 
 
 def _derive_job_fit_context(
@@ -630,7 +610,7 @@ def build_interview_context(
 def _find_project_entry(interview_context: dict[str, Any], project_name: str | None) -> dict[str, Any] | None:
     if not project_name:
         return None
-    for entry in interview_context.get("job_fit_context", {}).get("relevant_projects", []):
+    for entry in _fit_context(interview_context).get("relevant_projects", []):
         if isinstance(entry, dict) and entry.get("project_name") == project_name:
             return entry
     return None
@@ -649,7 +629,7 @@ def _select_fit_dimension(
         return current_fit_dimension
 
     covered = {str(value) for value in (covered_dimensions or [])}
-    fit_context = interview_context.get("job_fit_context", {})
+    fit_context = _fit_context(interview_context)
     weak_dimensions = [str(value) for value in fit_context.get("weak_dimensions", [])]
     prioritized = fit_context.get("prioritized_dimensions", [])
 
@@ -676,7 +656,7 @@ def _select_next_dimension(
     prefer_gap: bool = False,
 ) -> str:
     counts = _dimension_counts(covered_dimensions)
-    fit_context = interview_context.get("job_fit_context", {})
+    fit_context = _fit_context(interview_context)
     prioritized = fit_context.get("prioritized_dimensions", [])
 
     if prefer_gap:
@@ -709,7 +689,7 @@ def _select_project_for_dimension(
     if current_project_name:
         return current_project_name
 
-    fit_context = interview_context.get("job_fit_context", {})
+    fit_context = _fit_context(interview_context)
     relevant_projects = [
         entry for entry in fit_context.get("relevant_projects", [])
         if isinstance(entry, dict)
@@ -808,6 +788,26 @@ def _choose_project_with_model(
     return None
 
 
+def _render_interview_prompt(
+    *,
+    template: str,
+    job_description: str,
+    prompt_context: dict[str, Any],
+    current_question: str = "",
+    user_answer: str = "",
+) -> str:
+    prompt = (
+        template
+        .replace("{{job_description}}", job_description)
+        .replace("{{interview_context}}", json.dumps(prompt_context, indent=2, sort_keys=True))
+    )
+    if current_question:
+        prompt = prompt.replace("{{current_question}}", current_question)
+    if user_answer:
+        prompt = prompt.replace("{{user_answer}}", user_answer)
+    return prompt
+
+
 def _render_prompt_context(
     *,
     interview_context: dict[str, Any],
@@ -817,7 +817,7 @@ def _render_prompt_context(
     retry_same_question: bool = False,
 ) -> dict[str, Any]:
     project_entry = _find_project_entry(interview_context, project_name)
-    fit_context = interview_context.get("job_fit_context", {})
+    fit_context = _fit_context(interview_context)
     prioritized = fit_context.get("prioritized_dimensions", [])
     selected_dimension = next(
         (item for item in prioritized if item.get("dimension") == fit_dimension),
@@ -863,15 +863,14 @@ def render_interview_start_prompt(
     fit_dimension: str,
     project_name: str | None,
 ) -> str:
-    prompt_context = _render_prompt_context(
-        interview_context=interview_context,
-        fit_dimension=fit_dimension,
-        project_name=project_name,
-    )
-    return (
-        INTERVIEW_START_USER_PROMPT_TEMPLATE
-        .replace("{{job_description}}", job_description)
-        .replace("{{interview_context}}", json.dumps(prompt_context, indent=2, sort_keys=True))
+    return _render_interview_prompt(
+        template=INTERVIEW_START_USER_PROMPT_TEMPLATE,
+        job_description=job_description,
+        prompt_context=_render_prompt_context(
+            interview_context=interview_context,
+            fit_dimension=fit_dimension,
+            project_name=project_name,
+        ),
     )
 
 
@@ -886,19 +885,18 @@ def render_interview_answer_prompt(
     covered_dimensions: list[str] | None = None,
     retry_same_question: bool = False,
 ) -> str:
-    prompt_context = _render_prompt_context(
-        interview_context=interview_context,
-        fit_dimension=fit_dimension,
-        project_name=project_name,
-        covered_dimensions=covered_dimensions,
-        retry_same_question=retry_same_question,
-    )
-    return (
-        INTERVIEW_ANSWER_USER_PROMPT_TEMPLATE
-        .replace("{{job_description}}", job_description)
-        .replace("{{interview_context}}", json.dumps(prompt_context, indent=2, sort_keys=True))
-        .replace("{{current_question}}", current_question)
-        .replace("{{user_answer}}", user_answer)
+    return _render_interview_prompt(
+        template=INTERVIEW_ANSWER_USER_PROMPT_TEMPLATE,
+        job_description=job_description,
+        prompt_context=_render_prompt_context(
+            interview_context=interview_context,
+            fit_dimension=fit_dimension,
+            project_name=project_name,
+            covered_dimensions=covered_dimensions,
+            retry_same_question=retry_same_question,
+        ),
+        current_question=current_question,
+        user_answer=user_answer,
     )
 
 
