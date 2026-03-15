@@ -168,7 +168,7 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
         resume_model = save_resume(session, resume_domain)
         session.commit()
 
-        return resume_model
+        return _build_resume_response(resume_model, session)
 
     except Exception as e:
         session.rollback()
@@ -371,7 +371,7 @@ def refresh_resume(
 
         session.commit()
 
-        return updated_model
+        return _build_resume_response(updated_model, session)
 
     except Exception as e:
         session.rollback()
