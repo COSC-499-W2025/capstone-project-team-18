@@ -43,6 +43,12 @@ class ProjectStatCollection(Enum):
         expected_type=list[WeightedSkills],
     )
 
+    GROUP_PROJECT_SKILLS_DEMONSTRATED = ProjectStatisticTemplate(
+        name="GROUP_PROJECT_SKILLS_DEMONSTRATED",
+        description="skills demonstrated in files touched by non-user collaborators",
+        expected_type=list[WeightedSkills],
+    )
+
     IS_GROUP_PROJECT = ProjectStatisticTemplate(
         name="IS_GROUP_PROJECT",
         description="whether the project is a group project",
@@ -91,9 +97,21 @@ class ProjectStatCollection(Enum):
         expected_type=dict[FileDomain, float]
     )
 
+    ACTIVITY_TYPE_RATIO = ProjectStatisticTemplate(
+        name="ACTIVITY_TYPE_RATIO",
+        description="Average contribution in each domain by all contributors",
+        expected_type=dict[FileDomain, float]
+    )
+
     PROJECT_FRAMEWORKS = ProjectStatisticTemplate(
         name="PROJECT_FRAMEWORKS",
         description="These are the imported packages",
+        expected_type=list[WeightedSkills]
+    )
+
+    GROUP_PROJECT_FRAMEWORKS = ProjectStatisticTemplate(
+        name="GROUP_PROJECT_FRAMEWORKS",
+        description="frameworks/packages detected in files touched by non-user collaborators",
         expected_type=list[WeightedSkills]
     )
 
@@ -149,4 +167,20 @@ class ProjectStatCollection(Enum):
         name="ROLE_DESCRIPTION",
         description="Human-readable description of user's role for resume",
         expected_type=str
+    )
+
+    GROUP_CONTRIBUTION = ProjectStatisticTemplate(
+        name="GROUP_CONTRIBUTION",
+        description="Mapping of commit count to author email in group project",
+        expected_type=dict  # Dict[str, int]
+    )
+
+    PROJECT_SKILL_ACTIVITY = ProjectStatisticTemplate(
+        name="PROJECT_SKILL_ACTIVITY",
+        description=(
+            "Commit dates on files demonstrating each skill within this project. "
+            "Used to build a cumulative skill-usage timeline. "
+            "JSON schema: { '<skill_name>': ['YYYY-MM-DD', ...], ... }"
+        ),
+        expected_type=dict[str, list],
     )

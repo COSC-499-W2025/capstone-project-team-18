@@ -185,12 +185,28 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
 
         dirnames = report._get_sub_dirs()
 
+        non_user_authors_by_file: dict[str, int] = {}
+        if report.project_repo and report.email:
+            try:
+                non_user_authors_by_file = self._get_nonUser_authors_per_file(
+                    report.project_repo,
+                    report.email,
+                )
+            except Exception:
+                non_user_authors_by_file = {}
+
         # High-level skill tracking (deduped per file)
         high_level_skill_counter: dict[str, int] = {}
         high_level_skill_files: dict[str, set] = {}
 
+        group_high_level_skill_counter: dict[str, int] = {}
+        group_high_level_skill_files: dict[str, set] = {}
+
         project_framework_counter: dict[str, int] = {}
         project_framework_files: dict[str, set] = {}
+
+        group_project_framework_counter: dict[str, int] = {}
+        group_project_framework_files: dict[str, set] = {}
 
         for file_report in report.file_reports:
             imported_packages: Optional[list[str]] = file_report.get_value(
@@ -200,6 +216,8 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
             # 1. Skill from filename (e.g., Dockerfile → DevOps)
             file_skill = SkillMapper.map_filepath_to_skill(
                 file_report.filepath)
+            is_group_file = True if non_user_authors_by_file.get(
+                file_report.filepath, 0) >= 1 else False
             if file_skill:
                 count_one_per_file(
                     high_level_skill_counter,
@@ -207,6 +225,13 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                     file_skill.value,
                     file_report.filepath
                 )
+                if is_group_file:
+                    count_one_per_file(
+                        group_high_level_skill_counter,
+                        group_high_level_skill_files,
+                        file_skill.value,
+                        file_report.filepath
+                    )
 
             if imported_packages is None or imported_packages == []:
                 continue
@@ -222,6 +247,13 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                     package,
                     file_report.filepath
                 )
+                if is_group_file:
+                    count_one_per_file(
+                        group_project_framework_counter,
+                        group_project_framework_files,
+                        package,
+                        file_report.filepath
+                    )
 
                 package_skill = SkillMapper.map_package_to_skill(package)
                 if package_skill:
@@ -231,6 +263,13 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                         package_skill.value,
                         file_report.filepath
                     )
+                    if is_group_file:
+                        count_one_per_file(
+                            group_high_level_skill_counter,
+                            group_high_level_skill_files,
+                            package_skill.value,
+                            file_report.filepath
+                        )
 
         to_return = []
 
@@ -257,7 +296,50 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
             project_framework_counter
         )
 
+        _add_weighted_stat(
+            ProjectStatCollection.GROUP_PROJECT_SKILLS_DEMONSTRATED.value,
+            group_high_level_skill_counter
+        )
+
+        _add_weighted_stat(
+            ProjectStatCollection.GROUP_PROJECT_FRAMEWORKS.value,
+            group_project_framework_counter
+        )
+
         return to_return
+
+    def _get_nonUser_authors_per_file(self, repo, email) -> dict[str, int]:
+        """We want to increment certain statistics if they are contributed to by authors other than the user"""
+        authors_per_file: dict[str, set[str]] = {}
+
+        for commit in repo.iter_commits():
+            if not hasattr(commit, "author") or not hasattr(commit.author, "email"):
+                continue
+
+            author_email = commit.author.email
+            if author_email == email:
+                continue
+
+            # Get files changed in this commit
+            if commit.parents:
+                diffs = commit.parents[0].diff(commit)
+                for diff in diffs:
+                    # Use b_path for new/modified files
+                    file_path = diff.b_path if diff.b_path else diff.a_path
+                    if file_path:
+                        if file_path not in authors_per_file:
+                            authors_per_file[file_path] = set()
+                        authors_per_file[file_path].add(author_email)
+            else:
+                # First commit, all files are new
+                for item in commit.tree.traverse():
+                    if item.type == "blob":  # It's a file
+                        if item.path not in authors_per_file:
+                            authors_per_file[item.path] = set()
+                        authors_per_file[item.path].add(author_email)
+
+        # Convert sets to counts
+        return {path: len(authors) for path, authors in authors_per_file.items()}
 
 
 class ProjectReadmeInsights(ProjectStatisticCalculation):
@@ -523,10 +605,14 @@ class ProjectActivityTypeContributions(ProjectStatisticCalculation):
     Otherwise, it is assumed that they worked on
     all files and we will just use the distrubition
     of the project files.
+
+    Additonally returns the activity type ratio for the project which can be used as a comparison for the user
     """
 
     def calculate(self, report: ProjectReport) -> list[Statistic]:
         activity_type_to_lines = {}
+        average_activity_type_to_lines = {}
+
         git_analysis = True if report.email and report.project_repo else False
 
         for fr in report.file_reports:
@@ -558,10 +644,18 @@ class ProjectActivityTypeContributions(ProjectStatisticCalculation):
             activity_type_to_lines[file_domain] = prev_lines + \
                 lines_in_file * percent
 
+            prev_count = average_activity_type_to_lines.get(file_domain, 0)
+
+            average_activity_type_to_lines[file_domain] = prev_count + \
+                lines_in_file
+
         normalize(activity_type_to_lines)
+        normalize(average_activity_type_to_lines)
 
         return [Statistic(
-            ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines)]
+            ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines),
+            Statistic(
+                ProjectStatCollection.ACTIVITY_TYPE_RATIO.value, average_activity_type_to_lines)]
 
 
 class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
@@ -576,6 +670,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
     - `TOTAL_AUTHORS`: Total number of unique authors
     - `AUTHORS_PER_FILE`: Dictionary mapping file paths to number of unique authors
     - `USER_COMMIT_PERCENTAGE`: Percentage of commits made by the user (if applicable)
+    - `GROUP CONTRIBUTIONS`: Dictionary mapping each other's email to commit count
 
     """
 
@@ -624,10 +719,19 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
 
         # Only add user commit percentage for group projects
         if is_group_project:
+            group_contributions = self._get_commits_by_author(
+                report.project_repo)
+
             stats.append(
                 Statistic(
                     ProjectStatCollection.USER_COMMIT_PERCENTAGE.value,
                     user_commit_percentage,
+                )
+            )
+            stats.append(
+                Statistic(
+                    ProjectStatCollection.GROUP_CONTRIBUTION.value,
+                    group_contributions,
                 )
             )
 

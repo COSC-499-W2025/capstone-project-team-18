@@ -161,6 +161,31 @@ class UserWeightedSkills(UserStatisticCalculation):
         return [Statistic(UserStatCollection.USER_SKILLS.value, user_weighted_skills)]
 
 
+class UserCommitActivityTimeline(UserStatisticCalculation):
+    """
+    Calculates the timeline of each commit, to use in a contribution graph.
+
+    Maps through commit history and also gets average
+    commits for the group to utilize in
+    an alternative contribution graph view.
+    """
+
+    def calculate(self, report: "UserReport") -> List[Statistic]:
+        commits_dict = {}
+        user_commits_dict = {}
+
+        for project_report in report.project_reports:
+            for commit in project_report.project_repo.iter_commits():
+                date = datetime.fromtimestamp(
+                    commit.authored_date).strftime("%Y-%m-%d")
+                commits_dict = commits_dict.get(date, 0) + 1
+
+                if commit.author.email == project_report.email or (project_report.github and project_report.github in commit.author.email):
+                    user_commits_dict = user_commits_dict.get(date, 0) + 1
+
+        return [Statistic(UserStatCollection.COMMIT_ACTIVITY_TIMELINE.value, sorted), Statistic(UserStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, )]
+
+
 class UserStatisticReportBuilder(StatisticReportBuilder["UserReport"]):
     ALL_CALCULATORS = [
         UserDates,
