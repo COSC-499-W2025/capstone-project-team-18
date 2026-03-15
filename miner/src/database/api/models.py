@@ -22,16 +22,13 @@ class UserConfigModel(SQLModel, table=True):
     project_reports: List["ProjectReportModel"] = Relationship(
         back_populates="user_config")
 
-    # Education entries for the user stored as JSON col
-    education: List[str] = Field(
-        sa_column=Column(JSON, nullable=False),
-        default_factory=list
-    )
-
-    # Awards/honours for the user
-    awards: List[str] = Field(
-        sa_column=Column(JSON, nullable=False),
-        default_factory=list
+    # One-to-one relationship with ResumeConfigModel
+    resume_config: Optional["ResumeConfigModel"] = Relationship(
+        back_populates="user_config",
+        sa_relationship_kwargs={
+            "uselist": False, # Enforces 1-to-1
+            "cascade": "all, delete-orphan"
+            }
     )
 
 
@@ -80,6 +77,38 @@ class FileReportModel(SQLModel, table=True):
     project: Optional[ProjectReportModel] = Relationship(
         back_populates="file_reports")
 
+
+class ResumeConfigModel(SQLModel, table=True):
+    """
+    Resume configuration that stores education and awards.
+    Has a 1-to-1 relationship with UserConfigModel.
+    This is global per user, not per resume.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    # Foreign key to UserConfigModel (1-to-1)
+    user_config_id: Optional[int] = Field(
+        default=None,
+        foreign_key="userconfigmodel.id",
+        unique=True  # Enforces 1-to-1
+    )
+
+    # Education entries (e.g., ["BSc Computer Science, UBC, 2024"])
+    education: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
+    # Awards/honors (e.g., ["Dean's List 2023"])
+    awards: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now())
+    last_updated: datetime = Field(default_factory=lambda: datetime.now())
+
+    user_config: Optional["UserConfigModel"] = Relationship(back_populates="resume_config")
 
 class ResumeModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

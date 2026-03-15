@@ -18,7 +18,9 @@ def sample_resume_model():
         github="testuser",
         skills=["Python", "JavaScript", "SQL"],
         created_at=datetime(2026, 2, 9, 10, 0, 0),
-        last_updated=datetime(2026, 2, 9, 10, 0, 0)
+        last_updated=datetime(2026, 2, 9, 10, 0, 0),
+        education=["BSc Computer Science"],
+        awards=["Dean's List"]
     )
 
     item = ResumeItemModel(
@@ -52,7 +54,9 @@ def sample_resume_domain():
     # Create resume with email and weighted_skills
     resume = Resume(
         email="test@example.com",
-        weight_skills=weighted_skills
+        weight_skills=weighted_skills,
+        education=["BSc Computer Science"],
+        awards=["Dean's List"]
     )
 
     # Manually set github since it's not in __init__
@@ -192,21 +196,33 @@ def test_generate_resume_nonexistent_project(client):
 
 def test_generate_resume_with_user_config(client, sample_resume_domain, sample_resume_model):
     """Test generation with specific user config"""
-    from src.database.api.models import UserConfigModel
+    from src.database.api.models import UserConfigModel, ResumeConfigModel
     from src.interface.api.routers.util import get_session
 
     mock_project = MagicMock()
+    mock_resume_config = ResumeConfigModel(
+        id=1,
+        user_config_id=1,
+        education=["BSc CS, UBC, 2024"],
+        awards=["Dean's List 2023"]
+    )
+
     mock_config = UserConfigModel(
         id=1,
+        consent=True,
         user_email="config@example.com",
         github="configuser"
     )
 
+    mock_config.resume_config = mock_resume_config
+
     with patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
             patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
+            patch('src.interface.api.routers.resume.save_resume') as mock_save, \
+            patch('src.interface.api.routers.resume.get_user_config_safe') as mock_get_config:
 
         mock_get_project.return_value = mock_project
+        mock_get_config.return_value = mock_config
 
         mock_report_instance = MagicMock()
         mock_report_instance.generate_resume.return_value = sample_resume_domain
@@ -214,24 +230,17 @@ def test_generate_resume_with_user_config(client, sample_resume_domain, sample_r
 
         mock_save.return_value = sample_resume_model
 
-        # Mock the session.get call
-        mock_session = MagicMock()
-        mock_session.get.return_value = mock_config
-        mock_session.commit = MagicMock()
+        response = client.post("/resume/generate", json={
+            "project_names": ["Test Project"],
+            "user_config_id": 1
+        })
 
-        def _fake_get_session():
-            yield mock_session
-
-        client.app.dependency_overrides[get_session] = _fake_get_session
-
-        try:
-            response = client.post("/resume/generate", json={
-                "project_names": ["Test Project"],
-                "user_config_id": 1
-            })
-            assert response.status_code == 200
-        finally:
-            client.app.dependency_overrides.pop(get_session, None)
+        assert response.status_code == 200
+        # Verify generate_resume was called with education/awards
+        mock_report_instance.generate_resume.assert_called_once()
+        call_kwargs = mock_report_instance.generate_resume.call_args.kwargs
+        assert call_kwargs["education"] == ["BSc CS, UBC, 2024"]
+        assert call_kwargs["awards"] == ["Dean's List 2023"]
 
 
 def test_generate_resume_invalid_user_config(client):
@@ -645,3 +654,223 @@ def test_edit_resume_item_invalid_item_index(client, sample_resume_model):
 
         assert response.status_code == 400
         assert "out of bounds" in response.json()["detail"].lower()
+
+
+def test_get_resume_with_education_and_awards(client, sample_resume_model):
+    """Test retrieving resume includes education and awards"""
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = sample_resume_model
+
+        response = client.get("/resume/1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "education" in data
+        assert "awards" in data
+        assert len(data["education"]) == 1
+        assert len(data["awards"]) == 1
+        assert data["education"][0] == "BSc Computer Science"
+        assert data["awards"][0] == "Dean's List"
+
+
+def test_get_resume_with_empty_education_awards(client, sample_resume_model):
+    """Test retrieving resume with empty education and awards lists"""
+    sample_resume_model.education = []
+    sample_resume_model.awards = []
+
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = sample_resume_model
+
+        response = client.get("/resume/1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["education"] == []
+        assert data["awards"] == []
+
+
+def test_generate_resume_with_user_config_no_resume_config(client, sample_resume_domain, sample_resume_model):
+    """Test generation with user config that has no resume_config"""
+    from src.database.api.models import UserConfigModel
+
+    mock_project = MagicMock()
+    mock_project.project_name = "Test Project"
+
+    mock_config = UserConfigModel(
+        id=1,
+        consent=True,
+        user_email="config@example.com",
+        github="configuser"
+    )
+    mock_config.resume_config = None
+
+    with patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
+            patch('src.interface.api.routers.resume.save_resume') as mock_save, \
+            patch('src.interface.api.routers.resume.get_user_config_safe') as mock_get_config:
+
+        mock_get_project.return_value = mock_project
+        mock_get_config.return_value = mock_config
+
+        mock_report_instance = MagicMock()
+        mock_report_instance.generate_resume.return_value = sample_resume_domain
+        mock_user_report.return_value = mock_report_instance
+
+        mock_save.return_value = sample_resume_model
+
+        response = client.post("/resume/generate", json={
+            "project_names": ["Test Project"],
+            "user_config_id": 1
+        })
+
+        assert response.status_code == 200
+        # Verify generate_resume was called with None for education/awards
+        mock_report_instance.generate_resume.assert_called_once()
+        call_kwargs = mock_report_instance.generate_resume.call_args.kwargs
+        assert call_kwargs["education"] == []
+        assert call_kwargs["awards"] == []
+
+
+def test_generate_resume_with_empty_education_awards(client, sample_resume_domain, sample_resume_model):
+    """Test generation with user config that has empty education/awards"""
+    from src.database.api.models import UserConfigModel, ResumeConfigModel
+
+    mock_project = MagicMock()
+
+    mock_resume_config = ResumeConfigModel(
+        id=1,
+        user_config_id=1,
+        education=[],
+        awards=[]
+    )
+
+    mock_config = UserConfigModel(
+        id=1,
+        consent=True,
+        user_email="config@example.com",
+        github="configuser"
+    )
+    mock_config.resume_config = mock_resume_config
+
+    with patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
+            patch('src.interface.api.routers.resume.save_resume') as mock_save, \
+            patch('src.interface.api.routers.resume.get_user_config_safe') as mock_get_config:
+
+        mock_get_project.return_value = mock_project
+        mock_get_config.return_value = mock_config
+
+        mock_report_instance = MagicMock()
+        mock_report_instance.generate_resume.return_value = sample_resume_domain
+        mock_user_report.return_value = mock_report_instance
+
+        mock_save.return_value = sample_resume_model
+
+        response = client.post("/resume/generate", json={
+            "project_names": ["Test Project"],
+            "user_config_id": 1
+        })
+
+        assert response.status_code == 200
+        call_kwargs = mock_report_instance.generate_resume.call_args.kwargs
+        assert call_kwargs["education"] == []
+        assert call_kwargs["awards"] == []
+
+
+def test_refresh_resume_success(client, sample_resume_domain, sample_resume_model):
+    """Test successfully refreshing a resume from its source projects"""
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
+            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
+            patch('src.interface.api.routers.resume.save_resume') as mock_save:
+
+        # Mock the existing resume model with a project name
+        mock_get_model.return_value = sample_resume_model
+
+        # Mock project report
+        mock_project = MagicMock()
+        mock_project.project_name = "Test Project"
+        mock_get_project.return_value = mock_project
+
+        # Mock UserReport
+        mock_report_instance = MagicMock()
+        refreshed_resume = sample_resume_domain
+        refreshed_resume.email = "refreshed@example.com"
+        mock_report_instance.generate_resume.return_value = refreshed_resume
+        mock_user_report.return_value = mock_report_instance
+
+        # Mock save
+        mock_save.return_value = sample_resume_model
+
+        response = client.post("/resume/1/refresh")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == 1
+
+
+def test_refresh_resume_not_found(client):
+    """Test refreshing a non-existent resume"""
+    with patch('src.interface.api.routers.resume.load_resume') as mock_load:
+        mock_load.return_value = None
+
+        response = client.post("/resume/999/refresh")
+
+        assert response.status_code == 404
+        assert "resume found" in response.json()["detail"].lower()
+
+
+def test_refresh_resume_no_items(client, sample_resume_model):
+    """Test refreshing a resume with no items"""
+    sample_resume_model.items = []
+
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model:
+        mock_get_model.return_value = sample_resume_model
+
+        response = client.post("/resume/1/refresh")
+
+        assert response.status_code == 400
+        assert "no projects" in response.json()["detail"].lower()
+
+
+def test_refresh_resume_project_not_found(client, sample_resume_domain, sample_resume_model):
+    """Test refreshing when source project no longer exists"""
+    with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
+            patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
+            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project:
+
+        mock_load.return_value = sample_resume_domain
+        mock_get_model.return_value = sample_resume_model
+        mock_get_project.return_value = None
+
+        response = client.post("/resume/1/refresh")
+
+        assert response.status_code == 404
+        assert "project" in response.json()["detail"].lower()
+
+
+def test_refresh_resume_preserves_manual_edits(client, sample_resume_domain, sample_resume_model):
+    """Test that refreshing preserves the resume ID"""
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
+            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
+            patch('src.interface.api.routers.resume.save_resume') as mock_save:
+
+        mock_get_model.return_value = sample_resume_model
+
+        mock_project = MagicMock()
+        mock_get_project.return_value = mock_project
+
+        mock_report_instance = MagicMock()
+        mock_report_instance.generate_resume.return_value = sample_resume_domain
+        mock_user_report.return_value = mock_report_instance
+
+        # Mock save to return model without ID
+        sample_resume_model.id = None
+        mock_save.return_value = sample_resume_model
+
+        response = client.post("/resume/1/refresh")
+
+        assert response.status_code == 200
+        # Verify the ID was restored
+        assert sample_resume_model.id == 1

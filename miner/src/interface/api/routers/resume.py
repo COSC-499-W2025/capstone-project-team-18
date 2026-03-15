@@ -18,8 +18,6 @@ router = APIRouter(
 )
 
 # ---------- Request/Response Models ----------
-
-
 class GenerateResumeRequest(SQLModel):
     """Request model for generating a resume"""
     project_names: List[str]
@@ -94,7 +92,10 @@ def get_resume(resume_id: int, session=Depends(get_session)):
 
 @router.post("/generate", response_model=ResumeResponse)
 def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)):
-    """Generate a new resume from projects"""
+    """
+    Generate a new resume from projects
+    fetches education/awards from user's ResumeConfigModel.
+    """
 
     if not request.project_names:
         raise HTTPException(
@@ -121,9 +122,12 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
         user_email = user_config.user_email if user_config else None
         user_github = user_config.github if user_config else None
 
-        # Extract education and awards from user config.
-        user_education = user_config.education if user_config else []
-        user_awards = user_config.awards if user_config else []
+        # Extract education/awards from ResumeConfigModel
+        user_education = []
+        user_awards = []
+        if user_config and user_config.resume_config:
+            user_education = user_config.resume_config.education or []
+            user_awards = user_config.resume_config.awards or []
 
         # Generate resume with email, github, education and awards
         resume_domain = user_report.generate_resume(
@@ -157,8 +161,7 @@ def edit_resume_metadata(
     and will cause an error if used without a corresponding ID.
     """
 
-    # Load as domain object (uses deserialize_resume)
-
+    # Load as domain object
     resume_domain = load_resume(session, resume_id)
 
     if not resume_domain:
@@ -341,7 +344,6 @@ def refresh_resume(
         updated_model.last_updated = datetime.datetime.now()
 
         session.commit()
-        session.refresh(updated_model)
 
         return updated_model
 

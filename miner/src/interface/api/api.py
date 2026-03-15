@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from src.utils.errors import KeyNotFoundError
 from src.app import init_system
+from src.app import init_system, _init_db
 from src.interface.api.routers import (
     projects,
     resume,
@@ -27,6 +28,7 @@ from src.interface.api.routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Commands to run on startup
+    _init_db() # Create database tables first
     init_system()
 
     yield
