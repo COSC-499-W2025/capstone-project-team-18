@@ -14,7 +14,8 @@ from src.core.ML.models.job_readiness_constants import (
     JOB_READINESS_SYSTEM_PROMPT,
     JOB_READINESS_USER_PROMPT_TEMPLATE,
 )
-from src.database import get_project_report_models_by_names, get_resume_model_by_id
+from src.database.api.CRUD.projects import get_project_report_models_by_names
+from src.database.api.CRUD.resume import get_resume_model_by_id
 from src.database.api.models import ProjectReportModel, ResumeModel
 
 
