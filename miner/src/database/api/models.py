@@ -116,18 +116,6 @@ class ResumeModel(SQLModel, table=True):
     github: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
 
-    # Store education and awards in resume
-    # This allows resumes to "snapshot" the user's education/awards at generation time,
-    # meaning editing user config later doesn't retroactively change old resumes
-    education: List[str] = Field(
-        sa_column=Column(JSON, nullable=False),
-        default_factory=list
-    )
-    awards: List[str] = Field(
-        sa_column=Column(JSON, nullable=False),
-        default_factory=list
-    )
-
     created_at: datetime = Field(
         default_factory=lambda: datetime.now())
     last_updated: datetime = Field(

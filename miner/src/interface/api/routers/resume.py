@@ -75,6 +75,32 @@ class ResumeResponse(SQLModel):
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
 
+def _build_resume_response(resume_model, session) -> ResumeResponse:
+    """
+    Build a ResumeResponse
+    Update the ResumeResponse in the resume router and the
+    GET /resume/{resume_id} endpoint to fetch them from the user config.
+    """
+    from src.database import get_most_recent_user_config
+
+    user_config = get_most_recent_user_config(session)
+    education = []
+    awards = []
+    if user_config and user_config.resume_config:
+        education = user_config.resume_config.education or []
+        awards = user_config.resume_config.awards or []
+
+    return ResumeResponse(
+        id=resume_model.id,
+        email=resume_model.email,
+        github=resume_model.github,
+        skills=resume_model.skills,
+        education=education,
+        awards=awards,
+        items=resume_model.items,
+        created_at=resume_model.created_at,
+        last_updated=resume_model.last_updated,
+    )
 
 # ---------- Resume API Endpoints ----------
 @router.get("/{resume_id}", response_model=ResumeResponse)
@@ -87,7 +113,7 @@ def get_resume(resume_id: int, session=Depends(get_session)):
         raise HTTPException(
             status_code=404, detail=f"No resume found with id {resume_id}")
 
-    return result
+    return _build_resume_response(result, session)
 
 
 @router.post("/generate", response_model=ResumeResponse)
@@ -182,7 +208,7 @@ def edit_resume_metadata(
 
         session.commit()
 
-        return updated_model
+        return _build_resume_response(updated_model, session)
 
     except Exception as e:
         session.rollback()
@@ -240,7 +266,7 @@ def edit_resume_item_bullet_point(
         session.commit()
         session.refresh(resume_model)
 
-        return resume_model
+        return _build_resume_response(resume_model, session)
 
     except Exception as e:
         session.rollback()
@@ -289,7 +315,7 @@ def edit_resume_item(
         session.commit()
         session.refresh(resume_model)
 
-        return resume_model
+        return _build_resume_response(resume_model, session)
 
     except Exception as e:
         session.rollback()

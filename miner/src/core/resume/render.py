@@ -24,15 +24,13 @@ class TextResumeRenderer(ResumeRender):
         to_return += f"Email: {resume.email}\n\n" if resume.email else ""
         to_return += f"Core skills: {', '.join(resume.skills)}\n\n" if resume.skills else ""
 
-        # Check if resume has education entries before rendering
-        if getattr(resume, "education", None):
+        if resume.education:
             to_return += "Education:\n"
             for ed in resume.education:
                 to_return += f"   - {ed}\n"
             to_return += "\n"
 
-        # Check if resume has awards entries before rendering
-        if getattr(resume, "awards", None):
+        if resume.awards:
             to_return += "Awards:\n"
             for aw in resume.awards:
                 to_return += f"   - {aw}\n"
