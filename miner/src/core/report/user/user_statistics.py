@@ -3,7 +3,7 @@ User-level statistic calculation classes and a report builder.
 
 Mirrors the structure used for project statistics.
 """
-from typing import List, TYPE_CHECKING, Type, Optional
+from typing import List, TYPE_CHECKING, Optional, Type
 from datetime import datetime
 
 from src.core.report.statistic_builder import StatisticCalculation, StatisticReportBuilder
@@ -175,6 +175,9 @@ class UserCommitActivityTimeline(UserStatisticCalculation):
         user_commits_dict = {}
 
         for project_report in report.project_reports:
+            if project_report.project_repo is None:
+                continue
+
             for commit in project_report.project_repo.iter_commits():
                 date = datetime.fromtimestamp(
                     commit.authored_date).strftime("%Y-%m-%d")
@@ -183,14 +186,15 @@ class UserCommitActivityTimeline(UserStatisticCalculation):
                 if commit.author.email == project_report.email or (project_report.github and project_report.github in commit.author.email):
                     user_commits_dict = user_commits_dict.get(date, 0) + 1
 
-        return [Statistic(UserStatCollection.COMMIT_ACTIVITY_TIMELINE.value, sorted), Statistic(UserStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, )]
+        return [Statistic(UserStatCollection.COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(user_commits_dict.items()))), Statistic(UserStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(commits_dict.items())))]
 
 
 class UserStatisticReportBuilder(StatisticReportBuilder["UserReport"]):
     ALL_CALCULATORS = [
         UserDates,
         UserCodingLanguageRatio,
-        UserWeightedSkills
+        UserWeightedSkills,
+        UserCommitActivityTimeline,
     ]
 
     def __init__(self, calculator_classes: Optional[list[Type]] = None) -> None:

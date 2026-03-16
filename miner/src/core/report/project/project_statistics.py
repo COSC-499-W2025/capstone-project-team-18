@@ -208,6 +208,10 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
         group_project_framework_counter: dict[str, int] = {}
         group_project_framework_files: dict[str, set] = {}
 
+        # Tracks all skills (high-level + package-mapped) that each filepath demonstrates.
+        # Used later to build the commit-date timeline for PROJECT_SKILL_ACTIVITY.
+        file_to_skills: dict[str, set[str]] = {}
+
         for file_report in report.file_reports:
             imported_packages: Optional[list[str]] = file_report.get_value(
                 FileStatCollection.IMPORTED_PACKAGES.value
@@ -232,6 +236,9 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                         file_skill.value,
                         file_report.filepath
                     )
+                # Record skill → filepath mapping for activity timeline
+                file_to_skills.setdefault(
+                    file_report.filepath, set()).add(file_skill.value)
 
             if imported_packages is None or imported_packages == []:
                 continue
@@ -270,6 +277,24 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                             package_skill.value,
                             file_report.filepath
                         )
+                    file_to_skills.setdefault(
+                        file_report.filepath, set()).add(package_skill.value)
+
+        skill_activity: dict[str, list[str]] = {}
+        if report.project_repo and file_to_skills:
+            try:
+                for filepath, skills in file_to_skills.items():
+                    file_commits = list(
+                        report.project_repo.iter_commits(paths=filepath)
+                    )
+                    for commit in file_commits:
+                        date_str = commit.committed_datetime.strftime(
+                            "%Y-%m-%d")
+                        for skill in skills:
+                            skill_activity.setdefault(
+                                skill, []).append(date_str)
+            except Exception:
+                skill_activity = {}
 
         to_return = []
 
@@ -305,6 +330,11 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
             ProjectStatCollection.GROUP_PROJECT_FRAMEWORKS.value,
             group_project_framework_counter
         )
+
+        to_return.append(Statistic(
+            ProjectStatCollection.PROJECT_SKILL_ACTIVITY.value,
+            skill_activity,
+        ))
 
         return to_return
 

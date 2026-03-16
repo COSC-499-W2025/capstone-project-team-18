@@ -135,6 +135,41 @@ def test_group_weighted_stats_include_non_user_authored_files(monkeypatch):
     assert any(ws.skill_name == "numpy" for ws in group_frameworks)
 
 
+def test_skill_activity_records_commit_dates_per_skill(project_shared_file):
+    """
+    PROJECT_SKILL_ACTIVITY should contain one date entry per commit that
+    touched a file demonstrating that skill.
+
+    Fixture: shared.py has 3 commits (alice, bob, charlie) and imports numpy
+    → numpy maps to "Data Analytics" → activity list should have length 3.
+    """
+    import re as _re
+    file_stats = StatisticIndex([
+        Statistic(FileStatCollection.IMPORTED_PACKAGES.value, ["numpy"])
+    ])
+    shared_file = FileReport(file_stats, "shared.py")
+
+    project = ProjectReport(
+        [shared_file],
+        project_path=str(project_shared_file.root_path),
+        user_email="alice@example.com",
+        project_repo=project_shared_file.repo,
+        calculator_classes=[ProjectWeightedSkills],
+    )
+
+    skill_activity = project.get_value(
+        ProjectStatCollection.PROJECT_SKILL_ACTIVITY.value)
+
+    assert isinstance(skill_activity, dict)
+    # numpy → "Data Analytics" skill
+    assert "Data Analytics" in skill_activity
+    # shared.py was committed 3 times, so 3 date entries
+    dates = skill_activity["Data Analytics"]
+    assert len(dates) == 3
+    # every entry should be a YYYY-MM-DD string
+    for d in dates:
+        assert _re.match(r"\d{4}-\d{2}-\d{2}", d), f"unexpected date format: {d}"
+
 def test_group_weighted_stats_include_non_user_authored_files_git_based(project_shared_file):
     file_stats = StatisticIndex([
         Statistic(FileStatCollection.IMPORTED_PACKAGES.value, ["numpy"])
