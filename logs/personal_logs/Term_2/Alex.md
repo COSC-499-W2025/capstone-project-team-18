@@ -8,7 +8,10 @@
 
 **[Week 3, Jan. 19 – 25](#week-3-jan-19--25)**
 
-**[Week 4-5, Jan. 26 – Feb. 08]()
+**[Week 4-5, Jan. 26 – Feb. 08](#week-4-5-jan-26--feb-08)**
+
+**[Week 10, Mar 9 - 15](#week-10-mar-9---15)**
+
 ---
 
 ## Week 1, Jan. 05 – 11
@@ -69,10 +72,22 @@ Here is the PR I made for the proposed changes: [#418 [Proposal] New Resume Clas
 
 Here are the PRs that I reviewed:
 
-- [Portfolio Class System, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/383)
-- [Initialize Electron UI and FastAPI Integration, Tawana](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/388)
+- [383 Portfolio Class System, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/383)
+- [388 Initialize Electron UI and FastAPI Integration, Tawana](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/388)
 - [408 fix down revision string, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/408)
 - [412 New Database System, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/412)
 - [414 display textual information about a project, Priyansh](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/414)
 - [419 [perf] Speed-up file reports analysis, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/419)
 
+
+## Week 10, Mar 9 - 15
+
+### Peer Eval
+
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/alex/week10.png)
+
+### Recap
+
+After meeting with the team and planning out the requirements, goals, and work needed for Milestone 3, I began working on a deployment task for extra credit. After the user generates their portfolio, they will have the option to turn it into a static webpage and have us deploy it to a GitHub Pages site on their GitHub account automatically. I began working on the endpoints needed for an OAuth2 workflow to get the user's token and make calls to GitHub's REST API to deploy the portfolio.
+
+This week, I also reviewed one PR: [483 interactive mock interview mode for job specific interview preparation, Priyansh](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/483)
