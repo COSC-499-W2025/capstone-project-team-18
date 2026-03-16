@@ -16,14 +16,6 @@ from contextlib import asynccontextmanager
 from src.utils.errors import KeyNotFoundError
 from src.app import init_system
 from src.app import init_system, _init_db
-from src.interface.api.routers import (
-    projects,
-    resume,
-    portfolio,
-    skills,
-    user_config,
-    privacy_consent,
-)
 from src.interface.api.routers.projects import router as projects_router
 from src.interface.api.routers.resume import router as resume_router
 from src.interface.api.routers.portfolio import router as portfolio_router
