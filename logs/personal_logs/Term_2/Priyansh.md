@@ -156,3 +156,24 @@ I also reviewed [PR #469 - Project Thumbnail](https://github.com/COSC-499-W2025/
 #### Goals for Next Week
 - Continue Working on ML Related Changes
 - Milestone 3 Implementations
+
+## Week 10, Mar. 09-15
+
+### Peer Eval
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/priyansh/priyansh_week10_term2_log.png)
+
+### Recap
+
+This week the team focused on completing key Milestone 3 priorities. Major work included adding resume configuration support in settings, preparing Electron deployment, adding ML related features, and advancing project insights and peer-testing frontend support to improve feature readiness and stability.
+
+#### Coding Tasks
+
+I completed [PR #483 - Interactive Mock Interview Mode for Job Specific Interview Preparation](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/483), which closes [Issue #480](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/480). This PR adds an end-to-end mock interview experience powered by Azure OpenAI. The feature generates job-specific interview questions using the user's stored project evidence and target job description, evaluates each answer, provides structured feedback, and asks follow-up questions that stay grounded in the same fit dimension or project when appropriate. I also added request validation, backend guardrails to keep the interview focused and relevant, tests, and endpoint documentation, then addressed review feedback to improve the API clarity and maintainability of the implementation.
+
+#### Reviewing Tasks
+
+I reviewed [PR #482 - Created Project Insights Class Structure, Endpoint, Database Management, and Tests](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/482).My reviews focused on ensuring code quality, proper error handling, test coverage, and alignment with our system architecture.
+
+#### Goals for Next Week
+
+- Continue refining Milestone 3 features
