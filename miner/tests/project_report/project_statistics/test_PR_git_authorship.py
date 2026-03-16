@@ -138,6 +138,61 @@ def test_git_authorship_multiple_authors(git_dir: Path):
     assert "feature2.py" in authors_per_file
 
 
+def test_git_authorship_group_contribution_counts(git_dir: Path):
+    """Group contribution should map each author email to commit count."""
+    team_report = ProjectReport(
+        project_path=str(git_dir / "TeamProject"),
+        project_name="TeamProject",
+        user_email="charlie@example.com",
+        project_repo=Repo(str(git_dir / "TeamProject")),
+        calculator_classes=[ProjectAnalyzeGitAuthorship],
+    )
+
+    group_contribution = team_report.get_value(
+        ProjectStatCollection.GROUP_CONTRIBUTION.value
+    )
+
+    assert isinstance(group_contribution, dict)
+    assert group_contribution.get("bob@example.com") == 1
+    assert group_contribution.get("charlie@example.com") == 1
+
+
+def test_git_authorship_group_contribution_unequal_fixture(unequal_contribution_dir: Path):
+    """Group contribution should reflect unequal commit history from fixture."""
+    report = ProjectReport(
+        project_path=str(unequal_contribution_dir / "UnequalProject"),
+        project_name="UnequalProject",
+        user_email="bob@example.com",
+        project_repo=Repo(str(unequal_contribution_dir / "UnequalProject")),
+        calculator_classes=[ProjectAnalyzeGitAuthorship],
+    )
+
+    group_contribution = report.get_value(
+        ProjectStatCollection.GROUP_CONTRIBUTION.value
+    )
+
+    assert isinstance(group_contribution, dict)
+    assert group_contribution.get("bob@example.com") == 2
+    assert group_contribution.get("charlie@example.com") == 1
+
+
+def test_git_authorship_group_contribution_absent_for_single_author(git_dir: Path):
+    """Single-author projects should not include group contribution stats."""
+    solo_report = ProjectReport(
+        project_path=str(git_dir / "SoloProject"),
+        project_name="SoloProject",
+        user_email="alice@example.com",
+        project_repo=Repo(str(git_dir / "SoloProject")),
+        calculator_classes=[ProjectAnalyzeGitAuthorship],
+    )
+
+    group_contribution = solo_report.get_value(
+        ProjectStatCollection.GROUP_CONTRIBUTION.value
+    )
+
+    assert group_contribution is None
+
+
 def test_git_authorship_user_commit_percentage():
     """Test calculation of user's commit percentage in group projects"""
     # Create zip with unequal contribution (Bob: 2 commits, Charlie: 1 commit)
