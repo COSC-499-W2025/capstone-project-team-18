@@ -12,6 +12,32 @@
 
 ---
 
+## Week 10 3/9 - 3/15
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week10_log.png)
+
+## Coding Tasks
+
+I implemented the ProjectInsights class structure and management.
+
+[PR Created Project Insights Class Structure, Endpoint, Database Management, and Tests #482](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/482)
+
+### Testing Tasks
+
+Wrote tests for the PR that tests the endpoint without running server.
+
+### Review Tasks
+
+I reviewed the following PRs:
+
+[480 interactive mock interview mode for job specific interview preparation #483](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/483)
+[467 add education and awards to user config and resume generation #484](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/484)
+
+### Summary
+
+This week, I focused a lot on creating and defining other issues for the group to complete. In the following issues ([#475](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/475), [#476](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/476), [#477](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/477), [#478](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/478), [#479](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/479), [#481](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/481)) I created in depth descriptions and implmentation ideas for the issues. Also, I worked on creating a new system called ProjectInsights which would help prompt a user on ideas to write in their resume.
+
+
 ## Week 9 3/2 - 3/8
 
 ![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week9_log.png)
