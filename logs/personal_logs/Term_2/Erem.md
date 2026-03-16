@@ -2,6 +2,8 @@
 
 ## Table of Contents
 
+**[T2 Week 10, Mar 9 - Mar 15](#t2-week-10-mar-9--mar-15)**
+
 **[T2 Week 9, Mar 2 - Mar 8](#t2-week-9-mar-2--mar-8)**
 
 **[T2 Week 8, Feb 9](#t2-week-8-feb-23--mar-1)**
@@ -15,6 +17,29 @@
 **[Week 1, Jan 05 - 11](#week-1-jan-05---11)**
 
 ---
+
+## T2 Week 10, Mar 9 - Mar 15
+
+### Peer Eval
+
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/Erem/erem_t2_week15_log.png)
+
+### Recap
+
+This week I completed and finalized [PR #484 - Add education and awards to user config and resume generation](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/484), closing [Issue #467](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/467).
+
+Since last week the design of the feature went through architectural change following code review feedback from Sam. Originally, I had implemented education and awards as a snapshot on `ResumeModel`, the idea being that generating a resume would capture the user's education and awards at that point in time, so editing the user config later wouldn't retroactively change old resumes. Sam noted that it would make more sense for every resume retrieval to reflect the current `ResumeConfig` state, keeping things consistent across all resumes rather than having each one diverge over time.
+
+As a result I removed the `education` and `awards` columns from `ResumeModel` entirely and instead introduced a `_build_resume_response()` helper in the resume router that hydrates education and awards from the user's current `ResumeConfigModel` at read time. This affected every endpoint that returns a `ResumeResponse` - `GET /resume/{id}`, `POST /resume/generate`, `POST /resume/{id}/refresh`, `POST /resume/{id}/edit/metadata`, `POST /resume/{id}/edit/bullet_point`, and `POST /resume/{id}/edit/resume_item`, all now go through this helper.
+
+With the PR now addressing all review feedback, the feature is just currently under review right now.
+
+#### Reviewing Tasks
+
+I reviewed [PR #485 - Get Group Based Statistics](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/485) by Jimi, which adds group contribution statistics to the project. The PR introduces `ACTIVITY_TYPE_RATIO`, `GROUP_CONTRIBUTION`, and `GROUP_SKILLS` statistics computed within the statistic classes, laying the groundwork for group-level API endpoints in a follow-up PR.
+
+
+
 
 ## T2 Week 9, Mar 2 - Mar 8
 
@@ -34,7 +59,7 @@ The feature is ~95% complete, all code is written and endpoints are working in S
 
 #### Reviewing Tasks
 
-Due to a few reasons including personally being swamped with work with other classes, as well as it being the first week of M3 + Quiz 4 meaning there hasnt been too much development with the project for this group, I haven't been able to review any of my teammates PR's unfortunately. 
+Due to a few reasons including personally being swamped with work with other classes, as well as it being the first week of M3 + Quiz 4 meaning there hasnt been too much development with the project for this group, I haven't been able to review any of my teammates PR's unfortunately.
 
 #### Goals for Next Week
 
