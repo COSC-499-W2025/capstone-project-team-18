@@ -14,6 +14,7 @@ from src.interface.api.routers.skills import router as skills
 from src.interface.api.routers.user_config import router as user_config
 from src.interface.api.routers.privacy_consent import router as privacy_consent
 from src.interface.api.routers.job_readiness import router as job_readiness
+from src.interface.api.routers.interview import router as interview
 
 
 
@@ -25,4 +26,5 @@ __all__ = [
     "user_config",
     "privacy_consent",
     "job_readiness",
+    "interview",
 ]
