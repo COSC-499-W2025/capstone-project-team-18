@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from src.utils.errors import KeyNotFoundError
-from src.app import init_system
+from src.app import init_system, _init_db
 from src.interface.api.routers.projects import router as projects_router
 from src.interface.api.routers.resume import router as resume_router
 from src.interface.api.routers.portfolio import router as portfolio_router
@@ -27,6 +27,7 @@ from src.interface.api.routers.interview import router as interview_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Commands to run on startup
+    _init_db() # Create database tables first
     init_system()
 
     yield
@@ -85,7 +86,7 @@ async def universal_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "An internal error occurred", "details": str(exc)},
     )
-app.include_router(privacy_consent_router)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

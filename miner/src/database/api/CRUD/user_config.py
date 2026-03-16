@@ -1,7 +1,8 @@
 from sqlmodel import Session, select, desc
 from pydantic import BaseModel
-from typing import Optional
-from src.database.api.models import UserConfigModel
+from typing import Optional, List
+from src.database.api.models import UserConfigModel, ResumeConfigModel
+from datetime import datetime
 
 
 def get_most_recent_user_config(session: Session) -> UserConfigModel:
@@ -25,6 +26,17 @@ def get_most_recent_user_config(session: Session) -> UserConfigModel:
             github=None
         )
         session.add(user_config)
+        session.flush()  # Get user_config.id before creating resume_config
+
+        # Create default resume config
+        resume_config = ResumeConfigModel(
+            user_config_id=user_config.id,
+            education=[],
+            awards=[]
+        )
+        session.add(resume_config)
+        user_config.resume_config = resume_config
+
         session.commit()
         session.refresh(user_config)
 
