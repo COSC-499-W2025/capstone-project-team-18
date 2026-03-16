@@ -169,6 +169,60 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
     - Raw counts of third-party frameworks/libraries (import frequency)
     """
 
+    def _extract_file_skills(self, file_report, dirnames) -> set[str]:
+        """Returns all high-level skills demonstrated by a file."""
+        skills: set[str] = set()
+
+        file_skill = SkillMapper.map_filepath_to_skill(file_report.filepath)
+        if file_skill:
+            skills.add(file_skill.value)
+
+        imported_packages: Optional[list[str]] = file_report.get_value(
+            FileStatCollection.IMPORTED_PACKAGES.value
+        )
+
+        if not imported_packages:
+            return skills
+
+        for package in imported_packages:
+            if package == "app" or package in dirnames:
+                continue
+
+            package_skill = SkillMapper.map_package_to_skill(package)
+            if package_skill:
+                skills.add(package_skill.value)
+
+        return skills
+
+    def _build_project_skill_activity(self, report: ProjectReport, dirnames) -> dict[str, list[str]]:
+        """Builds PROJECT_SKILL_ACTIVITY as {skill_name: [YYYY-MM-DD, ...]}."""
+        if not report.project_repo:
+            return {}
+
+        file_to_skills: dict[str, set[str]] = {}
+        for file_report in report.file_reports:
+            skills = self._extract_file_skills(file_report, dirnames)
+            if skills:
+                file_to_skills[file_report.filepath] = skills
+
+        if not file_to_skills:
+            return {}
+
+        skill_activity: dict[str, list[str]] = {}
+        try:
+            tracked_files = set(file_to_skills.keys())
+            for commit in report.project_repo.iter_commits(paths=list(tracked_files)):
+                date_str = commit.committed_datetime.strftime("%Y-%m-%d")
+
+                changed = set(commit.stats.files.keys()) & tracked_files
+                for filepath in changed:
+                    for skill in file_to_skills[filepath]:
+                        skill_activity.setdefault(skill, []).append(date_str)
+        except Exception:
+            return {}
+
+        return skill_activity
+
     def calculate(self, report: ProjectReport) -> list[Statistic]:
 
         def count_one_per_file(counter: dict, fileset: dict, key: str, filepath: str):
@@ -208,10 +262,6 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
         group_project_framework_counter: dict[str, int] = {}
         group_project_framework_files: dict[str, set] = {}
 
-        # Tracks all skills (high-level + package-mapped) that each filepath demonstrates.
-        # Used later to build the commit-date timeline for PROJECT_SKILL_ACTIVITY.
-        file_to_skills: dict[str, set[str]] = {}
-
         for file_report in report.file_reports:
             imported_packages: Optional[list[str]] = file_report.get_value(
                 FileStatCollection.IMPORTED_PACKAGES.value
@@ -236,9 +286,6 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                         file_skill.value,
                         file_report.filepath
                     )
-                # Record skill → filepath mapping for activity timeline
-                file_to_skills.setdefault(
-                    file_report.filepath, set()).add(file_skill.value)
 
             if imported_packages is None or imported_packages == []:
                 continue
@@ -277,25 +324,6 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                             package_skill.value,
                             file_report.filepath
                         )
-                    file_to_skills.setdefault(
-                        file_report.filepath, set()).add(package_skill.value)
-
-        skill_activity: dict[str, list[str]] = {}
-        if report.project_repo and file_to_skills:
-            try:
-                for filepath, skills in file_to_skills.items():
-                    file_commits = list(
-                        report.project_repo.iter_commits(paths=filepath)
-                    )
-                    for commit in file_commits:
-                        date_str = commit.committed_datetime.strftime(
-                            "%Y-%m-%d")
-                        for skill in skills:
-                            skill_activity.setdefault(
-                                skill, []).append(date_str)
-            except Exception:
-                skill_activity = {}
-
         to_return = []
 
         def _add_weighted_stat(stat_key, counter: dict) -> None:
@@ -330,11 +358,6 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
             ProjectStatCollection.GROUP_PROJECT_FRAMEWORKS.value,
             group_project_framework_counter
         )
-
-        to_return.append(Statistic(
-            ProjectStatCollection.PROJECT_SKILL_ACTIVITY.value,
-            skill_activity,
-        ))
 
         return to_return
 

@@ -157,8 +157,11 @@ def test_skill_activity_records_commit_dates_per_skill(project_shared_file):
         calculator_classes=[ProjectWeightedSkills],
     )
 
-    skill_activity = project.get_value(
-        ProjectStatCollection.PROJECT_SKILL_ACTIVITY.value)
+    calculator = ProjectWeightedSkills()
+    skill_activity = calculator._build_project_skill_activity(
+        project,
+        project._get_sub_dirs(),
+    )
 
     assert isinstance(skill_activity, dict)
     # numpy → "Data Analytics" skill
@@ -168,7 +171,9 @@ def test_skill_activity_records_commit_dates_per_skill(project_shared_file):
     assert len(dates) == 3
     # every entry should be a YYYY-MM-DD string
     for d in dates:
-        assert _re.match(r"\d{4}-\d{2}-\d{2}", d), f"unexpected date format: {d}"
+        assert _re.match(r"\d{4}-\d{2}-\d{2}",
+                         d), f"unexpected date format: {d}"
+
 
 def test_group_weighted_stats_include_non_user_authored_files_git_based(project_shared_file):
     file_stats = StatisticIndex([
