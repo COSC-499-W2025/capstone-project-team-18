@@ -32,7 +32,7 @@ export default function App() {
             display: "inline-block",
             })}
             >
-              Home
+              Dashboard
               </NavLink>
 
           <NavLink

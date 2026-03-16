@@ -1,100 +1,151 @@
 import { useEffect, useState } from "react";
-import { api, getApiBaseUrl } from "../api/apiClient";
+import { Link } from "react-router-dom";
+import { api } from "../api/apiClient";
 
-/**
- * Home = landing page with API connection status and quick test buttons
- */
+type ProjectListItem = {
+  project_name: string;
+  created_at?: string;
+  last_updated?: string;
+  user_config_used?: number | null;
+};
+
+type ListProjectsResponse = {
+  projects: ProjectListItem[];
+};
+
+function formatDate(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+}
+
 export default function HomePage() {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [output, setOutput] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
 
-  const baseUrl = getApiBaseUrl();
-
-  async function checkConnection() {
+  async function loadProjects() {
     try {
-      const ok = await api.ping();
-      setConnected(ok);
-    } catch {
-      setConnected(false);
-    }
-  }
+      setLoading(true);
+      setError(null);
 
-  async function run<T>(fn: () => Promise<T>) {
-    setError(null);
-    try {
-      const res = await fn();
-      setOutput(res);
+      const res = (await api.getProjects()) as ListProjectsResponse;
+      setProjects(Array.isArray(res?.projects) ? res.projects : []);
     } catch (e: any) {
-      setOutput(null);
-      setError(e?.message ?? "Unknown error");
+      setError(e?.message ?? "Failed to load projects");
+      setProjects([]);
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    checkConnection();
-    const interval = setInterval(checkConnection, 2500);
-    return () => clearInterval(interval);
+    loadProjects();
   }, []);
 
   return (
-    <div style={{ fontFamily: "system-ui", padding: 24, maxWidth: 1000 }}>
-      <h1 style={{ marginTop: 0 }}>Digital Artifact Miner</h1>
+    <div style={{ padding: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0 }}>Dashboard</h1>
+          <p style={{ marginTop: 8, color: "#666" }}>
+            Manage projects, resumes, portfolios, and settings.
+          </p>
+        </div>
 
-      <div style={{ marginBottom: 10 }}>
-        <strong>API Base:</strong> <code>{baseUrl}</code>
-      </div>
-
-      <div style={{ marginBottom: 18 }}>
-        <strong>Status:</strong>{" "}
-        {connected === null ? "checking…" : connected ? "Connected ✅" : "Disconnected ❌"}
-        {!connected && (
-          <div style={{ marginTop: 8, color: "#666" }}>
-            Start the API with: <code>fastapi dev ./src/interface/api/api.py</code>
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-        <button
-          disabled={!connected}
-          onClick={() => run(api.getProjects)}
-          style={{ padding: "8px 12px" }}
-        >
-          GET /projects
-        </button>
-
-        <button
-          disabled={!connected}
-          onClick={() => run(api.getSkills)}
-          style={{ padding: "8px 12px" }}
-        >
-          GET /skills
-        </button>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button style={{ padding: "10px 14px" }}>Settings</button>
+          <button style={{ padding: "10px 14px" }}>Start Mining</button>
+        </div>
       </div>
 
       {error && (
-        <div style={{ marginBottom: 12, color: "crimson" }}>
+        <div style={{ marginBottom: 16, color: "crimson" }}>
           <strong>Error:</strong> {error}
         </div>
       )}
 
-      <pre
+      <div
         style={{
-          background: "#1f1f1f",
-          color: "#e6e6e6",
-          padding: 14,
-          borderRadius: 10,
-          maxHeight: 450,
-          overflow: "auto",
-          margin: 0,
-          fontSize: 14,
-        lineHeight: 1.5,
-        border: "1px solid #2a2a2a" 
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr",
+          gap: 20,
+          marginBottom: 20,
         }}
       >
-        {output ? JSON.stringify(output, null, 2) : "Click an endpoint to load data…"}
-      </pre>
+        <section
+          style={{
+            border: "1px solid #2a2a2a",
+            borderRadius: 16,
+            padding: 20,
+            background: "#161616",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+            <h2 style={{ margin: 0 }}>Projects</h2>
+            <Link to="/projects">View all</Link>
+          </div>
+
+          {loading && <div>Loading projects…</div>}
+
+          {!loading && !error && projects.length === 0 && <div>No projects found.</div>}
+
+          {!loading && !error && projects.length > 0 && (
+            <div style={{ display: "grid", gap: 12 }}>
+              {projects.slice(0, 4).map((project) => (
+                <Link
+                  key={project.project_name}
+                  to={`/projects/${encodeURIComponent(project.project_name)}`}
+                  style={{
+                    display: "block",
+                    textDecoration: "none",
+                    color: "inherit",
+                    border: "1px solid #2a2a2a",
+                    borderRadius: 12,
+                    padding: 14,
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>{project.project_name}</div>
+                  <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
+                    Created: {formatDate(project.created_at)}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section
+          style={{
+            border: "1px solid #2a2a2a",
+            borderRadius: 16,
+            padding: 20,
+            background: "#161616",
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>Resumes</h2>
+          <div style={{ color: "#999" }}>Resume view coming next.</div>
+        </section>
+      </div>
+
+      <section
+        style={{
+          border: "1px solid #2a2a2a",
+          borderRadius: 16,
+          padding: 20,
+          background: "#161616",
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>Portfolios</h2>
+        <div style={{ color: "#999" }}>Portfolio support coming soon.</div>
+      </section>
     </div>
   );
 }
