@@ -43,15 +43,26 @@ class ProjectReportModel(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now())
     last_updated: datetime = Field(default_factory=lambda: datetime.now())
-    analyzed_count: int = 1
+    analyzed_count: int = Field(default=1, nullable=False)
     parent: Optional[str] = None
+
+    # Representation (Milestone 2 human-in-the-loop)
+    representation_rank: int | None = None  
+    chrono_start_override: datetime | None = None
+    chrono_end_override: datetime | None = None
+    showcase_selected: bool = Field(default=False)
+    compare_attributes: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    highlight_skills: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    representation_last_user_edit_at: datetime | None = None
 
     # These fields allow users to override the auto-generated showcase portfolio
     showcase_title: Optional[str] = None
     showcase_start_date: Optional[datetime] = None
     showcase_end_date: Optional[datetime] = None
-    showcase_frameworks: List[str] = Field(default_factory=list, sa_column=Column(JSON))
-    showcase_bullet_points: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    showcase_frameworks: List[str] = Field(
+        default_factory=list, sa_column=Column(JSON))
+    showcase_bullet_points: List[str] = Field(
+        default_factory=list, sa_column=Column(JSON))
     showcase_last_user_edit_at: Optional[datetime] = None
 
     # Relationships

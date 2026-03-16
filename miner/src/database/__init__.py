@@ -2,7 +2,7 @@
 The db package has everything that is needed for the database.
 """
 
-from .api.CRUD.projects import save_project_report, get_project_report_by_name, delete_project_report_by_name, get_project_report_model_by_name
+from .api.CRUD.projects import save_project_report, get_project_report_by_name, delete_project_report_by_name, get_project_report_model_by_name, get_project_report_models_by_names
 from .api.CRUD.resume import save_resume, load_resume, get_resume_model_by_id
 
 from .api.CRUD.user_config import get_most_recent_user_config, save_user_config
@@ -25,6 +25,7 @@ __all__ = [
     "save_project_report",
     "get_project_report_by_name",
     "get_project_report_model_by_name",
+    "get_project_report_models_by_names",
     "delete_project_report_by_name",
     "get_most_recent_user_config",
     "save_user_config",

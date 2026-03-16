@@ -183,6 +183,9 @@ class GitCommitPercentageBulletPoint(BulletPoint):
         user_commit_pct = report.get_value(
             ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
 
+        is_group = report.get_value(
+            ProjectStatCollection.IS_GROUP_PROJECT.value)
+
         total_contrib_pct = report.get_value(
             ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value)
 
@@ -192,6 +195,8 @@ class GitCommitPercentageBulletPoint(BulletPoint):
             to_return.append(f"Authored {user_commit_pct}% of commits")
 
         if total_contrib_pct is not None:
+            if is_group is False:
+                total_contrib_pct = 100.0
             to_return.append(
                 f"Accounted for {total_contrib_pct}% of total contribution in the final deliverable")
 

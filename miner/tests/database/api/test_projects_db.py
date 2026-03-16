@@ -95,3 +95,18 @@ def test_save_project_report_versions_chain_parent_points_to_latest(temp_db):
         assert saved_v3.project_name == "Project1_3"
         assert saved_v3.analyzed_count == 3
         assert saved_v3.parent == "Project1_2"
+
+
+def test_save_project_report_new_project_initializes_analysis_fields(temp_db):
+    with Session(temp_db) as session:
+        new_report = ProjectReport(
+            file_reports=[_build_file_report("BrandNewProject", "main.py")],
+            project_name="BrandNewProject"
+        )
+
+        saved_model = save_project_report(session, new_report, 0)
+        session.commit()
+
+        assert saved_model.project_name == "BrandNewProject"
+        assert saved_model.analyzed_count == 1
+        assert saved_model.parent is None

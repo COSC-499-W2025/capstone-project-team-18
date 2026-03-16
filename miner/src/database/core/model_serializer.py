@@ -88,7 +88,9 @@ def serialize_project_report(
     project_model = ProjectReportModel(
         project_name=project_name,
         user_config_used=user_config_id,
-        statistic=project_statistics
+        statistic=project_statistics,
+        analyzed_count=1,
+        parent=None
     )
 
     file_models = [serialize_file_report(fr)
