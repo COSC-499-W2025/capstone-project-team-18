@@ -14,7 +14,21 @@
 
 **[Week 9, 03/02 - 03/08](#week-9-0302---0308)**
 
+**[Week 10, 03/09 - 03/15](#week-10-0309---0315)**
+
 ---
+# Week 10 03/09 - 03/15
+[Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week10_log.png)
+
+This week, I began development of the Electron UI required for peer testing. The focus was on implementing the core user flows needed to interact with the backend system, including editing user settings and consent, uploading projects, viewing project details, and generating a resume view.
+
+I started by restructuring the current home page into a dashboard that displays projects and provides quick actions such as Start Mining and Settings. I also implemented a settings modal connected to the Get UserConfig and Edit UserConfig endpoints, allowing users to modify their configuration and consent preferences directly from the UI.
+
+Additionally, I worked on the project upload flow by connecting a modal to the miner endpoint and adding validation to prevent submissions when user consent is not provided. I also began implementing the project details and resume views, which retrieve project data and allow basic editing of generated resume content.
+
+Additionally, I reviewed the following PRs:
+1. [PR `#485` Get GROUP BASED statistics](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/485)
+2. [PR `#469` Upload Project Thumbnail Endpoint](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/469)
 
 # Week 9 03/02 - 03/08
 [Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week9_log.png)
@@ -26,7 +40,6 @@ I also implemented a small backend and UI hotfix to restore expected endpoint be
 
 Additionally, I reviewed the following PRs:
 1. [PR `#463` 462 job readiness analysis feature](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/463)
-
 
 # Week 8 02/23 - 03/01
 [Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week8_log.png)
