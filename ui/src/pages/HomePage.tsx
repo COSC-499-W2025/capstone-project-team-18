@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/apiClient";
+import UploadProjectModal from "../components/update/modal/UploadProjectModal";
 
 type ProjectListItem = {
   project_name: string;
@@ -23,6 +24,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   async function loadProjects() {
     try {
@@ -61,7 +63,12 @@ export default function HomePage() {
         </div>
 
         <div style={{ display: "flex", gap: 12 }}>
-          <button style={{ padding: "10px 14px" }}>Start Mining</button>
+          <button
+          onClick={() => setShowUploadModal(true)}
+          style={{ padding: "10px 14px" }}
+          >
+            Start Mining
+          </button>
         </div>
       </div>
 
@@ -145,6 +152,11 @@ export default function HomePage() {
         <h2 style={{ marginTop: 0 }}>Portfolios</h2>
         <div style={{ color: "#999" }}>Portfolio support coming soon.</div>
       </section>
+
+      <UploadProjectModal
+      open={showUploadModal}
+      onClose={() => setShowUploadModal(false)}
+      />
     </div>
   );
 }
