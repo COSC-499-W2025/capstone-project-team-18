@@ -44,7 +44,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24, paddingTop: 40 }}>
       <div
         style={{
           display: "flex",
@@ -61,7 +61,6 @@ export default function HomePage() {
         </div>
 
         <div style={{ display: "flex", gap: 12 }}>
-          <button style={{ padding: "10px 14px" }}>Settings</button>
           <button style={{ padding: "10px 14px" }}>Start Mining</button>
         </div>
       </div>

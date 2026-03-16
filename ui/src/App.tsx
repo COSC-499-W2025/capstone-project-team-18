@@ -66,6 +66,20 @@ export default function App() {
             >
               Skills
               </NavLink>
+
+          <button
+            style={{
+              padding: "8px 14px",
+              borderRadius: 12,
+              border: "none",
+              color: "#ccc",
+              background: "transparent",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+          >
+            Settings
+          </button>
         </nav>
       </header>
 
