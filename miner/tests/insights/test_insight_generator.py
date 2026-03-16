@@ -6,7 +6,6 @@ get_value() to return controlled statistics so each calculator
 can be exercised in isolation.
 """
 
-import pytest
 from unittest.mock import MagicMock
 
 from src.core.insight.insight_generator import (
@@ -90,7 +89,8 @@ def test_activity_calculator_high_design_contribution():
         }
     })
     insights = ActivityInsightCalculator().calculate(report)
-    assert any("design" in i.message.lower() or "ui" in i.message.lower() for i in insights)
+    assert any("design" in i.message.lower() or "ui" in i.message.lower()
+               for i in insights)
 
 
 def test_activity_calculator_high_doc_contribution():
@@ -142,6 +142,7 @@ def test_ownership_calculator_high_ownership():
     report = _mock_report({
         ProjectStatCollection.USER_COMMIT_PERCENTAGE.value: 85.0,
         ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value: None,
+        ProjectStatCollection.IS_GROUP_PROJECT.value: True,
     })
     insights = OwnershipInsightCalculator().calculate(report)
     assert len(insights) == 1
@@ -153,6 +154,7 @@ def test_ownership_calculator_moderate_ownership():
     report = _mock_report({
         ProjectStatCollection.USER_COMMIT_PERCENTAGE.value: 50.0,
         ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value: None,
+        ProjectStatCollection.IS_GROUP_PROJECT.value: True,
     })
     insights = OwnershipInsightCalculator().calculate(report)
     assert len(insights) == 1
@@ -163,6 +165,7 @@ def test_ownership_calculator_low_ownership_returns_empty():
     report = _mock_report({
         ProjectStatCollection.USER_COMMIT_PERCENTAGE.value: 20.0,
         ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value: None,
+        ProjectStatCollection.IS_GROUP_PROJECT.value: True,
     })
     insights = OwnershipInsightCalculator().calculate(report)
     assert insights == []
@@ -172,6 +175,7 @@ def test_ownership_calculator_falls_back_to_line_percentage():
     report = _mock_report({
         ProjectStatCollection.USER_COMMIT_PERCENTAGE.value: None,
         ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value: 75.0,
+        ProjectStatCollection.IS_GROUP_PROJECT.value: True,
     })
     insights = OwnershipInsightCalculator().calculate(report)
     assert len(insights) == 1
@@ -181,6 +185,7 @@ def test_ownership_calculator_no_data_returns_empty():
     report = _mock_report({
         ProjectStatCollection.USER_COMMIT_PERCENTAGE.value: None,
         ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value: None,
+        ProjectStatCollection.IS_GROUP_PROJECT.value: True,
     })
     insights = OwnershipInsightCalculator().calculate(report)
     assert insights == []
@@ -392,7 +397,8 @@ def test_insight_generator_with_specific_calculators():
     report = _mock_report({
         ProjectStatCollection.WORK_PATTERN.value: "sprint-based",
     })
-    insights = InsightGenerator.generate(report, requested_classes=[WorkPatternInsightCalculator])
+    insights = InsightGenerator.generate(report, requested_classes=[
+                                         WorkPatternInsightCalculator])
     assert len(insights) == 1
     assert "sprint" in insights[0].message.lower()
 
