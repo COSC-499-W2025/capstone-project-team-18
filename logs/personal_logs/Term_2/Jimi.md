@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+**[Week 10, Mar. 09 - 15](#week-10-mar-09---15)**
 **[Week 8, Feb, 24 - Mar 01](#week-8-feb-24---mar-01)**
 **[Week 5, Feb, 02 - 08](#week-4-feb-02---08)**
 **[Week 3, Jan. 19 - 25](#week-3-jan-19---25)**
@@ -9,6 +10,41 @@
 **[Week 1, Jan. 05 - 11](#week-1-jan-05---11)**
 
 ---
+
+## Week 10, Mar. 09 - 15
+
+### Peer Eval
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/jimi/jimi_week10_log.png)
+
+
+### Recap
+
+Last week, we were focused on integrating all functionality from API service calls. In addition to this we needed to implement additional requirements defined for Milestone 2.
+
+### This Week
+
+This week we met to finalize all requirements for the milestone. This meant improving the front-end, working on additional statisctis in order to output graphs, peer tetsing and bug fixes. Additionally, we worked to ensure we added any and all necessary /new API endpoints for our project.
+
+### Coding Tasks
+Personally, I was working on adding new group-based statistics which are needed for generating graphs for the dashboard. This included the PR: [485](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/485). Additonally, a fix was made for some database errors and can be seen here: [464](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/464).
+
+### Testing Tasks
+Testing tasks for this week can be found in all above PRs. The group based statistics were all tested to ensure they did not break any past behaviour and that they returned expected output upon changes. This was necessary for all new stats. A test was also added for the `DB` tests to ensure the error wouldn't occur again.
+
+
+### Reviewing Tasks
+This week I reviewed:
+- User Information Representation (Personalization) [461](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/461)
+- 462 job readiness analysis feature [462](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/462)
+- 467 add education and awards to user config and resume generation [467](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/467)
+- Created Project Insights Class Structure, Endpoint, Database Management, and Tests [482](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/482)
+-
+
+
+### Next Week
+Next week, we will be working on cleaning up the codebase, testing the remaining code and expanding endpoints. Further more, the frontend needs to be fleshed out to better serve a non-technical userbase.
+
 
 ## Week 8, Feb, 24 - Mar 01
 
