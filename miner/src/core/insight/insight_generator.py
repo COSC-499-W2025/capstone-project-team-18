@@ -112,6 +112,12 @@ class OwnershipInsightCalculator(InsightCalculator):
         line_pct = report.get_value(
             ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value
         )
+        group_project = report.get_value(
+            ProjectStatCollection.IS_GROUP_PROJECT.value
+        )
+
+        if group_project is None or not group_project:
+            return []
 
         insights: list[ProjectInsight] = []
 

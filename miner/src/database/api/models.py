@@ -38,12 +38,14 @@ class ProjectReportModel(SQLModel, table=True):
     parent: Optional[str] = None
 
     # Representation (Milestone 2 human-in-the-loop)
-    representation_rank: int | None = None  
+    representation_rank: int | None = None
     chrono_start_override: datetime | None = None
     chrono_end_override: datetime | None = None
     showcase_selected: bool = Field(default=False)
-    compare_attributes: List[str] = Field(sa_column=Column(JSON), default_factory=list)
-    highlight_skills: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    compare_attributes: List[str] = Field(
+        sa_column=Column(JSON), default_factory=list)
+    highlight_skills: List[str] = Field(
+        sa_column=Column(JSON), default_factory=list)
     representation_last_user_edit_at: datetime | None = None
 
     # These fields allow users to override the auto-generated showcase portfolio
@@ -64,13 +66,15 @@ class ProjectReportModel(SQLModel, table=True):
     file_reports: List["FileReportModel"] = Relationship(
         back_populates="project")
     project_insights: Optional["ProjectInsightsModel"] = Relationship(
-        back_populates="project")
+        back_populates="project",
+        cascade_delete=True)
 
 
 class ProjectInsightsModel(SQLModel, table=True):
     project_name: str = Field(
         primary_key=True,
         foreign_key="projectreportmodel.project_name",
+        ondelete="CASCADE"
     )
     insights: List[str] = Field(sa_column=Column(JSON, nullable=False))
     generated_at: datetime = Field(default_factory=lambda: datetime.now())

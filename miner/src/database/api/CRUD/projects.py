@@ -169,7 +169,8 @@ def get_project_report_models_by_names(
     statement = (
         select(ProjectReportModel)
         .where(ProjectReportModel.project_name.in_(project_names))
-        .options(selectinload(ProjectReportModel.file_reports))  # pyright: ignore
+        # pyright: ignore
+        .options(selectinload(ProjectReportModel.file_reports))
     )
     projects = list(session.exec(statement).all())
     projects_by_name = {project.project_name: project for project in projects}

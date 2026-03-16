@@ -78,6 +78,9 @@ def get_project_insights_endpoint(
         )
 
     messages = [i.message for i in insights]
+
+    # Save the messages, if empty, that is okay, just means we have tried to
+    # calulate the insights and we had nothing to say
     save_project_insights(session, decoded_name, messages)
     session.commit()
 

@@ -1,6 +1,6 @@
 from typing import Optional
-
 from sqlmodel import Session, select
+from datetime import datetime
 
 from src.database.api.models import ProjectInsightsModel
 
@@ -26,13 +26,13 @@ def save_project_insights(
     Persist insight messages for a project.
 
     If a row already exists it is replaced; otherwise a new row is inserted.
-    Commits the session before returning.
     """
 
     pi = get_project_insights(session, project_name)
 
     if pi is not None:
         pi.insights = insight_messages
+        pi.generated_at = datetime.now()
         session.add(pi)
     else:
         pi = ProjectInsightsModel(
