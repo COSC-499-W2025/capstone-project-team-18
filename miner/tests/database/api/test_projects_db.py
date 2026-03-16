@@ -130,3 +130,18 @@ def test_save_project_report_does_not_clear_insights_for_other_projects(temp_db)
         session.commit()
 
         assert get_project_insights(session, "Project2") is not None
+
+
+def test_save_project_report_new_project_initializes_analysis_fields(temp_db):
+    with Session(temp_db) as session:
+        new_report = ProjectReport(
+            file_reports=[_build_file_report("BrandNewProject", "main.py")],
+            project_name="BrandNewProject"
+        )
+
+        saved_model = save_project_report(session, new_report, 0)
+        session.commit()
+
+        assert saved_model.project_name == "BrandNewProject"
+        assert saved_model.analyzed_count == 1
+        assert saved_model.parent is None

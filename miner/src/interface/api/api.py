@@ -23,6 +23,8 @@ from src.interface.api.routers.user_config import router as user_config_router
 from src.interface.api.routers.privacy_consent import router as privacy_consent_router
 from src.interface.api.routers.job_readiness import router as job_readiness_router
 from src.interface.api.routers.insights import router as insights_router
+from src.interface.api.routers.interview import router as interview_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,6 +69,7 @@ app.include_router(user_config_router)
 app.include_router(privacy_consent_router)
 app.include_router(job_readiness_router)
 app.include_router(insights_router)
+app.include_router(interview_router)
 
 # Error handlers. If these errors are ever raised in our code, return the following JSON
 
