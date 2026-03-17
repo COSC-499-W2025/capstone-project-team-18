@@ -6,7 +6,14 @@ from .api.CRUD.projects import save_project_report, get_project_report_by_name, 
 from .api.CRUD.resume import save_resume, load_resume, get_resume_model_by_id
 
 from .api.CRUD.user_config import get_most_recent_user_config, save_user_config
-from .api.CRUD.portfolio import get_portfolio_block, load_portfolio, save_portfolio, update_portfolio_block
+from .api.CRUD.portfolio import (
+    get_portfolio_block,
+    load_portfolio,
+    save_portfolio,
+    update_portfolio_block,
+    get_project_card_model,
+    get_project_cards_for_portfolio,
+)
 
 from .api.models import (
     UserConfigModel,
@@ -16,7 +23,8 @@ from .api.models import (
     ResumeModel,
     PortfolioModel,
     PortfolioSectionModel,
-    BlockModel
+    BlockModel,
+    PortfolioProjectCardModel,
 )
 
 from .core.base import get_engine
@@ -33,6 +41,8 @@ __all__ = [
     "load_portfolio",
     "save_portfolio",
     "update_portfolio_block",
+    "get_project_card_model",
+    "get_project_cards_for_portfolio",
 
     "UserConfigModel",
     "ProjectReportModel",
@@ -42,6 +52,7 @@ __all__ = [
     "PortfolioModel",
     "PortfolioSectionModel",
     "BlockModel",
+    "PortfolioProjectCardModel",
 
     # Resume CRUD
     "save_resume",
