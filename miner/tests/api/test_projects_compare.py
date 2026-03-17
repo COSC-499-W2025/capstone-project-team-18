@@ -95,4 +95,4 @@ def test_compare_projects_404_if_missing(client, blank_db):
 
     r = client.get("/projects/compare?projects=A,Nope")
     assert r.status_code == 404
-    assert "Missing project" in r.json().get("detail", "")
+    assert "Missing project" in r.json().get("message", "")

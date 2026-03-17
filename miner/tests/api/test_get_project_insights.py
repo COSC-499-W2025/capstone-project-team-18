@@ -157,7 +157,7 @@ def test_get_project_insights_returns_404_when_project_not_found(client, blank_d
         response = client.get("/projects/DoesNotExist/insights")
 
     assert response.status_code == 404
-    assert "DoesNotExist" in response.json()["detail"]
+    assert "DoesNotExist" in response.json()["message"]
 
 
 def test_get_project_insights_returns_500_on_generator_error(client, blank_db):

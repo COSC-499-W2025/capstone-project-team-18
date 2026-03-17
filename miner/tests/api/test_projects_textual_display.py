@@ -64,7 +64,7 @@ def test_showcase_404(monkeypatch):
 
     res = client.get("/projects/Nope/showcase")
     assert res.status_code == 404
-    assert "No project report named" in res.json()["detail"]
+    assert "No project report named" in res.json()["message"]
 
 def test_showcase_500(monkeypatch):
     def fake_get_project_report_by_name(session, project_name: str):
@@ -74,7 +74,7 @@ def test_showcase_500(monkeypatch):
 
     res = client.get("/projects/Any/showcase")
     assert res.status_code == 500
-    assert "Failed to retrieve project report" in res.json()["detail"]
+    assert "Failed to retrieve project report" in res.json()["message"]
 
 def test_showcase_frameworks_weighted_skill_normalized(monkeypatch):
     stub_report = ProjectReportStub(
@@ -134,7 +134,7 @@ def test_resume_item_404(monkeypatch):
 
     res = client.get("/projects/Nope/resume-item")
     assert res.status_code == 404
-    assert "No project report named" in res.json()["detail"]
+    assert "No project report named" in res.json()["message"]
 
 def test_resume_item_500(monkeypatch):
     def fake_get_project_report_by_name(session, project_name: str):
@@ -144,4 +144,4 @@ def test_resume_item_500(monkeypatch):
 
     res = client.get("/projects/Any/resume-item")
     assert res.status_code == 500
-    assert "Failed to retrieve project report" in res.json()["detail"]
+    assert "Failed to retrieve project report" in res.json()["message"]

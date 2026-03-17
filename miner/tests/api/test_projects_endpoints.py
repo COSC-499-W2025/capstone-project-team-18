@@ -107,7 +107,7 @@ class TestUploadProject:
             )
 
             assert response.status_code == 500
-            assert "failed to process" in response.json()["detail"].lower()
+            assert "failed to process" in response.json()["message"].lower()
 
     def test_upload_custom_portfolio_name(self, client):
         """Test that a custom portfolio_name overrides the filename"""
