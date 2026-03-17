@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/apiClient";
 import UploadProjectModal from "../components/update/modal/UploadProjectModal";
+import SettingsModal from "../components/update/modal/SettingsModal";
 
 type ProjectListItem = {
   project_name: string;

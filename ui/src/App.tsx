@@ -3,8 +3,11 @@ import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import SkillsPage from "./pages/SkillsPage";
+import { useState } from "react";
+import SettingsModal from "./components/update/modal/SettingsModal";
 
 export default function App() {
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   return (
     <div style={{ fontFamily: "system-ui" }}>
       <header
@@ -68,17 +71,17 @@ export default function App() {
               </NavLink>
 
           <button
-            style={{
-              padding: "8px 14px",
-              borderRadius: 12,
-              border: "none",
-              color: "#ccc",
-              background: "transparent",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
+          onClick={() => setShowSettingsModal(true)}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 12,
+            border: "none",
+            background: "transparent",
+            color: "#ccc",
+            cursor: "pointer",
             }}
-          >
-            Settings
+            >
+              Settings
           </button>
         </nav>
       </header>
@@ -89,6 +92,11 @@ export default function App() {
         <Route path="/projects/:id" element={<ProjectDetailsPage />} />
         <Route path="/skills" element={<SkillsPage />} />
       </Routes>
+
+      <SettingsModal
+      open={showSettingsModal}
+      onClose={() => setShowSettingsModal(false)}
+      />
     </div>
   );
 }
