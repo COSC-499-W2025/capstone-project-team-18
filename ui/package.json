@@ -29,6 +29,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.3",
@@ -37,6 +40,7 @@
     "cross-env": "^10.1.0",
     "electron": "^33.2.0",
     "electron-builder": "^24.13.3",
+    "jsdom": "^29.0.0",
     "postcss": "^8.4.49",
     "postcss-import": "^16.1.0",
     "react": "^18.3.1",

@@ -184,11 +184,12 @@ export default function UploadProjectModal({
         </div>
 
         <input
-          ref={inputRef}
-          type="file"
-          accept=".zip,.gz,.7z,.tar.gz"
-          onChange={handleFileChange}
-          style={{ display: "none" }}
+        data-testid="upload-input"
+        ref={inputRef}
+        type="file"
+        accept=".zip,.gz,.7z,.tar.gz"
+        onChange={handleFileChange}
+        style={{ display: "none" }}
         />
 
         <div
