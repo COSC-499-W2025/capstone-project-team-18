@@ -181,10 +181,11 @@ class UserCommitActivityTimeline(UserStatisticCalculation):
             for commit in project_report.project_repo.iter_commits():
                 date = datetime.fromtimestamp(
                     commit.authored_date).strftime("%Y-%m-%d")
-                commits_dict = commits_dict.get(date, 0) + 1
+                commits_dict[date] = commits_dict.get(date, 0) + 1
 
                 if commit.author.email == project_report.email or (project_report.github and project_report.github in commit.author.email):
-                    user_commits_dict = user_commits_dict.get(date, 0) + 1
+                    user_commits_dict[date] = user_commits_dict.get(
+                        date, 0) + 1
 
         return [Statistic(UserStatCollection.COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(user_commits_dict.items()))), Statistic(UserStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(commits_dict.items())))]
 
