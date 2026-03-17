@@ -5,6 +5,7 @@ Tests CRUD for the ProjectReport object
 import datetime
 from sqlmodel import Session
 from src.database.api.CRUD.projects import get_project_report_by_name, save_project_report
+from src.database.api.CRUD.insights import get_project_insights, save_project_insights
 from src.core.report import FileReport, ProjectReport
 from src.core.statistic import FileStatCollection, StatisticIndex, Statistic
 from src.core.statistic.statistic_models import FileDomain
@@ -95,6 +96,40 @@ def test_save_project_report_versions_chain_parent_points_to_latest(temp_db):
         assert saved_v3.project_name == "Project1_3"
         assert saved_v3.analyzed_count == 3
         assert saved_v3.parent == "Project1_2"
+
+
+def test_save_project_report_clears_cached_insights_on_update(temp_db):
+    """Re-analyzing a project must delete its cached insights."""
+    with Session(temp_db) as session:
+        save_project_insights(session, "Project1", ["Old insight."])
+        session.commit()
+
+        assert get_project_insights(session, "Project1") is not None
+
+        new_report = ProjectReport(
+            file_reports=[_build_file_report("Project1", "updated.py")],
+            project_name="Project1",
+        )
+        save_project_report(session, new_report, 0)
+        session.commit()
+
+        assert get_project_insights(session, "Project1") is None
+
+
+def test_save_project_report_does_not_clear_insights_for_other_projects(temp_db):
+    """Updating one project must not touch another project's cached insights."""
+    with Session(temp_db) as session:
+        save_project_insights(session, "Project2", ["Project2 insight."])
+        session.commit()
+
+        new_report = ProjectReport(
+            file_reports=[_build_file_report("Project1", "updated.py")],
+            project_name="Project1",
+        )
+        save_project_report(session, new_report, 0)
+        session.commit()
+
+        assert get_project_insights(session, "Project2") is not None
 
 
 def test_save_project_report_new_project_initializes_analysis_fields(temp_db):

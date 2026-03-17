@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from src.database.api.models import ProjectReportModel, FileReportModel
+from src.database.api.models import ProjectReportModel, FileReportModel, ProjectInsightsModel
 from src.core.report import ProjectReport
 from src.database.core.model_serializer import serialize_project_report, serialize_file_report
 from src.database.core.model_deserializer import deserialize_project_report
@@ -135,6 +135,13 @@ def save_project_report(
     for row in stale_files:
         session.delete(row)
 
+    stale_insights = session.exec(
+        select(ProjectInsightsModel).where(
+            ProjectInsightsModel.project_name == previous_project_name)
+    ).first()
+    if stale_insights is not None:
+        session.delete(stale_insights)
+
     for file_model in incoming_files:
         file_model.project_name = existing.project_name
         session.add(file_model)
@@ -162,7 +169,8 @@ def get_project_report_models_by_names(
     statement = (
         select(ProjectReportModel)
         .where(ProjectReportModel.project_name.in_(project_names))
-        .options(selectinload(ProjectReportModel.file_reports))  # pyright: ignore
+        # pyright: ignore
+        .options(selectinload(ProjectReportModel.file_reports))
     )
     projects = list(session.exec(statement).all())
     projects_by_name = {project.project_name: project for project in projects}
