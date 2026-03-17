@@ -44,52 +44,116 @@ export default function ProjectsPage() {
   }, []);
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h1 style={{ marginTop: 0, marginBottom: 0 }}>Projects</h1>
-        <button onClick={load} disabled={loading} style={{ padding: "6px 10px" }}>
-          Refresh
+    <div style={{ padding: 24, paddingTop: 40 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0 }}>Projects</h1>
+          <p style={{ marginTop: 8, color: "#666" }}>
+            Browse uploaded projects and open a project to view details.
+          </p>
+        </div>
+
+        <button
+          onClick={load}
+          disabled={loading}
+          style={{ padding: "10px 14px" }}
+        >
+          {loading ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
-      <p style={{ marginTop: 8, color: "#666" }}>
-        Data from <code>GET /projects</code>. Click a project to view details.
-      </p>
-
-      {loading && <div>Loading projects…</div>}
+      {loading && (
+        <div
+          style={{
+            border: "1px solid #2a2a2a",
+            borderRadius: 16,
+            padding: 20,
+            background: "#161616",
+          }}
+        >
+          Loading projects...
+        </div>
+      )}
 
       {!loading && error && (
-        <div style={{ color: "crimson" }}>
+        <div
+          style={{
+            border: "1px solid #3a1f1f",
+            borderRadius: 16,
+            padding: 20,
+            background: "#1a1111",
+            color: "#ff8a8a",
+          }}
+        >
           <strong>Error:</strong> {error}
         </div>
       )}
 
       {!loading && !error && projects.length === 0 && (
-        <div>No projects found.</div>
+        <div
+          style={{
+            border: "1px solid #2a2a2a",
+            borderRadius: 16,
+            padding: 20,
+            background: "#161616",
+            color: "#999",
+          }}
+        >
+          No projects found.
+        </div>
       )}
 
       {!loading && !error && projects.length > 0 && (
-        <ul style={{ paddingLeft: 18 }}>
+        <div
+          style={{
+            display: "grid",
+            gap: 16,
+          }}
+        >
           {projects.map((p) => (
-            <li key={p.project_name} style={{ marginBottom: 10 }}>
-              <div>
-                <Link
-                  to={`/projects/${encodeURIComponent(p.project_name)}`}
-                  style={{ fontWeight: 600 }}
-                >
-                  {p.project_name}
-                </Link>
+            <Link
+              key={p.project_name}
+              to={`/projects/${encodeURIComponent(p.project_name)}`}
+              style={{
+                display: "block",
+                textDecoration: "none",
+                color: "inherit",
+                border: "1px solid #2a2a2a",
+                borderRadius: 16,
+                padding: 18,
+                background: "#161616",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  alignItems: "flex-start",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 20 }}>
+                    {p.project_name}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#999", marginTop: 8 }}>
+                    Created: {formatDate(p.created_at)}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#999", marginTop: 4 }}>
+                    Updated: {formatDate(p.last_updated)}
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: "#666" }}>
-                Created: {formatDate(p.created_at)} · Updated:{" "}
-                {formatDate(p.last_updated)}
-                {p.user_config_used != null && (
-                  <> · User config: {p.user_config_used}</>
-                )}
-              </div>
-            </li>
+            </Link>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

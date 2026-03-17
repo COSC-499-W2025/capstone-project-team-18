@@ -89,3 +89,38 @@ it("includes status and URL in error message", async () => {
     );
   }
 });
+
+it("calls /resume/:id with correct URL", async () => {
+  fetchMock.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ id: 1, items: [] }),
+  });
+
+  await api.getResume(1);
+
+  expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/resume/1");
+});
+
+it("calls /resume/generate with correct URL and payload", async () => {
+  fetchMock.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ id: 1, items: [] }),
+  });
+
+  await api.generateResume({
+    project_names: ["Project A", "Project B"],
+    user_config_id: 1,
+  });
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/resume/generate",
+    expect.objectContaining({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_names: ["Project A", "Project B"],
+        user_config_id: 1,
+      }),
+    })
+  );
+});
