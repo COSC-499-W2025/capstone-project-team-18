@@ -10,6 +10,7 @@ from src.database import (
 )
 from src.database.api.CRUD.resume import save_resume, load_resume, get_resume_model_by_id
 from src.core.report.user.user_report import UserReport
+from src.utils.errors import ResumeNotFoundError, ProjectNotFoundError, DatabaseOperationError
 from datetime import date
 
 router = APIRouter(
@@ -79,13 +80,23 @@ class ResumeResponse(SQLModel):
 # ---------- Resume API Endpoints ----------
 @router.get("/{resume_id}", response_model=ResumeResponse)
 def get_resume(resume_id: int, session=Depends(get_session)):
-    """Retrieve a resume by ID"""
+    """
+    Retrieve a saved resume by its database ID.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Returns:
+    - 200: A `ResumeResponse` with metadata and all resume items.
+
+    Raises:
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    """
 
     result = get_resume_model_by_id(session, resume_id)
 
     if not result:
-        raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
     return result
 
@@ -93,8 +104,25 @@ def get_resume(resume_id: int, session=Depends(get_session)):
 @router.post("/generate", response_model=ResumeResponse)
 def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)):
     """
-    Generate a new resume from projects
-    fetches education/awards from user's ResumeConfigModel.
+    Generate a new resume from one or more project reports.
+
+    Education and awards are sourced from the user's ResumeConfigModel when a
+    user_config_id is provided.
+
+    Body parameters:
+    - `project_names`: Non-empty list of project names to include in the resume.
+    - `user_config_id`: Optional ID of the UserConfig record to pull education and
+      awards from.
+
+    Returns:
+    - 200: A `ResumeResponse` for the newly created resume.
+
+    Raises:
+    - 400: project_names is empty.
+    - 404 `PROJECT_NOT_FOUND`: A named project does not exist in the database.
+    - 404 `USER_CONFIG_NOT_FOUND`: The specified user_config_id does not exist.
+    - 500 `DATABASE_OPERATION_FAILED`: Resume generation or persistence failed;
+      changes were rolled back.
     """
 
     if not request.project_names:
@@ -109,8 +137,7 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
     for project_name in request.project_names:
         project = get_project_report_by_name(session, project_name)
         if not project:
-            raise HTTPException(
-                status_code=404, detail=f"No project found with name '{project_name}'")
+            raise ProjectNotFoundError(f"No project found with name '{project_name}'")
         project_reports.append(project)
 
     try:
@@ -146,8 +173,7 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate resume: {str(e)}")
+        raise DatabaseOperationError(f"Failed to generate resume: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/metadata", response_model=ResumeResponse)
@@ -157,16 +183,28 @@ def edit_resume_metadata(
     session=Depends(get_session)
 ):
     """
-    Edit an existing resume. Note, the user config ID is optional. It is not needed
-    and will cause an error if used without a corresponding ID.
+    Update the top-level metadata fields (email, github) of an existing resume.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Body parameters:
+    - `email`: Optional new email address.
+    - `github_username`: Optional new GitHub username.
+
+    Returns:
+    - 200: The updated `ResumeResponse`.
+
+    Raises:
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: The edit failed; changes were rolled back.
     """
 
     # Load as domain object
     resume_domain = load_resume(session, resume_id)
 
     if not resume_domain:
-        raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
     try:
         # Update fields
@@ -186,8 +224,7 @@ def edit_resume_metadata(
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to edit resume: {str(e)}")
+        raise DatabaseOperationError(f"Failed to edit resume: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/bullet_point", response_model=ResumeResponse)
@@ -196,13 +233,34 @@ def edit_resume_item_bullet_point(
     request: EditBulletPointRequest,
     session=Depends(get_session)
 ):
-    """Edit or append a bullet point to a specific resume item."""
+    """
+    Edit or append a bullet point in a specific resume item.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Body parameters:
+    - `item_index`: Zero-based index of the resume item to edit.
+    - `new_content`: Replacement or appended bullet point text.
+    - `append`: If true, appends `new_content` as a new bullet; otherwise overwrites
+      at `bullet_point_index`.
+    - `bullet_point_index`: Required when `append` is false; zero-based index of the
+      bullet to overwrite.
+
+    Returns:
+    - 200: The updated `ResumeResponse`.
+
+    Raises:
+    - 400: item_index is out of bounds.
+    - 400: bullet_point_index is not provided when append is false, or is out of bounds.
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: The edit failed; changes were rolled back.
+    """
 
     resume_model = get_resume_model_by_id(session, resume_id)
 
     if not resume_model:
-        raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
     if request.item_index < 0 or request.item_index >= len(resume_model.items):
         raise HTTPException(
@@ -244,8 +302,7 @@ def edit_resume_item_bullet_point(
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to edit bullet point: {str(e)}")
+        raise DatabaseOperationError(f"Failed to edit bullet point: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/resume_item", response_model=ResumeResponse)
@@ -254,13 +311,31 @@ def edit_resume_item(
     request: EditResumeItemMetadataRequest,  # Corrected request model here
     session=Depends(get_session)
 ):
-    """Edit the metadata (dates, title) of a specific resume item."""
+    """
+    Update the title and date range of a specific resume item.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Body parameters:
+    - `item_index`: Zero-based index of the resume item to edit.
+    - `start_date`: New start date (YYYY-MM-DD).
+    - `end_date`: New end date (YYYY-MM-DD).
+    - `title`: New display title.
+
+    Returns:
+    - 200: The updated `ResumeResponse`.
+
+    Raises:
+    - 400: item_index is out of bounds.
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: The edit failed; changes were rolled back.
+    """
 
     resume_model = get_resume_model_by_id(session, resume_id)
 
     if not resume_model:
-        raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
     # Validate item_index bounds
     if request.item_index < 0 or request.item_index >= len(resume_model.items):
@@ -293,8 +368,7 @@ def edit_resume_item(
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to edit resume item: {str(e)}")
+        raise DatabaseOperationError(f"Failed to edit resume item: {str(e)}") from e
 
 
 @router.post("/{resume_id}/refresh", response_model=ResumeResponse)
@@ -303,14 +377,28 @@ def refresh_resume(
     session=Depends(get_session)
 ):
     """
-    Refresh a resume with new project information
+    Regenerate a resume's content from its current project list.
+
+    Fetches up-to-date project statistics and rebuilds all resume items while
+    preserving the existing email and GitHub metadata.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Returns:
+    - 200: The refreshed `ResumeResponse`.
+
+    Raises:
+    - 400: The resume has no associated projects to refresh from.
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 404 `PROJECT_NOT_FOUND`: A project associated with this resume no longer exists.
+    - 500 `DATABASE_OPERATION_FAILED`: The refresh failed; changes were rolled back.
     """
 
     resume_model = get_resume_model_by_id(session, resume_id)
 
     if not resume_model:
-        raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
     project_names = [
         item.project_name for item in resume_model.items if item.project_name]
@@ -324,9 +412,7 @@ def refresh_resume(
     for project_name in project_names:
         project = get_project_report_by_name(session, project_name)
         if not project:
-            raise HTTPException(
-                status_code=404, detail=f"No project found with name '{project_name}'"
-            )
+            raise ProjectNotFoundError(f"No project found with name '{project_name}'")
         project_reports.append(project)
 
     try:
@@ -349,6 +435,4 @@ def refresh_resume(
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to refresh resume: {str(e)}"
-        )
+        raise DatabaseOperationError(f"Failed to refresh resume: {str(e)}") from e
