@@ -147,7 +147,7 @@ export default function ProjectDetailsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
               gap: 16,
               marginBottom: 24,
             }}
@@ -178,24 +178,6 @@ export default function ProjectDetailsPage() {
                 Last Updated
               </div>
               <div style={{ fontWeight: 600 }}>{formatDate(project.last_updated)}</div>
-            </section>
-
-            <section
-              style={{
-                border: "1px solid #2a2a2a",
-                borderRadius: 16,
-                padding: 18,
-                background: "#161616",
-              }}
-            >
-              <div style={{ fontSize: 13, color: "#999", marginBottom: 8 }}>
-                User Config
-              </div>
-              <div style={{ fontWeight: 600 }}>
-                {project.user_config_used != null
-                  ? `Config #${project.user_config_used}`
-                  : "None"}
-              </div>
             </section>
           </div>
 
