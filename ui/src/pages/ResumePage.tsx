@@ -105,7 +105,7 @@ export default function ResumePage() {
       if (generatedResume?.id) {
         navigate(`/resume/${generatedResume.id}`);
       }
-      
+
     } catch (e: any) {
       setError(e?.message ?? "Failed to generate resume.");
     } finally {
@@ -161,6 +161,21 @@ export default function ResumePage() {
     () => editingItemIndex !== null && editingBulletIndex !== null,
     [editingItemIndex, editingBulletIndex]
   );
+
+  const hasEditedBulletChanges = useMemo(() => {
+    if (
+      editingItemIndex === null ||
+      editingBulletIndex === null ||
+      !resume?.items?.[editingItemIndex]?.bullet_points?.[editingBulletIndex]
+    ) {
+      return false;
+    }
+
+    const originalBullet =
+      resume.items[editingItemIndex].bullet_points[editingBulletIndex].trim();
+
+    return editedBulletText.trim().length > 0 && editedBulletText.trim() !== originalBullet;
+  }, [editedBulletText, editingItemIndex, editingBulletIndex, resume]);
 
   function handleStartEditing(itemIndex: number, bulletIndex: number, bullet: string) {
     setError(null);
@@ -271,26 +286,6 @@ export default function ResumePage() {
               >
                 {generating ? "Generating..." : "Generate Resume"}
               </button>
-
-              <button
-                type="button"
-                onClick={handleSaveChanges}
-                disabled={saving || generating || !isEditing}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #2a2a2a",
-                  background: "#1a1a1a",
-                  color: "#ddd",
-                  cursor:
-                    saving || generating || !isEditing
-                      ? "not-allowed"
-                      : "pointer",
-                  opacity: saving || generating || !isEditing ? 0.7 : 1,
-                }}
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
             </div>
           </div>
 
@@ -342,65 +337,6 @@ export default function ResumePage() {
                   Skills: {resume.skills?.length ? resume.skills.join(", ") : "—"}
                 </div>
               </div>
-
-              {isEditing && (
-                <div
-                  style={{
-                    marginTop: 14,
-                    padding: 12,
-                    borderRadius: 12,
-                    border: "1px solid #2a2a2a",
-                    background: "#101010",
-                  }}
-                >
-                  <div style={{ fontSize: 13, color: "#999", marginBottom: 8 }}>
-                    Editing selected bullet point
-                  </div>
-
-                  <textarea
-                    value={editedBulletText}
-                    onChange={(e) => setEditedBulletText(e.target.value)}
-                    rows={4}
-                    style={{
-                      width: "100%",
-                      resize: "vertical",
-                      borderRadius: 10,
-                      border: "1px solid #2a2a2a",
-                      background: "#161616",
-                      color: "#fff",
-                      padding: 12,
-                      fontFamily: "inherit",
-                      fontSize: 14,
-                    }}
-                  />
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      marginTop: 10,
-                      gap: 10,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={handleCancelEditing}
-                      disabled={saving}
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: 10,
-                        border: "1px solid #2a2a2a",
-                        background: "transparent",
-                        color: "#ddd",
-                        cursor: saving ? "not-allowed" : "pointer",
-                        opacity: saving ? 0.7 : 1,
-                      }}
-                    >
-                      Cancel Edit
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {!resume.items || resume.items.length === 0 ? (
@@ -457,48 +393,133 @@ export default function ResumePage() {
                             editingBulletIndex === bulletIndex;
 
                           return (
-                            <div
-                              key={bulletIndex}
-                              style={{
-                                display: "flex",
-                                gap: 12,
-                                alignItems: "flex-start",
-                                padding: 12,
-                                borderRadius: 12,
-                                border: selected
-                                  ? "1px solid #4b5563"
-                                  : "1px solid #2a2a2a",
-                                background: selected ? "#14181f" : "#111",
-                              }}
-                            >
-                              <div style={{ color: "#999", lineHeight: 1.5 }}>•</div>
-
-                              <div style={{ flex: 1, color: "#ddd", lineHeight: 1.6 }}>
-                                {bullet}
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleStartEditing(index, bulletIndex, bullet)
-                                }
-                                disabled={saving || generating}
+                            <div key={bulletIndex} style={{ display: "grid", gap: 10 }}>
+                              <div
                                 style={{
-                                  padding: "6px 10px",
-                                  borderRadius: 10,
-                                  border: "1px solid #2a2a2a",
-                                  background: "transparent",
-                                  color: "#ddd",
-                                  cursor:
-                                    saving || generating
-                                      ? "not-allowed"
-                                      : "pointer",
-                                  opacity: saving || generating ? 0.7 : 1,
-                                  whiteSpace: "nowrap",
+                                  display: "flex",
+                                  gap: 12,
+                                  alignItems: "flex-start",
+                                  padding: 12,
+                                  borderRadius: 12,
+                                  border: selected
+                                    ? "1px solid #4b5563"
+                                    : "1px solid #2a2a2a",
+                                  background: selected ? "#14181f" : "#111",
                                 }}
                               >
-                                {selected ? "Editing" : "Edit"}
-                              </button>
+                                <div style={{ color: "#999", lineHeight: 1.5 }}>•</div>
+
+                                <div style={{ flex: 1, color: "#ddd", lineHeight: 1.6 }}>
+                                  {bullet}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleStartEditing(index, bulletIndex, bullet)
+                                  }
+                                  disabled={saving || generating}
+                                  style={{
+                                    padding: "6px 10px",
+                                    borderRadius: 10,
+                                    border: "1px solid #2a2a2a",
+                                    background: "transparent",
+                                    color: "#ddd",
+                                    cursor:
+                                      saving || generating
+                                        ? "not-allowed"
+                                        : "pointer",
+                                    opacity: saving || generating ? 0.7 : 1,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {selected ? "Editing" : "Edit"}
+                                </button>
+                              </div>
+
+                              {selected && (
+                                <div
+                                  style={{
+                                    padding: 12,
+                                    borderRadius: 12,
+                                    border: "1px solid #2a2a2a",
+                                    background: "#101010",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontSize: 13,
+                                      color: "#999",
+                                      marginBottom: 8,
+                                    }}
+                                  >
+                                    Editing selected bullet point
+                                  </div>
+
+                                <textarea
+                                  value={editedBulletText}
+                                  onChange={(e) => setEditedBulletText(e.target.value)}
+                                  rows={4}
+                                  style={{width: "100%",
+                                    boxSizing: "border-box",
+                                    resize: "vertical",
+                                    borderRadius: 10,
+                                    border: "1px solid #2a2a2a",
+                                    background: "#161616",
+                                    color: "#fff",
+                                    padding: 12,
+                                    fontFamily: "inherit",
+                                    fontSize: 14,
+                                    }}
+                                  />
+
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "flex-end",
+                                      marginTop: 10,
+                                      gap: 10,
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEditing}
+                                      disabled={saving}
+                                      style={{
+                                        padding: "8px 12px",
+                                        borderRadius: 10,
+                                        border: "1px solid #2a2a2a",
+                                        background: "transparent",
+                                        color: "#ddd",
+                                        cursor: saving ? "not-allowed" : "pointer",
+                                        opacity: saving ? 0.7 : 1,
+                                      }}
+                                    >
+                                      Cancel Edit
+                                    </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={handleSaveChanges}
+                                    disabled={saving || generating || !hasEditedBulletChanges}
+                                    style={{
+                                      padding: "8px 12px",
+                                      borderRadius: 10,
+                                      border: "1px solid #2a2a2a",
+                                      background: "#1a1a1a",
+                                      color: "#ddd",
+                                      cursor:
+                                      saving || generating || !hasEditedBulletChanges
+                                      ? "not-allowed"
+                                      : "pointer",
+                                      opacity: saving || generating || !hasEditedBulletChanges ? 0.7 : 1,
+                                      }}
+                                      >
+                                        {saving ? "Saving..." : "Save Changes"}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
