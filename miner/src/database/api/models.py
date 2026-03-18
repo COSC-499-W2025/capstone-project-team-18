@@ -241,9 +241,6 @@ class PortfolioModel(SQLModel, table=True):
     project_ids_include: List[str] = Field(
         sa_column=Column(JSON), default=list())
 
-    # Dashboard mode: "private" (edit via API) | "public" (static export)
-    mode: str = Field(default="private")
-
     # Relationships
     sections: List["PortfolioSectionModel"] = Relationship(
         back_populates="portfolio")

@@ -29,12 +29,11 @@ from src.database.api.models import (
 # Helpers — direct DB insertion (no service layer)
 # ---------------------------------------------------------------------------
 
-def _make_portfolio(engine, *, title="Test Portfolio", mode="private", project_ids=None) -> int:
+def _make_portfolio(engine, *, title="Test Portfolio", project_ids=None) -> int:
     """Insert a minimal PortfolioModel, return its id."""
     with Session(engine) as session:
         p = PortfolioModel(
             title=title,
-            mode=mode,
             creation_time=datetime.now(),
             last_updated_at=datetime.now(),
             project_ids_include=project_ids or [],
@@ -148,12 +147,6 @@ class TestGetPortfolio:
         assert r.status_code == 200
         assert r.json() is None
 
-    def test_portfolio_mode_is_included(self, client, blank_db):
-        pid = _make_portfolio(blank_db, mode="public")
-        r = client.get(f"/portfolio/{pid}")
-        assert r.status_code == 200
-        assert r.json()["metadata"]["mode"] == "public"
-
     def test_showcase_cards_present_in_response(self, client, blank_db):
         pid = _make_portfolio(blank_db)
         _make_card(blank_db, pid, "showcase-proj", is_showcase=True)
@@ -230,23 +223,6 @@ class TestEditPortfolio:
         r = client.post(f"/portfolio/{pid}/edit", json={"title": "New Title"})
         assert r.status_code == 200
         assert r.json()["title"] == "New Title"
-
-    def test_edit_mode_to_public(self, client, blank_db):
-        pid = _make_portfolio(blank_db, mode="private")
-        r = client.post(f"/portfolio/{pid}/edit", json={"mode": "public"})
-        assert r.status_code == 200
-        assert r.json()["mode"] == "public"
-
-    def test_edit_mode_to_private(self, client, blank_db):
-        pid = _make_portfolio(blank_db, mode="public")
-        r = client.post(f"/portfolio/{pid}/edit", json={"mode": "private"})
-        assert r.status_code == 200
-        assert r.json()["mode"] == "private"
-
-    def test_edit_invalid_mode_returns_422(self, client, blank_db):
-        pid = _make_portfolio(blank_db)
-        r = client.post(f"/portfolio/{pid}/edit", json={"mode": "readonly"})
-        assert r.status_code == 422
 
     def test_edit_project_ids(self, client, blank_db):
         pid = _make_portfolio(blank_db, project_ids=["a"])
