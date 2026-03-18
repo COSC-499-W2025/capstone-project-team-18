@@ -136,10 +136,6 @@ def resolve_accept_system(
     return resolve_block_accept_system(session, portfolio_id, section_id, block_tag)
 
 
-# ---------------------------------------------------------------------------
-# New endpoints
-# ---------------------------------------------------------------------------
-
 class EditPortfolioRequest(BaseModel):
     title: Optional[str] = None
     project_ids_include: Optional[list[str]] = None

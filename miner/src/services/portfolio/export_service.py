@@ -25,10 +25,6 @@ from src.database.api.CRUD.portfolio import load_portfolio, get_project_cards_fo
 from src.utils.errors import KeyNotFoundError
 
 
-# ---------------------------------------------------------------------------
-# JSON serialisation helper
-# ---------------------------------------------------------------------------
-
 def _json_default(obj: Any) -> Any:
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
@@ -36,10 +32,6 @@ def _json_default(obj: Any) -> Any:
         return base64.b64encode(obj).decode("utf-8")
     raise TypeError(f"Object of type {type(obj)} is not JSON serialisable")
 
-
-# ---------------------------------------------------------------------------
-# HTML template
-# ---------------------------------------------------------------------------
 
 _HTML_TEMPLATE = """\
 <!DOCTYPE html>
@@ -81,10 +73,6 @@ _HTML_TEMPLATE = """\
 </body>
 </html>
 """
-
-# ---------------------------------------------------------------------------
-# CSS
-# ---------------------------------------------------------------------------
 
 _CSS = """\
 /* ===== Reset & Base ===== */
@@ -273,9 +261,6 @@ header h1 {
 .hidden { display: none !important; }
 """
 
-# ---------------------------------------------------------------------------
-# filter.js
-# ---------------------------------------------------------------------------
 
 _FILTER_JS = """\
 (function () {
@@ -448,10 +433,6 @@ _FILTER_JS = """\
 }());
 """
 
-
-# ---------------------------------------------------------------------------
-# Main export function
-# ---------------------------------------------------------------------------
 
 def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     """
