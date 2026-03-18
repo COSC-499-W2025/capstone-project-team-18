@@ -5,19 +5,20 @@ import UploadProjectModal from "../UploadProjectModal";
 describe("UploadProjectModal", () => {
   it("does not render when open is false", () => {
     render(<UploadProjectModal open={false} onClose={vi.fn()} />);
-    expect(screen.queryByText("Upload Projects")).not.toBeInTheDocument();
+    expect(screen.queryByText("Upload Project")).not.toBeInTheDocument();
   });
 
   it("renders when open is true", () => {
     render(<UploadProjectModal open={true} onClose={vi.fn()} />);
-    expect(screen.getByText("Upload Projects")).toBeInTheDocument();
+    expect(screen.getByText("Upload Project")).toBeInTheDocument();
     expect(screen.getByText(/upload or drag and drop/i)).toBeInTheDocument();
   });
 
   it("keeps Upload disabled until a valid file is selected", () => {
     render(<UploadProjectModal open={true} onClose={vi.fn()} />);
 
-    const uploadButton = screen.getByRole("button", { name: /^upload$/i });
+    const uploadButton = screen.getByRole("button", {name: /start mining|analyzing/i,
+    });
     expect(uploadButton).toBeDisabled();
   });
 
@@ -48,7 +49,8 @@ describe("UploadProjectModal", () => {
       screen.getByText(/unsupported file type/i)
     ).toBeInTheDocument();
 
-    const uploadButton = screen.getByRole("button", { name: /^upload$/i });
+    const uploadButton = screen.getByRole("button", {name: /start mining|analyzing/i,
+    });
     expect(uploadButton).toBeDisabled();
   });
 });
