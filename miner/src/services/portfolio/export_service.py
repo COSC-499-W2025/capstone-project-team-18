@@ -495,7 +495,6 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     portfolio_data = {
         "portfolio_id": portfolio_id,
         "title": portfolio.title,
-        "mode": portfolio.metadata.mode,
         "project_cards": cards_data,
     }
     portfolio_data_js = "var PORTFOLIO_DATA = " + json.dumps(
