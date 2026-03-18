@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/apiClient";
+import { api, getLatestResumeId } from "../api/apiClient";
 import UploadProjectModal from "../components/update/modal/UploadProjectModal";
 
 type ProjectListItem = {
@@ -25,6 +25,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
 
   async function loadProjects() {
     try {
@@ -43,7 +44,13 @@ export default function HomePage() {
 
   useEffect(() => {
     loadProjects();
+    setLatestResumeId(getLatestResumeId());
   }, []);
+
+  async function handleUploadSuccess() {
+    setShowUploadModal(false);
+    await loadProjects();
+  }
 
   return (
     <div style={{ padding: 24, paddingTop: 40 }}>
@@ -173,9 +180,18 @@ export default function HomePage() {
           </div>
 
           <div style={{ marginTop: 20 }}>
-            <Link to="/resume/1" style={{ color: "#6f7cff" }}>
-              Open Resume
-            </Link>
+            {latestResumeId ? (
+              <Link
+                to={`/resume/${latestResumeId}`}
+                style={{ color: "#6f7cff" }}
+              >
+                Open Resume
+              </Link>
+            ) : (
+              <span style={{ color: "#999" }}>
+                Generate a resume to view it here.
+              </span>
+            )}
           </div>
         </section>
 
@@ -204,6 +220,7 @@ export default function HomePage() {
       <UploadProjectModal
         open={showUploadModal}
         onClose={() => setShowUploadModal(false)}
+        onUploadSuccess={handleUploadSuccess}
       />
     </div>
   );
