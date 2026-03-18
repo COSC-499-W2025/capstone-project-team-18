@@ -97,7 +97,7 @@ export default function HomePage() {
           onClick={() => setShowUploadModal(true)}
           style={{ padding: "10px 14px" }}
         >
-          Start Mining
+          Upload Project
         </button>
       </div>
 

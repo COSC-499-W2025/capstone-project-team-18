@@ -169,7 +169,7 @@ export default function UploadProjectModal({
       setUploadSuccess(
         response?.message
           ? `${response.message}${response.portfolio_name ? `: ${response.portfolio_name}` : ""}`
-          : `Project uploaded successfully: ${selectedFile.name}`
+          : `Project Analyzed successfully: ${selectedFile.name}`
       );
 
       onUploadSuccess?.();
@@ -214,7 +214,7 @@ export default function UploadProjectModal({
             marginBottom: 20,
           }}
         >
-          <h2 style={{ margin: 0 }}>Upload Projects</h2>
+          <h2 style={{ margin: 0 }}>Upload Project</h2>
 
           <button
             onClick={handleClose}
@@ -326,7 +326,7 @@ export default function UploadProjectModal({
             {isLoadingConfig
               ? "Loading saved settings..."
               : configuredGithub
-              ? `Uploading with configured GitHub user "${configuredGithub}"${
+              ? `Analyzing with configured GitHub user "${configuredGithub}"${
                   configuredEmail ? ` and email "${configuredEmail}"` : ""
                 }.`
               : "You do not have a GitHub profile configured yet. Some project mining features may be limited until user settings are completed."}
@@ -382,9 +382,9 @@ export default function UploadProjectModal({
             {isLoadingConfig
               ? "Loading saved settings..."
               : isUploading
-              ? "Uploading project..."
+              ? "Analyzing Project..."
               : selectedFile
-              ? "Ready to upload."
+              ? "Ready to Analyze."
               : "No file selected."}
           </div>
 
@@ -447,7 +447,7 @@ export default function UploadProjectModal({
                     : "pointer",
               }}
             >
-              {isUploading ? "Uploading..." : "Upload"}
+              {isUploading ? "Analzing..." : "Start Analysis"}
             </button>
           </div>
         </div>
