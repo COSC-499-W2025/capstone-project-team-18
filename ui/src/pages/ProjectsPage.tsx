@@ -150,21 +150,6 @@ export default function ProjectsPage() {
                     Updated: {formatDate(p.last_updated)}
                   </div>
                 </div>
-
-                {p.user_config_used != null && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "#ddd",
-                      border: "1px solid #2a2a2a",
-                      borderRadius: 999,
-                      padding: "6px 10px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Config #{p.user_config_used}
-                  </div>
-                )}
               </div>
             </Link>
           ))}
