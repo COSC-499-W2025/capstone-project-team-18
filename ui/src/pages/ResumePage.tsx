@@ -98,9 +98,14 @@ export default function ResumePage() {
       setResume(generatedResume);
       setSuccess("Resume generated successfully.");
 
+      window.setTimeout(() => {
+        setSuccess(null);
+      }, 2500);
+
       if (generatedResume?.id) {
         navigate(`/resume/${generatedResume.id}`);
       }
+      
     } catch (e: any) {
       setError(e?.message ?? "Failed to generate resume.");
     } finally {
