@@ -335,3 +335,54 @@ def sync_section_blocks(session: Session, section_model: PortfolioSectionModel, 
             # Add new block found in the merged domain object
             serialized_block.section_id = section_model.id
             session.add(serialized_block)
+
+
+def list_portfolios(session: Session) -> list[dict]:
+    """
+    Returns a lightweight list of all portfolios.
+    Does NOT load sections, blocks, or project cards.
+    """
+    statement = select(PortfolioModel)
+    models = session.exec(statement).all()
+    return [
+        {
+            "id": m.id,
+            "title": m.title,
+            "creation_time": m.creation_time,
+            "last_updated_at": m.last_updated_at,
+        }
+        for m in models
+    ]
+
+
+def delete_portfolio(session: Session, portfolio_id: int) -> bool:
+    """
+    Deletes a portfolio and all its related sections, blocks, and project cards.
+    Returns True if deleted, False if not found.
+    Manual cascade is used because SQLite FK enforcement through relationship
+    chains is unreliable without PRAGMA foreign_keys = ON.
+    """
+    statement = (
+        select(PortfolioModel)
+        .where(PortfolioModel.id == portfolio_id)
+        .options(
+            joinedload(PortfolioModel.sections)  # type: ignore
+            .joinedload(PortfolioSectionModel.blocks),  # type: ignore
+            joinedload(PortfolioModel.project_cards),  # type: ignore
+        )
+    )
+    portfolio_model = session.exec(statement).unique().first()
+
+    if not portfolio_model:
+        return False
+
+    for card in portfolio_model.project_cards:
+        session.delete(card)
+
+    for section in portfolio_model.sections:
+        for block in section.blocks:
+            session.delete(block)
+        session.delete(section)
+
+    session.delete(portfolio_model)
+    return True

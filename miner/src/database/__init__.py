@@ -13,6 +13,8 @@ from .api.CRUD.portfolio import (
     update_portfolio_block,
     get_project_card_model,
     get_project_cards_for_portfolio,
+    list_portfolios,
+    delete_portfolio,
 )
 
 from .api.models import (
@@ -43,6 +45,8 @@ __all__ = [
     "update_portfolio_block",
     "get_project_card_model",
     "get_project_cards_for_portfolio",
+    "list_portfolios",
+    "delete_portfolio",
 
     "UserConfigModel",
     "ProjectReportModel",

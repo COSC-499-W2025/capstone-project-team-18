@@ -13,7 +13,7 @@ from src.services.portfolio.edit_portfolio_service import (
 from src.services.portfolio.project_card_service import edit_project_card, set_showcase
 from src.services.portfolio.export_service import export_portfolio_static
 from src.database import load_portfolio, update_portfolio_block
-from src.database.api.CRUD.portfolio import get_project_cards_for_portfolio
+from src.database.api.CRUD.portfolio import get_project_cards_for_portfolio, list_portfolios, delete_portfolio
 from src.interface.api.routers.util import get_session
 from src.utils.errors import KeyNotFoundError
 
@@ -23,9 +23,35 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
-# Existing endpoints (preserved)
-# ---------------------------------------------------------------------------
+@router.get("")
+def get_all_portfolios(session: Session = Depends(get_session)):
+    """
+    GET /portfolio
+
+    Returns a lightweight list of all portfolios.
+    Each entry contains: id, title, creation_time, last_updated_at.
+    """
+    return {"portfolios": list_portfolios(session)}
+
+
+@router.delete("/{portfolio_id}")
+def remove_portfolio(
+    portfolio_id: int,
+    session: Session = Depends(get_session),
+):
+    """
+    DELETE /portfolio/{id}
+
+    Permanently deletes a portfolio and all its sections, blocks, and project cards.
+    Returns 204 No Content on success, 404 if not found.
+    """
+    deleted = delete_portfolio(session, portfolio_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=404, detail=f"Portfolio {portfolio_id} not found")
+    session.commit()
+    return Response(status_code=204)
+
 
 @router.get("/{portfolio_id}")
 def get_portfolio(portfolio_id: int, session: Session = Depends(get_session)):
@@ -116,7 +142,6 @@ def resolve_accept_system(
 
 class EditPortfolioRequest(BaseModel):
     title: Optional[str] = None
-    mode: Optional[str] = None               # "private" | "public"
     project_ids_include: Optional[list[str]] = None
 
 
@@ -129,17 +154,14 @@ def edit_portfolio(
     """
     POST /portfolio/{id}/edit
 
-    Edit portfolio-level metadata (title, mode, project selection).
+    Edit portfolio-level metadata (title, project selection).
     Does NOT regenerate content — use /refresh for that.
-
-    mode: "private" = editable via API; "public" = read-only (static export)
     """
     try:
         return edit_portfolio_metadata(
             session,
             portfolio_id,
             title=request.title,
-            mode=request.mode,
             project_ids_include=request.project_ids_include,
         )
     except KeyNotFoundError as e:
@@ -249,8 +271,7 @@ def export_portfolio(
     Download a self-contained static web portfolio as a ZIP archive.
     The ZIP contains: index.html, portfolio_data.js, style.css, filter.js
 
-    This is the "public mode" deliverable — the static bundle supports
-    client-side search and filter with no server required.
+    The static bundle supports client-side search and filter with no server required.
     """
     try:
         zip_bytes = export_portfolio_static(portfolio_id, session)
