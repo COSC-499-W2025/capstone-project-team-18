@@ -202,7 +202,6 @@ def serialize_portfolio(portfolio: Portfolio) -> PortfolioModel:
         creation_time=portfolio.metadata.creation_time,
         last_updated_at=portfolio.metadata.last_updated_at,
         project_ids_include=portfolio.metadata.project_ids_include,
-        mode=portfolio.metadata.mode,
     )
 
     portfolio_model.sections = [

@@ -13,19 +13,16 @@ class PortfolioMetadata:
     creation_time: datetime
     last_updated_at: datetime
     project_ids_include: list[str]
-    mode: str  # "private" | "public"
 
     def __init__(self,
                  project_ids: list[str] = [],
                  creation_date: Optional[datetime] = None,
                  last_updated_at: Optional[datetime] = None,
-                 mode: str = "private",
                  ):
 
         self.creation_time = creation_date or datetime.now()
         self.last_updated_at = last_updated_at or datetime.now()
         self.project_ids_include = list(project_ids)
-        self.mode = mode
 
 
 class Portfolio:

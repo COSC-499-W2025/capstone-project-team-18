@@ -213,7 +213,6 @@ def deserialize_portfolio(model: PortfolioModel) -> Portfolio:
         project_ids=model.project_ids_include,
         creation_date=model.creation_time,
         last_updated_at=model.last_updated_at,
-        mode=getattr(model, "mode", "private"),
     )
 
     portfolio = Portfolio(

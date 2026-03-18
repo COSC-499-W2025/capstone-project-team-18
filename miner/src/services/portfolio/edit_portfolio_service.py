@@ -77,11 +77,10 @@ def edit_portfolio_metadata(
     session: Session,
     portfolio_id: int,
     title: Optional[str] = None,
-    mode: Optional[str] = None,
     project_ids_include: Optional[list[str]] = None,
 ) -> PortfolioModel:
     """
-    Edit portfolio-level metadata: title, mode (private/public), and project selection.
+    Edit portfolio-level metadata: title and project selection.
 
     This does NOT regenerate content — use POST /portfolio/{id}/refresh for that.
     Only non-None arguments are written.
@@ -94,11 +93,6 @@ def edit_portfolio_metadata(
 
     if title is not None:
         portfolio_model.title = title
-
-    if mode is not None:
-        if mode not in ("private", "public"):
-            raise ValueError("mode must be 'private' or 'public'")
-        portfolio_model.mode = mode
 
     if project_ids_include is not None:
         portfolio_model.project_ids_include = list(project_ids_include)
