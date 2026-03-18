@@ -14,6 +14,16 @@ type ListProjectsResponse = {
   projects: ProjectListItem[];
 };
 
+type PortfolioListItem = {
+  id: number;
+  title: string;
+  creation_time?: string;
+};
+
+type ListPortfoliosResponse = {
+  portfolios: PortfolioListItem[];
+};
+
 function formatDate(value?: string) {
   if (!value) return "—";
   const d = new Date(value);
@@ -25,6 +35,10 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [showUploadModal, setShowUploadModal] = useState(false);
+
+  const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
+  const [portfoliosLoading, setPortfoliosLoading] = useState(true);
+  const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
 
   async function loadProjects() {
     try {
@@ -41,8 +55,23 @@ export default function HomePage() {
     }
   }
 
+  async function loadPortfolios() {
+    try {
+      setPortfoliosLoading(true);
+      setPortfoliosError(null);
+      const res = (await api.getPortfolios()) as ListPortfoliosResponse;
+      setPortfolios(Array.isArray(res?.portfolios) ? res.portfolios : []);
+    } catch (e: any) {
+      setPortfoliosError(e?.message ?? "Failed to load portfolios");
+      setPortfolios([]);
+    } finally {
+      setPortfoliosLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadProjects();
+    loadPortfolios();
   }, []);
 
   return (
@@ -194,9 +223,48 @@ export default function HomePage() {
         >
           <div>
             <h2 style={{ marginTop: 0 }}>Portfolios</h2>
-            <div style={{ color: "#999", lineHeight: 1.6 }}>
-              Portfolio support coming soon.
-            </div>
+
+            {portfoliosLoading && <div>Loading portfolios…</div>}
+
+            {!portfoliosLoading && portfoliosError && (
+              <div style={{ color: "#ff8a8a", fontSize: 14 }}>
+                Failed to load.
+              </div>
+            )}
+
+            {!portfoliosLoading && !portfoliosError && portfolios.length === 0 && (
+              <div style={{ color: "#999" }}>No portfolios yet.</div>
+            )}
+
+            {!portfoliosLoading && !portfoliosError && portfolios.length > 0 && (
+              <div style={{ display: "grid", gap: 12 }}>
+                {portfolios.slice(0, 3).map((p) => (
+                  <Link
+                    key={p.id}
+                    to={`/portfolios/${p.id}`}
+                    style={{
+                      display: "block",
+                      textDecoration: "none",
+                      color: "inherit",
+                      border: "1px solid #2a2a2a",
+                      borderRadius: 12,
+                      padding: 14,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>{p.title}</div>
+                    <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
+                      Created: {formatDate(p.creation_time)}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            <Link to="/portfolios" style={{ color: "#6f7cff" }}>
+              View all
+            </Link>
           </div>
         </section>
       </div>
