@@ -146,6 +146,20 @@ class ResumeModel(SQLModel, table=True):
     github: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
 
+    # Store categorized skills as snapshot at gen/edit time
+    skills_expert: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+    skills_intermediate: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+    skills_exposure: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
     created_at: datetime = Field(
         default_factory=lambda: datetime.now())
     last_updated: datetime = Field(

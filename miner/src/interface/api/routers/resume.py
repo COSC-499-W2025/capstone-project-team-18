@@ -3,6 +3,7 @@ from sqlmodel import SQLModel
 from typing import List, Optional
 import datetime
 
+from src.core.statistic.user_stat_collection import UserStatCollection
 from src.interface.api.routers.util import get_session
 from src.interface.api.routers.user_config import get_user_config_safe
 from src.database import (
@@ -63,19 +64,27 @@ class ResumeItemResponse(SQLModel):
     end_date: Optional[date] = None
 
 
+class SkillsByExpertiseResponse(SQLModel):
+    """Categorized skills by expertise level"""
+    expert: List[str] = []
+    intermediate: List[str] = []
+    exposure: List[str] = []
+
+
 class ResumeResponse(SQLModel):
     """Response model for a resume with items"""
     id: Optional[int] = None
     email: Optional[str] = None
     github: Optional[str] = None
     skills: List[str]
+    skills_by_expertise: Optional[SkillsByExpertiseResponse] = None
     education: List[str] = []
     awards: List[str] = []
     items: List[ResumeItemResponse] = []
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
 
-# Helper function
+# Helper function.
 def _build_resume_response(resume_model, session) -> ResumeResponse:
     """
     Build a ResumeResponse by fetching education/awards from user config.
@@ -89,17 +98,77 @@ def _build_resume_response(resume_model, session) -> ResumeResponse:
         education = user_config.resume_config.education or []
         awards = user_config.resume_config.awards or []
 
+    skills_by_expertise = None
+
+    has_stored_skills = bool(
+        resume_model.skills_expert or
+        resume_model.skills_intermediate or
+        resume_model.skills_exposure
+    )
+
+    all_lists_are_lists = (
+        isinstance(resume_model.skills_expert, list) and
+        isinstance(resume_model.skills_intermediate, list) and
+        isinstance(resume_model.skills_exposure, list) and
+        resume_model.skills == (resume_model.skills_expert or []) + (resume_model.skills_intermediate or []) + (resume_model.skills_exposure or [])
+    )
+
+    if has_stored_skills or (all_lists_are_lists and resume_model.skills == []):
+        skills_by_expertise = SkillsByExpertiseResponse(
+            expert=resume_model.skills_expert or [],
+            intermediate=resume_model.skills_intermediate or [],
+            exposure=resume_model.skills_exposure or []
+        )
+    else:
+        if user_config:
+            project_reports = user_config.project_reports
+            if project_reports:
+                from src.core.report.user.user_report import UserReport
+
+                domain_reports = [get_project_report_by_name(session, pr.project_name)
+                                for pr in project_reports if pr.project_name]
+                domain_reports = [r for r in domain_reports if r is not None]
+
+                if domain_reports:
+                    user_report = UserReport(project_reports=domain_reports)
+                    weighted_skills = user_report.statistics.get_value(
+                        UserStatCollection.USER_SKILLS.value
+                    )
+
+                    if weighted_skills:
+                        expert, intermediate, exposure = [], [], []
+                        for ws in weighted_skills:
+                            if ws.weight >= 0.7:
+                                expert.append(ws.skill_name)
+                            elif ws.weight >= 0.4:
+                                intermediate.append(ws.skill_name)
+                            else:
+                                exposure.append(ws.skill_name)
+
+                        skills_by_expertise = SkillsByExpertiseResponse(
+                            expert=expert,
+                            intermediate=intermediate,
+                            exposure=exposure
+                        )
+
     return ResumeResponse(
         id=resume_model.id,
         email=resume_model.email,
         github=resume_model.github,
         skills=resume_model.skills,
+        skills_by_expertise=skills_by_expertise,
         education=education,
         awards=awards,
         items=resume_model.items,
         created_at=resume_model.created_at,
         last_updated=resume_model.last_updated,
     )
+
+class EditSkillsRequest(SQLModel):
+    """Request model for editing categorized skills"""
+    expert: List[str]
+    intermediate: List[str]
+    exposure: List[str]
 
 
 # ---------- Resume API Endpoints ----------
@@ -115,6 +184,44 @@ def get_resume(resume_id: int, session=Depends(get_session)):
 
     return _build_resume_response(result, session)
 
+@router.post("/{resume_id}/edit/skills", response_model=ResumeResponse)
+def edit_resume_skills(
+    resume_id: int,
+    request: EditSkillsRequest,
+    session=Depends(get_session)
+):
+    """Edit categorized skills for a resume"""
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
+
+    try:
+        # Update categorized skills
+        resume_model.skills_expert = request.expert
+        resume_model.skills_intermediate = request.intermediate
+        resume_model.skills_exposure = request.exposure
+
+        # Update flat skills list
+        resume_model.skills = request.expert + request.intermediate + request.exposure
+
+        resume_model.last_updated = datetime.datetime.now()
+
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model, session)
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to edit skills: {str(e)}"
+        )
 
 @router.post("/generate", response_model=ResumeResponse)
 def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)):

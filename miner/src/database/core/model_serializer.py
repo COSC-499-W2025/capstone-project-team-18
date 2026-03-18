@@ -102,11 +102,17 @@ def serialize_project_report(
 
 
 def serialize_resume(resume: Resume) -> ResumeModel:
+    # Calculate skills by expertise from resume's weighted_skills
+    categorized = resume.get_skills_by_expertise()
+
     return ResumeModel(
         id=None,
         email=resume.email,
         github=resume.github,
         skills=resume.skills,
+        skills_expert=categorized.expert,
+        skills_intermediate=categorized.intermediate,
+        skills_exposure=categorized.exposure,
     )
 
 
