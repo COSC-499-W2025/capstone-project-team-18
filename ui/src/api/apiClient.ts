@@ -65,26 +65,6 @@ async function patchJson<T>(path: string, body?: unknown): Promise<T> {
   });
 
   if (!res.ok) {
-    const text = await readErrorText(res);
-    throw new Error(
-      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
-    );
-  }
-
-  return res.json();
-}
-
-async function patchJson<T>(path: string, body?: unknown): Promise<T> {
-  const base = getApiBaseUrl();
-  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-
-  const res = await fetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(
       `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`

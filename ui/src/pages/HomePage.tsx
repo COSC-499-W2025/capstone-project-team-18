@@ -353,5 +353,6 @@ export default function HomePage() {
         onUploadSuccess={handleUploadSuccess}
       />
     </div>
+    </div>
   );
 }
