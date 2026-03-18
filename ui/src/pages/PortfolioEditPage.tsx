@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/apiClient";
+import TextBlockEditor from "../components/blocks/TextBlockEditor";
+import TextListBlockEditor from "../components/blocks/TextListBlockEditor";
 
 // ---- Types ----------------------------------------------------------------
 
@@ -49,6 +51,12 @@ type Portfolio = {
   };
   sections: PortfolioSection[];
   project_cards: PortfolioCard[];
+};
+
+type BlockEditEntry = {
+  draft: string | string[];
+  saving: boolean;
+  error: string | null;
 };
 
 // ---- Helpers ---------------------------------------------------------------
@@ -109,9 +117,7 @@ export default function PortfolioEditPage() {
   >({});
 
   // Per-block edit state: { ["sectionId::blockTag"]: { draft, saving, error } }
-  const [blockEdits, setBlockEdits] = useState<
-    Record<string, { draft: string; saving: boolean; error: string | null }>
-  >({});
+  const [blockEdits, setBlockEdits] = useState<Record<string, BlockEditEntry>>({});
 
   // ---- Load ----------------------------------------------------------------
 
@@ -154,19 +160,37 @@ export default function PortfolioEditPage() {
   }
 
   function initBlockEdits(sections: PortfolioSection[]) {
-    const edits: typeof blockEdits = {};
+    const edits: Record<string, BlockEditEntry> = {};
     for (const sec of sections) {
       for (const tag of sec.block_order) {
         const block = sec.blocks_by_tag[tag];
         if (!block) continue;
         const key = `${sec.id}::${tag}`;
-        const content =
-          typeof block.current_content === "string"
-            ? block.current_content
-            : block.current_content != null
-            ? JSON.stringify(block.current_content, null, 2)
-            : "";
-        edits[key] = { draft: content, saving: false, error: null };
+        const contentType =
+          block.content_type ?? block.current_content?.content_type ?? "";
+        let draft: string | string[];
+        if (contentType === "TextList") {
+          const raw = block.current_content;
+          if (Array.isArray(raw)) {
+            draft = raw as string[];
+          } else if (raw && Array.isArray(raw.items)) {
+            draft = raw.items as string[];
+          } else {
+            draft = [];
+          }
+        } else {
+          const raw = block.current_content;
+          if (typeof raw === "string") {
+            draft = raw;
+          } else if (raw?.text != null) {
+            draft = raw.text as string;
+          } else if (raw != null) {
+            draft = JSON.stringify(raw, null, 2);
+          } else {
+            draft = "";
+          }
+        }
+        edits[key] = { draft, saving: false, error: null };
       }
     }
     setBlockEdits(edits);
@@ -299,7 +323,7 @@ export default function PortfolioEditPage() {
     }
   }
 
-  async function handleSaveBlock(sectionId: string, blockTag: string) {
+  async function handleSaveBlock(sectionId: string, blockTag: string, contentType: string) {
     const key = `${sectionId}::${blockTag}`;
     const edit = blockEdits[key];
     if (!edit) return;
@@ -308,9 +332,11 @@ export default function PortfolioEditPage() {
       [key]: { ...prev[key], saving: true, error: null },
     }));
     try {
-      await api.editPortfolioBlock(id!, sectionId, blockTag, {
-        text: edit.draft,
-      });
+      const payload =
+        contentType === "TextList"
+          ? { items: edit.draft as string[] }
+          : { text: edit.draft as string };
+      await api.editPortfolioBlock(id!, sectionId, blockTag, payload);
       setBlockEdits((prev) => ({
         ...prev,
         [key]: { ...prev[key], saving: false, error: null },
@@ -813,7 +839,12 @@ export default function PortfolioEditPage() {
                     const key = `${section.id}::${blockTag}`;
                     const edit = blockEdits[key];
                     if (!edit) return null;
-                    const isText = block.content_type === "text";
+                    const contentType =
+                      block.content_type ??
+                      block.current_content?.content_type ??
+                      "";
+                    const isText = contentType === "Text";
+                    const isTextList = contentType === "TextList";
 
                     return (
                       <div
@@ -872,34 +903,41 @@ export default function PortfolioEditPage() {
                           </div>
                         )}
 
-                        {isText ? (
-                          <textarea
-                            value={edit.draft}
-                            onChange={(e) =>
+                        {isText && (
+                          <TextBlockEditor
+                            draft={edit.draft as string}
+                            saving={edit.saving}
+                            error={edit.error}
+                            onChange={(value) =>
                               setBlockEdits((prev) => ({
                                 ...prev,
-                                [key]: {
-                                  ...prev[key],
-                                  draft: e.target.value,
-                                },
+                                [key]: { ...prev[key], draft: value },
                               }))
                             }
-                            rows={4}
-                            style={{
-                              width: "100%",
-                              padding: "8px 10px",
-                              borderRadius: 8,
-                              border: "1px solid #2a2a2a",
-                              background: "#0d0d0d",
-                              color: "#ddd",
-                              fontSize: 13,
-                              resize: "vertical",
-                              boxSizing: "border-box",
-                              fontFamily: "inherit",
-                              lineHeight: 1.6,
-                            }}
+                            onSave={() =>
+                              handleSaveBlock(section.id, blockTag, block.content_type)
+                            }
                           />
-                        ) : (
+                        )}
+
+                        {isTextList && (
+                          <TextListBlockEditor
+                            draft={edit.draft as string[]}
+                            saving={edit.saving}
+                            error={edit.error}
+                            onChange={(items) =>
+                              setBlockEdits((prev) => ({
+                                ...prev,
+                                [key]: { ...prev[key], draft: items },
+                              }))
+                            }
+                            onSave={() =>
+                              handleSaveBlock(section.id, blockTag, block.content_type)
+                            }
+                          />
+                        )}
+
+                        {!isText && !isTextList && (
                           <pre
                             style={{
                               margin: 0,
@@ -914,42 +952,10 @@ export default function PortfolioEditPage() {
                               lineHeight: 1.5,
                             }}
                           >
-                            {edit.draft || "(empty)"}
+                            {typeof edit.draft === "string"
+                              ? edit.draft || "(empty)"
+                              : JSON.stringify(edit.draft)}
                           </pre>
-                        )}
-
-                        {edit.error && (
-                          <div
-                            style={{
-                              color: "#ff8a8a",
-                              fontSize: 12,
-                              marginTop: 6,
-                            }}
-                          >
-                            {edit.error}
-                          </div>
-                        )}
-
-                        {isText && (
-                          <button
-                            onClick={() =>
-                              handleSaveBlock(section.id, blockTag)
-                            }
-                            disabled={edit.saving}
-                            style={{
-                              marginTop: 10,
-                              padding: "7px 12px",
-                              borderRadius: 8,
-                              border: "none",
-                              background: edit.saving ? "#202020" : "#2b2b2b",
-                              color: "#fff",
-                              cursor: edit.saving ? "not-allowed" : "pointer",
-                              opacity: edit.saving ? 0.6 : 1,
-                              fontSize: 12,
-                            }}
-                          >
-                            {edit.saving ? "Saving..." : "Save Block"}
-                          </button>
                         )}
                       </div>
                     );
