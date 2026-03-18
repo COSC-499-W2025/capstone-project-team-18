@@ -19,6 +19,11 @@ function formatDate(value?: string) {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
 }
 
+function formatUserConfigLabel(value?: number | null) {
+  if (value === null || value === undefined) return "No config";
+  return `Config #${value}`;
+}
+
 export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,13 +105,18 @@ export default function ProjectsPage() {
         <div
           style={{
             border: "1px solid #2a2a2a",
-            borderRadius: 16,
-            padding: 20,
+            borderRadius: 20,
+            padding: 28,
             background: "#161616",
             color: "#999",
           }}
         >
-          No projects found.
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+            No projects found
+          </div>
+          <div style={{ lineHeight: 1.6 }}>
+            Upload and mine a project from the dashboard to see it appear here.
+          </div>
         </div>
       )}
 
@@ -114,44 +124,90 @@ export default function ProjectsPage() {
         <div
           style={{
             display: "grid",
-            gap: 16,
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 20,
+            alignItems: "stretch",
           }}
         >
           {projects.map((p) => (
-            <Link
+            <section
               key={p.project_name}
-              to={`/projects/${encodeURIComponent(p.project_name)}`}
               style={{
-                display: "block",
-                textDecoration: "none",
-                color: "inherit",
                 border: "1px solid #2a2a2a",
                 borderRadius: 16,
-                padding: 18,
+                padding: 20,
                 background: "#161616",
+                minHeight: 220,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 16,
-                  alignItems: "flex-start",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 20 }}>
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    marginBottom: 16,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 20,
+                      lineHeight: 1.3,
+                      wordBreak: "break-word",
+                    }}
+                  >
                     {p.project_name}
                   </div>
-                  <div style={{ fontSize: 13, color: "#999", marginTop: 8 }}>
-                    Created: {formatDate(p.created_at)}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#999", marginTop: 4 }}>
-                    Updated: {formatDate(p.last_updated)}
-                  </div>
+
+                  {p.user_config_used !== null && p.user_config_used !== undefined && (
+                    <div
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: "1px solid #2a2a2a",
+                      background: "#101010",
+                      fontSize: 12,
+                      color: "#bbb",
+                      whiteSpace: "nowrap",
+                    }}
+                    >
+                      {formatUserConfigLabel(p.user_config_used)}
+                      </div>
+                    )}
                 </div>
+
+                <Link
+                  to={`/projects/${encodeURIComponent(p.project_name)}`}
+                  style={{
+                    display: "block",
+                    textDecoration: "none",
+                    color: "inherit",
+                    border: "1px solid #2a2a2a",
+                    borderRadius: 12,
+                    padding: 14,
+                  }}
+                >
+                  <div style={{ color: "#999", fontSize: 14, lineHeight: 1.7 }}>
+                    <div>Created: {formatDate(p.created_at)}</div>
+                    <div>Updated: {formatDate(p.last_updated)}</div>
+                  </div>
+                </Link>
               </div>
-            </Link>
+
+              <div style={{ marginTop: 20 }}>
+                <Link
+                  to={`/projects/${encodeURIComponent(p.project_name)}`}
+                  style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}
+                >
+                  View →
+                </Link>
+              </div>
+            </section>
           ))}
         </div>
       )}

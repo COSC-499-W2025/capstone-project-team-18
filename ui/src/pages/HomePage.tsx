@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, getLatestResumeId } from "../api/apiClient";
+import {
+  api,
+  getLatestResumeId,
+  type ResumeResponse,
+} from "../api/apiClient";
 import UploadProjectModal from "../components/update/modal/UploadProjectModal";
 
 type ProjectListItem = {
@@ -26,6 +30,8 @@ export default function HomePage() {
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
+  const [latestResume, setLatestResume] = useState<ResumeResponse | null>(null);
+  const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
 
   async function loadProjects() {
     try {
@@ -44,8 +50,25 @@ export default function HomePage() {
 
   useEffect(() => {
     loadProjects();
-    setLatestResumeId(getLatestResumeId());
+    loadLatestResume();
   }, []);
+
+  async function loadLatestResume() {
+    const resumeId = getLatestResumeId();
+    setLatestResumeId(resumeId);
+
+    if (!resumeId) {
+      setLatestResume(null);
+      return;
+    }
+
+    try {
+      const resume = await api.getResume(resumeId);
+      setLatestResume(resume);
+    } catch {
+      setLatestResume(null);
+    }
+  }
 
   async function handleUploadSuccess() {
     setShowUploadModal(false);
@@ -89,7 +112,7 @@ export default function HomePage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gridTemplateColumns: "1.15fr 0.85fr",
           gap: 20,
           alignItems: "stretch",
         }}
@@ -118,12 +141,14 @@ export default function HomePage() {
 
             {!loading && !error && projects.length > 0 && (
               <div style={{ display: "grid", gap: 12 }}>
-                {projects.slice(0, 3).map((project) => (
+                {projects.map((project) => (
                   <Link
                     key={project.project_name}
                     to={`/projects/${encodeURIComponent(
                       project.project_name
                     )}`}
+                    onMouseEnter={() => setHoveredProjectName(project.project_name)}
+                    onMouseLeave={() => setHoveredProjectName(null)}
                     style={{
                       display: "block",
                       textDecoration: "none",
@@ -131,9 +156,18 @@ export default function HomePage() {
                       border: "1px solid #2a2a2a",
                       borderRadius: 12,
                       padding: 14,
+                      background:
+                        hoveredProjectName === project.project_name
+                          ? "#151515"
+                          : "#101010",
+                      transition: "background 0.2s ease, transform 0.2s ease",
+                      transform:
+                        hoveredProjectName === project.project_name
+                          ? "translateY(-1px)"
+                          : "translateY(0)",
                     }}
                   >
-                    <div style={{ fontWeight: 600 }}>
+                    <div style={{ fontWeight: 600, color: "#ddd" }}>
                       {project.project_name}
                     </div>
                     <div
@@ -158,63 +192,92 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Resume */}
-        <section
+        <div
           style={{
-            border: "1px solid #2a2a2a",
-            borderRadius: 16,
-            padding: 20,
-            background: "#161616",
-            minHeight: 220,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
+            display: "grid",
+            gridTemplateRows: "1fr 1fr",
+            gap: 20,
           }}
         >
-          <div>
-            <h2 style={{ marginTop: 0 }}>Resume</h2>
-            <div style={{ color: "#999", lineHeight: 1.6 }}>
-              View generated resume content, review extracted skills, and inspect
-              resume items for peer testing.
-            </div>
-          </div>
+          {/* Resume */}
+          <section
+            style={{
+              border: "1px solid #2a2a2a",
+              borderRadius: 16,
+              padding: 20,
+              background: "#161616",
+              minHeight: 220,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <h2 style={{ marginTop: 0 }}>Resume</h2>
+              <div style={{ color: "#999", lineHeight: 1.6, marginBottom: 16 }}>
+                View generated resume content, review extracted skills, and
+                review resume items.
+              </div>
 
-          <div style={{ marginTop: 20 }}>
-            {latestResumeId ? (
-              <Link
-                to={`/resume/${latestResumeId}`}
-                style={{ color: "#6f7cff" }}
-              >
-                Open Resume
-              </Link>
-            ) : (
-              <span style={{ color: "#999" }}>
-                Generate a resume to view it here.
-              </span>
-            )}
-          </div>
-        </section>
-
-        {/* Portfolios */}
-        <section
-          style={{
-            border: "1px solid #2a2a2a",
-            borderRadius: 16,
-            padding: 20,
-            background: "#161616",
-            minHeight: 220,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
-          <div>
-            <h2 style={{ marginTop: 0 }}>Portfolios</h2>
-            <div style={{ color: "#999", lineHeight: 1.6 }}>
-              Portfolio support coming soon.
+              {latestResume?.items && latestResume.items.length > 0 ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {latestResume.items.map((item, index) => (
+                    <div
+                      key={`${item.title}-${index}`}
+                      style={{
+                        border: "1px solid #2a2a2a",
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        background: "#101010",
+                        color: "#ddd",
+                      }}
+                    >
+                      {item.title}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: "#999" }}>No generated resume items yet.</div>
+              )}
             </div>
+
+            <div style={{ marginTop: 20 }}>
+              {latestResumeId ? (
+                <Link
+                  to={`/resume/${latestResumeId}`}
+                  style={{ color: "#6f7cff" }}
+                >
+                  Open Resume
+                </Link>
+              ) : (
+                <span style={{ color: "#999" }}>
+                  Generate a resume to view it here.
+                </span>
+              )}
+            </div>
+          </section>
+
+          {/* Portfolios */}
+          <section
+            style={{
+              border: "1px solid #2a2a2a",
+              borderRadius: 16,
+              padding: 20,
+              background: "#161616",
+              minHeight: 220,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <h2 style={{ marginTop: 0 }}>Portfolios</h2>
+              <div style={{ color: "#999", lineHeight: 1.6 }}>
+                Portfolio support coming soon.
+              </div>
+            </div>
+          </section>
           </div>
-        </section>
       </div>
 
       <UploadProjectModal

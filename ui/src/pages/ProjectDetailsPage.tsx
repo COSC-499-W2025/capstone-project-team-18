@@ -6,8 +6,17 @@ type ProjectReport = {
   project_name: string;
   user_config_used?: number | null;
   image_data?: unknown | null;
-  created_at: string;
-  last_updated: string;
+  created_at?: string;
+  last_updated?: string;
+  description?: string;
+  summary?: string;
+  overview?: string;
+  skills?: string[];
+  frameworks?: string[];
+  bullet_points?: string[];
+  highlights?: string[];
+  statistic?: Record<string, unknown>;
+  [key: string]: unknown;
 };
 
 function isNotFoundError(msg: string) {
@@ -20,6 +29,42 @@ function formatDate(value?: string) {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
 }
 
+function formatStatisticValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "—";
+    return JSON.stringify(value, null, 2);
+  }
+
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+
+    if ("value" in obj && obj.value !== undefined) {
+      if (
+        typeof obj.value === "string" ||
+        typeof obj.value === "number" ||
+        typeof obj.value === "boolean"
+      ) {
+        return String(obj.value);
+      }
+      return JSON.stringify(obj.value, null, 2);
+    }
+
+    return JSON.stringify(obj, null, 2);
+  }
+
+  return String(value);
+}
+
 export default function ProjectDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -28,6 +73,15 @@ export default function ProjectDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [project, setProject] = useState<ProjectReport | null>(null);
+
+  const projectStatistics =
+    project?.statistic && typeof project.statistic === "object"
+      ? Object.entries(project.statistic).sort(([a], [b]) => {
+          if (a === "PROJECT_START_DATE" && b === "PROJECT_END_DATE") return -1;
+          if (a === "PROJECT_END_DATE" && b === "PROJECT_START_DATE") return 1;
+          return 0;
+        })
+      : [];
 
   useEffect(() => {
     if (!projectName) {
@@ -101,8 +155,7 @@ export default function ProjectDetailsPage() {
         >
           {isNotFoundError(error) ? (
             <>
-              <strong>Not found:</strong> No project named{" "}
-              <code>{projectName}</code>
+              <strong>Not found:</strong> No project named <code>{projectName}</code>
             </>
           ) : (
             <>
@@ -116,38 +169,19 @@ export default function ProjectDetailsPage() {
         <>
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 16,
               marginBottom: 24,
             }}
           >
-            <div>
-              <h1 style={{ margin: 0 }}>{project.project_name}</h1>
-              <p style={{ marginTop: 8, color: "#666" }}>
-                Review project metadata and mined information.
-              </p>
-            </div>
-
-            <button
-              style={{
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid #2a2a2a",
-                background: "transparent",
-                color: "#ddd",
-                cursor: "pointer",
-              }}
-            >
-              Delete Project
-            </button>
+            <h1 style={{ margin: 0 }}>{project.project_name}</h1>
+            <p style={{ marginTop: 8, color: "#666" }}>
+              Review uploaded project metadata and mined output.
+            </p>
           </div>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               gap: 16,
               marginBottom: 24,
             }}
@@ -179,47 +213,25 @@ export default function ProjectDetailsPage() {
               </div>
               <div style={{ fontWeight: 600 }}>{formatDate(project.last_updated)}</div>
             </section>
-          </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr",
-              gap: 16,
-              marginBottom: 24,
-            }}
-          >
-            <section
-              style={{
-                border: "1px solid #2a2a2a",
-                borderRadius: 16,
-                padding: 20,
-                background: "#161616",
-              }}
-            >
-              <h2 style={{ marginTop: 0 }}>Project Overview</h2>
-              <div style={{ color: "#999", lineHeight: 1.6 }}>
-                Detailed project content and editable metadata will be connected
-                in the next integration pass. For peer testing, this section
-                represents where mined project details and user-adjustable
-                project information will appear.
-              </div>
-            </section>
-
-            <section
-              style={{
-                border: "1px solid #2a2a2a",
-                borderRadius: 16,
-                padding: 20,
-                background: "#161616",
-              }}
-            >
-              <h2 style={{ marginTop: 0 }}>Skills</h2>
-              <div style={{ color: "#999", lineHeight: 1.6 }}>
-                Skills extracted for this project will appear here once the full
-                data mapping is connected.
-              </div>
-            </section>
+            {project.user_config_used !== null &&
+              project.user_config_used !== undefined && (
+                <section
+                  style={{
+                    border: "1px solid #2a2a2a",
+                    borderRadius: 16,
+                    padding: 18,
+                    background: "#161616",
+                  }}
+                >
+                  <div style={{ fontSize: 13, color: "#999", marginBottom: 8 }}>
+                    User Config Used
+                  </div>
+                  <div style={{ fontWeight: 600 }}>
+                    {project.user_config_used}
+                  </div>
+                </section>
+              )}
           </div>
 
           <section
@@ -228,23 +240,51 @@ export default function ProjectDetailsPage() {
               borderRadius: 16,
               padding: 20,
               background: "#161616",
+              marginBottom: 24,
             }}
           >
-            <h2 style={{ marginTop: 0 }}>Raw Project Data</h2>
-            <pre
-              style={{
-                background: "#101010",
-                padding: 14,
-                borderRadius: 12,
-                overflow: "auto",
-                margin: 0,
-                maxHeight: 360,
-                color: "#d8d8d8",
-                fontSize: 13,
-              }}
-            >
-              {JSON.stringify(project, null, 2)}
-            </pre>
+            <h2 style={{ marginTop: 0 }}>Statistics</h2>
+
+            {projectStatistics.length > 0 ? (
+              <div style={{ display: "grid", gap: 10 }}>
+                {projectStatistics.map(([key, value]) => (
+                  <div
+                    key={key}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "280px 1fr",
+                      gap: 16,
+                      paddingBottom: 10,
+                      borderBottom: "1px solid #222",
+                      alignItems: "start",
+                    }}
+                  >
+                    <span style={{ color: "#999", textTransform: "capitalize" }}>
+                      {key.replace(/_/g, " ")}
+                    </span>
+
+                    <pre
+                      style={{
+                        margin: 0,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        color: "#ddd",
+                        fontSize: 13,
+                        fontFamily: "inherit",
+                        lineHeight: 1.6,
+                        background: "transparent",
+                      }}
+                    >
+                      {formatStatisticValue(value)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: "#999", lineHeight: 1.6 }}>
+                No statistics are currently available for this project.
+              </div>
+            )}
           </section>
         </>
       )}

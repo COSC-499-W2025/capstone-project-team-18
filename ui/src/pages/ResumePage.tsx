@@ -140,6 +140,11 @@ export default function ResumePage() {
       setEditingBulletIndex(null);
       setEditedBulletText("");
       setSuccess("Resume bullet point updated successfully.");
+
+      window.setTimeout(() => {
+        setSuccess(null);
+      }, 2500);
+      
     } catch (e: any) {
       setError(e?.message ?? "Failed to save resume.");
     } finally {
