@@ -19,8 +19,6 @@ def sample_resume_model():
         skills=["Python", "JavaScript", "SQL"],
         created_at=datetime(2026, 2, 9, 10, 0, 0),
         last_updated=datetime(2026, 2, 9, 10, 0, 0),
-        education=["BSc Computer Science"],
-        awards=["Dean's List"]
     )
 
     item = ResumeItemModel(
@@ -658,8 +656,28 @@ def test_edit_resume_item_invalid_item_index(client, sample_resume_model):
 
 def test_get_resume_with_education_and_awards(client, sample_resume_model):
     """Test retrieving resume includes education and awards"""
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+    from src.database.api.models import UserConfigModel, ResumeConfigModel
+
+    # Mock user config with resume config
+    mock_resume_config = ResumeConfigModel(
+        id=1,
+        user_config_id=1,
+        education=["BSc Computer Science"],
+        awards=["Dean's List"]
+    )
+    mock_user_config = UserConfigModel(
+        id=1,
+        consent=True,
+        user_email="test@example.com",
+        github="testuser"
+    )
+    mock_user_config.resume_config = mock_resume_config
+
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get, \
+            patch('src.database.get_most_recent_user_config') as mock_get_config:
+
         mock_get.return_value = sample_resume_model
+        mock_get_config.return_value = mock_user_config
 
         response = client.get("/resume/1")
 
@@ -668,18 +686,34 @@ def test_get_resume_with_education_and_awards(client, sample_resume_model):
         assert "education" in data
         assert "awards" in data
         assert len(data["education"]) == 1
-        assert len(data["awards"]) == 1
         assert data["education"][0] == "BSc Computer Science"
+        assert len(data["awards"]) == 1
         assert data["awards"][0] == "Dean's List"
-
 
 def test_get_resume_with_empty_education_awards(client, sample_resume_model):
     """Test retrieving resume with empty education and awards lists"""
-    sample_resume_model.education = []
-    sample_resume_model.awards = []
+    from src.database.api.models import UserConfigModel, ResumeConfigModel
 
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+    # Mock user config with empty resume config
+    mock_resume_config = ResumeConfigModel(
+        id=1,
+        user_config_id=1,
+        education=[],
+        awards=[]
+    )
+    mock_user_config = UserConfigModel(
+        id=1,
+        consent=True,
+        user_email="test@example.com",
+        github="testuser"
+    )
+    mock_user_config.resume_config = mock_resume_config
+
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get, \
+            patch('src.database.get_most_recent_user_config') as mock_get_config:
+
         mock_get.return_value = sample_resume_model
+        mock_get_config.return_value = mock_user_config
 
         response = client.get("/resume/1")
 

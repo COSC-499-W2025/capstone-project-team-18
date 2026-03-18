@@ -107,8 +107,6 @@ def serialize_resume(resume: Resume) -> ResumeModel:
         email=resume.email,
         github=resume.github,
         skills=resume.skills,
-        education=getattr(resume, "education", []) or [],
-        awards=getattr(resume, "awards", []) or [],
     )
 
 
