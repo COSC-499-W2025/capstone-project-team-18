@@ -317,8 +317,11 @@ def test_edit_resume_skills_not_found(client):
 
 def test_edit_resume_skills_empty_lists(client, sample_resume_model):
     """Test editing with empty skill lists"""
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get, \
+        patch('src.database.get_most_recent_user_config') as mock_get_config:
+
         mock_get.return_value = sample_resume_model
+        mock_get_config.return_value = None
 
         response = client.post("/resume/1/edit/skills", json={
             "expert": [],
@@ -328,8 +331,7 @@ def test_edit_resume_skills_empty_lists(client, sample_resume_model):
 
         assert response.status_code == 200
         data = response.json()
-        assert data["skills_by_expertise"]["expert"] == []
-        assert data["skills"] == []
+        assert data["skills_by_expertise"] is None
 
 
 def test_edit_resume_skills_validation_error(client):

@@ -106,14 +106,7 @@ def _build_resume_response(resume_model, session) -> ResumeResponse:
         resume_model.skills_exposure
     )
 
-    all_lists_are_lists = (
-        isinstance(resume_model.skills_expert, list) and
-        isinstance(resume_model.skills_intermediate, list) and
-        isinstance(resume_model.skills_exposure, list) and
-        resume_model.skills == (resume_model.skills_expert or []) + (resume_model.skills_intermediate or []) + (resume_model.skills_exposure or [])
-    )
-
-    if has_stored_skills or (all_lists_are_lists and resume_model.skills == []):
+    if has_stored_skills:
         skills_by_expertise = SkillsByExpertiseResponse(
             expert=resume_model.skills_expert or [],
             intermediate=resume_model.skills_intermediate or [],
