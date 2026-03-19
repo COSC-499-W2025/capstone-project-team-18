@@ -288,27 +288,26 @@ def edit_resume_metadata(
     """
 
     # Load as domain object
-    resume_domain = load_resume(session, resume_id)
+    resume_model = get_resume_model_by_id(session, resume_id)
 
-    if not resume_domain:
+    if not resume_model:
         raise HTTPException(
             status_code=404, detail=f"No resume found with id {resume_id}")
 
     try:
-        # Update fields
         if request.email is not None:
-            resume_domain.email = request.email
+            resume_model.email = request.email
 
         if request.github_username is not None:
-            resume_domain.github = request.github_username
+            resume_model.github = request.github_username
 
-        # Save updated (uses serialize_resume)
-        updated_model = save_resume(session, resume_domain)
-        updated_model.id = resume_id
+        resume_model.last_updated = datetime.datetime.now()
 
+        session.add(resume_model)
         session.commit()
+        session.refresh(resume_model)
 
-        return _build_resume_response(updated_model, session)
+        return _build_resume_response(resume_model, session)
 
     except Exception as e:
         session.rollback()
