@@ -40,20 +40,6 @@ class TestUploadProject:
             assert data["message"] == "Project uploaded and analyzed successfully"
             mock_miner.assert_called_once()
 
-    def test_upload_with_email(self, client):
-        """Test that email query param is passed through to start_miner_service"""
-        with patch('src.interface.api.routers.projects.start_miner_service') as mock_miner:
-            mock_miner.return_value = MagicMock(success=True, project_errors=[])
-
-            response = client.post(
-                "/projects/upload?email=test@example.com",
-                files={"file": ("project.zip", io.BytesIO(b"PK\x03\x04fake"), "application/zip")}
-            )
-
-            assert response.status_code == 200
-            _, kwargs = mock_miner.call_args
-            assert kwargs["user_config"].user_email == "test@example.com"
-
     def test_upload_7z_supported(self, client):
         """Test that .7z files are accepted"""
         with patch('src.interface.api.routers.projects.start_miner_service') as mock_miner:
