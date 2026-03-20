@@ -12,6 +12,7 @@ from src.services.job_readiness_service import (
     build_user_profile,
     run_job_readiness_analysis,
 )
+from src.utils.errors import AIServiceUnavailableError
 
 router = APIRouter(
     prefix="/job-readiness",
@@ -42,6 +43,29 @@ def analyze_job_readiness(
     request: JobReadinessRequest,
     session: Session = Depends(get_session),
 ):
+    """
+    Analyze how well a candidate's profile matches a job description.
+
+    Builds a candidate profile from optional resume and project evidence, then
+    uses Azure OpenAI to score fit, list strengths and weaknesses, and produce
+    prioritized improvement suggestions.
+
+    Body parameters:
+    - `job_description`: Required non-blank description of the target role.
+    - `resume_id`: Optional resume record ID to include as evidence.
+    - `project_names`: Optional list of project names to include as evidence.
+    - `user_profile`: Optional manually supplied profile data.
+
+    Returns:
+    - 200: A `JobReadinessResult` with fit_score, summary, strengths, weaknesses,
+      and suggestions.
+
+    Raises:
+    - 400: The supplied evidence is insufficient to run analysis.
+    - 404: A requested project or resource was not found in the database.
+    - 503 `AI_SERVICE_UNAVAILABLE`: Azure OpenAI is not configured or the deployment
+      is unreachable.
+    """
     try:
         user_profile = build_user_profile(
             session=session,
@@ -73,11 +97,8 @@ def analyze_job_readiness(
         user_profile=user_profile,
     )
     if result is None:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Job readiness analysis is unavailable. Confirm Azure OpenAI is enabled and "
-                "the configured deployment targets GPT-4o mini."
-            ),
+        raise AIServiceUnavailableError(
+            "Job readiness analysis is unavailable. Confirm Azure OpenAI is enabled and "
+            "the configured deployment targets GPT-4o mini."
         )
     return result

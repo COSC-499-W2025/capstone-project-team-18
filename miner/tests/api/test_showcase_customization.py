@@ -145,7 +145,7 @@ def test_showcase_returns_500_when_crud_raises(client, monkeypatch):
 
     r = client.get("/projects/Demo/showcase")
     assert r.status_code == 500
-    assert "Failed to retrieve project report" in r.json().get("detail", "")
+    assert "Failed to retrieve project report" in r.json().get("message", "")
 
 def test_showcase_defaults_when_no_overrides(client, blank_db, monkeypatch):
     _insert_project(blank_db, "Demo Project")

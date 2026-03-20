@@ -14,6 +14,7 @@ from src.services.interview_service import (
     evaluate_answer,
 )
 from src.services.job_readiness_service import JobReadinessUserProfileInput
+from src.utils.errors import AIServiceUnavailableError
 
 router = APIRouter(
     prefix="/interview",
@@ -113,24 +114,27 @@ def start_interview(
     request: InterviewStartRequest,
     session: Session = Depends(get_session),
 ):
-    """Start a mock interview and return the first generated question.
+    """
+    Initialize a mock interview session and return the first generated question.
 
-    This endpoint initializes interview context from the supplied job description and
-    optional candidate evidence, then generates the first interview question for the
-    client to present to the user.
+    Builds interview context from the job description and optional candidate evidence,
+    then uses Azure OpenAI to generate a tailored opening question.
 
-    Request parameters:
-    - `job_description`: Required target role description used to tailor the interview.
-    - `resume_id`: Optional resume record to include in the interview context.
-    - `project_names`: Optional list of project names to bias question generation toward.
-    - `user_profile`: Optional structured user profile data used when resume/project
-      evidence is incomplete.
+    Body parameters:
+    - `job_description`: Required non-blank description of the target role.
+    - `resume_id`: Optional resume record ID to include in context.
+    - `project_names`: Optional list of project names to bias question generation.
+    - `user_profile`: Optional structured user profile data.
 
-    Typical usage:
-    1. Call `/interview/start` with the job description and any available evidence.
-    2. Present the returned question to the user.
-    3. Send the user's answer, along with the returned context fields, to
-       `/interview/answer` for feedback and the next question.
+    Returns:
+    - 200: An `InterviewStartResult` with the first question, category, focus, fit
+      dimension, optional project anchor, and next_action hint.
+
+    Raises:
+    - 400: The supplied evidence is insufficient to build an interview context.
+    - 404: A requested project or resource was not found in the database.
+    - 503 `AI_SERVICE_UNAVAILABLE`: Azure OpenAI is not configured or the deployment
+      is unreachable.
     """
     interview_context = _build_context_or_raise(
         session=session,
@@ -144,12 +148,9 @@ def start_interview(
         interview_context=interview_context,
     )
     if result is None:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Mock interview generation is unavailable. Confirm Azure OpenAI is enabled and "
-                "the configured deployment targets GPT-4o mini."
-            ),
+        raise AIServiceUnavailableError(
+            "Mock interview generation is unavailable. Confirm Azure OpenAI is enabled and "
+            "the configured deployment targets GPT-4o mini."
         )
     return result
 
@@ -159,34 +160,34 @@ def answer_interview_question(
     request: InterviewAnswerRequest,
     session: Session = Depends(get_session),
 ):
-    """Evaluate an interview answer and return feedback plus the next question.
+    """
+    Score a user's answer and return coaching feedback along with the next interview
+    question.
 
-    This endpoint scores the user's response to the current interview question,
-    generates coaching feedback, and decides whether to retry the same topic or
-    advance to the next question.
+    Evaluates the user's response for relevance and depth relative to the job
+    description, then advances or retries the current fit dimension as appropriate.
 
-    Request parameters:
-    - `job_description`: Required target role description used to evaluate relevance.
-    - `resume_id`: Optional resume record to include in the interview context.
-    - `project_names`: Optional list of project names used to ground question flow.
-    - `user_profile`: Optional structured user profile data used when resume/project
-      evidence is incomplete.
+    Body parameters:
+    - `job_description`: Required non-blank target role description.
+    - `resume_id`: Optional resume record ID for context.
+    - `project_names`: Optional list of project names for context.
+    - `user_profile`: Optional structured profile data.
     - `current_question`: Required question the user is answering.
     - `user_answer`: Required free-text response from the user.
-    - `current_project_name`: Optional project currently being discussed so follow-up
-      questions remain anchored to the same project.
-    - `current_fit_dimension`: Optional fit dimension currently being discussed so the
-      interview can continue on the same topic until it is sufficiently covered.
-    - `covered_dimensions`: Optional history of dimensions already covered in the
-      interview flow.
-    - `retry_same_question`: Optional flag indicating the client is retrying the
-      current question after prior feedback.
+    - `current_project_name`: Optional project currently being discussed.
+    - `current_fit_dimension`: Optional dimension currently under evaluation.
+    - `covered_dimensions`: Optional history of dimensions already covered.
+    - `retry_same_question`: Optional flag; set true when the client is retrying
+      after feedback.
 
-    Typical usage:
-    1. Call `/interview/start` to receive the first question.
-    2. After each user response, call `/interview/answer` with the current question,
-       answer, and any returned state fields.
-    3. Use the response feedback and next question to continue the mock interview.
+    Returns:
+    - 200: An `InterviewAnswerResult` with score, feedback, and the next question.
+
+    Raises:
+    - 400: The supplied evidence is insufficient to evaluate the answer.
+    - 404: A requested project or resource was not found in the database.
+    - 503 `AI_SERVICE_UNAVAILABLE`: Azure OpenAI is not configured or the deployment
+      is unreachable.
     """
     interview_context = _build_context_or_raise(
         session=session,
@@ -206,11 +207,8 @@ def answer_interview_question(
         retry_same_question=request.retry_same_question,
     )
     if result is None:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Mock interview generation is unavailable. Confirm Azure OpenAI is enabled and "
-                "the configured deployment targets GPT-4o mini."
-            ),
+        raise AIServiceUnavailableError(
+            "Mock interview generation is unavailable. Confirm Azure OpenAI is enabled and "
+            "the configured deployment targets GPT-4o mini."
         )
     return result
