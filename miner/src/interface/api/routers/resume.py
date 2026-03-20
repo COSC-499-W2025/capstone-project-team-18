@@ -3,6 +3,7 @@ from sqlmodel import SQLModel
 from typing import List, Optional
 import datetime
 
+from src.core.statistic.user_stat_collection import UserStatCollection
 from src.interface.api.routers.util import get_session
 from src.interface.api.routers.user_config import get_user_config_safe
 from src.database import (
@@ -10,6 +11,7 @@ from src.database import (
 )
 from src.database.api.CRUD.resume import save_resume, load_resume, get_resume_model_by_id
 from src.core.report.user.user_report import UserReport
+from src.utils.errors import ResumeNotFoundError, ProjectNotFoundError, DatabaseOperationError
 from datetime import date
 
 router = APIRouter(
@@ -63,38 +65,190 @@ class ResumeItemResponse(SQLModel):
     end_date: Optional[date] = None
 
 
+class SkillsByExpertiseResponse(SQLModel):
+    """Categorized skills by expertise level"""
+    expert: List[str] = []
+    intermediate: List[str] = []
+    exposure: List[str] = []
+
+
 class ResumeResponse(SQLModel):
     """Response model for a resume with items"""
     id: Optional[int] = None
     email: Optional[str] = None
     github: Optional[str] = None
     skills: List[str]
+    skills_by_expertise: Optional[SkillsByExpertiseResponse] = None
     education: List[str] = []
     awards: List[str] = []
     items: List[ResumeItemResponse] = []
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
 
+# Helper function.
+def _build_resume_response(resume_model, session) -> ResumeResponse:
+    """
+    Build a ResumeResponse by fetching education/awards from user config.
+    """
+    from src.database import get_most_recent_user_config
+
+    user_config = get_most_recent_user_config(session)
+    education = []
+    awards = []
+    if user_config and user_config.resume_config:
+        education = user_config.resume_config.education or []
+        awards = user_config.resume_config.awards or []
+
+    skills_by_expertise = None
+
+    has_stored_skills = bool(
+        resume_model.skills_expert or
+        resume_model.skills_intermediate or
+        resume_model.skills_exposure
+    )
+
+    if has_stored_skills:
+        skills_by_expertise = SkillsByExpertiseResponse(
+            expert=resume_model.skills_expert or [],
+            intermediate=resume_model.skills_intermediate or [],
+            exposure=resume_model.skills_exposure or []
+        )
+    else:
+        if user_config:
+            project_reports = user_config.project_reports
+            if project_reports:
+                from src.core.report.user.user_report import UserReport
+
+                domain_reports = [get_project_report_by_name(session, pr.project_name)
+                                for pr in project_reports if pr.project_name]
+                domain_reports = [r for r in domain_reports if r is not None]
+
+                if domain_reports:
+                    user_report = UserReport(project_reports=domain_reports)
+                    weighted_skills = user_report.statistics.get_value(
+                        UserStatCollection.USER_SKILLS.value
+                    )
+
+                    if weighted_skills:
+                        expert, intermediate, exposure = [], [], []
+                        for ws in weighted_skills:
+                            if ws.weight >= 0.7:
+                                expert.append(ws.skill_name)
+                            elif ws.weight >= 0.4:
+                                intermediate.append(ws.skill_name)
+                            else:
+                                exposure.append(ws.skill_name)
+
+                        skills_by_expertise = SkillsByExpertiseResponse(
+                            expert=expert,
+                            intermediate=intermediate,
+                            exposure=exposure
+                        )
+
+    return ResumeResponse(
+        id=resume_model.id,
+        email=resume_model.email,
+        github=resume_model.github,
+        skills=resume_model.skills,
+        skills_by_expertise=skills_by_expertise,
+        education=education,
+        awards=awards,
+        items=resume_model.items,
+        created_at=resume_model.created_at,
+        last_updated=resume_model.last_updated,
+    )
+
+class EditSkillsRequest(SQLModel):
+    """Request model for editing categorized skills"""
+    expert: List[str]
+    intermediate: List[str]
+    exposure: List[str]
+
 
 # ---------- Resume API Endpoints ----------
 @router.get("/{resume_id}", response_model=ResumeResponse)
 def get_resume(resume_id: int, session=Depends(get_session)):
-    """Retrieve a resume by ID"""
+    """
+    Retrieve a saved resume by its database ID.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Returns:
+    - 200: A `ResumeResponse` with metadata and all resume items.
+
+    Raises:
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    """
 
     result = get_resume_model_by_id(session, resume_id)
 
     if not result:
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
+
+    return _build_resume_response(result, session)
+
+@router.post("/{resume_id}/edit/skills", response_model=ResumeResponse)
+def edit_resume_skills(
+    resume_id: int,
+    request: EditSkillsRequest,
+    session=Depends(get_session)
+):
+    """Edit categorized skills for a resume"""
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
         raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
 
-    return result
+    try:
+        # Update categorized skills
+        resume_model.skills_expert = request.expert
+        resume_model.skills_intermediate = request.intermediate
+        resume_model.skills_exposure = request.exposure
 
+        # Update flat skills list
+        resume_model.skills = request.expert + request.intermediate + request.exposure
+
+        resume_model.last_updated = datetime.datetime.now()
+
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model, session)
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to edit skills: {str(e)}"
+        )
 
 @router.post("/generate", response_model=ResumeResponse)
 def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)):
     """
-    Generate a new resume from projects
-    fetches education/awards from user's ResumeConfigModel.
+    Generate a new resume from one or more project reports.
+
+    Education and awards are sourced from the user's ResumeConfigModel when a
+    user_config_id is provided.
+
+    Body parameters:
+    - `project_names`: Non-empty list of project names to include in the resume.
+    - `user_config_id`: Optional ID of the UserConfig record to pull education and
+      awards from.
+
+    Returns:
+    - 200: A `ResumeResponse` for the newly created resume.
+
+    Raises:
+    - 400: project_names is empty.
+    - 404 `PROJECT_NOT_FOUND`: A named project does not exist in the database.
+    - 404 `USER_CONFIG_NOT_FOUND`: The specified user_config_id does not exist.
+    - 500 `DATABASE_OPERATION_FAILED`: Resume generation or persistence failed;
+      changes were rolled back.
     """
 
     if not request.project_names:
@@ -109,8 +263,7 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
     for project_name in request.project_names:
         project = get_project_report_by_name(session, project_name)
         if not project:
-            raise HTTPException(
-                status_code=404, detail=f"No project found with name '{project_name}'")
+            raise ProjectNotFoundError(f"No project found with name '{project_name}'")
         project_reports.append(project)
 
     try:
@@ -142,12 +295,11 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
         resume_model = save_resume(session, resume_domain)
         session.commit()
 
-        return resume_model
+        return _build_resume_response(resume_model, session)
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate resume: {str(e)}")
+        raise DatabaseOperationError(f"Failed to generate resume: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/metadata", response_model=ResumeResponse)
@@ -157,37 +309,48 @@ def edit_resume_metadata(
     session=Depends(get_session)
 ):
     """
-    Edit an existing resume. Note, the user config ID is optional. It is not needed
-    and will cause an error if used without a corresponding ID.
+    Update the top-level metadata fields (email, github) of an existing resume.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Body parameters:
+    - `email`: Optional new email address.
+    - `github_username`: Optional new GitHub username.
+
+    Returns:
+    - 200: The updated `ResumeResponse`.
+
+    Raises:
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: The edit failed; changes were rolled back.
     """
 
     # Load as domain object
-    resume_domain = load_resume(session, resume_id)
+    resume_model = get_resume_model_by_id(session, resume_id)
 
-    if not resume_domain:
+    if not resume_model:
         raise HTTPException(
             status_code=404, detail=f"No resume found with id {resume_id}")
 
     try:
-        # Update fields
         if request.email is not None:
-            resume_domain.email = request.email
+            resume_model.email = request.email
 
         if request.github_username is not None:
-            resume_domain.github = request.github_username
+            resume_model.github = request.github_username
 
-        # Save updated (uses serialize_resume)
-        updated_model = save_resume(session, resume_domain)
-        updated_model.id = resume_id
+        resume_model.last_updated = datetime.datetime.now()
 
+        session.add(resume_model)
         session.commit()
+        session.refresh(resume_model)
 
-        return updated_model
+        return _build_resume_response(resume_model, session)
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to edit resume: {str(e)}")
+        raise DatabaseOperationError(f"Failed to edit resume: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/bullet_point", response_model=ResumeResponse)
@@ -196,13 +359,34 @@ def edit_resume_item_bullet_point(
     request: EditBulletPointRequest,
     session=Depends(get_session)
 ):
-    """Edit or append a bullet point to a specific resume item."""
+    """
+    Edit or append a bullet point in a specific resume item.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Body parameters:
+    - `item_index`: Zero-based index of the resume item to edit.
+    - `new_content`: Replacement or appended bullet point text.
+    - `append`: If true, appends `new_content` as a new bullet; otherwise overwrites
+      at `bullet_point_index`.
+    - `bullet_point_index`: Required when `append` is false; zero-based index of the
+      bullet to overwrite.
+
+    Returns:
+    - 200: The updated `ResumeResponse`.
+
+    Raises:
+    - 400: item_index is out of bounds.
+    - 400: bullet_point_index is not provided when append is false, or is out of bounds.
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: The edit failed; changes were rolled back.
+    """
 
     resume_model = get_resume_model_by_id(session, resume_id)
 
     if not resume_model:
-        raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
     if request.item_index < 0 or request.item_index >= len(resume_model.items):
         raise HTTPException(
@@ -240,12 +424,11 @@ def edit_resume_item_bullet_point(
         session.commit()
         session.refresh(resume_model)
 
-        return resume_model
+        return _build_resume_response(resume_model, session)
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to edit bullet point: {str(e)}")
+        raise DatabaseOperationError(f"Failed to edit bullet point: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/resume_item", response_model=ResumeResponse)
@@ -254,13 +437,31 @@ def edit_resume_item(
     request: EditResumeItemMetadataRequest,  # Corrected request model here
     session=Depends(get_session)
 ):
-    """Edit the metadata (dates, title) of a specific resume item."""
+    """
+    Update the title and date range of a specific resume item.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Body parameters:
+    - `item_index`: Zero-based index of the resume item to edit.
+    - `start_date`: New start date (YYYY-MM-DD).
+    - `end_date`: New end date (YYYY-MM-DD).
+    - `title`: New display title.
+
+    Returns:
+    - 200: The updated `ResumeResponse`.
+
+    Raises:
+    - 400: item_index is out of bounds.
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: The edit failed; changes were rolled back.
+    """
 
     resume_model = get_resume_model_by_id(session, resume_id)
 
     if not resume_model:
-        raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
     # Validate item_index bounds
     if request.item_index < 0 or request.item_index >= len(resume_model.items):
@@ -289,12 +490,11 @@ def edit_resume_item(
         session.commit()
         session.refresh(resume_model)
 
-        return resume_model
+        return _build_resume_response(resume_model, session)
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to edit resume item: {str(e)}")
+        raise DatabaseOperationError(f"Failed to edit resume item: {str(e)}") from e
 
 
 @router.post("/{resume_id}/refresh", response_model=ResumeResponse)
@@ -303,14 +503,28 @@ def refresh_resume(
     session=Depends(get_session)
 ):
     """
-    Refresh a resume with new project information
+    Regenerate a resume's content from its current project list.
+
+    Fetches up-to-date project statistics and rebuilds all resume items while
+    preserving the existing email and GitHub metadata.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Returns:
+    - 200: The refreshed `ResumeResponse`.
+
+    Raises:
+    - 400: The resume has no associated projects to refresh from.
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 404 `PROJECT_NOT_FOUND`: A project associated with this resume no longer exists.
+    - 500 `DATABASE_OPERATION_FAILED`: The refresh failed; changes were rolled back.
     """
 
     resume_model = get_resume_model_by_id(session, resume_id)
 
     if not resume_model:
-        raise HTTPException(
-            status_code=404, detail=f"No resume found with id {resume_id}")
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
     project_names = [
         item.project_name for item in resume_model.items if item.project_name]
@@ -324,9 +538,7 @@ def refresh_resume(
     for project_name in project_names:
         project = get_project_report_by_name(session, project_name)
         if not project:
-            raise HTTPException(
-                status_code=404, detail=f"No project found with name '{project_name}'"
-            )
+            raise ProjectNotFoundError(f"No project found with name '{project_name}'")
         project_reports.append(project)
 
     try:
@@ -345,10 +557,8 @@ def refresh_resume(
 
         session.commit()
 
-        return updated_model
+        return _build_resume_response(updated_model, session)
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to refresh resume: {str(e)}"
-        )
+        raise DatabaseOperationError(f"Failed to refresh resume: {str(e)}") from e

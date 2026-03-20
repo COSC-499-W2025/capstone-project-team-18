@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../../../api/apiClient";
 
 type SettingsModalProps = {
   open: boolean;
@@ -10,18 +11,57 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
 
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let alive = true;
+
+    async function loadUserConfig() {
+      try {
+        setIsLoadingConfig(true);
+        setError(null);
+        setSuccess(null);
+
+        const res = await api.getUserConfig();
+
+        if (!alive) return;
+
+        setGithub(res?.github ?? "");
+        setEmail(res?.user_email ?? "");
+        setConsent(Boolean(res?.consent));
+      } catch (e: any) {
+        if (!alive) return;
+
+        setGithub("");
+        setEmail("");
+        setConsent(false);
+        setError(e?.message ?? "Failed to load saved settings.");
+      } finally {
+        if (alive) setIsLoadingConfig(false);
+      }
+    }
+
+    loadUserConfig();
+
+    return () => {
+      alive = false;
+    };
+  }, [open]);
 
   if (!open) return null;
 
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const githubIsValid = /^(?!-)[A-Za-z0-9-]{1,39}(?<!-)$/.test(github.trim());
-  const isValid = githubIsValid && emailIsValid && consent;
+  const githubOk = github.trim() === "" || githubIsValid;
+  const isValid = githubOk && emailIsValid && consent;
 
   function handleClose() {
-    if (isSaving) return;
+    if (isSaving || isLoadingConfig) return;
     onClose();
   }
 
@@ -30,17 +70,20 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     setSuccess(null);
 
     if (!isValid) {
-        setError("Please fix the highlighted fields before saving.");
-        return;
+      setError("Please fix the highlighted fields before saving.");
+      return;
     }
 
     try {
       setIsSaving(true);
 
-      // Placeholder for backend
-      await new Promise((res) => setTimeout(res, 800));
+      await api.updateUserConfig({
+        consent,
+        user_email: email.trim(),
+        github: github.trim(),
+      });
 
-      setSuccess("Settings saved (frontend only). Ready for backend hookup.");
+      setSuccess("Settings saved successfully.");
     } catch (e: any) {
       setError(e?.message ?? "Failed to save settings.");
     } finally {
@@ -85,13 +128,13 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
           <button
             onClick={handleClose}
-            disabled={isSaving}
+            disabled={isSaving || isLoadingConfig}
             style={{
               background: "transparent",
               border: "none",
               color: "#ccc",
               fontSize: 20,
-              cursor: "pointer",
+              cursor: isSaving || isLoadingConfig ? "not-allowed" : "pointer",
             }}
           >
             ×
@@ -101,12 +144,13 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         {/* GitHub */}
         <div style={{ marginBottom: 16 }}>
           <label style={{ fontSize: 14, color: "#aaa" }}>
-            GitHub Username *
+            GitHub Username (optional)
           </label>
           <input
             value={github}
             onChange={(e) => setGithub(e.target.value)}
             placeholder="e.g. paulatreides"
+            disabled={isSaving || isLoadingConfig}
             style={{
               width: "100%",
               marginTop: 6,
@@ -133,6 +177,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="your@email.com"
+            disabled={isSaving || isLoadingConfig}
             style={{
               width: "100%",
               marginTop: 6,
@@ -162,13 +207,14 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           <input
             type="checkbox"
             checked={consent}
+            disabled={isSaving || isLoadingConfig}
             onChange={(e) => setConsent(e.target.checked)}
           />
           <span style={{ fontSize: 14 }}>
             I consent to data processing for project mining *
           </span>
 
-          {github.trim() !== "" && email.trim() !== "" && !consent && (
+          {email.trim() !== "" && !consent && (
             <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
                 Please provide consent to enable saving
                 </div>
@@ -197,13 +243,17 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           }}
         >
           <div style={{ fontSize: 13, color: "#888" }}>
-            {isSaving ? "Saving..." : "Fill all required fields"}
+            {isLoadingConfig
+              ? "Loading saved settings..."
+              : isSaving
+              ? "Saving..."
+              : "Fill all required fields"}
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={handleClose}
-              disabled={isSaving}
+              disabled={isSaving || isLoadingConfig}
               style={{
                 padding: "10px 14px",
                 borderRadius: 10,
@@ -217,7 +267,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
             <button
               onClick={handleSave}
-              disabled={!isValid || isSaving}
+              disabled={!isValid || isSaving || isLoadingConfig}
               style={{
                 padding: "10px 16px",
                 borderRadius: 10,

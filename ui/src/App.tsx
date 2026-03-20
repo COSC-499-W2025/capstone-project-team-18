@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
@@ -8,9 +8,21 @@ import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
 import { useState } from "react";
 import SettingsModal from "./components/update/modal/SettingsModal";
+import { getLatestResumeId } from "./api/apiClient";
+
+function ResumeRedirect() {
+  const latestResumeId = getLatestResumeId();
+
+  if (latestResumeId) {
+    return <Navigate to={`/resume/${latestResumeId}`} replace />;
+  }
+
+  return <Navigate to="/resume/new" replace />;
+}
 
 export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
   return (
     <div style={{ fontFamily: "system-ui" }}>
       <header
@@ -89,8 +101,7 @@ export default function App() {
           </NavLink>
 
           <NavLink
-          to="/resume/1"
-          end
+          to="/resume"
           style={({ isActive }) => ({
             padding: "8px 14px",
             borderRadius: 12,
@@ -125,6 +136,8 @@ export default function App() {
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailsPage />} />
         <Route path="/skills" element={<SkillsPage />} />
+        <Route path="/resume" element={<ResumeRedirect />} />
+        <Route path="/resume/new" element={<ResumePage />} />
         <Route path="/resume/:id" element={<ResumePage />} />
         <Route path="/portfolios" element={<PortfoliosPage />} />
         <Route path="/portfolios/:id" element={<PortfolioEditPage />} />
