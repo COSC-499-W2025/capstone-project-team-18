@@ -335,6 +335,7 @@ export default function HomePage() {
             </Link>
           </div>
         </section>
+        </div>
       </div>
 
       <UploadProjectModal

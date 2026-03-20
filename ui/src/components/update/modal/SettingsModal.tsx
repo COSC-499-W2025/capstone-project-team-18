@@ -10,6 +10,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [github, setGithub] = useState("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
+  const [mlConsent, setMlConsent] = useState(false);
 
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -34,12 +35,14 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         setGithub(res?.github ?? "");
         setEmail(res?.user_email ?? "");
         setConsent(Boolean(res?.consent));
+        setMlConsent(Boolean(res?.ml_consent));
       } catch (e: any) {
         if (!alive) return;
 
         setGithub("");
         setEmail("");
         setConsent(false);
+        setMlConsent(false);
         setError(e?.message ?? "Failed to load saved settings.");
       } finally {
         if (alive) setIsLoadingConfig(false);
@@ -79,6 +82,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
       await api.updateUserConfig({
         consent,
+        ml_consent: mlConsent,
         user_email: email.trim(),
         github: github.trim(),
       });
@@ -196,29 +200,50 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         </div>
 
         {/* Consent */}
-        <div
-          style={{
-            marginBottom: 16,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={consent}
-            disabled={isSaving || isLoadingConfig}
-            onChange={(e) => setConsent(e.target.checked)}
-          />
-          <span style={{ fontSize: 14 }}>
-            I consent to data processing for project mining *
-          </span>
+        <div style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 10,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={consent}
+              disabled={isSaving || isLoadingConfig}
+              onChange={(e) => setConsent(e.target.checked)}
+            />
+            <span style={{ fontSize: 14 }}>
+              I consent to data processing for project mining *
+            </span>
+          </div>
 
           {email.trim() !== "" && !consent && (
             <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
-                Please provide consent to enable saving
-                </div>
-            )}
+              Please provide consent to enable saving
+            </div>
+          )}
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginTop: 12,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={mlConsent}
+              disabled={isSaving || isLoadingConfig}
+              onChange={(e) => setMlConsent(e.target.checked)}
+            />
+            <span style={{ fontSize: 14 }}>
+              I consent to machine learning processing for insights and interview features
+            </span>
+          </div>
         </div>
 
         {/* Errors / Success */}

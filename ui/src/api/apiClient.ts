@@ -154,6 +154,7 @@ export type ResumeConfigRequest = {
 export type UserConfigResponse = {
   id: number;
   consent: boolean;
+  ml_consent: boolean;
   user_email?: string | null;
   github?: string | null;
   resume_config?: {
@@ -165,6 +166,7 @@ export type UserConfigResponse = {
 
 export type UpdateUserConfigPayload = {
   consent: boolean;
+  ml_consent?: boolean;
   user_email: string;
   github?: string | null;
   resume_config?: ResumeConfigRequest | null;

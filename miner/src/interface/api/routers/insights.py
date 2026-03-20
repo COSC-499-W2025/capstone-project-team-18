@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from src.core.insight.insight_generator import InsightGenerator
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.database.api.CRUD.insights import get_project_insights, save_project_insights
 from src.database.api.CRUD.projects import get_project_report_by_name
 from src.infrastructure.log.logging import get_logger
@@ -60,6 +61,12 @@ def get_project_insights_endpoint(
     - 500: Insight generation failed unexpectedly.
     """
     decoded_name = unquote(project_name)
+
+    if not ml_extraction_allowed(session=session):
+        return ProjectInsightsResponse(
+            project_name=decoded_name,
+            insights=[],
+        )
 
     # Check to see if project insights are cached
     cached = get_project_insights(session, decoded_name)

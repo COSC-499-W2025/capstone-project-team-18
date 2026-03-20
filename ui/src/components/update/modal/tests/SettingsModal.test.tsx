@@ -18,6 +18,7 @@ beforeEach(() => {
     github: "",
     user_email: "",
     consent: false,
+    ml_consent: false,
     resume_config: null,
   });
 
@@ -26,6 +27,7 @@ beforeEach(() => {
     github: "valid-user",
     user_email: "test@example.com",
     consent: true,
+    ml_consent: true,
     resume_config: null,
   });
 });
@@ -60,14 +62,14 @@ describe("SettingsModal", () => {
 
     const githubInput = screen.getByPlaceholderText("e.g. paulatreides");
     const emailInput = screen.getByPlaceholderText("your@email.com");
-    const checkbox = screen.getByRole("checkbox");
+    const [consentCheckbox] = screen.getAllByRole("checkbox");
 
     fireEvent.change(githubInput, { target: { value: "valid-user" } });
     fireEvent.change(emailInput, { target: { value: "test@example.com" } });
 
     expect(saveButton).toBeDisabled();
 
-    fireEvent.click(checkbox);
+    fireEvent.click(consentCheckbox);
 
     await waitFor(() => {
       expect(githubInput).toHaveValue("valid-user");
@@ -85,12 +87,13 @@ describe("SettingsModal", () => {
 
     const githubInput = screen.getByPlaceholderText("e.g. paulatreides");
     const emailInput = screen.getByPlaceholderText("your@email.com");
-    const checkbox = screen.getByRole("checkbox");
+    const [consentCheckbox, mlConsentCheckbox] = screen.getAllByRole("checkbox");
     const saveButton = screen.getByRole("button", { name: /^save$/i });
 
     fireEvent.change(githubInput, { target: { value: "valid-user" } });
     fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-    fireEvent.click(checkbox);
+    fireEvent.click(consentCheckbox);
+    fireEvent.click(mlConsentCheckbox);
 
     await waitFor(() => expect(saveButton).not.toBeDisabled());
 
@@ -99,6 +102,7 @@ describe("SettingsModal", () => {
     await waitFor(() => {
       expect(api.updateUserConfig).toHaveBeenCalledWith({
         consent: true,
+        ml_consent: true,
         user_email: "test@example.com",
         github: "valid-user",
       });
@@ -115,11 +119,11 @@ describe("SettingsModal", () => {
     });
 
     const emailInput = screen.getByPlaceholderText("your@email.com");
-    const checkbox = screen.getByRole("checkbox");
+    const [consentCheckbox] = screen.getAllByRole("checkbox");
     const saveButton = screen.getByRole("button", { name: /^save$/i });
 
     fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-    fireEvent.click(checkbox);
+    fireEvent.click(consentCheckbox);
 
     await waitFor(() => expect(saveButton).not.toBeDisabled());
 
@@ -128,6 +132,7 @@ describe("SettingsModal", () => {
     await waitFor(() => {
       expect(api.updateUserConfig).toHaveBeenCalledWith({
         consent: true,
+        ml_consent: false,
         user_email: "test@example.com",
         github: "",
       });
@@ -153,6 +158,31 @@ describe("SettingsModal", () => {
 
     expect(
       screen.getByText(/please enter a valid email/i)
+    ).toBeInTheDocument();
+  });
+
+  it("loads saved ML consent and renders the ML checkbox below the required consent", async () => {
+    vi.mocked(api.getUserConfig).mockResolvedValueOnce({
+      id: 1,
+      github: "saved-user",
+      user_email: "saved@example.com",
+      consent: true,
+      ml_consent: true,
+      resume_config: null,
+    });
+
+    render(<SettingsModal open={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(api.getUserConfig).toHaveBeenCalled();
+    });
+
+    const [consentCheckbox, mlConsentCheckbox] = screen.getAllByRole("checkbox");
+
+    expect(consentCheckbox).toBeChecked();
+    expect(mlConsentCheckbox).toBeChecked();
+    expect(
+      screen.getByText(/machine learning processing for insights and interview features/i)
     ).toBeInTheDocument();
   });
 });
