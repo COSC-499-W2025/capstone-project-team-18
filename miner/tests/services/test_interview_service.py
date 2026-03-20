@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
 from src.interface.api.routers.interview import router as interview_router
 from src.interface.api.routers.util import get_session
+from src.utils.errors import AIServiceUnavailableError
 import src.services.interview_service as interview_service
 from src.services.job_readiness_service import JobReadinessResult
 
@@ -72,6 +74,10 @@ def _insert_resume_with_project(blank_db) -> None:
 def _test_client(blank_db) -> TestClient:
     app = FastAPI()
     app.include_router(interview_router)
+
+    @app.exception_handler(AIServiceUnavailableError)
+    async def _ai_unavailable(request: Request, exc: AIServiceUnavailableError):
+        return JSONResponse(status_code=503, content={"error_code": exc.error_code, "message": str(exc)})
 
     def _fake_get_session():
         with Session(blank_db) as session:

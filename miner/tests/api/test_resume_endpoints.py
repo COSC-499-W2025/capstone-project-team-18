@@ -115,7 +115,7 @@ def test_get_nonexistent_resume(client):
         response = client.get("/resume/999")
 
         assert response.status_code == 404
-        assert "resume found" in response.json()["detail"].lower()
+        assert "resume found" in response.json()["message"].lower()
 
 
 def test_get_resume_with_null_fields(client, sample_resume_model):
@@ -189,7 +189,7 @@ def test_generate_resume_nonexistent_project(client):
         })
 
         assert response.status_code == 404
-        assert "project found" in response.json()["detail"].lower()
+        assert "project found" in response.json()["message"].lower()
 
 
 def test_generate_resume_with_user_config(client, sample_resume_domain, sample_resume_model):
@@ -264,7 +264,7 @@ def test_generate_resume_invalid_user_config(client):
                 "user_config_id": 999
             })
             assert response.status_code == 404
-            assert "user config" in response.json()["detail"].lower()
+            assert "user config" in response.json()["message"].lower()
         finally:
             client.app.dependency_overrides.pop(get_session, None)
 
@@ -340,7 +340,7 @@ def test_edit_nonexistent_resume(client):
         })
 
         assert response.status_code == 404
-        assert "resume found" in response.json()["detail"].lower()
+        assert "resume found" in response.json()["message"].lower()
 
 
 def test_edit_resume_null_email(client, sample_resume_domain, sample_resume_model):
@@ -405,7 +405,7 @@ def test_generate_resume_save_failure(client, sample_resume_domain):
         })
 
         assert response.status_code == 500
-        assert "failed to generate" in response.json()["detail"].lower()
+        assert "failed to generate" in response.json()["message"].lower()
 
 
 def test_edit_resume_save_failure(client, sample_resume_domain, sample_resume_model):
@@ -484,7 +484,7 @@ def test_edit_bullet_point_resume_not_found(client):
         })
 
         assert response.status_code == 404
-        assert "no resume found" in response.json()["detail"].lower()
+        assert "no resume found" in response.json()["message"].lower()
 
 
 def test_edit_bullet_point_invalid_item_index(client, sample_resume_model):
@@ -572,7 +572,7 @@ def test_edit_bullet_point_db_failure(client, sample_resume_model):
 
                 assert response.status_code == 500
                 assert "failed to edit bullet point" in response.json()[
-                    "detail"].lower()
+                    "message"].lower()
 
 
 # --- Tests for POST /resume/{resume_id}/edit/resume_item ---
@@ -613,7 +613,7 @@ def test_edit_resume_item_not_found(client):
         })
 
         assert response.status_code == 404
-        assert "no resume found" in response.json()["detail"].lower()
+        assert "no resume found" in response.json()["message"].lower()
 
 
 def test_edit_resume_item_invalid_item_index(client, sample_resume_model):
@@ -830,7 +830,7 @@ def test_refresh_resume_not_found(client):
         response = client.post("/resume/999/refresh")
 
         assert response.status_code == 404
-        assert "resume found" in response.json()["detail"].lower()
+        assert "resume found" in response.json()["message"].lower()
 
 
 def test_refresh_resume_no_items(client, sample_resume_model):
@@ -859,7 +859,7 @@ def test_refresh_resume_project_not_found(client, sample_resume_domain, sample_r
         response = client.post("/resume/1/refresh")
 
         assert response.status_code == 404
-        assert "project" in response.json()["detail"].lower()
+        assert "project" in response.json()["message"].lower()
 
 
 def test_refresh_resume_preserves_manual_edits(client, sample_resume_domain, sample_resume_model):
