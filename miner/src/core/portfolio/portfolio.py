@@ -2,8 +2,11 @@
 Defines the Portfolio object.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from src.core.portfolio.sections.portfolio_section import PortfolioSection, merge_section
+
+if TYPE_CHECKING:
+    from src.core.portfolio.cards.project_card import ProjectCard
 
 
 class PortfolioMetadata:
@@ -27,17 +30,23 @@ class Portfolio:
     This is the master class for the portfolio object. It
     only holds user ready content (text, image, etc). It does
     not hold user statistics.
+
+    Structured in three parts:
+      Part A — sections: narrative blocks (ML-generated + user-owned)
+      Part B — is_showcase flag on project cards (highlights top projects)
+      Part C — project_cards: unified gallery of all projects with rich metadata
     """
 
     metadata: PortfolioMetadata
     sections: list[PortfolioSection]
     title: str
+    project_cards: list["ProjectCard"]
 
     def __init__(self, sections: Optional[list[PortfolioSection]] = None, metadata: Optional[PortfolioMetadata] = None, title: str = "My Portfolio"):
         self.sections = sections or []
         self.metadata = metadata or PortfolioMetadata([])
         self.title = title
-        pass
+        self.project_cards = []
 
     def render(self) -> str:
         """Render the entire portfolio as a string by rendering each section."""

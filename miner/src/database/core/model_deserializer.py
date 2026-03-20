@@ -18,7 +18,8 @@ from src.core.portfolio.sections.block.block_content import (
     TextListBlock,
     BlockContentType
 )
-from src.database.api.models import PortfolioModel, PortfolioSectionModel, BlockModel
+from src.core.portfolio.cards.project_card import ProjectCard
+from src.database.api.models import PortfolioModel, PortfolioSectionModel, BlockModel, PortfolioProjectCardModel
 
 logger = get_logger(__name__)
 
@@ -169,6 +170,36 @@ def deserialize_portfolio_section(model: PortfolioSectionModel) -> PortfolioSect
     return section
 
 
+def deserialize_project_card(model: PortfolioProjectCardModel) -> ProjectCard:
+    """
+    Reconstructs a ProjectCard domain object from a PortfolioProjectCardModel.
+    """
+    return ProjectCard(
+        portfolio_id=model.portfolio_id,
+        project_name=model.project_name,
+        image_data=model.image_data,
+        summary=model.summary or "",
+        themes=list(model.themes or []),
+        tones=model.tones or "",
+        tags=list(model.tags or []),
+        skills=list(model.skills or []),
+        frameworks=list(model.frameworks or []),
+        languages=dict(model.languages or {}),
+        start_date=model.start_date,
+        end_date=model.end_date,
+        is_group_project=bool(model.is_group_project),
+        collaboration_role=model.collaboration_role or "",
+        work_pattern=model.work_pattern or "",
+        commit_type_distribution=dict(model.commit_type_distribution or {}),
+        activity_metrics=dict(model.activity_metrics or {}),
+        is_showcase=bool(model.is_showcase),
+        title_override=model.title_override,
+        summary_override=model.summary_override,
+        tags_override=list(model.tags_override) if model.tags_override is not None else None,
+        last_user_edit_at=model.last_user_edit_at,
+    )
+
+
 def deserialize_portfolio(model: PortfolioModel) -> Portfolio:
     """
     Reconstructs the full Portfolio domain tree.
@@ -181,10 +212,14 @@ def deserialize_portfolio(model: PortfolioModel) -> Portfolio:
     metadata = PortfolioMetadata(
         project_ids=model.project_ids_include,
         creation_date=model.creation_time,
-        last_updated_at=model.last_updated_at
+        last_updated_at=model.last_updated_at,
     )
 
     portfolio = Portfolio(
         sections=sections, metadata=metadata, title=model.title)
+
+    portfolio.project_cards = [
+        deserialize_project_card(c) for c in (model.project_cards or [])
+    ]
 
     return portfolio

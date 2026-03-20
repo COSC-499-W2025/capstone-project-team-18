@@ -246,3 +246,54 @@ class PortfolioModel(SQLModel, table=True):
     # Relationships
     sections: List["PortfolioSectionModel"] = Relationship(
         back_populates="portfolio")
+    project_cards: List["PortfolioProjectCardModel"] = Relationship(
+        back_populates="portfolio")
+
+
+class PortfolioProjectCardModel(SQLModel, table=True):
+    """
+    Portfolio-scoped project card for the gallery (Part C) and showcase (Part B).
+
+    Auto-populated fields are refreshed on portfolio regeneration.
+    User override fields are preserved across refreshes.
+    The is_showcase flag is user-controlled and never overwritten by the system.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    portfolio_id: int = Field(foreign_key="portfoliomodel.id")
+
+    # project_name is NOT a FK — portfolio-scoped snapshot; avoids cascade issues
+    project_name: str
+
+    # Auto-populated from project statistics
+    image_data: Optional[bytes] = Field(
+        default=None, sa_column=Column(LargeBinary, nullable=True))
+    summary: str = Field(default="")
+    themes: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    tones: str = Field(default="")
+    tags: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    skills: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    frameworks: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    languages: dict = Field(sa_column=Column(JSON), default_factory=dict)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    is_group_project: bool = Field(default=False)
+    collaboration_role: str = Field(default="")
+    work_pattern: str = Field(default="")
+    commit_type_distribution: dict = Field(
+        sa_column=Column(JSON), default_factory=dict)
+    activity_metrics: dict = Field(sa_column=Column(JSON), default_factory=dict)
+
+    # Part B showcase flag — user-controlled, never overwritten by system on refresh
+    is_showcase: bool = Field(default=False)
+
+    # User-editable overrides — never overwritten by system on refresh
+    title_override: Optional[str] = None
+    summary_override: Optional[str] = None
+    tags_override: Optional[List[str]] = Field(
+        sa_column=Column(JSON), default=None)
+
+    last_user_edit_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    portfolio: Optional["PortfolioModel"] = Relationship(
+        back_populates="project_cards")
