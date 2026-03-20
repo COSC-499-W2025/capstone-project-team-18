@@ -3,20 +3,10 @@ import { Link } from "react-router-dom";
 import {
   api,
   getLatestResumeId,
+  type ProjectListItem,
   type ResumeResponse,
 } from "../api/apiClient";
 import UploadProjectModal from "../components/update/modal/UploadProjectModal";
-
-type ProjectListItem = {
-  project_name: string;
-  created_at?: string;
-  last_updated?: string;
-  user_config_used?: number | null;
-};
-
-type ListProjectsResponse = {
-  projects: ProjectListItem[];
-};
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -38,7 +28,7 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
 
-      const res = (await api.getProjects()) as ListProjectsResponse;
+      const res = await api.getProjects();
       setProjects(Array.isArray(res?.projects) ? res.projects : []);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load projects");
