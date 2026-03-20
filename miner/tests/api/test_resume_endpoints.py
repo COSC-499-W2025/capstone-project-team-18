@@ -340,7 +340,7 @@ def test_edit_nonexistent_resume(client):
         })
 
         assert response.status_code == 404
-        assert "resume found" in response.json()["message"].lower()
+        assert "resume found" in response.json()["detail"].lower()
 
 
 def test_edit_resume_null_email(client, sample_resume_domain, sample_resume_model):
@@ -413,7 +413,6 @@ def test_edit_resume_save_failure(client, sample_resume_domain, sample_resume_mo
     with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
         mock_get.return_value = sample_resume_model
 
-        # Simulate DB failure by making last_updated assignment raise
         with patch('src.interface.api.routers.resume.datetime') as mock_dt:
             mock_dt.datetime.now.side_effect = Exception("Database error")
 
@@ -422,7 +421,7 @@ def test_edit_resume_save_failure(client, sample_resume_domain, sample_resume_mo
             })
 
             assert response.status_code == 500
-            assert "failed to edit" in response.json()["detail"].lower()
+            assert "failed to edit" in response.json()["message"].lower()
 
 
 # --- Tests for POST /resume/{resume_id}/edit/bullet_point ---
