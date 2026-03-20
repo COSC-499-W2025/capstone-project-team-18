@@ -76,11 +76,17 @@ def _build_project_cards(
         start_date = report.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
         end_date = report.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
         is_group = report.get_value(ProjectStatCollection.IS_GROUP_PROJECT.value) or False
-        role = report.get_value(ProjectStatCollection.COLLABORATION_ROLE.value) or ""
-        work_pattern = report.get_value(ProjectStatCollection.WORK_PATTERN.value) or ""
-        commit_dist = report.get_value(
-            ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value) or {}
-        activity = report.get_value(ProjectStatCollection.ACTIVITY_METRICS.value) or {}
+        if ml_extraction_allowed():
+            role = report.get_value(ProjectStatCollection.COLLABORATION_ROLE.value) or ""
+            work_pattern = report.get_value(ProjectStatCollection.WORK_PATTERN.value) or ""
+            commit_dist = report.get_value(
+                ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value) or {}
+            activity = report.get_value(ProjectStatCollection.ACTIVITY_METRICS.value) or {}
+        else:
+            role = ""
+            work_pattern = ""
+            commit_dist = {}
+            activity = {}
 
         summary = summary_builder._build_project_summary(report) or ""
 

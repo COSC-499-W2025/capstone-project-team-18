@@ -855,6 +855,11 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                 "Skipping contribution pattern analysis: no repo or email")
             return []
 
+        if not ml_extraction_allowed():
+            logger.info(
+                "Skipping contribution pattern analysis: ML consent not granted")
+            return []
+
         if not azure_openai_enabled():
             logger.info(
                 "Skipping contribution pattern analysis: Azure OpenAI disabled")
