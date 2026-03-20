@@ -12,7 +12,7 @@ from src.database.api.CRUD.projects import (
     get_all_project_report_models
 )
 from src.services.mining_service import start_miner_service
-from src.database.api.models import UserConfigModel as UserConfig
+from src.database.api.CRUD.user_config import get_most_recent_user_config
 from src.infrastructure.log.logging import get_logger
 from src.database.api.models import ProjectReportModel
 
@@ -224,7 +224,6 @@ def _build_project_showcase_response(
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
     file: UploadFile = File(...),
-    email: Optional[str] = None,
     portfolio_name: Optional[str] = None,
     session=Depends(get_session)
 ):
@@ -234,6 +233,9 @@ def upload_project(
     This endpoint will intake a zipped file. This zipped file will then
     be analyzed for projects. These projects will be analyzed, then saved
     to the database.
+
+    The saved UserConfig (email, github, consent) is loaded from the database
+    and passed to the miner, so all persisted settings are used during mining.
 
     Errors will be thrown if the zipped file does not match the accepted formats.
     """
@@ -259,10 +261,7 @@ def upload_project(
                     portfolio_name = portfolio_name[: -len(fmt)]
                     break
 
-        user_config = UserConfig(
-            consent=True,
-            user_email=email,
-        )
+        user_config = get_most_recent_user_config(session)
 
         start_miner_service(
             zipped_bytes=file_bytes,

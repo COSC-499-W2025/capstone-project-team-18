@@ -243,15 +243,10 @@ export const api = {
 
   uploadProject: (payload: {
     file: File;
-    email?: string;
     portfolio_name?: string;
   }) => {
     const formData = new FormData();
     formData.append("file", payload.file);
-
-    if (payload.email) {
-      formData.append("email", payload.email);
-    }
 
     if (payload.portfolio_name) {
       formData.append("portfolio_name", payload.portfolio_name);

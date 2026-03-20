@@ -33,7 +33,6 @@ export default function UploadProjectModal({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
-  const [configuredEmail, setConfiguredEmail] = useState<string>("");
   const [configuredGithub, setConfiguredGithub] = useState<string>("");
 
   const fileValidationError = useMemo(() => {
@@ -57,12 +56,10 @@ export default function UploadProjectModal({
 
         if (!alive) return;
 
-        setConfiguredEmail(res?.user_email?.trim?.() ?? "");
         setConfiguredGithub(res?.github?.trim?.() ?? "");
       } catch {
         if (!alive) return;
 
-        setConfiguredEmail("");
         setConfiguredGithub("");
       } finally {
         if (alive) setIsLoadingConfig(false);
@@ -85,7 +82,6 @@ export default function UploadProjectModal({
     setIsUploading(false);
     setUploadError(null);
     setUploadSuccess(null);
-    setConfiguredEmail("");
     setConfiguredGithub("");
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -163,7 +159,6 @@ export default function UploadProjectModal({
 
       const response = await api.uploadProject({
         file: selectedFile,
-        email: configuredEmail || undefined,
       });
 
       setUploadSuccess(
@@ -326,9 +321,7 @@ export default function UploadProjectModal({
             {isLoadingConfig
               ? "Loading saved settings..."
               : configuredGithub
-              ? `Analyzing with configured GitHub user "${configuredGithub}"${
-                  configuredEmail ? ` and email "${configuredEmail}"` : ""
-                }.`
+              ? `Analyzing with configured GitHub user "${configuredGithub}".`
               : "You do not have a GitHub profile configured yet. Some project mining features may be limited until user settings are completed."}
           </div>
         </div>

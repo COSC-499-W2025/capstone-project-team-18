@@ -76,6 +76,64 @@ describe("SettingsModal", () => {
     });
   });
 
+  it("calls updateUserConfig with correct payload on save", async () => {
+    render(<SettingsModal open={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(api.getUserConfig).toHaveBeenCalled();
+    });
+
+    const githubInput = screen.getByPlaceholderText("e.g. paulatreides");
+    const emailInput = screen.getByPlaceholderText("your@email.com");
+    const checkbox = screen.getByRole("checkbox");
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+
+    fireEvent.change(githubInput, { target: { value: "valid-user" } });
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    fireEvent.click(checkbox);
+
+    await waitFor(() => expect(saveButton).not.toBeDisabled());
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(api.updateUserConfig).toHaveBeenCalledWith({
+        consent: true,
+        user_email: "test@example.com",
+        github: "valid-user",
+      });
+    });
+
+    expect(await screen.findByText(/settings saved successfully/i)).toBeInTheDocument();
+  });
+
+  it("allows saving with only email and consent (no github)", async () => {
+    render(<SettingsModal open={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(api.getUserConfig).toHaveBeenCalled();
+    });
+
+    const emailInput = screen.getByPlaceholderText("your@email.com");
+    const checkbox = screen.getByRole("checkbox");
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    fireEvent.click(checkbox);
+
+    await waitFor(() => expect(saveButton).not.toBeDisabled());
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(api.updateUserConfig).toHaveBeenCalledWith({
+        consent: true,
+        user_email: "test@example.com",
+        github: "",
+      });
+    });
+  });
+
   it("shows inline validation messages for invalid github and email", async () => {
     render(<SettingsModal open={true} onClose={vi.fn()} />);
 

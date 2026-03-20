@@ -57,7 +57,8 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const githubIsValid = /^(?!-)[A-Za-z0-9-]{1,39}(?<!-)$/.test(github.trim());
-  const isValid = githubIsValid && emailIsValid && consent;
+  const githubOk = github.trim() === "" || githubIsValid;
+  const isValid = githubOk && emailIsValid && consent;
 
   function handleClose() {
     if (isSaving || isLoadingConfig) return;
@@ -143,7 +144,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         {/* GitHub */}
         <div style={{ marginBottom: 16 }}>
           <label style={{ fontSize: 14, color: "#aaa" }}>
-            GitHub Username *
+            GitHub Username (optional)
           </label>
           <input
             value={github}
@@ -213,7 +214,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             I consent to data processing for project mining *
           </span>
 
-          {github.trim() !== "" && email.trim() !== "" && !consent && (
+          {email.trim() !== "" && !consent && (
             <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
                 Please provide consent to enable saving
                 </div>
