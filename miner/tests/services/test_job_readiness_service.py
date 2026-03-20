@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
+from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel, UserConfigModel
 from src.interface.api.routers.job_readiness import router as job_readiness_router
 from src.interface.api.routers.util import get_session
 from src.services import job_readiness_service
+from src.utils.errors import AIServiceUnavailableError
 
 
 def _insert_resume_with_project(blank_db) -> None:
@@ -65,6 +67,12 @@ def _insert_resume_with_project(blank_db) -> None:
 
         session.add(resume)
         session.add(project)
+        session.add(UserConfigModel(
+            consent=True,
+            ml_consent=True,
+            user_email="candidate@example.com",
+            github="candidate",
+        ))
         session.commit()
 
 
@@ -95,6 +103,10 @@ def _valid_result(summary: str = "Strong backend alignment.") -> dict:
 def _test_client(blank_db) -> TestClient:
     app = FastAPI()
     app.include_router(job_readiness_router)
+
+    @app.exception_handler(AIServiceUnavailableError)
+    async def _ai_unavailable(request: Request, exc: AIServiceUnavailableError):
+        return JSONResponse(status_code=503, content={"error_code": exc.error_code, "message": str(exc)})
 
     def _fake_get_session():
         with Session(blank_db) as session:
@@ -189,3 +201,26 @@ def test_job_readiness_retries_when_suggestion_is_generic(monkeypatch):
     assert result is not None
     assert result.summary == "Recovered after actionable retry."
     assert attempts["count"] == 2
+
+
+def test_job_readiness_endpoint_requires_ml_consent(blank_db):
+    client = _test_client(blank_db)
+
+    response = client.post(
+        "/job-readiness/analyze",
+        json={
+            "job_description": "Backend engineer with FastAPI, SQL, and API design experience.",
+            "user_profile": {
+                "resume_text": "Built backend APIs",
+                "project_summaries": ["FastAPI service"],
+                "tags": ["backend"],
+                "extracted_skills": ["Python", "FastAPI"],
+                "repository_history_summary": [],
+                "repository_file_evidence": [],
+                "collaboration_signals": [],
+            },
+        },
+    )
+
+    assert response.status_code == 503
+    assert "consent" in response.json()["message"].lower()

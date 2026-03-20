@@ -1,4 +1,6 @@
 import pytest
+import src.core.portfolio.builder.concrete_builders as concrete_builders
+import src.services.portfolio.generate_update_portfolio_service as portfolio_service
 from sqlmodel import Session
 
 from src.utils.errors import KeyNotFoundError
@@ -93,3 +95,25 @@ def test_update_portfolio(mock_engine, prs_db, pr2_updated):
             # Explicitly check that no blocks are in conflict
             assert block.in_conflict is False, f"Block '{block.tag}' in section '{section.section_id}' incorrectly entered conflict mode"
             assert not block.conflict_content, f"Block '{block.tag}' has conflict content but shouldn't"
+
+
+def test_generate_portfolio_hides_ml_tags_themes_and_tone_when_consent_off(mock_engine, monkeypatch):
+    monkeypatch.setattr(concrete_builders, "ml_extraction_allowed", lambda: False)
+    monkeypatch.setattr(portfolio_service, "ml_extraction_allowed", lambda: False)
+
+    model = generate_and_save_portfolio(["pr1", "pr2"], "Consent Off Portfolio")
+
+    assert all(not card.tags for card in model.project_cards)
+    assert all(not card.themes for card in model.project_cards)
+    assert all(not card.tones for card in model.project_cards)
+    assert all(not card.collaboration_role for card in model.project_cards)
+    assert all(not card.work_pattern for card in model.project_cards)
+    assert all(not card.commit_type_distribution for card in model.project_cards)
+    assert all(not card.activity_metrics for card in model.project_cards)
+
+    section_ids = {section.section_id for section in model.sections}
+    assert "project_tags" not in section_ids
+    assert "project_themes" not in section_ids
+    assert "project_tones" not in section_ids
+    assert "project_activity_metrics" not in section_ids
+    assert "project_commit_focus" not in section_ids
