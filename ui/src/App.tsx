@@ -4,6 +4,8 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import SkillsPage from "./pages/SkillsPage";
 import ResumePage from "./pages/ResumePage";
+import PortfoliosPage from "./pages/PortfoliosPage";
+import PortfolioEditPage from "./pages/PortfolioEditPage";
 import { useState } from "react";
 import SettingsModal from "./components/update/modal/SettingsModal";
 import { getLatestResumeId } from "./api/apiClient";
@@ -68,6 +70,21 @@ export default function App() {
               </NavLink>
 
           <NavLink
+          to="/portfolios"
+          style={({ isActive }) => ({
+            padding: "8px 14px",
+            borderRadius: 12,
+            textDecoration: "none",
+            color: isActive ? "#fff" : "#ccc",
+            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+            transition: "all 0.2s ease",
+            display: "inline-block",
+            })}
+            >
+              Portfolios
+          </NavLink>
+
+          <NavLink
           to="/skills"
           end
           style={({ isActive }) => ({
@@ -122,6 +139,8 @@ export default function App() {
         <Route path="/resume" element={<ResumeRedirect />} />
         <Route path="/resume/new" element={<ResumePage />} />
         <Route path="/resume/:id" element={<ResumePage />} />
+        <Route path="/portfolios" element={<PortfoliosPage />} />
+        <Route path="/portfolios/:id" element={<PortfolioEditPage />} />
       </Routes>
 
       <SettingsModal
