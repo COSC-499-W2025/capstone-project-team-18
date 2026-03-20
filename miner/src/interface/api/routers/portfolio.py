@@ -56,12 +56,18 @@ def remove_portfolio(
 @router.get("/{portfolio_id}")
 def get_portfolio(portfolio_id: int, session: Session = Depends(get_session)):
     """
-    GET /portfolio/{id}
+    Retrieve a portfolio by its database ID.
 
     Returns the full portfolio including all three parts:
       Part A — narrative sections with conflict-aware blocks
       Part B — project cards with is_showcase=True flagged
       Part C — all project cards with rich metadata
+
+    Path parameters:
+    - `portfolio_id`: Integer primary key of the portfolio record.
+
+    Returns:
+    - 200: The portfolio object with all sections and blocks.
     """
     return load_portfolio(session, portfolio_id)
 
@@ -74,10 +80,17 @@ class PortfolioRequest(BaseModel):
 @router.post("/generate")
 def generate_portfolio(request_data: PortfolioRequest):
     """
-    POST /portfolio/generate
+    Generate and persist a new portfolio from the specified projects.
 
     Generate a brand new portfolio for the given projects.
     Populates all three parts: narrative sections, project cards (with showcase flags).
+
+    Body parameters:
+    - `project_names`: List of project names to include in the portfolio.
+    - `portfolio_title`: Optional display title for the portfolio.
+
+    Returns:
+    - 200: The generated portfolio object with all sections and blocks.
     """
     return generate_and_save_portfolio(
         request_data.project_names,
@@ -88,10 +101,16 @@ def generate_portfolio(request_data: PortfolioRequest):
 @router.post("/{portfolio_id}/refresh")
 def refresh_portfolio(portfolio_id: int):
     """
-    POST /portfolio/{id}/refresh
+    Regenerate the content of an existing portfolio using current project data.
 
     Regenerate all auto-populated content (Part A sections + Part C card data).
     User overrides and is_showcase flags are preserved.
+
+    Path parameters:
+    - `portfolio_id`: Integer primary key of the portfolio to refresh.
+
+    Returns:
+    - 200: The updated portfolio object.
     """
     return update_portfolio(portfolio_id)
 
@@ -104,6 +123,20 @@ def edit_portfolio_block(
     payload: Dict[str, Any],
     session: Session = Depends(get_session)
 ):
+    """
+    Apply a partial update to a specific block within a portfolio section.
+
+    Path parameters:
+    - `portfolio_id`: Integer primary key of the portfolio.
+    - `section_id`: Tag identifier of the section containing the block.
+    - `block_tag`: Tag identifier of the block to edit.
+
+    Body parameters:
+    - Any key/value pairs accepted by the block's update logic.
+
+    Returns:
+    - 200: The updated block object.
+    """
     updated_block = update_portfolio_block(
         session=session,
         portfolio_id=portfolio_id,
@@ -118,7 +151,16 @@ def edit_portfolio_block(
 @router.get("/{portfolio_id}/conflicts")
 def list_conflicts(portfolio_id: int, session: Session = Depends(get_session)):
     """
-    Returns all blocks currently in a conflict state so the UI can highlight them.
+    Return all blocks currently in a conflict state so the UI can highlight them.
+
+    A block is in conflict when the system-generated version differs from a
+    user-saved version and the user has not yet resolved the discrepancy.
+
+    Path parameters:
+    - `portfolio_id`: Integer primary key of the portfolio.
+
+    Returns:
+    - 200: A list of blocks currently in conflict state.
     """
     return get_portfolio_conflicts(session, portfolio_id)
 
@@ -131,7 +173,18 @@ def resolve_accept_system(
     session: Session = Depends(get_session)
 ):
     """
-    Resolve a conflict by choosing the system-generated version.
+    Resolve a conflict by accepting the system-generated version of a block.
+
+    Discards the user's saved version and replaces it with the current
+    system-generated content, clearing the conflict flag.
+
+    Path parameters:
+    - `portfolio_id`: Integer primary key of the portfolio.
+    - `section_id`: Tag identifier of the section containing the block.
+    - `block_tag`: Tag identifier of the block to resolve.
+
+    Returns:
+    - 200: The resolved block object with conflict cleared.
     """
     return resolve_block_accept_system(session, portfolio_id, section_id, block_tag)
 

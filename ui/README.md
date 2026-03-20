@@ -40,7 +40,13 @@ pip install -r requirements.txt
 ### 2.2 Running the FastAPI Server:
 From the repository root run:
 ```bash
-python3 -m uvicorn src.interface.api.api:app --reload --reload-dir src
+rm -f src/database/data.db
+
+PYTHONPATH=miner python3 -c "from sqlmodel import SQLModel; from src.database.core.base import get_engine; import src.database.api.models; SQLModel.metadata.create_all(get_engine()); print('tables created in', get_engine().url)"
+
+sqlite3 src/database/data.db ".tables"
+
+PYTHONPATH=miner python3 -m uvicorn src.interface.api.api:app --reload
 ```
 
 # 3. Electron UI Setup

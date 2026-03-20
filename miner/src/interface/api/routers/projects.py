@@ -1,20 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlmodel import SQLModel, Field
-from typing import Optional, List, Any, Dict
-from urllib.parse import unquote
-from datetime import datetime
 import os
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from urllib.parse import unquote
 
-from src.interface.api.routers.util import get_session
-from src.database.api.CRUD.projects import (
-    get_project_report_model_by_name,
-    get_project_report_by_name,
-    get_all_project_report_models
-)
-from src.services.mining_service import start_miner_service
-from src.database.api.models import UserConfigModel as UserConfig
-from src.infrastructure.log.logging import get_logger
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlmodel import Field, SQLModel
+from src.database.api.CRUD.projects import (get_all_project_report_models,
+                                            get_project_report_by_name,
+                                            get_project_report_model_by_name)
+from src.database.api.CRUD.user_config import get_most_recent_user_config
 from src.database.api.models import ProjectReportModel
+from src.infrastructure.log.logging import get_logger
+from src.interface.api.routers.util import get_session
+from src.services.mining_service import start_miner_service
+from src.utils.errors import DatabaseOperationError, ProjectNotFoundError
 
 logger = get_logger(__name__)
 
@@ -37,7 +36,6 @@ class ProjectReportResponse(SQLModel):
 
 class UploadProjectResponse(SQLModel):
     message: str
-    portfolio_name: str
 
 
 class ProjectListResponse(SQLModel):
@@ -224,18 +222,32 @@ def _build_project_showcase_response(
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
     file: UploadFile = File(...),
-    email: Optional[str] = None,
-    portfolio_name: Optional[str] = None,
     session=Depends(get_session)
 ):
     """
-    POST /upload
+    Ingest a compressed project archive, analyze its contents, and persist the results.
 
-    This endpoint will intake a zipped file. This zipped file will then
-    be analyzed for projects. These projects will be analyzed, then saved
-    to the database.
+    Supported archive formats: .tar.gz, .gz, .7z, .zip.
 
-    Errors will be thrown if the zipped file does not match the accepted formats.
+    The saved UserConfig (email, github, consent) is loaded from the database
+    and passed to the miner, so all persisted settings are used during mining.
+
+
+    Query parameters:
+    - `email`: Optional user email to associate with the analysis.
+    - `portfolio_name`: Optional name to assign to the portfolio; derived from the
+      filename if omitted.
+
+    Form parameters:
+    - `file`: The compressed archive to analyze.
+
+    Returns:
+    - 200: An `UploadProjectResponse` with a confirmation message and portfolio name.
+
+    Raises:
+    - 400: The file extension is not a supported archive format.
+    - 422: The archive content is malformed or otherwise invalid.
+    - 500 `DATABASE_OPERATION_FAILED`: An unexpected error occurred during processing.
     """
     filename = file.filename or ""
     matched_format = next(
@@ -251,18 +263,7 @@ def upload_project(
     try:
         file_bytes = file.file.read()
 
-        # Use provided portfolio_name, otherwise derive from filename
-        if not portfolio_name:
-            portfolio_name = filename
-            for fmt in SUPPORTED_FORMATS:
-                if portfolio_name.endswith(fmt):
-                    portfolio_name = portfolio_name[: -len(fmt)]
-                    break
-
-        user_config = UserConfig(
-            consent=True,
-            user_email=email,
-        )
+        user_config = get_most_recent_user_config(session)
 
         start_miner_service(
             zipped_bytes=file_bytes,
@@ -271,8 +272,7 @@ def upload_project(
         )
 
         return UploadProjectResponse(
-            message="Project uploaded and analyzed successfully",
-            portfolio_name=portfolio_name
+            message="Project uploaded and analyzed successfully"
         )
 
     except ValueError as e:
@@ -281,10 +281,8 @@ def upload_project(
 
     except Exception as e:
         logger.error("Unexpected error during project upload: %s", str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to process project: {str(e)}"
-        )
+        raise DatabaseOperationError(
+            f"Failed to process project: {str(e)}") from e
 
 
 @router.get(
@@ -293,7 +291,13 @@ def upload_project(
 )
 def list_projects(session=Depends(get_session)):
     """
-    Get all project reports without pagination.
+    List all project reports ordered by representation_rank, then creation date.
+
+    Returns:
+    - 200: A `ProjectListResponse` with an ordered list of all project reports and a count.
+
+    Raises:
+    - 500 `DATABASE_OPERATION_FAILED`: An unexpected error occurred while fetching the project list.
     """
     try:
 
@@ -315,10 +319,9 @@ def list_projects(session=Depends(get_session)):
 
     except Exception as e:
         logger.error(f"Error fetching project list: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve the list of projects from the database: {type(e).__name__}: {str(e)}"
-        )
+        raise DatabaseOperationError(
+            f"Failed to retrieve the list of projects from the database: {type(e).__name__}: {str(e)}"
+        ) from e
 
 
 def _resolve_compare_attribute(attr: str, model, report) -> Any:
@@ -357,9 +360,18 @@ def _resolve_compare_attribute(attr: str, model, report) -> Any:
 @router.get("/compare", response_model=CompareProjectsResponse)
 def compare_projects(projects: Optional[str] = None, session=Depends(get_session)):
     """
-    Compare projects using saved compare_attributes.
-    Query param: ?projects=A,B,C
-    If not provided, compares all projects that have any compare_attributes selected.
+    Compare selected projects across their saved comparison attributes.
+
+    Query parameters:
+    - `projects`: Optional comma-separated project names. When omitted, all projects
+      that have any compare_attributes set are included.
+
+    Returns:
+    - 200: A `CompareProjectsResponse` with the union of attributes and per-project
+      attribute values.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: One or more named projects were not found in the database.
     """
     project_reports = get_all_project_report_models(session)
 
@@ -372,8 +384,8 @@ def compare_projects(projects: Optional[str] = None, session=Depends(get_session
         if len(models) != len(wanted_set):
             missing = sorted(
                 list(wanted_set - {m.project_name for m in models}))
-            raise HTTPException(
-                status_code=404, detail=f"Missing project(s): {', '.join(missing)}")
+            raise ProjectNotFoundError(
+                f"Missing project(s): {', '.join(missing)}")
     else:
         models = [m for m in project_reports if (m.compare_attributes or [])]
 
@@ -419,8 +431,13 @@ def compare_projects(projects: Optional[str] = None, session=Depends(get_session
 @router.get("/showcase/selected")
 def get_selected_showcase_projects(session=Depends(get_session)):
     """
-    Return all projects marked showcase_selected=True, ordered by representation_rank.
-    Each project is returned in the same merged format as GET /projects/{name}/showcase.
+    Return all projects flagged as showcase_selected=True, ordered by representation_rank.
+
+    Each project is returned in the merged showcase format (generated defaults combined
+    with user overrides).
+
+    Returns:
+    - 200: `{"projects": [...], "count": N}` with a list of `ProjectShowcaseResponse` objects.
     """
     models = [p for p in get_all_project_report_models(
         session) if p.showcase_selected]
@@ -444,21 +461,29 @@ def get_selected_showcase_projects(session=Depends(get_session)):
 
 @router.get("/{project_name}", response_model=ProjectReportResponse)
 def get_project(project_name: str, session=Depends(get_session)):
+    """
+    Retrieve a single project report record by project name.
 
+    Path parameters:
+    - `project_name`: The unique name of the project.
+
+    Returns:
+    - 200: A `ProjectReportResponse` for the matched project.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 500 `DATABASE_OPERATION_FAILED`: An unexpected error occurred while fetching the report.
+    """
     result = None
 
     try:
         result = get_project_report_model_by_name(session, project_name)
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve project report {e}"
-        )
+        raise DatabaseOperationError(
+            f"Failed to retrieve project report: {e}") from e
 
     if not result:
-        raise HTTPException(
-            status_code=404, detail=f"No project report named {project_name}"
-        )
+        raise ProjectNotFoundError(f"No project report named {project_name}")
 
     return result
 
@@ -466,24 +491,27 @@ def get_project(project_name: str, session=Depends(get_session)):
 @router.get("/{project_name}/showcase", response_model=ProjectShowcaseResponse)
 def get_project_showcase(project_name: str, session=Depends(get_session)):
     """
-    GET /{project_name}/showcase
+    Return the merged showcase view for a project, combining AI-generated defaults
+    with any saved user overrides.
 
-    This endpoint will retieve a passed in project_name and format it
-    for a showcase. The idea is that user can select which project they
-    would like to showcase through the UI, and the portfolio will call
-    this endpoint to format that project for a showcase.
+    Path parameters:
+    - `project_name`: The unique name of the project.
 
-    Returns the project_name fromatted for project showcase.
+    Returns:
+    - 200: A `ProjectShowcaseResponse` with title, date range, frameworks, and bullet points.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 500 `DATABASE_OPERATION_FAILED`: An unexpected error occurred while fetching the report.
     """
     try:
         report = get_project_report_by_name(session, project_name)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve project report {e}")
+        raise DatabaseOperationError(
+            f"Failed to retrieve project report: {e}") from e
 
     if not report:
-        raise HTTPException(
-            status_code=404, detail=f"No project report named {project_name}")
+        raise ProjectNotFoundError(f"No project report named {project_name}")
 
     resume_item = report.generate_resume_item()
     project_model = get_project_report_model_by_name(session, project_name)
@@ -553,13 +581,23 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
 @router.get("/{project_name}/showcase/customization")
 def get_project_showcase_customization(project_name: str, session=Depends(get_session)):
     """
-    Returns only the saved customization fields (not the merged showcase output).
-    Useful for prefilling an edit form in the UI.
+    Return only the saved user-override fields for a project's showcase view.
+
+    Useful for pre-populating an edit form in the UI without applying generated defaults.
+
+    Path parameters:
+    - `project_name`: The unique name of the project.
+
+    Returns:
+    - 200: An object with `project_name`, `title`, `start_date`, `end_date`, `frameworks`,
+      `bullet_points`, and `last_user_edit_at`.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
     """
     project_model = get_project_report_model_by_name(session, project_name)
     if not project_model:
-        raise HTTPException(
-            status_code=404, detail=f"No project report named {project_name}")
+        raise ProjectNotFoundError(f"No project report named {project_name}")
 
     return {
         "project_name": project_model.project_name,
@@ -579,12 +617,30 @@ def save_project_showcase_customization(
     session=Depends(get_session),
 ):
     """
-    Persist user overrides for the portfolio showcase view of a project.
+    Persist user-defined overrides for the portfolio showcase view of a project.
+
+    All fields are optional; only provided fields are updated.
+
+    Path parameters:
+    - `project_name`: The unique name of the project.
+
+    Body parameters:
+    - `title`: Optional display title override.
+    - `start_date`: Optional start date override (ISO 8601).
+    - `end_date`: Optional end date override (ISO 8601).
+    - `frameworks`: Optional list of technology names to display.
+    - `bullet_points`: Optional list of bullet point strings.
+
+    Returns:
+    - 200: `{"ok": true}` on success.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 500 `DATABASE_OPERATION_FAILED`: The save operation failed; changes were rolled back.
     """
     project_model = get_project_report_model_by_name(session, project_name)
     if not project_model:
-        raise HTTPException(
-            status_code=404, detail=f"No project report named {project_name}")
+        raise ProjectNotFoundError(f"No project report named {project_name}")
 
     try:
         if request.title is not None:
@@ -613,19 +669,29 @@ def save_project_showcase_customization(
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to save showcase customization: {str(e)}")
+        raise DatabaseOperationError(
+            f"Failed to save showcase customization: {str(e)}") from e
 
 
 @router.delete("/{project_name}/showcase/customization")
 def clear_project_showcase_customization(project_name: str, session=Depends(get_session)):
     """
-    Clear any saved overrides for the showcase view so it falls back to generated defaults.
+    Remove all user-defined overrides for a project's showcase view, reverting it to
+    generated defaults.
+
+    Path parameters:
+    - `project_name`: The unique name of the project.
+
+    Returns:
+    - 200: `{"ok": true}` on success.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 500 `DATABASE_OPERATION_FAILED`: The clear operation failed; changes were rolled back.
     """
     project_model = get_project_report_model_by_name(session, project_name)
     if not project_model:
-        raise HTTPException(
-            status_code=404, detail=f"No project report named {project_name}")
+        raise ProjectNotFoundError(f"No project report named {project_name}")
 
     try:
         project_model.showcase_title = None
@@ -643,37 +709,36 @@ def clear_project_showcase_customization(project_name: str, session=Depends(get_
 
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to clear showcase customization: {str(e)}")
+        raise DatabaseOperationError(
+            f"Failed to clear showcase customization: {str(e)}") from e
 
 
 @router.get("/{project_name}/resume-item", response_model=ProjectResumeItemResponse)
 def get_project_resume_item(project_name: str, session=Depends(get_session)):
     """
-    GET /{project_name}/resume-item
+    Format a project as a structured résumé entry.
 
-    This endpoint will retrieve a passed in project_name and format it
-    as a résumé item. The idea is that a user can select which project
-    they would like to include in their résumé through the UI, and the
-    system will call this endpoint to generate a structured résumé entry
-    for that project.
+    Generates a title, date range, frameworks, and descriptive bullet points
+    from the project's mined statistics.
 
-    Returns the project formatted as a résumé item, including title,
-    date range, frameworks used, and descriptive bullet points.
+    Path parameters:
+    - `project_name`: The unique name of the project.
+
+    Returns:
+    - 200: A `ProjectResumeItemResponse` ready for embedding in a résumé.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 500 `DATABASE_OPERATION_FAILED`: An unexpected error occurred while fetching the report.
     """
     try:
         report = get_project_report_by_name(session, project_name)
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve project report {e}"
-        )
+        raise DatabaseOperationError(
+            f"Failed to retrieve project report: {e}") from e
 
     if not report:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No project report named {project_name}"
-        )
+        raise ProjectNotFoundError(f"No project report named {project_name}")
 
     resume_item = report.generate_resume_item()
 
@@ -708,18 +773,28 @@ def upload_project_image(
     session=Depends(get_session)
 ):
     """
-    POST /{project_name}/image
+    Attach an image file to the specified project.
 
-    Uploads an image file and assigns it to the specified project.
-    Validates that the uploaded file is an image before saving.
+    The file must be a valid image (content-type must start with `image/`).
+
+    Path parameters:
+    - `project_name`: The unique name of the project.
+
+    Form parameters:
+    - `file`: The image file to upload.
+
+    Returns:
+    - 200: `{"message": "Image successfully assigned to project '{project_name}'."}` on success.
+
+    Raises:
+    - 400: The uploaded file is not an image.
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 500 `DATABASE_OPERATION_FAILED`: The image could not be saved; changes were rolled back.
     """
 
     project_model = get_project_report_model_by_name(session, project_name)
     if not project_model:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No project report named {project_name}"
-        )
+        raise ProjectNotFoundError(f"No project report named {project_name}")
 
     # Validate that the uploaded file is actually an image
     content_type = file.content_type or ""
@@ -745,34 +820,43 @@ def upload_project_image(
         session.rollback()
         logger.error("Error uploading image for project %s: %s",
                      project_name, str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to upload image."
-        )
+        raise DatabaseOperationError(
+            f"Failed to upload image: {str(e)}") from e
 
 
 @router.put("/representation/reorder")
 def reorder_projects(request: ReorderProjectsRequest, session=Depends(get_session)):
     """
-    Assign representation_rank to each project in the given order.
-    Index 0 gets rank 0 (highest priority).
+    Assign representation_rank values to projects in the specified order.
+
+    The first project in the list receives rank 0 (highest priority).
+
+    Body parameters:
+    - `project_names`: An ordered list of project names.
+
+    Returns:
+    - 200: `{"ok": true}` on success.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: A project name in the list does not exist in the database.
+    - 500 `DATABASE_OPERATION_FAILED`: The reorder operation failed; changes were rolled back.
     """
     try:
         for rank, project_name in enumerate(request.project_names):
             model = get_project_report_model_by_name(session, project_name)
             if model is None:
-                raise HTTPException(
-                    status_code=404, detail=f"No project report named {project_name}")
+                raise ProjectNotFoundError(
+                    f"No project report named {project_name}")
             model.representation_rank = rank
             session.add(model)
         session.commit()
         return {"ok": True}
-    except HTTPException:
+    except ProjectNotFoundError:
         raise
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to reorder projects: {str(e)}")
+        raise DatabaseOperationError(
+            f"Failed to reorder projects: {str(e)}") from e
 
 
 @router.patch("/{project_name}/representation")
@@ -781,11 +865,35 @@ def update_project_representation(
     request: UpdateProjectRepresentationRequest,
     session=Depends(get_session),
 ):
-    """Update representation metadata for a project."""
+    """
+    Update representation metadata fields for a specific project.
+
+    All body fields are optional; only provided fields are updated.
+
+    Path parameters:
+    - `project_name`: The unique name of the project.
+
+    Body parameters:
+    - `representation_rank`: Optional integer rank (must be >= 0).
+    - `chrono_start_override`: Optional start date override for chronological ordering.
+    - `chrono_end_override`: Optional end date override (must be >= chrono_start_override
+      when both are set).
+    - `showcase_selected`: Optional boolean to include or exclude from showcase.
+    - `compare_attributes`: Optional list of attribute names to enable for comparison.
+    - `highlight_skills`: Optional list of skills to highlight for this project.
+
+    Returns:
+    - 200: `{"ok": true}` on success.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 422: representation_rank is negative, or chrono_end_override is before
+      chrono_start_override.
+    - 500 `DATABASE_OPERATION_FAILED`: The update failed; changes were rolled back.
+    """
     model = get_project_report_model_by_name(session, project_name)
     if not model:
-        raise HTTPException(
-            status_code=404, detail=f"No project report named {project_name}")
+        raise ProjectNotFoundError(f"No project report named {project_name}")
 
     if request.representation_rank is not None and request.representation_rank < 0:
         raise HTTPException(
@@ -815,9 +923,7 @@ def update_project_representation(
         session.add(model)
         session.commit()
         return {"ok": True}
-    except HTTPException:
-        raise
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to update representation: {str(e)}")
+        raise DatabaseOperationError(
+            f"Failed to update representation: {str(e)}") from e

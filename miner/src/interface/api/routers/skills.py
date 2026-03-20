@@ -17,14 +17,14 @@ class WeightedUserSkills(SQLModel):
 @router.get("", response_model=dict[str, list[WeightedUserSkills]])
 def get_skills_endpoint(session=Depends(get_session)):
     """
-    GET /skills
+    Aggregate and return all skills detected across every project report.
 
-    The skills endpoint will retieve the skills that the user has
-    achieved across all their projects. We do this by retieving and
-    aggregating all the project skills and then returnting them as
-    user skills.
+    Skills are weighted by their relative contribution across projects, then
+    returned as a flat list sorted by the service layer.
 
-    Returns a list of WeightedUserSkills.
+    Returns:
+    - 200: `{"skills": [{"name": "...", "weight": 0.0}]}` — a list of
+      `WeightedUserSkills` sorted by the service layer.
     """
     raw_skills = get_skills(session)
 
@@ -36,6 +36,17 @@ def get_skills_endpoint(session=Depends(get_session)):
 
 @router.get("/highlighted", response_model=dict[str, list[WeightedUserSkills]])
 def get_highlighted_skills(session=Depends(get_session)):
+    """
+    Return only the skills that have been manually highlighted on at least one project.
+
+    A skill is highlighted when it appears in a project's `highlight_skills` list,
+    set via PATCH /projects/{project_name}/representation.
+
+    Returns:
+    - 200: `{"skills": [{"name": "...", "weight": 0.0}]}` — subset of all skills,
+      sorted alphabetically. Weight is 0.0 if the skill has not been detected by
+      the analyzer.
+    """
     from src.database.api.CRUD.projects import get_all_project_report_models
 
     projects = get_all_project_report_models(session)

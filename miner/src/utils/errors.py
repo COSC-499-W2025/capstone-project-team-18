@@ -20,6 +20,11 @@ class ErrorCode(str, Enum):
     UNKNOWN_DESERIALIZATION_CLASS = "UNKNOWN_DESERIALIZATION_CLASS"
     UNHANDLE_VALUE = "UNHANDLE_VALUE"
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
+    PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND"
+    RESUME_NOT_FOUND = "RESUME_NOT_FOUND"
+    USER_CONFIG_NOT_FOUND = "USER_CONFIG_NOT_FOUND"
+    AI_SERVICE_UNAVAILABLE = "AI_SERVICE_UNAVAILABLE"
+    DATABASE_OPERATION_FAILED = "DATABASE_OPERATION_FAILED"
 
 
 class KeyNotFoundError(Exception):
@@ -88,3 +93,28 @@ class MissingStartMinerConsent(ArtifactMinerException):
     the miner function.
     """
     error_code = ErrorCode.MISSING_CONSENT
+
+
+class ProjectNotFoundError(ArtifactMinerException):
+    """A project could not be located in the database by the given name."""
+    error_code = ErrorCode.PROJECT_NOT_FOUND
+
+
+class ResumeNotFoundError(ArtifactMinerException):
+    """A resume could not be located in the database by the given ID."""
+    error_code = ErrorCode.RESUME_NOT_FOUND
+
+
+class UserConfigNotFoundError(ArtifactMinerException):
+    """The user configuration record could not be found."""
+    error_code = ErrorCode.USER_CONFIG_NOT_FOUND
+
+
+class AIServiceUnavailableError(ArtifactMinerException):
+    """An Azure OpenAI-backed feature is not reachable or not configured."""
+    error_code = ErrorCode.AI_SERVICE_UNAVAILABLE
+
+
+class DatabaseOperationError(ArtifactMinerException):
+    """A write or read operation against the database failed unexpectedly."""
+    error_code = ErrorCode.DATABASE_OPERATION_FAILED

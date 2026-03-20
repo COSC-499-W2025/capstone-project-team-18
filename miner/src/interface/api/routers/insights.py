@@ -19,6 +19,7 @@ from src.database.api.CRUD.insights import get_project_insights, save_project_in
 from src.database.api.CRUD.projects import get_project_report_by_name
 from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
+from src.utils.errors import ProjectNotFoundError
 
 router = APIRouter(
     prefix="/projects",
@@ -45,9 +46,18 @@ def get_project_insights_endpoint(
     """
     Return a list of resume-writing insight prompts for the given project.
 
-    On the first call the insights are generated from the project's mined
-    statistics and persisted to the database. Subsequent calls return the
-    cached copy without re-running the generator.
+    On the first call, insights are generated from the project's mined statistics
+    and cached in the database. Subsequent calls return the cached copy.
+
+    Path parameters:
+    - `project_name`: The URL-encoded name of the project.
+
+    Returns:
+    - 200: A `ProjectInsightsResponse` with project_name and a list of insight messages.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 500: Insight generation failed unexpectedly.
     """
     decoded_name = unquote(project_name)
 
@@ -62,10 +72,7 @@ def get_project_insights_endpoint(
     # Else generate insights
     report = get_project_report_by_name(session, decoded_name)
     if report is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Project '{decoded_name}' not found.",
-        )
+        raise ProjectNotFoundError(f"Project '{decoded_name}' not found.")
 
     try:
         insights = InsightGenerator.generate(report)

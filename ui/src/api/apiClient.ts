@@ -1,4 +1,5 @@
 const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
+const LATEST_RESUME_ID_KEY = "latest_resume_id";
 
 function normalizeBaseUrl(baseUrl: string): string {
   const trimmed = baseUrl.trim();
@@ -11,10 +12,9 @@ function normalizeBaseUrl(baseUrl: string): string {
  * 1. VITE_API_BASE_URL (for dev / different environments)
  * 2. Default localhost FastAPI
  */
-
 export function getApiBaseUrl(): string {
-  // Vitest/Node-friendly override
-  const nodeEnvBase = typeof process !== "undefined" ? process.env.VITE_API_BASE_URL : undefined;
+  const nodeEnvBase =
+    typeof process !== "undefined" ? process.env.VITE_API_BASE_URL : undefined;
 
   const viteEnvBase =
     typeof import.meta !== "undefined"
@@ -24,14 +24,26 @@ export function getApiBaseUrl(): string {
   return normalizeBaseUrl(nodeEnvBase ?? viteEnvBase ?? DEFAULT_BASE_URL);
 }
 
-async function getJson<T>(path: string): Promise<T> {
+function buildUrl(path: string): string {
   const base = getApiBaseUrl();
-  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
+async function readErrorText(res: Response): Promise<string> {
+  try {
+    const text = await res.text();
+    return text || "";
+  } catch {
+    return "";
+  }
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const url = buildUrl(path);
   const res = await fetch(url);
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
+    const text = await readErrorText(res);
     throw new Error(
       `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
     );
@@ -40,29 +52,229 @@ async function getJson<T>(path: string): Promise<T> {
   return res.json();
 }
 
+async function postJson<T>(path: string, body?: unknown): Promise<T> {
+  const url = buildUrl(path);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    const text = await readErrorText(res);
+    throw new Error(
+      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
+    );
+  }
+
+  return res.json();
+}
+
+async function putJson<T>(path: string, body?: unknown): Promise<T> {
+  const url = buildUrl(path);
+
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    const text = await readErrorText(res);
+    throw new Error(
+      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
+    );
+  }
+
+  return res.json();
+}
+
+async function postFormData<T>(path: string, formData: FormData): Promise<T> {
+  const url = buildUrl(path);
+
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const text = await readErrorText(res);
+    throw new Error(
+      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
+    );
+  }
+
+  return res.json();
+}
+
+export type ResumeConfigRequest = {
+  education?: string[] | null;
+  awards?: string[] | null;
+};
+
+export type UserConfigResponse = {
+  id: number;
+  consent: boolean;
+  user_email?: string | null;
+  github?: string | null;
+  resume_config?: {
+    id: number;
+    education: string[];
+    awards: string[];
+  } | null;
+};
+
+export type UpdateUserConfigPayload = {
+  consent: boolean;
+  user_email: string;
+  github?: string | null;
+  resume_config?: ResumeConfigRequest | null;
+};
+
+export type ProjectListItem = {
+  project_name: string;
+  user_config_used?: number | null;
+  image_data?: string | null;
+  created_at?: string;
+  statistic?: Record<string, unknown>;
+  last_updated?: string;
+};
+
+export type ListProjectsResponse = {
+  projects: ProjectListItem[];
+  count: number;
+};
+
+export type UploadProjectResponse = {
+  message: string;
+};
+
+export type ResumeItemResponse = {
+  id?: number | null;
+  resume_id?: number | null;
+  project_name?: string | null;
+  title: string;
+  frameworks: string[];
+  bullet_points: string[];
+  start_date?: string | null;
+  end_date?: string | null;
+};
+
+export type ResumeResponse = {
+  id?: number | null;
+  email?: string | null;
+  github?: string | null;
+  skills: string[];
+  education?: string[];
+  awards?: string[];
+  items: ResumeItemResponse[];
+  created_at?: string | null;
+  last_updated?: string | null;
+};
+
+export type GenerateResumePayload = {
+  project_names: string[];
+  user_config_id?: number | null;
+};
+
+export type EditResumeBulletPointPayload = {
+  resume_id: number;
+  item_index: number;
+  new_content: string;
+  append: boolean;
+  bullet_point_index?: number | null;
+};
+
+export function getLatestResumeId(): number | null {
+  try {
+    const raw = window.localStorage.getItem(LATEST_RESUME_ID_KEY);
+    if (!raw) return null;
+
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setLatestResumeId(id: number | null | undefined): void {
+  try {
+    if (!id || id <= 0) return;
+    window.localStorage.setItem(LATEST_RESUME_ID_KEY, String(id));
+  } catch {
+    // no-op
+  }
+}
+
 /**
  * Centralized API surface
  */
 
 export const api = {
-    
   /**
    * Lightweight connectivity check.
-   * FastAPI always exposes /docs in dev.
    */
-  
-ping: async (): Promise<boolean> => {
+  ping: async (): Promise<boolean> => {
     try {
-      const base = getApiBaseUrl();
-      const res = await fetch(`${base}/ping`);
+      const res = await fetch(buildUrl("/ping"));
       return res.ok;
     } catch {
       return false;
     }
   },
 
-  getProjects: () => getJson<any>("/projects"),
+  getProjects: () => getJson<ListProjectsResponse>("/projects"),
+
   getSkills: () => getJson<any>("/skills"),
-  getProject: (Name: string | number) =>
-    getJson<any>(`/projects/${encodeURIComponent(String(Name))}`),
+
+  getProject: (name: string | number) =>
+    getJson<any>(`/projects/${encodeURIComponent(String(name))}`),
+
+  getUserConfig: () => getJson<UserConfigResponse>("/user-config"),
+
+  updateUserConfig: (payload: UpdateUserConfigPayload) =>
+    putJson<UserConfigResponse>("/user-config", payload),
+
+  uploadProject: (payload: {
+    file: File;
+  }) => {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+
+    return postFormData<UploadProjectResponse>("/projects/upload", formData);
+  },
+
+  getResume: (resumeId: string | number) =>
+    getJson<ResumeResponse>(`/resume/${encodeURIComponent(String(resumeId))}`),
+
+  generateResume: async (payload: GenerateResumePayload) => {
+    const res = await postJson<ResumeResponse>("/resume/generate", payload);
+
+    if (res?.id) {
+      setLatestResumeId(res.id);
+    }
+
+    return res;
+  },
+
+  editResumeBulletPoint: async (
+    resumeId: number,
+    payload: EditResumeBulletPointPayload
+  ) => {
+    const res = await postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/bullet_point`,
+      payload
+    );
+
+    if (res?.id) {
+      setLatestResumeId(res.id);
+    }
+
+    return res;
+  },
 };
