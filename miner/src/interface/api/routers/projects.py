@@ -1,21 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlmodel import SQLModel, Field
-from typing import Optional, List, Any, Dict
-from urllib.parse import unquote
-from datetime import datetime
 import os
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from urllib.parse import unquote
 
-from src.interface.api.routers.util import get_session
-from src.database.api.CRUD.projects import (
-    get_project_report_model_by_name,
-    get_project_report_by_name,
-    get_all_project_report_models
-)
-from src.services.mining_service import start_miner_service
-from src.database.api.models import UserConfigModel as UserConfig
-from src.infrastructure.log.logging import get_logger
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlmodel import Field, SQLModel
+from src.database.api.CRUD.projects import (get_all_project_report_models,
+                                            get_project_report_by_name,
+                                            get_project_report_model_by_name)
+from src.database.api.CRUD.user_config import get_most_recent_user_config
 from src.database.api.models import ProjectReportModel
-from src.utils.errors import ProjectNotFoundError, DatabaseOperationError
+from src.infrastructure.log.logging import get_logger
+from src.interface.api.routers.util import get_session
+from src.services.mining_service import start_miner_service
+from src.utils.errors import DatabaseOperationError, ProjectNotFoundError
 
 logger = get_logger(__name__)
 
@@ -38,7 +36,6 @@ class ProjectReportResponse(SQLModel):
 
 class UploadProjectResponse(SQLModel):
     message: str
-    portfolio_name: str
 
 
 class ProjectListResponse(SQLModel):
@@ -225,14 +222,16 @@ def _build_project_showcase_response(
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
     file: UploadFile = File(...),
-    email: Optional[str] = None,
-    portfolio_name: Optional[str] = None,
     session=Depends(get_session)
 ):
     """
     Ingest a compressed project archive, analyze its contents, and persist the results.
 
     Supported archive formats: .tar.gz, .gz, .7z, .zip.
+
+    The saved UserConfig (email, github, consent) is loaded from the database
+    and passed to the miner, so all persisted settings are used during mining.
+
 
     Query parameters:
     - `email`: Optional user email to associate with the analysis.
@@ -264,18 +263,7 @@ def upload_project(
     try:
         file_bytes = file.file.read()
 
-        # Use provided portfolio_name, otherwise derive from filename
-        if not portfolio_name:
-            portfolio_name = filename
-            for fmt in SUPPORTED_FORMATS:
-                if portfolio_name.endswith(fmt):
-                    portfolio_name = portfolio_name[: -len(fmt)]
-                    break
-
-        user_config = UserConfig(
-            consent=True,
-            user_email=email,
-        )
+        user_config = get_most_recent_user_config(session)
 
         start_miner_service(
             zipped_bytes=file_bytes,
@@ -284,8 +272,7 @@ def upload_project(
         )
 
         return UploadProjectResponse(
-            message="Project uploaded and analyzed successfully",
-            portfolio_name=portfolio_name
+            message="Project uploaded and analyzed successfully"
         )
 
     except ValueError as e:
@@ -294,7 +281,8 @@ def upload_project(
 
     except Exception as e:
         logger.error("Unexpected error during project upload: %s", str(e))
-        raise DatabaseOperationError(f"Failed to process project: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to process project: {str(e)}") from e
 
 
 @router.get(
@@ -396,7 +384,8 @@ def compare_projects(projects: Optional[str] = None, session=Depends(get_session
         if len(models) != len(wanted_set):
             missing = sorted(
                 list(wanted_set - {m.project_name for m in models}))
-            raise ProjectNotFoundError(f"Missing project(s): {', '.join(missing)}")
+            raise ProjectNotFoundError(
+                f"Missing project(s): {', '.join(missing)}")
     else:
         models = [m for m in project_reports if (m.compare_attributes or [])]
 
@@ -490,7 +479,8 @@ def get_project(project_name: str, session=Depends(get_session)):
     try:
         result = get_project_report_model_by_name(session, project_name)
     except Exception as e:
-        raise DatabaseOperationError(f"Failed to retrieve project report: {e}") from e
+        raise DatabaseOperationError(
+            f"Failed to retrieve project report: {e}") from e
 
     if not result:
         raise ProjectNotFoundError(f"No project report named {project_name}")
@@ -517,7 +507,8 @@ def get_project_showcase(project_name: str, session=Depends(get_session)):
     try:
         report = get_project_report_by_name(session, project_name)
     except Exception as e:
-        raise DatabaseOperationError(f"Failed to retrieve project report: {e}") from e
+        raise DatabaseOperationError(
+            f"Failed to retrieve project report: {e}") from e
 
     if not report:
         raise ProjectNotFoundError(f"No project report named {project_name}")
@@ -678,7 +669,8 @@ def save_project_showcase_customization(
 
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to save showcase customization: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to save showcase customization: {str(e)}") from e
 
 
 @router.delete("/{project_name}/showcase/customization")
@@ -717,7 +709,8 @@ def clear_project_showcase_customization(project_name: str, session=Depends(get_
 
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to clear showcase customization: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to clear showcase customization: {str(e)}") from e
 
 
 @router.get("/{project_name}/resume-item", response_model=ProjectResumeItemResponse)
@@ -741,7 +734,8 @@ def get_project_resume_item(project_name: str, session=Depends(get_session)):
     try:
         report = get_project_report_by_name(session, project_name)
     except Exception as e:
-        raise DatabaseOperationError(f"Failed to retrieve project report: {e}") from e
+        raise DatabaseOperationError(
+            f"Failed to retrieve project report: {e}") from e
 
     if not report:
         raise ProjectNotFoundError(f"No project report named {project_name}")
@@ -826,7 +820,8 @@ def upload_project_image(
         session.rollback()
         logger.error("Error uploading image for project %s: %s",
                      project_name, str(e))
-        raise DatabaseOperationError(f"Failed to upload image: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to upload image: {str(e)}") from e
 
 
 @router.put("/representation/reorder")
@@ -850,7 +845,8 @@ def reorder_projects(request: ReorderProjectsRequest, session=Depends(get_sessio
         for rank, project_name in enumerate(request.project_names):
             model = get_project_report_model_by_name(session, project_name)
             if model is None:
-                raise ProjectNotFoundError(f"No project report named {project_name}")
+                raise ProjectNotFoundError(
+                    f"No project report named {project_name}")
             model.representation_rank = rank
             session.add(model)
         session.commit()
@@ -859,7 +855,8 @@ def reorder_projects(request: ReorderProjectsRequest, session=Depends(get_sessio
         raise
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to reorder projects: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to reorder projects: {str(e)}") from e
 
 
 @router.patch("/{project_name}/representation")
@@ -928,4 +925,5 @@ def update_project_representation(
         return {"ok": True}
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to update representation: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to update representation: {str(e)}") from e
