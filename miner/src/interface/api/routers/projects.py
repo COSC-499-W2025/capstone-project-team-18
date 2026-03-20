@@ -37,7 +37,6 @@ class ProjectReportResponse(SQLModel):
 
 class UploadProjectResponse(SQLModel):
     message: str
-    portfolio_name: str
 
 
 class ProjectListResponse(SQLModel):
@@ -224,7 +223,6 @@ def _build_project_showcase_response(
 @router.post("/upload", response_model=UploadProjectResponse)
 def upload_project(
     file: UploadFile = File(...),
-    portfolio_name: Optional[str] = None,
     session=Depends(get_session)
 ):
     """
@@ -253,14 +251,6 @@ def upload_project(
     try:
         file_bytes = file.file.read()
 
-        # Use provided portfolio_name, otherwise derive from filename
-        if not portfolio_name:
-            portfolio_name = filename
-            for fmt in SUPPORTED_FORMATS:
-                if portfolio_name.endswith(fmt):
-                    portfolio_name = portfolio_name[: -len(fmt)]
-                    break
-
         user_config = get_most_recent_user_config(session)
 
         start_miner_service(
@@ -270,8 +260,7 @@ def upload_project(
         )
 
         return UploadProjectResponse(
-            message="Project uploaded and analyzed successfully",
-            portfolio_name=portfolio_name
+            message="Project uploaded and analyzed successfully"
         )
 
     except ValueError as e:

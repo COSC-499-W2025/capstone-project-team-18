@@ -162,9 +162,7 @@ export default function UploadProjectModal({
       });
 
       setUploadSuccess(
-        response?.message
-          ? `${response.message}${response.portfolio_name ? `: ${response.portfolio_name}` : ""}`
-          : `Project Analyzed successfully: ${selectedFile.name}`
+        response?.message ?? `Project Analyzed successfully: ${selectedFile.name}`
       );
 
       onUploadSuccess?.();

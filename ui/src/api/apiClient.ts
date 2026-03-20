@@ -152,7 +152,6 @@ export type ListProjectsResponse = {
 
 export type UploadProjectResponse = {
   message: string;
-  portfolio_name: string;
 };
 
 export type ResumeItemResponse = {
@@ -243,14 +242,9 @@ export const api = {
 
   uploadProject: (payload: {
     file: File;
-    portfolio_name?: string;
   }) => {
     const formData = new FormData();
     formData.append("file", payload.file);
-
-    if (payload.portfolio_name) {
-      formData.append("portfolio_name", payload.portfolio_name);
-    }
 
     return postFormData<UploadProjectResponse>("/projects/upload", formData);
   },

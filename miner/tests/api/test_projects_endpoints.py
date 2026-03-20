@@ -38,7 +38,6 @@ class TestUploadProject:
             assert response.status_code == 200
             data = response.json()
             assert data["message"] == "Project uploaded and analyzed successfully"
-            assert data["portfolio_name"] == "my_project"
             mock_miner.assert_called_once()
 
     def test_upload_with_email(self, client):
@@ -66,7 +65,6 @@ class TestUploadProject:
             )
 
             assert response.status_code == 200
-            assert response.json()["portfolio_name"] == "project"
 
     def test_upload_unsupported_format_rejected(self, client):
         """Test that unsupported file formats return 400"""
@@ -108,19 +106,6 @@ class TestUploadProject:
 
             assert response.status_code == 500
             assert "failed to process" in response.json()["detail"].lower()
-
-    def test_upload_custom_portfolio_name(self, client):
-        """Test that a custom portfolio_name overrides the filename"""
-        with patch('src.interface.api.routers.projects.start_miner_service') as mock_miner:
-            mock_miner.return_value = MagicMock(success=True, project_errors=[])
-
-            response = client.post(
-                "/projects/upload?portfolio_name=My+Custom+Portfolio",
-                files={"file": ("project.zip", io.BytesIO(b"PK\x03\x04fake"), "application/zip")}
-            )
-
-            assert response.status_code == 200
-            assert response.json()["portfolio_name"] == "My Custom Portfolio"
 
 def _insert_project(engine, name: str):
     with Session(engine) as session:
