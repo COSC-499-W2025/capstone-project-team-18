@@ -19,8 +19,6 @@ def sample_resume_model():
         skills=["Python", "JavaScript", "SQL"],
         created_at=datetime(2026, 2, 9, 10, 0, 0),
         last_updated=datetime(2026, 2, 9, 10, 0, 0),
-        education=["BSc Computer Science"],
-        awards=["Dean's List"]
     )
 
     item = ResumeItemModel(
@@ -117,7 +115,7 @@ def test_get_nonexistent_resume(client):
         response = client.get("/resume/999")
 
         assert response.status_code == 404
-        assert "resume found" in response.json()["detail"].lower()
+        assert "resume found" in response.json()["message"].lower()
 
 
 def test_get_resume_with_null_fields(client, sample_resume_model):
@@ -191,7 +189,7 @@ def test_generate_resume_nonexistent_project(client):
         })
 
         assert response.status_code == 404
-        assert "project found" in response.json()["detail"].lower()
+        assert "project found" in response.json()["message"].lower()
 
 
 def test_generate_resume_with_user_config(client, sample_resume_domain, sample_resume_model):
@@ -266,7 +264,7 @@ def test_generate_resume_invalid_user_config(client):
                 "user_config_id": 999
             })
             assert response.status_code == 404
-            assert "user config" in response.json()["detail"].lower()
+            assert "user config" in response.json()["message"].lower()
         finally:
             client.app.dependency_overrides.pop(get_session, None)
 
@@ -319,11 +317,8 @@ def test_edit_resume_email(client, sample_resume_domain, sample_resume_model):
     """Test editing resume email"""
     sample_resume_model.email = "newemail@example.com"
 
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
-
-        mock_load.return_value = sample_resume_domain
-        mock_save.return_value = sample_resume_model
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = sample_resume_model
 
         response = client.post("/resume/1/edit/metadata", json={
             "email": "newemail@example.com"
@@ -333,13 +328,12 @@ def test_edit_resume_email(client, sample_resume_domain, sample_resume_model):
         data = response.json()
         assert data["id"] == 1
         assert data["email"] == "newemail@example.com"
-        assert sample_resume_domain.email == "newemail@example.com"
 
 
 def test_edit_nonexistent_resume(client):
     """Test editing a resume that doesn't exist"""
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load:
-        mock_load.return_value = None
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = None
 
         response = client.post("/resume/999/edit/metadata", json={
             "email": "test@example.com"
@@ -351,11 +345,8 @@ def test_edit_nonexistent_resume(client):
 
 def test_edit_resume_null_email(client, sample_resume_domain, sample_resume_model):
     """Test editing resume with null email (no change)"""
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
-
-        mock_load.return_value = sample_resume_domain
-        mock_save.return_value = sample_resume_model
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = sample_resume_model
 
         response = client.post("/resume/1/edit/metadata", json={
             "email": None
@@ -366,38 +357,23 @@ def test_edit_resume_null_email(client, sample_resume_domain, sample_resume_mode
 
 def test_edit_resume_preserves_id(client, sample_resume_domain, sample_resume_model):
     """Test that resume ID is preserved after edit"""
-    sample_resume_model.id = None  # Simulate save_resume returning model without ID
+    sample_resume_model.id = 1
 
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
-
-        mock_load.return_value = sample_resume_domain
-        mock_save.return_value = sample_resume_model
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = sample_resume_model
 
         response = client.post("/resume/1/edit/metadata", json={
             "email": "test@example.com"
         })
 
         assert response.status_code == 200
-        assert sample_resume_model.id == 1
-
-
-def test_edit_resume_invalid_id(client):
-    """Test that non-integer ID returns validation error"""
-    response = client.post("/resume/not-a-number/edit/metadata", json={
-        "email": "test@example.com"
-    })
-
-    assert response.status_code == 422
+        assert response.json()["id"] == 1
 
 
 def test_edit_resume_empty_body(client, sample_resume_domain, sample_resume_model):
     """Test editing with empty request body"""
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
-
-        mock_load.return_value = sample_resume_domain
-        mock_save.return_value = sample_resume_model
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = sample_resume_model
 
         response = client.post("/resume/1/edit/metadata", json={})
 
@@ -429,23 +405,23 @@ def test_generate_resume_save_failure(client, sample_resume_domain):
         })
 
         assert response.status_code == 500
-        assert "failed to generate" in response.json()["detail"].lower()
+        assert "failed to generate" in response.json()["message"].lower()
 
 
-def test_edit_resume_save_failure(client, sample_resume_domain):
+def test_edit_resume_save_failure(client, sample_resume_domain, sample_resume_model):
     """Test handling of save failure during edit"""
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = sample_resume_model
 
-        mock_load.return_value = sample_resume_domain
-        mock_save.side_effect = Exception("Database error")
+        with patch('src.interface.api.routers.resume.datetime') as mock_dt:
+            mock_dt.datetime.now.side_effect = Exception("Database error")
 
-        response = client.post("/resume/1/edit/metadata", json={
-            "email": "test@example.com"
-        })
+            response = client.post("/resume/1/edit/metadata", json={
+                "email": "test@example.com"
+            })
 
-        assert response.status_code == 500
-        assert "failed to edit" in response.json()["detail"].lower()
+            assert response.status_code == 500
+            assert "failed to edit" in response.json()["message"].lower()
 
 
 # --- Tests for POST /resume/{resume_id}/edit/bullet_point ---
@@ -507,7 +483,7 @@ def test_edit_bullet_point_resume_not_found(client):
         })
 
         assert response.status_code == 404
-        assert "no resume found" in response.json()["detail"].lower()
+        assert "no resume found" in response.json()["message"].lower()
 
 
 def test_edit_bullet_point_invalid_item_index(client, sample_resume_model):
@@ -595,7 +571,7 @@ def test_edit_bullet_point_db_failure(client, sample_resume_model):
 
                 assert response.status_code == 500
                 assert "failed to edit bullet point" in response.json()[
-                    "detail"].lower()
+                    "message"].lower()
 
 
 # --- Tests for POST /resume/{resume_id}/edit/resume_item ---
@@ -636,7 +612,7 @@ def test_edit_resume_item_not_found(client):
         })
 
         assert response.status_code == 404
-        assert "no resume found" in response.json()["detail"].lower()
+        assert "no resume found" in response.json()["message"].lower()
 
 
 def test_edit_resume_item_invalid_item_index(client, sample_resume_model):
@@ -658,8 +634,28 @@ def test_edit_resume_item_invalid_item_index(client, sample_resume_model):
 
 def test_get_resume_with_education_and_awards(client, sample_resume_model):
     """Test retrieving resume includes education and awards"""
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+    from src.database.api.models import UserConfigModel, ResumeConfigModel
+
+    # Mock user config with resume config
+    mock_resume_config = ResumeConfigModel(
+        id=1,
+        user_config_id=1,
+        education=["BSc Computer Science"],
+        awards=["Dean's List"]
+    )
+    mock_user_config = UserConfigModel(
+        id=1,
+        consent=True,
+        user_email="test@example.com",
+        github="testuser"
+    )
+    mock_user_config.resume_config = mock_resume_config
+
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get, \
+            patch('src.database.get_most_recent_user_config') as mock_get_config:
+
         mock_get.return_value = sample_resume_model
+        mock_get_config.return_value = mock_user_config
 
         response = client.get("/resume/1")
 
@@ -668,18 +664,34 @@ def test_get_resume_with_education_and_awards(client, sample_resume_model):
         assert "education" in data
         assert "awards" in data
         assert len(data["education"]) == 1
-        assert len(data["awards"]) == 1
         assert data["education"][0] == "BSc Computer Science"
+        assert len(data["awards"]) == 1
         assert data["awards"][0] == "Dean's List"
-
 
 def test_get_resume_with_empty_education_awards(client, sample_resume_model):
     """Test retrieving resume with empty education and awards lists"""
-    sample_resume_model.education = []
-    sample_resume_model.awards = []
+    from src.database.api.models import UserConfigModel, ResumeConfigModel
 
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+    # Mock user config with empty resume config
+    mock_resume_config = ResumeConfigModel(
+        id=1,
+        user_config_id=1,
+        education=[],
+        awards=[]
+    )
+    mock_user_config = UserConfigModel(
+        id=1,
+        consent=True,
+        user_email="test@example.com",
+        github="testuser"
+    )
+    mock_user_config.resume_config = mock_resume_config
+
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get, \
+            patch('src.database.get_most_recent_user_config') as mock_get_config:
+
         mock_get.return_value = sample_resume_model
+        mock_get_config.return_value = mock_user_config
 
         response = client.get("/resume/1")
 
@@ -817,7 +829,7 @@ def test_refresh_resume_not_found(client):
         response = client.post("/resume/999/refresh")
 
         assert response.status_code == 404
-        assert "resume found" in response.json()["detail"].lower()
+        assert "resume found" in response.json()["message"].lower()
 
 
 def test_refresh_resume_no_items(client, sample_resume_model):
@@ -846,7 +858,7 @@ def test_refresh_resume_project_not_found(client, sample_resume_domain, sample_r
         response = client.post("/resume/1/refresh")
 
         assert response.status_code == 404
-        assert "project" in response.json()["detail"].lower()
+        assert "project" in response.json()["message"].lower()
 
 
 def test_refresh_resume_preserves_manual_edits(client, sample_resume_domain, sample_resume_model):

@@ -7,6 +7,7 @@ from src.interface.api.routers.util import get_session
 from src.database import get_most_recent_user_config, save_user_config, UserConfigModel
 from src.database.api.CRUD.user_config import UserConfigUpdate
 from src.database.api.models import ResumeConfigModel
+from src.utils.errors import UserConfigNotFoundError, DatabaseOperationError
 
 router = APIRouter(
     prefix="/user-config",
@@ -65,16 +66,13 @@ def get_user_config_safe(
 
     :param session: The database session
     :param user_config_id: Optional ID of the user config to retrieve
-    :raises HTTPException: 404 if a specific id is given but not found
+    :raises UserConfigNotFoundError: if a specific id is given but not found
     :return: The UserConfigModel
     """
     if user_config_id is not None:
         config = session.get(UserConfigModel, user_config_id)
         if not config:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No user config found with id {user_config_id}"
-            )
+            raise UserConfigNotFoundError(f"No user config found with id {user_config_id}")
         return config
 
     return get_most_recent_user_config(session)
@@ -83,16 +81,20 @@ def get_user_config_safe(
 @router.get("", response_model=UserConfigResponse)
 def get_user_config(session=Depends(get_session)):
     """
-    GET /user-config
+    Retrieve the current (most recent) user configuration record.
 
-    This endpoint retieves the in-use user config. It will respond with
-    the config and it's ID.
+    Returns:
+    - 200: A `UserConfigResponse` including any nested resume configuration
+      (education and awards).
+
+    Raises:
+    - 404 `USER_CONFIG_NOT_FOUND`: No user configuration has been created yet.
     """
 
     config = get_most_recent_user_config(session)
 
     if not config:
-        raise HTTPException(status_code=404, detail="No user config found")
+        raise UserConfigNotFoundError("No user config found")
 
     # Build response with nested resume config
     resume_config_response = None
@@ -114,13 +116,23 @@ def get_user_config(session=Depends(get_session)):
 @router.put("", response_model=UserConfigResponse)
 def update_user_config(request: UserConfigRequest, session=Depends(get_session)):
     """
-    PUT /user-config
+    Create or update the user configuration.
 
-    This endpoint updates the user's config. The values are given in the
-    payload, then we save that exact payload to the database and set it
-    as the current in use user config (with new id).
+    Persists core fields (consent, email, GitHub) and optionally creates or
+    updates the nested ResumeConfigModel (education, awards).
 
-    Creates ResumeConfigModel if it doesn't exist, or updates existing one.
+    Body parameters:
+    - `consent`: Required boolean consent flag.
+    - `user_email`: Required email address.
+    - `github`: Optional GitHub username.
+    - `resume_config.education`: Optional list of education strings.
+    - `resume_config.awards`: Optional list of award strings.
+
+    Returns:
+    - 200: The updated `UserConfigResponse` with nested resume configuration.
+
+    Raises:
+    - 500 `DATABASE_OPERATION_FAILED`: The update failed; changes were rolled back.
     """
     try:
         config = get_most_recent_user_config(session)
@@ -176,4 +188,4 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
             )
     except Exception as e:
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise DatabaseOperationError(f"Failed to update user config: {str(e)}") from e

@@ -105,7 +105,7 @@ class TestUploadProject:
             )
 
             assert response.status_code == 500
-            assert "failed to process" in response.json()["detail"].lower()
+            assert "failed to process" in response.json()["message"].lower()
 
 def _insert_project(engine, name: str):
     with Session(engine) as session:

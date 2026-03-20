@@ -204,19 +204,18 @@ class TestGetUserConfigSafe:
         mock_session.get.assert_called_once()
 
     def test_get_user_config_safe_by_id_not_found(self, client):
-        """Test that 404 is raised when specific ID doesn't exist"""
+        """Test that UserConfigNotFoundError is raised when specific ID doesn't exist"""
         from src.interface.api.routers.user_config import get_user_config_safe
-        from fastapi import HTTPException
+        from src.utils.errors import UserConfigNotFoundError
         from sqlmodel import Session
 
         mock_session = MagicMock(spec=Session)
         mock_session.get.return_value = None
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UserConfigNotFoundError) as exc_info:
             get_user_config_safe(mock_session, user_config_id=999)
 
-        assert exc_info.value.status_code == 404
-        assert "999" in str(exc_info.value.detail)
+        assert "999" in str(exc_info.value)
 
     def test_get_user_config_safe_most_recent(self, client):
         """Test that get_user_config_safe returns most recent when no ID provided"""

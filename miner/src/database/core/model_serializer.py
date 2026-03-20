@@ -102,13 +102,29 @@ def serialize_project_report(
 
 
 def serialize_resume(resume: Resume) -> ResumeModel:
+    """ Serializes a Resume domain object into a ResumeModel (SQLModel) for DB storage. """
+
+    # Only categorize skills if weighted_skills are available.
+    # If empty (e.g. resume loaded from DB via deserialize_resume and re-saved),
+    # pass None so we don't overwrite the existing snapshot in the DB
+    skills_expert = None
+    skills_intermediate = None
+    skills_exposure = None
+
+    if resume.weighted_skills:
+        categorized = resume.get_skills_by_expertise()
+        skills_expert = categorized.expert
+        skills_intermediate = categorized.intermediate
+        skills_exposure = categorized.exposure
+
     return ResumeModel(
         id=None,
         email=resume.email,
         github=resume.github,
         skills=resume.skills,
-        education=getattr(resume, "education", []) or [],
-        awards=getattr(resume, "awards", []) or [],
+        skills_expert=skills_expert,
+        skills_intermediate=skills_intermediate,
+        skills_exposure=skills_exposure,
     )
 
 

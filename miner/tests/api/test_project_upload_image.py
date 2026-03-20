@@ -85,7 +85,7 @@ def test_upload_project_image_not_found(client):
 
     assert response.status_code == 404
     assert "No project report named NonExistentProject" in response.json()[
-        "detail"]
+        "message"]
 
 
 def test_upload_project_image_invalid_type(client, seeded_project):
@@ -115,7 +115,7 @@ def test_upload_project_image_db_failure(client, seeded_project):
             f"/projects/{seeded_project.project_name}/image", files=file_data)
 
         assert response.status_code == 500
-        assert "Failed to upload image" in response.json()["detail"]
+        assert "Failed to upload image" in response.json()["message"]
 
 
 def test_upload_project_image_sneaky_extension(client, seeded_project):
