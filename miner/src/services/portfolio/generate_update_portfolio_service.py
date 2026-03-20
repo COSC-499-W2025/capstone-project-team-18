@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 
 from src.core.report import UserReport
 from src.core.portfolio.portfolio import Portfolio
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.portfolio.cards.project_card import ProjectCard
 from src.core.statistic import ProjectStatCollection
 from src.utils.errors import KeyNotFoundError
@@ -57,10 +58,15 @@ def _build_project_cards(
         if report is None:
             continue
 
-        themes = report.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
-        tones_raw = report.get_value(ProjectStatCollection.PROJECT_TONE.value)
-        tones = str(tones_raw) if tones_raw else ""
-        tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+        if ml_extraction_allowed():
+            themes = report.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
+            tones_raw = report.get_value(ProjectStatCollection.PROJECT_TONE.value)
+            tones = str(tones_raw) if tones_raw else ""
+            tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+        else:
+            themes = []
+            tones = ""
+            tags = []
         skills_raw = report.get_value(
             ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value) or []
         frameworks_raw = report.get_value(

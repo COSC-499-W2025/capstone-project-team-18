@@ -9,6 +9,7 @@ from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
 from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
 from src.core.statistic.skills import SkillMapper
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.ML.models.contribution_analysis import (
     generate_signature,
     build_signature_facts,
@@ -26,6 +27,11 @@ def _summary_diagnostics_enabled() -> bool:
     """Enable detailed per-project summary diagnostics."""
     raw = os.environ.get("ARTIFACT_MINER_SUMMARY_DIAGNOSTICS", "0")
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _ml_portfolio_signals_allowed() -> bool:
+    """Return whether ML-derived portfolio signals may be shown or consumed."""
+    return ml_extraction_allowed()
 
 
 class UserDateSectionBuilder(PortfolioSectionBuilder):
@@ -243,6 +249,9 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _project_tone_counts(self, report: UserReport) -> dict[str, int]:
         """Aggregate project tones to support stage inference heuristics."""
+        if not _ml_portfolio_signals_allowed():
+            return {}
+
         counts: dict[str, int] = {}
         for pr in report.project_reports:
             tone = pr.get_value(ProjectStatCollection.PROJECT_TONE.value)
@@ -329,6 +338,9 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _top_project_themes(self, report: UserReport, limit: int) -> list[str]:
         """Return most frequent inferred project themes across repositories."""
+        if not _ml_portfolio_signals_allowed():
+            return []
+
         themes: dict[str, int] = {}
         for pr in report.project_reports:
             project_themes = pr.get_value(
@@ -344,6 +356,9 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _top_project_tags(self, report: UserReport, limit: int) -> list[str]:
         """Return most frequent README-derived project tags across repositories."""
+        if not _ml_portfolio_signals_allowed():
+            return []
+
         tags: dict[str, int] = {}
         for pr in report.project_reports:
             project_tags = pr.get_value(
@@ -838,10 +853,14 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """Extract trusted stats into a compact facts payload for summary generation."""
         project_name = getattr(project_report, "project_name", None)
 
-        themes = project_report.get_value(
-            ProjectStatCollection.PROJECT_THEMES.value) or []
-        tags = project_report.get_value(
-            ProjectStatCollection.PROJECT_TAGS.value) or []
+        if _ml_portfolio_signals_allowed():
+            themes = project_report.get_value(
+                ProjectStatCollection.PROJECT_THEMES.value) or []
+            tags = project_report.get_value(
+                ProjectStatCollection.PROJECT_TAGS.value) or []
+        else:
+            themes = []
+            tags = []
         goal_terms = self._select_goal_terms(project_name, themes, tags)
 
         frameworks = project_report.get_value(
@@ -1380,6 +1399,9 @@ class ProjectTagsSectionBuilder(PortfolioSectionBuilder):
         Return a list of per-project tag lines:
             "Project Name: tag1, tag2, tag3"
         """
+        if not _ml_portfolio_signals_allowed():
+            return []
+
         if not getattr(user_report, "project_reports", None):
             return []
 
@@ -1395,6 +1417,9 @@ class ProjectTagsSectionBuilder(PortfolioSectionBuilder):
 
     def _augment_tags(self, project_report, tags: list[str]) -> list[str]:
         """Augment README tags with high-signal framework/feature hints."""
+        if not _ml_portfolio_signals_allowed():
+            return []
+
         merged: list[str] = []
         seen: set[str] = set()
 
@@ -1457,6 +1482,9 @@ class ProjectThemesSectionBuilder(PortfolioSectionBuilder):
         Return a list of per-project theme lines:
             "Project Name: theme1, theme2"
         """
+        if not _ml_portfolio_signals_allowed():
+            return []
+
         if not getattr(user_report, "project_reports", None):
             return []
 
@@ -1473,6 +1501,9 @@ class ProjectThemesSectionBuilder(PortfolioSectionBuilder):
 
     def _augment_themes(self, project_report, themes: list[str]) -> list[str]:
         """Augment themes with domain-first terms inferred from tags and file paths."""
+        if not _ml_portfolio_signals_allowed():
+            return []
+
         merged: list[str] = []
         seen: set[str] = set()
 
@@ -1528,6 +1559,9 @@ class ProjectTonesSectionBuilder(PortfolioSectionBuilder):
         Return a list of per-project tone lines:
             "Project Name: Professional"
         """
+        if not _ml_portfolio_signals_allowed():
+            return []
+
         if not getattr(user_report, "project_reports", None):
             return []
 
