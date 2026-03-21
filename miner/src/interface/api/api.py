@@ -31,6 +31,7 @@ from src.interface.api.routers.privacy_consent import router as privacy_consent_
 from src.interface.api.routers.job_readiness import router as job_readiness_router
 from src.interface.api.routers.insights import router as insights_router
 from src.interface.api.routers.interview import router as interview_router
+from src.interface.api.routers.github import router as github_router
 
 
 @asynccontextmanager
@@ -78,6 +79,7 @@ app.include_router(privacy_consent_router)
 app.include_router(job_readiness_router)
 app.include_router(insights_router)
 app.include_router(interview_router)
+app.include_router(github_router)
 
 # Error handlers. If these errors are ever raised in our code, return the following JSON
 

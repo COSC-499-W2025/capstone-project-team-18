@@ -52,6 +52,7 @@ class UserConfigResponse(SQLModel):
     consent: bool
     user_email: Optional[str] = None
     github: Optional[str] = None
+    github_connected: bool = False
     resume_config: Optional[ResumeConfigResponse] = None
 
 
@@ -110,6 +111,7 @@ def get_user_config(session=Depends(get_session)):
         consent=config.consent,
         user_email=config.user_email,
         github=config.github,
+        github_connected=bool(config.access_token),
         resume_config=resume_config_response,
     )
 
@@ -184,6 +186,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
                 consent=config.consent,
                 user_email=config.user_email,
                 github=config.github,
+                github_connected=bool(config.access_token),
                 resume_config=resume_config_response,
             )
     except Exception as e:
