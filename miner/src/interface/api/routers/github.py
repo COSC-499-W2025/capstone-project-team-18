@@ -56,9 +56,6 @@ def _oauth_complete_page(target_url: str) -> HTMLResponse:
                 <p>Returning to the app...</p>
                 <script>
                     window.location.href = {target_url!r};
-                    setTimeout(function () {{
-                        window.location.replace({target_url!r});
-                    }}, 200);
                 </script>
             </body>
         </html>
