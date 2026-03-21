@@ -77,7 +77,6 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState<ProjectReport | null>(null);
   const [insights, setInsights] = useState<ProjectInsight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(false);
-  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   const projectStatistics =
     project?.statistic && typeof project.statistic === "object"
@@ -102,7 +101,6 @@ export default function ProjectDetailsPage() {
         setError(null);
         setProject(null);
         setInsights([]);
-        setInsightsError(null);
         setInsightsLoading(true);
 
         const [projectRes, insightsRes] = await Promise.all([
@@ -270,10 +268,6 @@ export default function ProjectDetailsPage() {
             {insightsLoading ? (
               <div style={{ color: "#999", lineHeight: 1.6 }}>
                 Loading resume insights...
-              </div>
-            ) : insightsError ? (
-              <div style={{ color: "#ff8a8a", lineHeight: 1.6 }}>
-                Failed to load resume insights: {insightsError}
               </div>
             ) : insights.length > 0 ? (
               <ul style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 12 }}>

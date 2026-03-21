@@ -196,14 +196,14 @@ class CollaborationInsightCalculator(InsightCalculator):
                         "Can you give a concrete example of something you delivered in that capacity?"
                     ),
                 ))
-
-        elif role_desc:
-            insights.append(ProjectInsight(
-                message=(
-                    f"Your contribution pattern suggests this role: \"{role_desc}\" "
-                    "What concrete outcome or deliverable best demonstrates that impact on your resume?"
-                ),
-            ))
+        else:
+            if role_desc:
+                insights.append(ProjectInsight(
+                    message=(
+                        f"Your contribution pattern suggests this role: \"{role_desc}\" "
+                        "What concrete outcome or deliverable best demonstrates that impact on your resume?"
+                    ),
+                ))
 
         return insights
 
@@ -275,7 +275,7 @@ class ReadmeNarrativeInsightCalculator(InsightCalculator):
             tag_text = _join_terms(tags, limit=3)
             insights.append(ProjectInsight(
                 message=(
-                    f"Key project ideas surfaced in the README include {tag_text}. "
+                    f"Key project ideas inferred from the README include {tag_text}. "
                     "Which of those best reflects the project impact you want to emphasize on your resume?"
                 ),
             ))
