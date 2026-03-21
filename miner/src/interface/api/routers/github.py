@@ -25,46 +25,37 @@ router = APIRouter(
 
 OAUTH_STATE_TTL_SECONDS = 600  # OAuth state expires after 600 sec
 _oauth_states: dict[str, dict[str, str | float | None]] = {}
-ELECTRON_CALLBACK_SCHEME = "capstone"
 
 
-def _app_callback_base_url() -> str:
-    """Builds the app deep-link base URL."""
-    return f"{ELECTRON_CALLBACK_SCHEME}://oauth-callback"
-
-
-def _build_app_deep_link(state: str, status: str, detail: str | None = None) -> str:
-    '''
-    Builds the Electron deep link for sending the user back to our app
-    after they have accepted or denied GitHub access.
-    '''
-    params = {
-        "state": state,
-        "status": status,
-    }
-    if detail:
-        params["detail"] = detail
-    return f"{_app_callback_base_url()}?{urlencode(params)}"
-
-
-def _oauth_complete_page(target_url: str) -> HTMLResponse:
+def _oauth_complete_page(status: str, detail: str | None = None) -> HTMLResponse:
     '''
     Helper function for the `/callback` endpoint. This generates
-    a short piece of HTML which will open a little pop-up that
-    prompts the user to return to the Electron app from the browser.
+    a small piece of HTML to show in the browser after GitHub OAuth
+    finishes. The Electron app is notified via the polling fallback
+    at `/github/oauth-status`.
     '''
+    message = "You can close this tab and return to the app."
+
+    if status == "success":
+        heading = "GitHub connected successfully!"
+        message = message
+    elif status == "denied":
+        heading = "GitHub access denied."
+        message = f"You declined to grant access. {message}"
+    else:
+        heading = "Something went wrong."
+        message = detail or f"An unexpected error occurred. {message}"
+
     html = f"""
         <!doctype html>
         <html>
             <head>
-                <meta charset=\"utf-8\" />
-                <title>GitHub Authentication Complete</title>
+                <meta charset="utf-8" />
+                <title>GitHub Authentication</title>
             </head>
             <body>
-                <p>Returning to the app...</p>
-                <script>
-                    window.location.href = {target_url!r};
-                </script>
+                <h2>{heading}</h2>
+                <p>{message}</p>
             </body>
         </html>
     """
@@ -140,7 +131,7 @@ def github_login():
     return {
         "state": state,
         "authorization_url": authorization_url,
-        "callback_scheme": ELECTRON_CALLBACK_SCHEME,
+        "callback_scheme": "capstone",
     }
 
 
@@ -202,20 +193,18 @@ async def github_callback(
         status = "denied" if error == "access_denied" else "error"
         oauth_state["status"] = status
         oauth_state["detail"] = error
-        return _oauth_complete_page(_build_app_deep_link(state, status, error))
+        return _oauth_complete_page(status, error)
 
     if not code:
         oauth_state["status"] = "error"
         oauth_state["detail"] = "GitHub auth code missing"
-        return _oauth_complete_page(
-            _build_app_deep_link(state, "error", "GitHub auth code missing")
-        )
+        return _oauth_complete_page("error", "GitHub auth code missing")
 
     db_config = get_most_recent_user_config(session)
     if not db_config:
         oauth_state["status"] = "error"
         oauth_state["detail"] = "Config not found"
-        return _oauth_complete_page(_build_app_deep_link(state, "error", "Config not found"))
+        return _oauth_complete_page("error", "Config not found")
 
     # Get and store the access token in the DB.
     try:
@@ -224,12 +213,12 @@ async def github_callback(
         session.refresh(db_config)
         oauth_state["status"] = "success"
         oauth_state["detail"] = None
-        return _oauth_complete_page(_build_app_deep_link(state, "success"))
+        return _oauth_complete_page("success")
     except HTTPException as exc:
         session.rollback()
         oauth_state["status"] = "error"
         oauth_state["detail"] = str(exc.detail)
-        return _oauth_complete_page(_build_app_deep_link(state, "error", str(exc.detail)))
+        return _oauth_complete_page("error", str(exc.detail))
 
 
 @router.put("/revoke_access_token")

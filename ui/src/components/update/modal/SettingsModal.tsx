@@ -40,6 +40,30 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     };
   }, []);
 
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [githubAuthStatus, setGithubAuthStatus] = useState<"idle" | "pending" | "success" | "denied" | "error">("idle");
+  const [githubAuthDetail, setGithubAuthDetail] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const oauthStateRef = useRef<string | null>(null);
+
+  // Listen for the deep-link callback from Electron main process
+  useEffect(() => {
+    function onOauthCallback(_event: any, payload: { state: string; status: string; detail: string | null }) {
+      if (payload.state !== oauthStateRef.current) return;
+      stopPolling();
+      const status = payload.status as "success" | "denied" | "error";
+      setGithubAuthStatus(status);
+      setGithubAuthDetail(payload.detail ?? null);
+      if (status === "success") setGithubConnected(true);
+    }
+
+    (window as any).ipcRenderer?.on("github-oauth-callback", onOauthCallback);
+    return () => {
+      (window as any).ipcRenderer?.off("github-oauth-callback", onOauthCallback);
+      stopPolling();
+    };
+  }, []);
+
   useEffect(() => {
     if (!open) return;
 
@@ -58,6 +82,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         setGithub(res?.github ?? "");
         setEmail(res?.user_email ?? "");
         setConsent(Boolean(res?.consent));
+        setGithubConnected(Boolean(res?.github_connected));
         setGithubConnected(Boolean(res?.github_connected));
       } catch (e: any) {
         if (!alive) return;
@@ -92,8 +117,16 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     }
   }
 
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
   function handleClose() {
     if (isSaving || isLoadingConfig) return;
+    stopPolling();
     stopPolling();
     onClose();
   }
@@ -151,7 +184,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         } catch {
           // keep polling on transient errors
         }
-      }, 2000); // every 2000ms = 2 sec
+      }, 2000);
     } catch (e: any) {
       setGithubAuthStatus("error");
       setGithubAuthDetail(e?.message ?? "Failed to start GitHub login");
@@ -246,6 +279,58 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
                 Please enter a valid GitHub username (e.g. paulatreides)
                 </div>
             )}
+        </div>
+
+        {/* GitHub OAuth */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 14, color: "#aaa" }}>GitHub Access</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+            {githubConnected ? (
+              <button
+                onClick={handleGithubDisconnect}
+                disabled={isSaving || isLoadingConfig}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #444",
+                  background: "transparent",
+                  color: "#ff8a8a",
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                Disconnect GitHub
+              </button>
+            ) : (
+              <button
+                onClick={handleGithubConnect}
+                disabled={isSaving || isLoadingConfig || githubAuthStatus === "pending"}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: githubAuthStatus === "pending" ? "#222" : "#238636",
+                  color: "#fff",
+                  cursor: githubAuthStatus === "pending" ? "not-allowed" : "pointer",
+                  fontSize: 13,
+                  opacity: githubAuthStatus === "pending" ? 0.7 : 1,
+                }}
+              >
+                {githubAuthStatus === "pending" ? "Waiting for GitHub..." : "Connect GitHub"}
+              </button>
+            )}
+            <span style={{ fontSize: 13, color: githubConnected ? "#8ad6a2" : "#888" }}>
+              {githubConnected
+                ? "Connected"
+                : githubAuthStatus === "pending"
+                ? "Authorize in your browser"
+                : githubAuthStatus === "denied"
+                ? "Access denied"
+                : githubAuthStatus === "error"
+                ? `Error: ${githubAuthDetail ?? "unknown"}`
+                : "Not connected"}
+            </span>
+          </div>
         </div>
 
         {/* GitHub OAuth */}
