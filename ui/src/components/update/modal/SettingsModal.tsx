@@ -184,7 +184,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         } catch {
           // keep polling on transient errors
         }
-      }, 2000);
+      }, 2000); // every 2000ms = 2 sec
     } catch (e: any) {
       setGithubAuthStatus("error");
       setGithubAuthDetail(e?.message ?? "Failed to start GitHub login");
