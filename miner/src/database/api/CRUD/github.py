@@ -72,10 +72,10 @@ async def get_access_token(
     return acc_toke
 
 
-def revoke_access_token(
-    session: Session,
-    db_config: UserConfigModel,
-):
-    setattr(db_config, "access_token", None)  # set access token to NULL
+def revoke_access_token(session: Session, db_config: UserConfigModel):
+    '''
+    Set the access token to `None` in the DB
+    '''
+    setattr(db_config, "access_token", None)
     session.add(db_config)
     return db_config

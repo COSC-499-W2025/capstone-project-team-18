@@ -10,10 +10,11 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 
-from src.infrastructure.log.logging import get_logger
 from src.database.api.CRUD.github import get_access_token, revoke_access_token
-from src.interface.api.routers.util import get_session
 from src.database import get_most_recent_user_config
+from src.infrastructure.log.logging import get_logger
+from src.interface.api.routers.util import get_session
+from src.utils.errors import UserConfigNotFoundError, DatabaseOperationError, BadOAuthStateError, ExpiredOAuthState
 
 logger = get_logger(__name__)
 
@@ -22,19 +23,21 @@ router = APIRouter(
     tags=["github"],
 )
 
-OAUTH_STATE_TTL_SECONDS = 600
+OAUTH_STATE_TTL_SECONDS = 600  # OAuth state expires after 600 sec
 _oauth_states: dict[str, dict[str, str | float | None]] = {}
-DEFAULT_ELECTRON_CALLBACK_SCHEME = "capstone"
+ELECTRON_CALLBACK_SCHEME = "capstone"
 
 
 def _app_callback_base_url() -> str:
-    """Builds the app deep-link base URL, e.g. capstone://oauth-callback."""
-    scheme = os.environ.get("ELECTRON_CALLBACK_SCHEME",
-                            DEFAULT_ELECTRON_CALLBACK_SCHEME)
-    return f"{scheme}://oauth-callback"
+    """Builds the app deep-link base URL."""
+    return f"{ELECTRON_CALLBACK_SCHEME}://oauth-callback"
 
 
 def _build_app_deep_link(state: str, status: str, detail: str | None = None) -> str:
+    '''
+    Builds the Electron deep link for sending the user back to our app
+    after they have accepted or denied GitHub access.
+    '''
     params = {
         "state": state,
         "status": status,
@@ -45,6 +48,11 @@ def _build_app_deep_link(state: str, status: str, detail: str | None = None) -> 
 
 
 def _oauth_complete_page(target_url: str) -> HTMLResponse:
+    '''
+    Helper function for the `/callback` endpoint. This generates
+    a short piece of HTML which will open a little pop-up that
+    prompts the user to return to the Electron app from the browser.
+    '''
     html = f"""
         <!doctype html>
         <html>
@@ -60,10 +68,12 @@ def _oauth_complete_page(target_url: str) -> HTMLResponse:
             </body>
         </html>
     """
+
     return HTMLResponse(content=html)
 
 
 def _new_oauth_state() -> str:
+    '''Generates a new OAuth state'''
     state = secrets.token_urlsafe(32)
     _oauth_states[state] = {
         "status": "pending",
@@ -76,15 +86,22 @@ def _new_oauth_state() -> str:
 def _get_oauth_state_or_raise(state: str) -> dict[str, str | float | None]:
     '''
     Validates the OAuth state that is passed in a request to `/github/callback`
+
+    Returns:
+    - 200: The valid (known and not expired) OAuth state
+
+    Raises:
+    - 404 `BAD_OAUTH_STATE`: OAuth state is unknown
+    - 410 `EXPIRED_OAUTH_STATE`: OAuth state has expired.
     '''
     oauth_state = _oauth_states.get(state)
     if not oauth_state:
-        raise HTTPException(status_code=404, detail="Unknown OAuth state")
+        raise BadOAuthStateError("Unknown OAuth State")
 
     created_at = oauth_state.get("created_at")
     if isinstance(created_at, float) and time.time() - created_at > OAUTH_STATE_TTL_SECONDS:
         del _oauth_states[state]
-        raise HTTPException(status_code=410, detail="OAuth state expired")
+        raise ExpiredOAuthState("OAuth State Expired")
 
     return oauth_state
 
@@ -92,10 +109,15 @@ def _get_oauth_state_or_raise(state: str) -> dict[str, str | float | None]:
 @router.get("/login")
 def github_login():
     """
-    `GET /github/login`
-
     Called by the frontend to generate an OAuth state. Generates and returns a
-    GitHub authorization URL. The frontend should open the URL with the OS browser.
+    GitHub authorization URL. The frontend should open the URL with the OS browser
+    to get the user's auth code (which will be used to get the access token).
+
+    Returns:
+    - 200: JSON object that contains the OAuth state, the auth URL, and the callback scheme.
+
+    Raises:
+    - 500: GITHUB_CLIENT_ID and/or GITHUB_REDIRECT_URI missing from `.env`.
     """
     client_id = os.environ.get("GITHUB_CLIENT_ID")
     redirect_uri = os.environ.get("GITHUB_REDIRECT_URI")
@@ -118,16 +140,20 @@ def github_login():
     return {
         "state": state,
         "authorization_url": authorization_url,
-        "callback_scheme": os.environ.get("ELECTRON_CALLBACK_SCHEME", DEFAULT_ELECTRON_CALLBACK_SCHEME),
+        "callback_scheme": ELECTRON_CALLBACK_SCHEME,
     }
 
 
 @router.get("/oauth-status")
 def github_oauth_status(state: str):
     """
-    `GET /github/oauth-status?state=...`
+    Called by the frontend every 2 sec to poll the
+    backend OAuth status for a generated state.
 
-    Returns the backend OAuth status for a generated state.
+    This is a fallback if the deep link fails so
+    that the frontend still knowns what the result
+    (user accepts or denies) is so that it can switch
+    from "pending" to "Connected".
     """
     oauth_state = _get_oauth_state_or_raise(state)
     return {
@@ -135,18 +161,6 @@ def github_oauth_status(state: str):
         "status": oauth_state.get("status"),
         "detail": oauth_state.get("detail"),
     }
-
-
-'''
-1. On the frontend, Electron needs to open the user's browser and send them to
-https://github.com/login/oauth/authorize?client_id=YOUR_CLIENT_ID&scope=repo
-
-2.  The user clicks "accept" and a request is made to the callback URL (our endpoint)
-
-3. At the /github/callback endpoint, the backend exchanges the auth code for an access
-token by making a server-side POST request (with client secret) to GitHub. We can then use this token to
-do things on the user's behalf, such as uploading files to a repo.
-'''
 
 
 @router.get("/callback")
@@ -157,13 +171,33 @@ async def github_callback(
     session=Depends(get_session)
 ):
     '''
-    `GET /callback`
+    Called by GitHub when the user does (or doesn't) authenticate our app.
 
-    e.g., http://localhost:8000/api/github/callback?code=abcdef123456
+    This gives us the auth code, which we use to get the access token
+    (needed to take action on the user's behalf). A short piece of HTML
+    to prompt the user to reopen our Electron app is returned in response.
+    - e.g., http://localhost:8000/api/github/callback?code=abcdef123456
+
+    Body Parameters:
+    - `state`: The OAuth State
+    - `code`: The authorization code that is generated after the user
+    gives permission for our app to take action on their behalf.
+    - `error`: Passed in if an error occurs, such as the user denying access.
+
+    Returns:
+    - 200: An HTML popup in the browswer prompting the user to return to the
+    Electron app.
+
+    Raises:
+    - Error: Thrown when the user denies access or another error occurs
+    - Code Error: Missing authorization code
+    - No user configuration has been created yet (equivalent to `USER_CONFIG_NOT_FOUND`).
+    - HTTP Error: Error generating HTML page for popup to return to Electron.
     '''
 
     oauth_state = _get_oauth_state_or_raise(state)
 
+    # Validate the callback request
     if error:
         status = "denied" if error == "access_denied" else "error"
         oauth_state["status"] = status
@@ -183,6 +217,7 @@ async def github_callback(
         oauth_state["detail"] = "Config not found"
         return _oauth_complete_page(_build_app_deep_link(state, "error", "Config not found"))
 
+    # Get and store the access token in the DB.
     try:
         await get_access_token(session, db_config, code)
         session.commit()
@@ -200,23 +235,27 @@ async def github_callback(
 @router.put("/revoke_access_token")
 def revoke_token(session=Depends(get_session)):
     '''
-    `PUT /revoke_acces_token`
+    Sets the `access_token` col in the `UserConfigModel` to `None`.
 
-    This endpoint sets the `access_token` col in the `UserConfigModel` to `None`.
+    Returns:
+    - 200: Success message that the access token was revoked.
+
+    Raises:
+    - 404 `USER_CONFIG_NOT_FOUND`: No user configuration has been created yet.
+    - 500 `DATABASE_OPERATION_FAILED`: Failed to set user's access token to `None`
 
     - **NOTE:** This endpoint should be called in conjunction with frontend logic
-    send the user to https://github.com/settings/applications so that they can revoke
-    access on their end too.
+    to send the user to https://github.com/settings/applications so that they can
+    revoke access on their end too.
     '''
     db_config = get_most_recent_user_config(session)
     if not db_config:
-        raise HTTPException(status_code=404, detail="Config not found")
+        raise UserConfigNotFoundError("No user config found")
 
     updated_config = revoke_access_token(session, db_config)
 
     if updated_config.access_token is not None:
-        raise HTTPException(
-            status_code=400, detail="Error revoking access token")
+        raise DatabaseOperationError("Error revoking access token")
 
     session.commit()
     session.refresh(updated_config)
