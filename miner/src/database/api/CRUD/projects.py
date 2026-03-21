@@ -77,7 +77,8 @@ def get_all_project_ids(
 def save_project_report(
     session: Session,
     project_report: ProjectReport,
-    user_config_id: Optional[int]
+    user_config_id: Optional[int],
+    needs_recomputation: bool = False
 ) -> ProjectReportModel:
     """
     Save a ProjectReport domain object along with all its FileReports
@@ -88,6 +89,7 @@ def save_project_report(
         session: SQLModel Session
         project_report: ProjectReport domain object
         user_config_id: ID of the associated UserConfigModel
+        needs_recomputation: Whether files were recomputed (True) or unchanged (False)
 
     Returns:
         The saved ProjectReportModel instance
@@ -112,42 +114,56 @@ def save_project_report(
     existing = existing or latest_related_project
     previous_project_name = existing.project_name
 
+    # If no recomputation occurred (files unchanged), update in place without versioning
+    if not needs_recomputation and existing is not None:
+        existing.user_config_used = user_config_id
+        existing.statistic = incoming_model.statistic
+        existing.last_updated = datetime.now()
+
+        # Delete stale file reports and insights, then add new ones
+        stale_files = session.exec(
+            select(FileReportModel).where(
+                FileReportModel.project_name == previous_project_name)
+        ).all()
+        for row in stale_files:
+            session.delete(row)
+
+        stale_insights = session.exec(
+            select(ProjectInsightsModel).where(
+                ProjectInsightsModel.project_name == previous_project_name)
+        ).first()
+        if stale_insights is not None:
+            session.delete(stale_insights)
+
+        for file_model in incoming_files:
+            file_model.project_name = existing.project_name
+            session.add(file_model)
+
+        session.add(existing)
+        return existing
+
+    # Files changed—create a NEW version row (do not mutate prior versions)
     if latest_related_project is not None:
         next_count = (latest_related_project.analyzed_count or 1) + 1
-        existing.project_name = f"{project_report.project_name}_{next_count}"
-        existing.analyzed_count = next_count
-        existing.parent = previous_project_name
+        versioned_name = f"{project_report.project_name}_{next_count}"
+        parent_name = latest_related_project.project_name
     else:
-        existing.project_name = project_report.project_name
-        existing.analyzed_count = 1
-        existing.parent = None
+        next_count = 1
+        versioned_name = project_report.project_name
+        parent_name = None
 
-    # Upsert behavior: refresh existing project row and replace child file rows.
-    # This prevents UNIQUE(project_name) crashes on repeated analyses.
-    existing.user_config_used = user_config_id
-    existing.statistic = incoming_model.statistic
-    existing.last_updated = datetime.now()
-
-    stale_files = session.exec(
-        select(FileReportModel).where(
-            FileReportModel.project_name == previous_project_name)
-    ).all()
-    for row in stale_files:
-        session.delete(row)
-
-    stale_insights = session.exec(
-        select(ProjectInsightsModel).where(
-            ProjectInsightsModel.project_name == previous_project_name)
-    ).first()
-    if stale_insights is not None:
-        session.delete(stale_insights)
+    incoming_model.project_name = versioned_name
+    incoming_model.analyzed_count = next_count
+    incoming_model.parent = parent_name
+    incoming_model.created_at = datetime.now()
+    incoming_model.last_updated = datetime.now()
 
     for file_model in incoming_files:
-        file_model.project_name = existing.project_name
-        session.add(file_model)
+        file_model.project_name = versioned_name
 
-    session.add(existing)
-    return existing
+    incoming_model.file_reports = incoming_files
+    session.add(incoming_model)
+    return incoming_model
 
 
 def get_project_report_model_by_name(

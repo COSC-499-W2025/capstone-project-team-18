@@ -57,7 +57,7 @@ def single_file_analysis(
     if project_context.pre_analyzed:
         engine = get_engine()
         with Session(engine) as session:
-            if filepath_exists_in_db(session, analyzer.filepath):
+            if filepath_exists_in_db(session, analyzer.relative_path):
                 if analyzer.compare_hashes():
                     logger.info("Skipping already analyzed file: %s", file)
                     return get_file_report_by_hash(session, analyzer.hashed_content), project_needs_recomputation
