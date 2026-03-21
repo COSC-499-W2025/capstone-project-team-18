@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api } from "../api/apiClient";
+import { api, type ProjectInsightsResponse } from "../api/apiClient";
 
 type ProjectReport = {
   project_name: string;
@@ -18,6 +18,8 @@ type ProjectReport = {
   statistic?: Record<string, unknown>;
   [key: string]: unknown;
 };
+
+type ProjectInsight = ProjectInsightsResponse["insights"][number];
 
 function isNotFoundError(msg: string) {
   return msg.includes("API request failed (404)");
@@ -73,6 +75,9 @@ export default function ProjectDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [project, setProject] = useState<ProjectReport | null>(null);
+  const [insights, setInsights] = useState<ProjectInsight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   const projectStatistics =
     project?.statistic && typeof project.statistic === "object"
@@ -96,13 +101,27 @@ export default function ProjectDetailsPage() {
         setLoading(true);
         setError(null);
         setProject(null);
+        setInsights([]);
+        setInsightsError(null);
+        setInsightsLoading(true);
 
-        const res = (await api.getProject(projectName)) as ProjectReport;
-        if (alive) setProject(res);
+        const [projectRes, insightsRes] = await Promise.all([
+          api.getProject(projectName) as Promise<ProjectReport>,
+          api.getProjectInsights(projectName) as Promise<ProjectInsightsResponse>,
+        ]);
+
+        if (!alive) return;
+
+        setProject(projectRes);
+        setInsights(insightsRes.insights ?? []);
       } catch (e: any) {
-        if (alive) setError(e?.message ?? "Failed to load project");
+        if (!alive) return;
+        setError(e?.message ?? "Failed to load project");
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setInsightsLoading(false);
+        }
       }
     })();
 
@@ -233,6 +252,43 @@ export default function ProjectDetailsPage() {
                 </section>
               )}
           </div>
+
+          <section
+            style={{
+              border: "1px solid #2a2a2a",
+              borderRadius: 16,
+              padding: 20,
+              background: "#161616",
+              marginBottom: 24,
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Resume Insights</h2>
+            <p style={{ marginTop: 0, color: "#999", lineHeight: 1.6 }}>
+              Project-specific prompts to help turn this work into stronger resume bullets.
+            </p>
+
+            {insightsLoading ? (
+              <div style={{ color: "#999", lineHeight: 1.6 }}>
+                Loading resume insights...
+              </div>
+            ) : insightsError ? (
+              <div style={{ color: "#ff8a8a", lineHeight: 1.6 }}>
+                Failed to load resume insights: {insightsError}
+              </div>
+            ) : insights.length > 0 ? (
+              <ul style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 12 }}>
+                {insights.map((insight, index) => (
+                  <li key={`${project.project_name}-insight-${index}`} style={{ color: "#ddd", lineHeight: 1.7 }}>
+                    {insight.message}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div style={{ color: "#999", lineHeight: 1.6 }}>
+                No resume insights are currently available for this project.
+              </div>
+            )}
+          </section>
 
           <section
             style={{

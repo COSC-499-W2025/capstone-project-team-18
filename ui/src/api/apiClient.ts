@@ -184,6 +184,15 @@ export type ListProjectsResponse = {
   count: number;
 };
 
+export type ProjectInsightResponse = {
+  message: string;
+};
+
+export type ProjectInsightsResponse = {
+  project_name: string;
+  insights: ProjectInsightResponse[];
+};
+
 export type UploadProjectResponse = {
   message: string;
 };
@@ -268,6 +277,11 @@ export const api = {
 
   getProject: (name: string | number) =>
     getJson<any>(`/projects/${encodeURIComponent(String(name))}`),
+
+  getProjectInsights: (name: string | number) =>
+    getJson<ProjectInsightsResponse>(
+      `/projects/${encodeURIComponent(String(name))}/insights`
+    ),
 
   getUserConfig: () => getJson<UserConfigResponse>("/user-config"),
 
