@@ -146,6 +146,7 @@ def get_ready_specific_analyzer(project_context_from_root):
     def _create(root_path, rel_path, repo=None, email=None) -> BaseFileAnalyzer:
         uc = UserConfigModel()
         uc.user_email = email
+        uc.ml_consent = True
         return get_appropriate_analyzer(
             uc, project_context_from_root(root_path, repo), rel_path)
 
