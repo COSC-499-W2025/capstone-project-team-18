@@ -97,23 +97,15 @@ def test_update_portfolio(mock_engine, prs_db, pr2_updated):
             assert not block.conflict_content, f"Block '{block.tag}' has conflict content but shouldn't"
 
 
-def test_generate_portfolio_hides_ml_tags_themes_and_tone_when_consent_off(mock_engine, monkeypatch):
+def test_generate_portfolio_preserves_existing_project_metadata_when_ml_consent_off(mock_engine, monkeypatch):
     monkeypatch.setattr(concrete_builders, "ml_extraction_allowed", lambda: False)
     monkeypatch.setattr(portfolio_service, "ml_extraction_allowed", lambda: False)
 
     model = generate_and_save_portfolio(["pr1", "pr2"], "Consent Off Portfolio")
+    cards_by_name = {card.project_name: card for card in model.project_cards}
 
-    assert all(not card.tags for card in model.project_cards)
-    assert all(not card.themes for card in model.project_cards)
-    assert all(not card.tones for card in model.project_cards)
-    assert all(not card.collaboration_role for card in model.project_cards)
-    assert all(not card.work_pattern for card in model.project_cards)
-    assert all(not card.commit_type_distribution for card in model.project_cards)
-    assert all(not card.activity_metrics for card in model.project_cards)
-
-    section_ids = {section.section_id for section in model.sections}
-    assert "project_tags" not in section_ids
-    assert "project_themes" not in section_ids
-    assert "project_tones" not in section_ids
-    assert "project_activity_metrics" not in section_ids
-    assert "project_commit_focus" not in section_ids
+    assert cards_by_name["pr1"].tags == ["pytest", "python-backend", "data-modeling"]
+    assert cards_by_name["pr1"].activity_metrics == {"avg_commits_per_week": 5.5, "consistency_score": 0.92}
+    assert cards_by_name["pr2"].tones == "Creative and accessible"
+    assert cards_by_name["pr2"].work_pattern == "burst"
+    assert cards_by_name["pr2"].commit_type_distribution == {"feat": 60.0, "fix": 15.0, "style": 25.0}

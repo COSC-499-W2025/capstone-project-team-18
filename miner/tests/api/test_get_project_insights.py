@@ -10,6 +10,7 @@ from urllib.parse import quote
 from sqlmodel import Session
 
 from src.database.api.models import ProjectReportModel, ProjectInsightsModel, UserConfigModel
+from src.interface.api.routers.insights import NON_ML_INSIGHT_CALCULATORS
 from src.interface.api.routers.util import get_session
 
 
@@ -225,12 +226,17 @@ def test_get_project_insights_url_decodes_project_name(client, blank_db):
     assert response.json()["project_name"] == "My Cool Project"
 
 
-def test_get_project_insights_returns_empty_when_ml_consent_not_granted(client, blank_db):
+def test_get_project_insights_returns_non_ml_only_when_ml_consent_not_granted(client, blank_db):
     _insert_project(blank_db, "ConsentProject")
 
-    with patch("src.interface.api.routers.insights.InsightGenerator.generate") as mock_gen:
+    with patch("src.interface.api.routers.insights.InsightGenerator.generate") as mock_gen, \
+         patch("src.interface.api.routers.insights.save_project_insights") as mock_save:
+        mock_gen.return_value = []
         response = client.get(f"/projects/{quote('ConsentProject')}/insights")
 
     assert response.status_code == 200
     assert response.json()["insights"] == []
-    mock_gen.assert_not_called()
+    mock_gen.assert_called_once()
+    _, kwargs = mock_gen.call_args
+    assert kwargs["requested_classes"] == NON_ML_INSIGHT_CALCULATORS
+    mock_save.assert_not_called()

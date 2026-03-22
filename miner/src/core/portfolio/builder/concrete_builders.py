@@ -9,6 +9,7 @@ from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
 from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
 from src.core.statistic.skills import SkillMapper
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.ML.models.contribution_analysis import (
     generate_signature,
     build_signature_facts,
