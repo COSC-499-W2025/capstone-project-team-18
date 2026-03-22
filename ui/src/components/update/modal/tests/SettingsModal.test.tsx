@@ -41,14 +41,16 @@ describe("SettingsModal", () => {
   it("renders when open is true", async () => {
     render(<SettingsModal open={true} onClose={vi.fn()} />);
 
-    expect(screen.getByText("Settings")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("e.g. paulatreides")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("your@email.com")).toBeInTheDocument();
-    expect(screen.getByText(/ml-assisted analysis/i)).toBeInTheDocument();
-
     await waitFor(() => {
       expect(api.getUserConfig).toHaveBeenCalled();
     });
+
+    expect(screen.getByText("Settings")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("e.g. paulatreides")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("your@email.com")).toBeInTheDocument();
+    expect(
+      screen.getByText("I also consent to ML-assisted analysis")
+    ).toBeInTheDocument();
   });
 
   it("keeps Save disabled until valid inputs and consent are provided", async () => {

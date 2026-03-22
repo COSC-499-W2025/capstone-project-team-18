@@ -23,6 +23,11 @@ load_dotenv()
 
 
 
+def _init_db() -> None:
+    """Compatibility hook for API startup; schema management is handled elsewhere."""
+    return None
+
+
 def init_system() -> tuple[bool, str]:
     """
     This function does any setup and warmup tasks that are needed for a cold
