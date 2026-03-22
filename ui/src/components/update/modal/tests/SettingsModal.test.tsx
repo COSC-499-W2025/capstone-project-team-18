@@ -44,6 +44,7 @@ describe("SettingsModal", () => {
     expect(screen.getByText("Settings")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. paulatreides")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("your@email.com")).toBeInTheDocument();
+    expect(screen.getByText(/ml-assisted analysis/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(api.getUserConfig).toHaveBeenCalled();
@@ -62,19 +63,51 @@ describe("SettingsModal", () => {
 
     const githubInput = screen.getByPlaceholderText("e.g. paulatreides");
     const emailInput = screen.getByPlaceholderText("your@email.com");
-    const [consentCheckbox] = screen.getAllByRole("checkbox");
+    const [consentCheckbox, mlConsentCheckbox] = screen.getAllByRole("checkbox");
 
     fireEvent.change(githubInput, { target: { value: "valid-user" } });
     fireEvent.change(emailInput, { target: { value: "test@example.com" } });
 
     expect(saveButton).toBeDisabled();
+    expect(mlConsentCheckbox).toBeDisabled();
 
     fireEvent.click(consentCheckbox);
 
     await waitFor(() => {
       expect(githubInput).toHaveValue("valid-user");
       expect(emailInput).toHaveValue("test@example.com");
+      expect(mlConsentCheckbox).not.toBeDisabled();
       expect(saveButton).not.toBeDisabled();
+    });
+  });
+
+  it("clears and disables ml consent when base consent is unchecked", async () => {
+    vi.mocked(api.getUserConfig).mockResolvedValueOnce({
+      id: 1,
+      github: "saved-user",
+      user_email: "saved@example.com",
+      consent: true,
+      ml_consent: true,
+      resume_config: null,
+    });
+
+    render(<SettingsModal open={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(api.getUserConfig).toHaveBeenCalled();
+    });
+
+    const [consentCheckbox, mlConsentCheckbox] = screen.getAllByRole("checkbox");
+
+    expect(consentCheckbox).toBeChecked();
+    expect(mlConsentCheckbox).toBeChecked();
+
+    fireEvent.click(consentCheckbox);
+
+    await waitFor(() => {
+      expect(consentCheckbox).not.toBeChecked();
+      expect(mlConsentCheckbox).not.toBeChecked();
+      expect(mlConsentCheckbox).toBeDisabled();
     });
   });
 
@@ -182,7 +215,7 @@ describe("SettingsModal", () => {
     expect(consentCheckbox).toBeChecked();
     expect(mlConsentCheckbox).toBeChecked();
     expect(
-      screen.getByText(/machine learning processing for insights and interview features/i)
+      screen.getByText(/i also consent to ml-assisted analysis/i)
     ).toBeInTheDocument();
   });
 });

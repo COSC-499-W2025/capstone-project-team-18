@@ -7,7 +7,6 @@ from sqlalchemy.orm import joinedload
 
 from src.core.report import UserReport
 from src.core.portfolio.portfolio import Portfolio
-from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.portfolio.cards.project_card import ProjectCard
 from src.core.statistic import ProjectStatCollection
 from src.utils.errors import KeyNotFoundError
@@ -58,15 +57,10 @@ def _build_project_cards(
         if report is None:
             continue
 
-        if ml_extraction_allowed():
-            themes = report.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
-            tones_raw = report.get_value(ProjectStatCollection.PROJECT_TONE.value)
-            tones = str(tones_raw) if tones_raw else ""
-            tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
-        else:
-            themes = []
-            tones = ""
-            tags = []
+        themes = report.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
+        tones_raw = report.get_value(ProjectStatCollection.PROJECT_TONE.value)
+        tones = str(tones_raw) if tones_raw else ""
+        tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
         skills_raw = report.get_value(
             ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value) or []
         frameworks_raw = report.get_value(
@@ -76,17 +70,11 @@ def _build_project_cards(
         start_date = report.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
         end_date = report.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
         is_group = report.get_value(ProjectStatCollection.IS_GROUP_PROJECT.value) or False
-        if ml_extraction_allowed():
-            role = report.get_value(ProjectStatCollection.COLLABORATION_ROLE.value) or ""
-            work_pattern = report.get_value(ProjectStatCollection.WORK_PATTERN.value) or ""
-            commit_dist = report.get_value(
-                ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value) or {}
-            activity = report.get_value(ProjectStatCollection.ACTIVITY_METRICS.value) or {}
-        else:
-            role = ""
-            work_pattern = ""
-            commit_dist = {}
-            activity = {}
+        role = report.get_value(ProjectStatCollection.COLLABORATION_ROLE.value) or ""
+        work_pattern = report.get_value(ProjectStatCollection.WORK_PATTERN.value) or ""
+        commit_dist = report.get_value(
+            ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value) or {}
+        activity = report.get_value(ProjectStatCollection.ACTIVITY_METRICS.value) or {}
 
         summary = summary_builder._build_project_summary(report) or ""
 

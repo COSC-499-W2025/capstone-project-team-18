@@ -9,7 +9,6 @@ from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
 from src.utils.data_processing import fmt_mdy_short, fmt_mdy
 from src.core.statistic import ProjectStatCollection, UserStatCollection
 from src.core.statistic.skills import SkillMapper
-from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.ML.models.contribution_analysis import (
     generate_signature,
     build_signature_facts,
@@ -28,10 +27,6 @@ def _summary_diagnostics_enabled() -> bool:
     raw = os.environ.get("ARTIFACT_MINER_SUMMARY_DIAGNOSTICS", "0")
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
-
-def _ml_portfolio_signals_allowed() -> bool:
-    """Return whether ML-derived portfolio signals may be shown or consumed."""
-    return ml_extraction_allowed()
 
 
 class UserDateSectionBuilder(PortfolioSectionBuilder):
@@ -249,9 +244,6 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _project_tone_counts(self, report: UserReport) -> dict[str, int]:
         """Aggregate project tones to support stage inference heuristics."""
-        if not _ml_portfolio_signals_allowed():
-            return {}
-
         counts: dict[str, int] = {}
         for pr in report.project_reports:
             tone = pr.get_value(ProjectStatCollection.PROJECT_TONE.value)
@@ -263,9 +255,6 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _dominant_role(self, report: UserReport) -> str | None:
         """Infer the user's dominant collaboration role across projects."""
-        if not _ml_portfolio_signals_allowed():
-            return None
-
         role_counts: dict[str, int] = {}
         for pr in report.project_reports:
             role = pr.get_value(ProjectStatCollection.COLLABORATION_ROLE.value)
@@ -279,9 +268,6 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _dominant_cadence(self, report: UserReport) -> str | None:
         """Infer the most common work cadence across projects."""
-        if not _ml_portfolio_signals_allowed():
-            return None
-
         cadence_counts: dict[str, int] = {}
         for pr in report.project_reports:
             cadence = pr.get_value(ProjectStatCollection.WORK_PATTERN.value)
@@ -296,9 +282,6 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _dominant_commit_focus(self, report: UserReport) -> str | None:
         """Infer top commit focus by aggregating commit type distributions."""
-        if not _ml_portfolio_signals_allowed():
-            return None
-
         totals: dict[str, float] = {}
         for pr in report.project_reports:
             dist = pr.get_value(
@@ -347,9 +330,6 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _top_project_themes(self, report: UserReport, limit: int) -> list[str]:
         """Return most frequent inferred project themes across repositories."""
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         themes: dict[str, int] = {}
         for pr in report.project_reports:
             project_themes = pr.get_value(
@@ -365,9 +345,6 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
     def _top_project_tags(self, report: UserReport, limit: int) -> list[str]:
         """Return most frequent README-derived project tags across repositories."""
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         tags: dict[str, int] = {}
         for pr in report.project_reports:
             project_tags = pr.get_value(
@@ -453,9 +430,6 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
             lowered = str(commit_focus).lower()
             if lowered in commit_map:
                 signals.append(commit_map[lowered])
-
-        if not _ml_portfolio_signals_allowed():
-            return signals[:4]
 
         commits_per_week: list[float] = []
         consistency_scores: list[float] = []
@@ -865,14 +839,10 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
         """Extract trusted stats into a compact facts payload for summary generation."""
         project_name = getattr(project_report, "project_name", None)
 
-        if _ml_portfolio_signals_allowed():
-            themes = project_report.get_value(
-                ProjectStatCollection.PROJECT_THEMES.value) or []
-            tags = project_report.get_value(
-                ProjectStatCollection.PROJECT_TAGS.value) or []
-        else:
-            themes = []
-            tags = []
+        themes = project_report.get_value(
+            ProjectStatCollection.PROJECT_THEMES.value) or []
+        tags = project_report.get_value(
+            ProjectStatCollection.PROJECT_TAGS.value) or []
         goal_terms = self._select_goal_terms(project_name, themes, tags)
 
         frameworks = project_report.get_value(
@@ -902,20 +872,15 @@ class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
             language_names = [getattr(lang, "value", str(lang))
                               for lang, _ in ranked_langs[:2]]
 
-        if _ml_portfolio_signals_allowed():
-            role = project_report.get_value(
-                ProjectStatCollection.COLLABORATION_ROLE.value)
-            role_text = str(getattr(role, "value", role)) if role else None
-            role_description = project_report.get_value(
-                ProjectStatCollection.ROLE_DESCRIPTION.value)
+        role = project_report.get_value(
+            ProjectStatCollection.COLLABORATION_ROLE.value)
+        role_text = str(getattr(role, "value", role)) if role else None
+        role_description = project_report.get_value(
+            ProjectStatCollection.ROLE_DESCRIPTION.value)
 
-            commit_dist = project_report.get_value(
-                ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
-            commit_focus = self._top_commit_focus(commit_dist)
-        else:
-            role_text = None
-            role_description = None
-            commit_focus = None
+        commit_dist = project_report.get_value(
+            ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
+        commit_focus = self._top_commit_focus(commit_dist)
         commit_pct = project_report.get_value(
             ProjectStatCollection.USER_COMMIT_PERCENTAGE.value)
         line_pct = project_report.get_value(
@@ -1416,9 +1381,6 @@ class ProjectTagsSectionBuilder(PortfolioSectionBuilder):
         Return a list of per-project tag lines:
             "Project Name: tag1, tag2, tag3"
         """
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         if not getattr(user_report, "project_reports", None):
             return []
 
@@ -1434,9 +1396,6 @@ class ProjectTagsSectionBuilder(PortfolioSectionBuilder):
 
     def _augment_tags(self, project_report, tags: list[str]) -> list[str]:
         """Augment README tags with high-signal framework/feature hints."""
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         merged: list[str] = []
         seen: set[str] = set()
 
@@ -1499,9 +1458,6 @@ class ProjectThemesSectionBuilder(PortfolioSectionBuilder):
         Return a list of per-project theme lines:
             "Project Name: theme1, theme2"
         """
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         if not getattr(user_report, "project_reports", None):
             return []
 
@@ -1518,9 +1474,6 @@ class ProjectThemesSectionBuilder(PortfolioSectionBuilder):
 
     def _augment_themes(self, project_report, themes: list[str]) -> list[str]:
         """Augment themes with domain-first terms inferred from tags and file paths."""
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         merged: list[str] = []
         seen: set[str] = set()
 
@@ -1576,9 +1529,6 @@ class ProjectTonesSectionBuilder(PortfolioSectionBuilder):
         Return a list of per-project tone lines:
             "Project Name: Professional"
         """
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         if not getattr(user_report, "project_reports", None):
             return []
 
@@ -1613,9 +1563,6 @@ class ProjectActivityMetricsSectionBuilder(PortfolioSectionBuilder):
         Return a list of per-project activity metrics:
             "Project Name: 5.2 commits/week, consistency 0.85"
         """
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         if not getattr(user_report, "project_reports", None):
             return []
 
@@ -1661,9 +1608,6 @@ class ProjectCommitFocusSectionBuilder(PortfolioSectionBuilder):
         Return a list of per-project commit type distributions:
             "Project Name: Feature 45%, Bugfix 30%, Documentation 25%"
         """
-        if not _ml_portfolio_signals_allowed():
-            return []
-
         if not getattr(user_report, "project_reports", None):
             return []
 

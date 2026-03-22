@@ -14,7 +14,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from src.core.insight.insight_generator import InsightGenerator
+from src.core.insight.insight_generator import (
+    ActivityInsightCalculator,
+    InsightCalculator,
+    InsightGenerator,
+    OwnershipInsightCalculator,
+    SkillsInsightCalculator,
+)
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.database.api.CRUD.insights import get_project_insights, save_project_insights
 from src.database.api.CRUD.projects import get_project_report_by_name
@@ -28,6 +34,13 @@ router = APIRouter(
 )
 
 logger = get_logger(__name__)
+
+
+NON_ML_INSIGHT_CALCULATORS: list[type[InsightCalculator]] = [
+    ActivityInsightCalculator,
+    OwnershipInsightCalculator,
+    SkillsInsightCalculator,
+]
 
 
 class InsightResponse(BaseModel):
@@ -62,27 +75,26 @@ def get_project_insights_endpoint(
     """
     decoded_name = unquote(project_name)
 
-    if not ml_extraction_allowed(session=session):
-        return ProjectInsightsResponse(
-            project_name=decoded_name,
-            insights=[],
-        )
+    ml_allowed = ml_extraction_allowed(session=session)
 
-    # Check to see if project insights are cached
+    # Cached insight rows do not track whether messages were ML-derived.
+    # When ML is currently disallowed, bypass cache and regenerate only the
+    # non-ML subset so previously cached ML-derived prompts are not returned.
     cached = get_project_insights(session, decoded_name)
-    if cached is not None:
+    if cached is not None and ml_allowed:
         return ProjectInsightsResponse(
             project_name=decoded_name,
             insights=[InsightResponse(message=m) for m in cached.insights],
         )
 
-    # Else generate insights
     report = get_project_report_by_name(session, decoded_name)
     if report is None:
         raise ProjectNotFoundError(f"Project '{decoded_name}' not found.")
 
     try:
-        insights = InsightGenerator.generate(report)
+        requested_classes = None if ml_allowed else NON_ML_INSIGHT_CALCULATORS
+        insights = InsightGenerator.generate(
+            report, requested_classes=requested_classes)
     except Exception:
         logger.exception(
             "Error generating insights for project '%s'", decoded_name)
@@ -93,10 +105,12 @@ def get_project_insights_endpoint(
 
     messages = [i.message for i in insights]
 
-    # Save the messages, if empty, that is okay, just means we have tried to
-    # calulate the insights and we had nothing to say
-    save_project_insights(session, decoded_name, messages)
-    session.commit()
+    # Save only when ML-derived insights are currently allowed. The cache does
+    # not record per-message source metadata, so persisting filtered non-ML
+    # results here would overwrite a fuller cache generated under consent.
+    if ml_allowed:
+        save_project_insights(session, decoded_name, messages)
+        session.commit()
 
     return ProjectInsightsResponse(
         project_name=decoded_name,

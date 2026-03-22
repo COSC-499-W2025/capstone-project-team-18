@@ -6,7 +6,6 @@ from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
 from src.infrastructure.log.logging import get_logger
 import os
 import sys
-from sqlalchemy import inspect, text
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -23,46 +22,11 @@ logger = get_logger(__name__)
 load_dotenv()
 
 
-def _init_db() -> None:
-    """
-    Initialize database schema at startup.
-    """
-    from sqlmodel import SQLModel
-    from src.database.core.base import get_engine
-
-    engine = get_engine()
-    SQLModel.metadata.create_all(engine)
-    _apply_sqlite_schema_updates(engine)
-
-
-def _apply_sqlite_schema_updates(engine) -> None:
-    """Apply minimal additive schema updates for existing local SQLite databases."""
-    inspector = inspect(engine)
-
-    if not inspector.has_table("userconfigmodel"):
-        return
-
-    existing_columns = {column["name"] for column in inspector.get_columns("userconfigmodel")}
-    statements: list[str] = []
-
-    if "ml_consent" not in existing_columns:
-        statements.append(
-            "ALTER TABLE userconfigmodel ADD COLUMN ml_consent BOOLEAN NOT NULL DEFAULT 0"
-        )
-
-    if not statements:
-        return
-
-    with engine.begin() as connection:
-        for statement in statements:
-            connection.execute(text(statement))
-
 
 def init_system() -> tuple[bool, str]:
     """
     This function does any setup and warmup tasks that are needed for a cold
-    session start for the system. This includes both database configuration
-    and ML warm-up.
+    session start for the system. This currently covers ML warm-up only.
     """
     if os.environ.get("ARTIFACT_MINER_WARMUP_MODELS", "1") == "0":
         message = "ML warmup disabled via env variable."
@@ -105,7 +69,6 @@ def init_system() -> tuple[bool, str]:
 
 
 def main():
-    _init_db()
     _, startup_message = init_system()
     print(startup_message)
 
