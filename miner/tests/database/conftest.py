@@ -111,8 +111,8 @@ def temp_db(tmp_path: Path, fr1, fr2, fr3, fr4):
     pr2 = ProjectReport(file_reports=[fr4, fr1], project_name="Project2")
 
     with Session(engine) as session:
-        save_project_report(session, pr1, 0)
-        save_project_report(session, pr2, 0)
+        save_project_report(session, pr1, 0, False)
+        save_project_report(session, pr2, 0, False)
         session.commit()
 
     try:
