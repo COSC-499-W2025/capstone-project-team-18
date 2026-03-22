@@ -112,12 +112,12 @@ def mock_readme_analysis(monkeypatch):
         return "informative"
 
     monkeypatch.setattr(
-        "src.core.analyzer.natural_language_analyzer.extract_readme_keyphrases",
+        "src.core.ML.models.readme_analysis.keyphrase_extraction.extract_readme_keyphrases",
         fake_extract_keyphrases
     )
 
     monkeypatch.setattr(
-        "src.core.analyzer.natural_language_analyzer.classify_readme_tone",
+        "src.core.ML.models.readme_analysis.readme_insights.classify_readme_tone",
         fake_classify_tone
     )
 

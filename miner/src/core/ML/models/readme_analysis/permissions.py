@@ -3,39 +3,18 @@ from typing import Any
 
 from sqlmodel import Session
 
+from src.database.api.CRUD.user_config import get_most_recent_user_config
+
 
 def _is_unspecified_user_config(user_config: Any) -> bool:
     """Return True for blank in-memory configs used in local analysis/tests."""
     return (
-        getattr(user_config, "id", None) is None
-        and getattr(user_config, "user_email", None) is None
-        and getattr(user_config, "github", None) is None
-        and not bool(getattr(user_config, "consent", False))
-        and not bool(getattr(user_config, "ml_consent", False))
+        user_config.id is None
+        and user_config.user_email is None
+        and user_config.github is None
+        and not bool(user_config.consent)
+        and not bool(user_config.ml_consent)
     )
-
-
-def _load_current_user_config(
-    *,
-    session: Session | None = None,
-    user_config: Any | None = None,
-) -> Any | None:
-    """Return the current user config when available."""
-    if user_config is not None:
-        return user_config
-
-    from src.database import get_most_recent_user_config
-
-    if session is not None:
-        return get_most_recent_user_config(session)
-
-    try:
-        from src.database.core.base import get_engine
-
-        with Session(get_engine()) as db_session:
-            return get_most_recent_user_config(db_session)
-    except Exception:
-        return None
 
 
 def ml_extraction_allowed(*, session: Session | None = None, user_config: Any | None = None) -> bool:
@@ -43,7 +22,17 @@ def ml_extraction_allowed(*, session: Session | None = None, user_config: Any | 
     if os.environ.get("ARTIFACT_MINER_DISABLE_ML") == "1":
         return False
 
-    config = _load_current_user_config(session=session, user_config=user_config)
+    config = user_config
+    if config is None and session is not None:
+        config = get_most_recent_user_config(session)
+    elif config is None:
+        from src.database.core.base import get_engine
+
+        try:
+            with Session(get_engine()) as db_session:
+                config = get_most_recent_user_config(db_session)
+        except Exception:
+            config = None
     if config is None:
         return session is None and user_config is None
 
@@ -56,13 +45,13 @@ def ml_extraction_allowed(*, session: Session | None = None, user_config: Any | 
     if (
         user_config is not None
         and session is None
-        and getattr(config, "id", None) is None
-        and bool(getattr(config, "ml_consent", False))
-        and not bool(getattr(config, "consent", False))
+        and config.id is None
+        and bool(config.ml_consent)
+        and not bool(config.consent)
     ):
         return True
 
-    if not bool(getattr(config, "consent", False)):
+    if not bool(config.consent):
         return False
 
-    return bool(getattr(config, "ml_consent", False))
+    return bool(config.ml_consent)

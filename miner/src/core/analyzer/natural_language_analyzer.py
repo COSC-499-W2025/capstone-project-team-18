@@ -9,22 +9,6 @@ from src.infrastructure.log.logging import get_logger
 logger = get_logger(__name__)
 
 
-def extract_readme_keyphrases(text: str):
-    from src.core.ML.models.readme_analysis.keyphrase_extraction import (
-        extract_readme_keyphrases as _extract_readme_keyphrases,
-    )
-
-    return _extract_readme_keyphrases(text)
-
-
-def classify_readme_tone(text: str):
-    from src.core.ML.models.readme_analysis.readme_insights import (
-        classify_readme_tone as _classify_readme_tone,
-    )
-
-    return _classify_readme_tone(text)
-
-
 class NaturalLanguageAnalyzer(TextFileAnalyzer):
     """
     This analyzer is for files that contain natural
@@ -66,6 +50,13 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
             keyphrases = None
             tone = None
             if ml_extraction_allowed(user_config=self.user_config):
+                from src.core.ML.models.readme_analysis.keyphrase_extraction import (
+                    extract_readme_keyphrases,
+                )
+                from src.core.ML.models.readme_analysis.readme_insights import (
+                    classify_readme_tone,
+                )
+
                 keyphrases = extract_readme_keyphrases(self.text_content)
                 if keyphrases is not None:
                     stats.append(
