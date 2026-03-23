@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from sqlmodel import Session, delete, select
 
 from src.database.api.models import ProjectReportModel, FileReportModel, ProjectInsightsModel
 from src.core.report import ProjectReport
@@ -121,19 +121,15 @@ def save_project_report(
         existing.last_updated = datetime.now()
 
         # Delete stale file reports and insights, then add new ones
-        stale_files = session.exec(
-            select(FileReportModel).where(
+        session.exec(
+            delete(FileReportModel).where(
                 FileReportModel.project_name == previous_project_name)
-        ).all()
-        if stale_files:
-            session.delete(stale_files)
+        )
 
-        stale_insights = session.exec(
-            select(ProjectInsightsModel).where(
+        session.exec(
+            delete(ProjectInsightsModel).where(
                 ProjectInsightsModel.project_name == previous_project_name)
-        ).all()
-        if stale_insights:
-            session.delete(stale_insights)
+        )
 
         for file_model in incoming_files:
             file_model.project_name = existing.project_name
