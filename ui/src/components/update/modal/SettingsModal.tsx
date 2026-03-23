@@ -10,6 +10,11 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [github, setGithub] = useState("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
+  const [education, setEducation] = useState<string[]>([]);
+  const [awards, setAwards] = useState<string[]>([]);
+  const [educationInput, setEducationInput] = useState("");
+  const [skillInput, setSkillInput] = useState("");
+  const [awardInput, setAwardInput] = useState("");
 
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -58,6 +63,8 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         setGithub(res?.github ?? "");
         setEmail(res?.user_email ?? "");
         setConsent(Boolean(res?.consent));
+        setEducation(res?.resume_config?.education ?? []);
+        setAwards(res?.resume_config?.awards ?? []);
         setGithubConnected(Boolean(res?.github_connected));
       } catch (e: any) {
         if (!alive) return;
@@ -65,6 +72,8 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         setGithub("");
         setEmail("");
         setConsent(false);
+        setEducation([]);
+        setAwards([]);
         setError(e?.message ?? "Failed to load saved settings.");
       } finally {
         if (alive) setIsLoadingConfig(false);
@@ -114,6 +123,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         consent,
         user_email: email.trim(),
         github: github.trim(),
+        resume_config: { education, awards },
       });
 
       setSuccess("Settings saved successfully.");
@@ -351,6 +361,161 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
                 Please provide consent to enable saving
                 </div>
             )}
+        </div>
+        {/* Education */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 14, color: "#aaa" }}>Education (optional)</label>
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <input
+              value={educationInput}
+              onChange={(e) => setEducationInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && educationInput.trim()) {
+                  setEducation((prev) => [...prev, educationInput.trim()]);
+                  setEducationInput("");
+                }
+              }}
+              placeholder="e.g. BSc Computer Science, UBC, 2024"
+              disabled={isSaving || isLoadingConfig}
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "#111",
+                color: "#fff",
+              }}
+            />
+            <button
+              onClick={() => {
+                if (educationInput.trim()) {
+                  setEducation((prev) => [...prev, educationInput.trim()]);
+                  setEducationInput("");
+                }
+              }}
+              disabled={isSaving || isLoadingConfig || !educationInput.trim()}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "#2b2b2b",
+                color: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              Add
+            </button>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {education.map((entry, i) => (
+              <span
+                key={i}
+                style={{
+                  background: "#2a2a2a",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {entry}
+                <button
+                  onClick={() => setEducation((prev) => prev.filter((_, j) => j !== i))}
+                  disabled={isSaving || isLoadingConfig}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#aaa",
+                    cursor: "pointer",
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Awards */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 14, color: "#aaa" }}>Awards (optional)</label>
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <input
+              value={awardInput}
+              onChange={(e) => setAwardInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && awardInput.trim()) {
+                  setAwards((prev) => [...prev, awardInput.trim()]);
+                  setAwardInput("");
+                }
+              }}
+              placeholder="e.g. Dean's List 2023"
+              disabled={isSaving || isLoadingConfig}
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "#111",
+                color: "#fff",
+              }}
+            />
+            <button
+              onClick={() => {
+                if (awardInput.trim()) {
+                  setAwards((prev) => [...prev, awardInput.trim()]);
+                  setAwardInput("");
+                }
+              }}
+              disabled={isSaving || isLoadingConfig || !awardInput.trim()}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "#2b2b2b",
+                color: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              Add
+            </button>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {awards.map((award, i) => (
+              <span
+                key={i}
+                style={{
+                  background: "#2a2a2a",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {award}
+                <button
+                  onClick={() => setAwards((prev) => prev.filter((_, j) => j !== i))}
+                  disabled={isSaving || isLoadingConfig}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#aaa",
+                    cursor: "pointer",
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Errors / Success */}

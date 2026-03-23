@@ -101,6 +101,7 @@ describe("SettingsModal", () => {
         consent: true,
         user_email: "test@example.com",
         github: "valid-user",
+        resume_config: { education: [], awards: [] },
       });
     });
 
@@ -130,6 +131,7 @@ describe("SettingsModal", () => {
         consent: true,
         user_email: "test@example.com",
         github: "",
+        resume_config: { education: [], awards: [] },
       });
     });
   });

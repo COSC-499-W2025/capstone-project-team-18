@@ -149,6 +149,7 @@ async function postFormData<T>(path: string, formData: FormData): Promise<T> {
 export type ResumeConfigRequest = {
   education?: string[] | null;
   awards?: string[] | null;
+  skills?: string[] | null;
 };
 
 export type UserConfigResponse = {
@@ -161,6 +162,7 @@ export type UserConfigResponse = {
     id: number;
     education: string[];
     awards: string[];
+    skills: string[];
   } | null;
 };
 

@@ -21,12 +21,12 @@ class ResumeConfigRequest(SQLModel):
     """
     education: Optional[List[str]] = None
     awards: Optional[List[str]] = None
-
+    skills: Optional[List[str]] = None
 
 class UserConfigRequest(SQLModel):
     """
-    Request schema for updating user configuration.
-    Now includes nested resume_config for education/awards.
+    Request schema for updating user configuration
+    Now includes nested resume_config for education/awards/skills
     """
     consent: bool
     user_email: str
@@ -41,12 +41,13 @@ class ResumeConfigResponse(SQLModel):
     id: int
     education: List[str] = []
     awards: List[str] = []
+    skills: List[str] = []
 
 
 class UserConfigResponse(SQLModel):
     """
     Response schema for user configuration.
-    Includes nested resume_config with education/awards.
+    Includes nested resume_config with education/awards/skills
     """
     id: int
     consent: bool
@@ -86,7 +87,7 @@ def get_user_config(session=Depends(get_session)):
 
     Returns:
     - 200: A `UserConfigResponse` including any nested resume configuration
-      (education and awards).
+      (education, awards, skills)
 
     Raises:
     - 404 `USER_CONFIG_NOT_FOUND`: No user configuration has been created yet.
@@ -104,6 +105,7 @@ def get_user_config(session=Depends(get_session)):
             id=config.resume_config.id,
             education=config.resume_config.education or [],
             awards=config.resume_config.awards or [],
+            skills=config.resume_config.skills or [],
         )
 
     return UserConfigResponse(
@@ -129,7 +131,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
     - `github`: Optional GitHub username.
     - `resume_config.education`: Optional list of education strings.
     - `resume_config.awards`: Optional list of award strings.
-
+    - `resume_config.skills`: Optional list of skill strings.
     Returns:
     - 200: The updated `UserConfigResponse` with nested resume configuration.
 
@@ -149,7 +151,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
         # Update core fields using CRUD function
         config = save_user_config(session, config, update_data)
 
-        # Handle resume config (education/awards)
+        # Handle resume config (education/awards/skills)
         if request.resume_config:
             if not config.resume_config:
                 # Create new ResumeConfigModel if it doesn't exist
@@ -157,6 +159,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
                     user_config_id=config.id,
                     education=request.resume_config.education or [],
                     awards=request.resume_config.awards or [],
+                    skills=request.resume_config.skills or [],
                 )
                 session.add(config.resume_config)
             else:
@@ -165,6 +168,8 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
                     config.resume_config.education = request.resume_config.education
                 if request.resume_config.awards is not None:
                     config.resume_config.awards = request.resume_config.awards
+                if request.resume_config.skills is not None:
+                    config.resume_config.skills = request.resume_config.skills
                 config.resume_config.last_updated = datetime.now()
 
         # Persist changes
@@ -179,6 +184,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
                 id=config.resume_config.id,
                 education=config.resume_config.education or [],
                 awards=config.resume_config.awards or [],
+                skills=config.resume_config.skills or [],
             )
 
         return UserConfigResponse(
