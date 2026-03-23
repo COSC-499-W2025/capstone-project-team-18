@@ -185,7 +185,7 @@ export default function HomePage() {
             {loading && projects.length === 0 ? (
               <>
               <div style={{ color: "#999", marginBottom: 12 }}>
-                Loading projects...
+                Loading Projects...
                 </div>
                 <ProjectSkeleton count={3} />
                 </>
@@ -193,7 +193,7 @@ export default function HomePage() {
                 <>
                 {isProjectAnalysisInProgress && (
                   <div style={{ color: "#999", marginBottom: 12 }}>
-                    Project analysis in progress...
+                    Project Analysis In Progress...
                     </div>
                   )}
                   {!error && projects.length === 0 && !isProjectAnalysisInProgress && (
