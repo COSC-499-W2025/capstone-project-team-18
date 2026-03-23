@@ -442,7 +442,7 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     The archive contains:
       index.html, portfolio_data.js, style.css, filter.js
 
-    Raises KeyNotFoundError if the portfolio does not exist.
+    Raises `KeyNotFoundError` if the portfolio does not exist.
     """
     portfolio = load_portfolio(session, portfolio_id)
     if portfolio is None:

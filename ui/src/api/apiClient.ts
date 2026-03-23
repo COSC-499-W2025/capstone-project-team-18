@@ -29,10 +29,19 @@ function buildUrl(path: string): string {
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-async function readErrorText(res: Response): Promise<string> {
+/** Extract a human-readable message from an error response.
+ *  FastAPI errors have the shape `{"detail": "..."}` — prefer that over raw body. */
+async function readApiError(res: Response): Promise<string> {
   try {
     const text = await res.text();
-    return text || "";
+    if (!text) return "";
+    try {
+      const json = JSON.parse(text);
+      if (typeof json?.detail === "string") return json.detail;
+    } catch {
+      // not JSON — fall through to raw text
+    }
+    return text;
   } catch {
     return "";
   }
@@ -43,7 +52,7 @@ async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(url);
 
   if (!res.ok) {
-    const text = await readErrorText(res);
+    const text = await readApiError(res);
 
     throw new Error(
       `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
@@ -64,10 +73,8 @@ async function patchJson<T>(path: string, body?: unknown): Promise<T> {
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
-    );
+    const msg = await readApiError(res);
+    throw new Error(msg || `API request failed (${res.status})`);
   }
 
   return res.json();
@@ -79,10 +86,8 @@ async function deleteJson(path: string): Promise<void> {
   const res = await fetch(url, { method: "DELETE" });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
-    );
+    const msg = await readApiError(res);
+    throw new Error(msg || `API request failed (${res.status})`);
   }
 }
 
@@ -98,10 +103,8 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
   });
 
   if (!res.ok) {
-    const text = await readErrorText(res);
-    throw new Error(
-      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
-    );
+    const msg = await readApiError(res);
+    throw new Error(msg || `API request failed (${res.status})`);
   }
 
   return res.json();
@@ -119,10 +122,8 @@ async function putJson<T>(path: string, body?: unknown): Promise<T> {
   });
 
   if (!res.ok) {
-    const text = await readErrorText(res);
-    throw new Error(
-      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
-    );
+    const msg = await readApiError(res);
+    throw new Error(msg || `API request failed (${res.status})`);
   }
 
   return res.json();
@@ -137,10 +138,8 @@ async function postFormData<T>(path: string, formData: FormData): Promise<T> {
   });
 
   if (!res.ok) {
-    const text = await readErrorText(res);
-    throw new Error(
-      `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
-    );
+    const msg = await readApiError(res);
+    throw new Error(msg || `API request failed (${res.status})`);
   }
 
   return res.json();
@@ -405,15 +404,20 @@ export const api = {
 
   revokeGithubToken: () => putJson<{ message: string }>("/github/revoke_access_token"),
 
-  exportPortfolio: async (id: string | number): Promise<Blob> => {
+  exportPortfolio: async (
+    id: string | number
+  ): Promise<{ pagesUrl: string } | Blob> => {
     const base = getApiBaseUrl();
     const url = `${base}/portfolio/${id}/export`;
     const res = await fetch(url);
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(
-        `API request failed (${res.status}) ${url}${text ? `: ${text}` : ""}`
-      );
+      const msg = await readApiError(res);
+      throw new Error(msg || `API request failed (${res.status})`);
+    }
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const json = await res.json();
+      return { pagesUrl: json.pages_url as string };
     }
     return res.blob();
   },

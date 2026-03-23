@@ -98,6 +98,7 @@ export default function PortfolioEditPage() {
   // Action states
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportedPagesUrl, setExportedPagesUrl] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -227,14 +228,19 @@ export default function PortfolioEditPage() {
 
   async function handleExport() {
     setExporting(true);
+    setExportedPagesUrl(null);
     let objectUrl: string | null = null;
     try {
-      const blob = await api.exportPortfolio(id!);
-      objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = `portfolio_${id}.zip`;
-      a.click();
+      const result = await api.exportPortfolio(id!);
+      if (result instanceof Blob) {
+        objectUrl = URL.createObjectURL(result);
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.download = `portfolio_${id}.zip`;
+        a.click();
+      } else {
+        setExportedPagesUrl(result.pagesUrl);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Failed to export.");
     } finally {
@@ -570,6 +576,31 @@ export default function PortfolioEditPage() {
           }}
         >
           {error}
+        </div>
+      )}
+
+      {/* GitHub Pages deployment success */}
+      {exportedPagesUrl && (
+        <div
+          style={{
+            marginTop: 16,
+            fontSize: 14,
+            border: "1px solid #1f3a1f",
+            borderRadius: 12,
+            padding: 12,
+            background: "#111a11",
+            color: "#8aff8a",
+          }}
+        >
+          Portfolio deployed to GitHub Pages:{" "}
+          <a
+            href={exportedPagesUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#8aff8a" }}
+          >
+            {exportedPagesUrl}
+          </a>
         </div>
       )}
 

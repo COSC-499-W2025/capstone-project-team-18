@@ -12,7 +12,8 @@ from src.services.portfolio.edit_portfolio_service import (
 )
 from src.services.portfolio.project_card_service import edit_project_card, set_showcase
 from src.services.portfolio.export_service import export_portfolio_static
-from src.database import load_portfolio, update_portfolio_block
+from src.services.portfolio.github_pages_service import deploy_to_github_pages
+from src.database import load_portfolio, update_portfolio_block, get_most_recent_user_config
 from src.database.api.CRUD.portfolio import get_project_cards_for_portfolio, list_portfolios, delete_portfolio
 from src.interface.api.routers.util import get_session
 from src.utils.errors import KeyNotFoundError
@@ -310,22 +311,36 @@ def toggle_showcase(
 
 
 @router.get("/{portfolio_id}/export")
-def export_portfolio(
+async def export_portfolio(
     portfolio_id: int,
     session: Session = Depends(get_session),
 ):
     """
     GET /portfolio/{id}/export
 
-    Download a self-contained static web portfolio as a ZIP archive.
-    The ZIP contains: index.html, portfolio_data.js, style.css, filter.js
+    If the user has a GitHub access token stored, deploys the portfolio as a
+    GitHub Pages site and returns the Pages URL as JSON.
 
-    The static bundle supports client-side search and filter with no server required.
+    Falls back to returning the static bundle as a ZIP download when no
+    GitHub access token is present.
+
+    Returns (GitHub auth present):
+        {"pages_url": "https://{username}.github.io/portfolio"}
+
+    Returns (no GitHub auth):
+        ZIP archive — Content-Disposition: attachment; filename="portfolio_{id}.zip"
     """
     try:
         zip_bytes = export_portfolio_static(portfolio_id, session)
     except KeyNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+    user_config = get_most_recent_user_config(session)
+    access_token = user_config.access_token if user_config else None
+
+    if access_token:
+        pages_url = await deploy_to_github_pages(access_token, zip_bytes)
+        return {"pages_url": pages_url}
 
     return Response(
         content=zip_bytes,
