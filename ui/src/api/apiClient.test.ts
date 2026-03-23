@@ -63,6 +63,19 @@ it("encodes project_name in /projects/:project_name URL", async () => {
   );
 });
 
+it("calls /projects/:project_name/insights with correct URL", async () => {
+  fetchMock.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ project_name: "My Project", insights: [] }),
+  });
+
+  await api.getProjectInsights("My Project");
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/projects/My%20Project/insights"
+  );
+});
+
 it("ping calls /ping", async () => {
   fetchMock.mockResolvedValueOnce({ ok: true });
 

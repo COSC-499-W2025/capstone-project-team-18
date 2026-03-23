@@ -16,6 +16,7 @@ class UserConfigModel(SQLModel, table=True):
     ml_consent: bool = Field(default=False)
     user_email: Optional[str] = None
     github: Optional[str] = None
+    access_token: Optional[str] = None
     created_at: datetime = Field(
         default_factory=lambda: datetime.now())
 

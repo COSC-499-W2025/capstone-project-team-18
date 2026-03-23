@@ -28,6 +28,15 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST
 
+// Register capstone:// as the deep-link protocol for OAuth callbacks
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('capstone', process.execPath, [path.resolve(process.argv[1])])
+  }
+} else {
+  app.setAsDefaultProtocolClient('capstone')
+}
+
 // Disable GPU Acceleration for Windows 7
 if (os.release().startsWith('6.1')) app.disableHardwareAcceleration()
 
@@ -88,13 +97,33 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('second-instance', () => {
+app.on('second-instance', (_event, argv) => {
   if (win) {
-    // Focus on the main window if the user tried to open another
     if (win.isMinimized()) win.restore()
     win.focus()
   }
+  // On Windows/Linux the deep-link URL arrives as a command-line argument
+  const deepLink = argv.find(arg => arg.startsWith('capstone://'))
+  if (deepLink) handleDeepLink(deepLink)
 })
+
+// macOS deep-link handler
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  handleDeepLink(url)
+})
+
+function handleDeepLink(url: string) {
+  try {
+    const parsed = new URL(url)
+    const state = parsed.searchParams.get('state')
+    const status = parsed.searchParams.get('status')
+    const detail = parsed.searchParams.get('detail')
+    win?.webContents.send('github-oauth-callback', { state, status, detail })
+  } catch {
+    // malformed URL — ignore
+  }
+}
 
 app.on('activate', () => {
   const allWindows = BrowserWindow.getAllWindows()
@@ -103,6 +132,10 @@ app.on('activate', () => {
   } else {
     createWindow()
   }
+})
+
+ipcMain.handle('open-external', (_event, url: string) => {
+  shell.openExternal(url)
 })
 
 // New window example arg: new windows url
