@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ProjectDetailsPage from "./ProjectDetailsPage";
 import { api } from "../api/apiClient";
@@ -73,13 +74,27 @@ describe("ProjectDetailsPage", () => {
     expect(screen.getByText(/insight project/i)).toBeInTheDocument();
   });
 
-  it("shows the project error when the insights request fails", async () => {
+  it("keeps project details visible when the insights request fails", async () => {
     vi.mocked(api.getProjectInsights).mockRejectedValue(new Error("API request failed (500) http://127.0.0.1:8000/projects/Insight%20Project/insights"));
 
     render(<ProjectDetailsPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/error:/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByRole("heading", { name: "Insight Project" })).toBeInTheDocument();
+    expect(screen.getByText(/no resume insights are currently available/i)).toBeInTheDocument();
+    expect(screen.queryByText(/error:/i)).not.toBeInTheDocument();
+  });
+
+  it("lets users mark insights as useful and dismiss them", async () => {
+    const user = userEvent.setup();
+
+    render(<ProjectDetailsPage />);
+
+    const usefulButtons = await screen.findAllByRole("button", { name: "Mark useful" });
+    await user.click(usefulButtons[0]);
+    expect(screen.getByRole("button", { name: "Marked useful" })).toBeInTheDocument();
+
+    const dismissButtons = screen.getAllByRole("button", { name: "Dismiss" });
+    await user.click(dismissButtons[0]);
+    expect(screen.queryByText("Describe the feature you shipped.")).not.toBeInTheDocument();
   });
 });

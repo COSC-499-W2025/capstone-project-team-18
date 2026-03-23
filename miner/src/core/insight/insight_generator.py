@@ -261,34 +261,40 @@ class ReadmeNarrativeInsightCalculator(InsightCalculator):
         tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
         tone = report.get_value(ProjectStatCollection.PROJECT_TONE.value)
 
-        insights: list[ProjectInsight] = []
+        candidates: list[tuple[int, ProjectInsight]] = []
 
         if themes:
             theme_text = _join_terms(themes, limit=2)
-            insights.append(ProjectInsight(
+            candidates.append((3, ProjectInsight(
                 message=(
                     f"Your project narrative centers on {theme_text}. "
                     "How would you describe the problem space, the users served, and the outcome you delivered?"
                 ),
-            ))
-        elif tags:
+            )))
+
+        if tags:
             tag_text = _join_terms(tags, limit=3)
-            insights.append(ProjectInsight(
+            candidates.append((2, ProjectInsight(
                 message=(
                     f"Key project ideas inferred from the README include {tag_text}. "
                     "Which of those best reflects the project impact you want to emphasize on your resume?"
                 ),
-            ))
+            )))
 
         if tone:
-            insights.append(ProjectInsight(
+            candidates.append((1, ProjectInsight(
                 message=(
                     f"The README presents this work with a {tone.lower()} tone. "
                     "What evidence from the codebase or deliverables supports telling that story in a resume bullet?"
                 ),
-            ))
+            )))
 
-        return insights
+        ranked_insights = sorted(
+            candidates,
+            key=lambda candidate: candidate[0],
+            reverse=True,
+        )
+        return [insight for _, insight in ranked_insights[:2]]
 
 
 class CommitFocusInsightCalculator(InsightCalculator):

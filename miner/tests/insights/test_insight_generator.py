@@ -393,7 +393,7 @@ def test_skills_calculator_accepts_name_key_and_limits_to_top_three():
 # ReadmeNarrativeInsightCalculator
 # ---------------------------------------------------------------------------
 
-def test_readme_narrative_calculator_uses_themes_and_tone():
+def test_readme_narrative_calculator_returns_top_ranked_candidates():
     report = _mock_report({
         ProjectStatCollection.PROJECT_THEMES.value: ["analytics", "reporting"],
         ProjectStatCollection.PROJECT_TAGS.value: ["dashboard", "kpi"],
@@ -402,7 +402,7 @@ def test_readme_narrative_calculator_uses_themes_and_tone():
     insights = ReadmeNarrativeInsightCalculator().calculate(report)
     assert len(insights) == 2
     assert "analytics and reporting" in insights[0].message.lower()
-    assert "professional" in insights[1].message.lower()
+    assert "dashboard and kpi" in insights[1].message.lower()
 
 
 def test_readme_narrative_calculator_falls_back_to_tags():
