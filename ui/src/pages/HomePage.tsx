@@ -7,6 +7,7 @@ import {
   type ResumeResponse,
 } from "../api/apiClient";
 import UploadProjectModal from "../components/update/modal/UploadProjectModal";
+import ProjectSkeleton from "@/components/ProjectSkeleton";
 
 type PortfolioListItem = {
   id: number;
@@ -36,6 +37,9 @@ export default function HomePage() {
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
   const [latestResume, setLatestResume] = useState<ResumeResponse | null>(null);
   const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
+
+  const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(false);
+  const [projectCountBeforeUpload, setProjectCountBeforeUpload] = useState(0);
 
   async function loadProjects() {
     try {
@@ -72,6 +76,30 @@ export default function HomePage() {
     loadLatestResume();
   }, []);
 
+  useEffect(() => {
+  if (!isProjectAnalysisInProgress) return;
+
+  const interval = setInterval(async () => {
+    try {
+      const res = await api.getProjects();
+      const updatedProjects = Array.isArray(res?.projects) ? res.projects : [];
+
+      setProjects(updatedProjects);
+      setError(null);
+      setLoading(false);
+
+      if (updatedProjects.length > projectCountBeforeUpload) {
+        setIsProjectAnalysisInProgress(false);
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load projects");
+      setIsProjectAnalysisInProgress(false);
+    }
+  }, 3000);
+
+  return () => clearInterval(interval);
+}, [isProjectAnalysisInProgress, projectCountBeforeUpload]);
+
   async function loadLatestResume() {
     const resumeId = getLatestResumeId();
     setLatestResumeId(resumeId);
@@ -90,9 +118,11 @@ export default function HomePage() {
   }
 
   async function handleUploadSuccess() {
-    setShowUploadModal(false);
-    await loadProjects();
-  }
+  setProjectCountBeforeUpload(projects.length);
+  setShowUploadModal(false);
+  setIsProjectAnalysisInProgress(true);
+  await loadProjects();
+}
 
   return (
     <div style={{ padding: 24, paddingTop: 40 }}>
@@ -152,61 +182,62 @@ export default function HomePage() {
           <div>
             <h2 style={{ marginTop: 0 }}>Projects</h2>
 
-            {loading && <div>Loading projects…</div>}
-
-            {!loading && !error && projects.length === 0 && (
-              <div>No projects found.</div>
-            )}
-
-            {!loading && !error && projects.length > 0 && (
+            {(loading || isProjectAnalysisInProgress) ? (
+              <>
+              <div style={{ color: "#999", marginBottom: 12 }}>
+                Project Analysis In Progress...
+                </div>
+                <ProjectSkeleton count={3} />
+                </>
+                ) : !error && projects.length === 0 ? (
+                <div>No Projects Found.</div>
+              ) : !error ? (
               <div style={{ display: "grid", gap: 12 }}>
                 {projects.map((project) => (
                   <Link
-                    key={project.project_name}
-                    to={`/projects/${encodeURIComponent(
-                      project.project_name
-                    )}`}
-                    onMouseEnter={() => setHoveredProjectName(project.project_name)}
-                    onMouseLeave={() => setHoveredProjectName(null)}
-                    style={{
-                      display: "block",
-                      textDecoration: "none",
-                      color: "inherit",
-                      border: "1px solid #2a2a2a",
-                      borderRadius: 12,
-                      padding: 14,
-                      background:
-                        hoveredProjectName === project.project_name
-                          ? "#151515"
-                          : "#101010",
-                      transition: "background 0.2s ease, transform 0.2s ease",
-                      transform:
-                        hoveredProjectName === project.project_name
-                          ? "translateY(-1px)"
-                          : "translateY(0)",
-                    }}
+                  key={project.project_name}
+                  to={`/projects/${encodeURIComponent(project.project_name)}`}
+                  onMouseEnter={() => setHoveredProjectName(project.project_name)}
+                  onMouseLeave={() => setHoveredProjectName(null)}
+                  style={{
+                    display: "block",
+                    textDecoration: "none",
+                    color: "inherit",
+                    border: "1px solid #2a2a2a",
+                    borderRadius: 12,
+                    padding: 14,
+                    background:
+                    hoveredProjectName === project.project_name
+                    ? "#151515"
+                    : "#101010",
+                    transition: "background 0.2s ease, transform 0.2s ease",
+                    transform:
+                    hoveredProjectName === project.project_name
+                    ? "translateY(-1px)"
+                    : "translateY(0)",
+                  }}
                   >
                     <div style={{ fontWeight: 600, color: "#ddd" }}>
                       {project.project_name}
-                    </div>
-                    <div
+                      </div>
+                      <div
                       style={{
                         fontSize: 12,
                         color: "#999",
                         marginTop: 6,
                       }}
-                    >
-                      Created: {formatDate(project.created_at)}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+                      >
+                        Created: {formatDate(project.created_at)}
+                        </div>
+                        </Link>
+                      ))}
+                      </div>
+                    ) : null}
           </div>
 
           <div style={{ marginTop: 20 }}>
             <Link to="/projects" style={{ color: "#6f7cff" }}>
-              View all
+              View All
             </Link>
           </div>
         </section>
