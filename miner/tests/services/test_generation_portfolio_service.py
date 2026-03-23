@@ -98,9 +98,6 @@ def test_update_portfolio(mock_engine, prs_db, pr2_updated):
 
 
 def test_generate_portfolio_preserves_existing_project_metadata_when_ml_consent_off(mock_engine, monkeypatch):
-    monkeypatch.setattr(concrete_builders, "ml_extraction_allowed", lambda: False)
-    monkeypatch.setattr(portfolio_service, "ml_extraction_allowed", lambda: False)
-
     model = generate_and_save_portfolio(["pr1", "pr2"], "Consent Off Portfolio")
     cards_by_name = {card.project_name: card for card in model.project_cards}
 
