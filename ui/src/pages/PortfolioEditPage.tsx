@@ -96,6 +96,7 @@ export default function PortfolioEditPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Action states
+  const [githubConnected, setGithubConnected] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [exportedPagesUrl, setExportedPagesUrl] = useState<string | null>(null);
@@ -142,11 +143,15 @@ export default function PortfolioEditPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = (await api.getPortfolio(id!)) as Portfolio;
+      const [data, userConfig] = await Promise.all([
+        api.getPortfolio(id!) as Promise<Portfolio>,
+        api.getUserConfig(),
+      ]);
       setPortfolio(data);
       setTitleDraft(data.title);
       initCardEdits(data.project_cards);
       initBlockEdits(data.sections);
+      setGithubConnected(Boolean(userConfig?.github_connected));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load portfolio");
     } finally {
@@ -533,7 +538,7 @@ export default function PortfolioEditPage() {
           </button>
 
           <button
-            onClick={() => setShowDeployConfirm(true)}
+            onClick={() => githubConnected ? setShowDeployConfirm(true) : handleExport()}
             disabled={deploying}
             style={{
               padding: "10px 14px",
@@ -545,7 +550,7 @@ export default function PortfolioEditPage() {
               opacity: deploying ? 0.6 : 1,
             }}
           >
-            {deploying ? "Deploying..." : "Publish to GitHub"}
+            {githubConnected && deploying ? "Deploying..." : githubConnected ? "Publish to GitHub" : "Download Website"}
           </button>
 
           <button
