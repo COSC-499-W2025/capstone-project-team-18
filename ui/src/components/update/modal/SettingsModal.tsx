@@ -40,30 +40,6 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     };
   }, []);
 
-  const [githubConnected, setGithubConnected] = useState(false);
-  const [githubAuthStatus, setGithubAuthStatus] = useState<"idle" | "pending" | "success" | "denied" | "error">("idle");
-  const [githubAuthDetail, setGithubAuthDetail] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const oauthStateRef = useRef<string | null>(null);
-
-  // Listen for the deep-link callback from Electron main process
-  useEffect(() => {
-    function onOauthCallback(_event: any, payload: { state: string; status: string; detail: string | null }) {
-      if (payload.state !== oauthStateRef.current) return;
-      stopPolling();
-      const status = payload.status as "success" | "denied" | "error";
-      setGithubAuthStatus(status);
-      setGithubAuthDetail(payload.detail ?? null);
-      if (status === "success") setGithubConnected(true);
-    }
-
-    (window as any).ipcRenderer?.on("github-oauth-callback", onOauthCallback);
-    return () => {
-      (window as any).ipcRenderer?.off("github-oauth-callback", onOauthCallback);
-      stopPolling();
-    };
-  }, []);
-
   useEffect(() => {
     if (!open) return;
 
@@ -82,7 +58,6 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         setGithub(res?.github ?? "");
         setEmail(res?.user_email ?? "");
         setConsent(Boolean(res?.consent));
-        setGithubConnected(Boolean(res?.github_connected));
         setGithubConnected(Boolean(res?.github_connected));
       } catch (e: any) {
         if (!alive) return;
@@ -117,16 +92,8 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     }
   }
 
-  function stopPolling() {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }
-
   function handleClose() {
     if (isSaving || isLoadingConfig) return;
-    stopPolling();
     stopPolling();
     onClose();
   }

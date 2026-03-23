@@ -13,10 +13,7 @@ from fastapi.responses import HTMLResponse
 from src.database.api.CRUD.github import get_access_token, revoke_access_token
 from src.database import get_most_recent_user_config
 from src.infrastructure.log.logging import get_logger
-from src.database import get_most_recent_user_config
-from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
-from src.utils.errors import UserConfigNotFoundError, DatabaseOperationError, BadOAuthStateError, ExpiredOAuthState
 from src.utils.errors import UserConfigNotFoundError, DatabaseOperationError, BadOAuthStateError, ExpiredOAuthState
 
 logger = get_logger(__name__)
