@@ -184,6 +184,83 @@ Updates the user configuration.
 
 ---
 
+### `GET /github/login`
+
+Called by the frontend to generate an OAuth state. Generates and returns a
+GitHub authorization URL. The frontend should open the URL with the OS browser
+to get the user's auth code (which will be used to get the access token).
+
+**Response:**
+```json
+{
+  "state": state,
+  "authorization_url": authorization_url,
+  "callback_scheme": ELECTRON_CALLBACK_SCHEME,
+}
+```
+
+**Raises:**
+- 500: `GITHUB_CLIENT_ID` and/or `GITHUB_REDIRECT_URI` missing from `.env`.
+
+---
+
+### `GET github/oauth-status`
+
+Called by the frontend every 2 sec to poll the backend OAuth status for a generated state. This is a fallback if the deep link fails so that the frontend still knowns what the result (user accepts or denies) is so that it can switch from "pending" to "Connected".
+
+Response:
+```json
+{
+  "state": state,
+  "status": oauth_state.get("status"),
+  "detail": oauth_state.get("detail"),
+}
+```
+
+---
+
+### `GET github/callback`
+
+ Called by GitHub when the user does (or doesn't) authenticate our app. This gives us the auth code, which we use to get the access token (needed to take action on the user's behalf). A short piece of HTML to prompt the user to reopen our Electron app is returned in response.
+- e.g., http://localhost:8000/api/github/callback?code=abcdef123456
+
+**Request body:**
+```json
+{
+  "state": state,
+  "code": code,
+  "error": error,
+}
+```
+
+**Returns:**  An HTML popup in the browswer prompting the user to return to the Electron app.
+
+**Raises:**
+- Error: Thrown when the user denies access or some generalized error occurs.
+- Code Error: Missing authorization code.
+- No user configuration has been created yet (equivalent to `USER_CONFIG_NOT_FOUND`).
+- HTTP Error: Error generating HTML page for popup to return to Electron.
+
+---
+
+### `PUT github/revoke_access_token`
+
+Sets the `access_token` column in the `UserConfigModel` to `None`.
+
+**Returns:**
+```json
+{
+  "message": "Access token revoked"
+}
+```
+
+**Raises:**
+- 404 `USER_CONFIG_NOT_FOUND`: No user configuration has been created yet.
+- 500 `DATABASE_OPERATION_FAILED`: Failed to set user's access token to `None`.
+
+***Note*:** This endpoint should be called in conjunction with frontend logic to send the user to https://github.com/settings/applications so that they can revoke access on their end too.
+
+
 ### `POST /resume/generate`
 
 Generates a resume from a list of previously analyzed projects.

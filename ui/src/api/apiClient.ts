@@ -156,11 +156,24 @@ export type UserConfigResponse = {
   consent: boolean;
   user_email?: string | null;
   github?: string | null;
+  github_connected?: boolean;
   resume_config?: {
     id: number;
     education: string[];
     awards: string[];
   } | null;
+};
+
+export type GithubLoginResponse = {
+  state: string;
+  authorization_url: string;
+  callback_scheme: string;
+};
+
+export type GithubOauthStatusResponse = {
+  state: string;
+  status: "pending" | "success" | "denied" | "error";
+  detail: string | null;
 };
 
 export type UpdateUserConfigPayload = {
@@ -384,6 +397,13 @@ export const api = {
 
   getPortfolioConflicts: (id: string | number) =>
     getJson<any>(`/portfolio/${id}/conflicts`),
+
+  githubLogin: () => getJson<GithubLoginResponse>("/github/login"),
+
+  githubOauthStatus: (state: string) =>
+    getJson<GithubOauthStatusResponse>(`/github/oauth-status?state=${encodeURIComponent(state)}`),
+
+  revokeGithubToken: () => putJson<{ message: string }>("/github/revoke_access_token"),
 
   exportPortfolio: async (id: string | number): Promise<Blob> => {
     const base = getApiBaseUrl();
