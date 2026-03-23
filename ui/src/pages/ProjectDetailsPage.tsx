@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api } from "../api/apiClient";
+import { api, type ProjectInsightsResponse } from "../api/apiClient";
 
 type ProjectReport = {
   project_name: string;
@@ -18,6 +18,12 @@ type ProjectReport = {
   statistic?: Record<string, unknown>;
   [key: string]: unknown;
 };
+
+type ProjectInsight = ProjectInsightsResponse["insights"][number];
+
+function getInsightId(projectName: string, insight: ProjectInsight, index: number) {
+  return `${projectName}-${index}-${insight.message}`;
+}
 
 function isNotFoundError(msg: string) {
   return msg.includes("API request failed (404)");
@@ -73,6 +79,15 @@ export default function ProjectDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [project, setProject] = useState<ProjectReport | null>(null);
+  const [insights, setInsights] = useState<ProjectInsight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [dismissedInsights, setDismissedInsights] = useState<Record<string, boolean>>({});
+  const [usefulInsights, setUsefulInsights] = useState<Record<string, boolean>>({});
+
+  const visibleInsights = insights.filter((insight, index) => {
+    const insightId = getInsightId(projectName, insight, index);
+    return !dismissedInsights[insightId];
+  });
 
   const projectStatistics =
     project?.statistic && typeof project.statistic === "object"
@@ -96,13 +111,37 @@ export default function ProjectDetailsPage() {
         setLoading(true);
         setError(null);
         setProject(null);
+        setInsights([]);
+        setInsightsLoading(true);
+        setDismissedInsights({});
+        setUsefulInsights({});
 
-        const res = (await api.getProject(projectName)) as ProjectReport;
-        if (alive) setProject(res);
+        const projectRes = (await api.getProject(projectName)) as ProjectReport;
+
+        if (!alive) return;
+
+        setProject(projectRes);
+        setLoading(false);
+
+        try {
+          const insightsRes =
+            (await api.getProjectInsights(projectName)) as ProjectInsightsResponse;
+
+          if (!alive) return;
+          setInsights(insightsRes.insights ?? []);
+        } catch {
+          if (!alive) return;
+          setInsights([]);
+        } finally {
+          if (alive) {
+            setInsightsLoading(false);
+          }
+        }
       } catch (e: any) {
-        if (alive) setError(e?.message ?? "Failed to load project");
-      } finally {
-        if (alive) setLoading(false);
+        if (!alive) return;
+        setError(e?.message ?? "Failed to load project");
+        setLoading(false);
+        setInsightsLoading(false);
       }
     })();
 
@@ -233,6 +272,104 @@ export default function ProjectDetailsPage() {
                 </section>
               )}
           </div>
+
+          <section
+            style={{
+              border: "1px solid #2a2a2a",
+              borderRadius: 16,
+              padding: 20,
+              background: "#161616",
+              marginBottom: 24,
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Resume Insights</h2>
+            <p style={{ marginTop: 0, color: "#999", lineHeight: 1.6 }}>
+              Project-specific prompts to help turn this work into stronger resume bullets.
+            </p>
+
+            {insightsLoading ? (
+              <div style={{ color: "#999", lineHeight: 1.6 }}>
+                Loading resume insights...
+              </div>
+            ) : visibleInsights.length > 0 ? (
+              <div style={{ display: "grid", gap: 12 }}>
+                {insights.map((insight, index) => {
+                  const insightId = getInsightId(project.project_name, insight, index);
+                  const isDismissed = dismissedInsights[insightId];
+                  const isUseful = usefulInsights[insightId];
+
+                  if (isDismissed) {
+                    return null;
+                  }
+
+                  return (
+                    <div
+                      key={insightId}
+                      style={{
+                        border: "1px solid #2a2a2a",
+                        borderRadius: 14,
+                        padding: 16,
+                        background: isUseful ? "#1a2316" : "#111111",
+                      }}
+                    >
+                      <div style={{ color: "#ddd", lineHeight: 1.7, marginBottom: 12 }}>
+                        {insight.message}
+                      </div>
+
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setUsefulInsights((current) => ({
+                              ...current,
+                              [insightId]: !current[insightId],
+                            }))
+                          }
+                          style={{
+                            border: "1px solid #355c2b",
+                            borderRadius: 999,
+                            background: isUseful ? "#355c2b" : "transparent",
+                            color: isUseful ? "#f4ffe8" : "#9fce8a",
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {isUseful ? "Marked useful" : "Mark useful"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDismissedInsights((current) => ({
+                              ...current,
+                              [insightId]: true,
+                            }))
+                          }
+                          style={{
+                            border: "1px solid #4a2a2a",
+                            borderRadius: 999,
+                            background: "transparent",
+                            color: "#ff9a9a",
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : insights.length > 0 ? (
+              <div style={{ color: "#999", lineHeight: 1.6 }}>
+                All current resume insights have been dismissed.
+              </div>
+            ) : (
+              <div style={{ color: "#999", lineHeight: 1.6 }}>
+                No resume insights are currently available for this project.
+              </div>
+            )}
+          </section>
 
           <section
             style={{
