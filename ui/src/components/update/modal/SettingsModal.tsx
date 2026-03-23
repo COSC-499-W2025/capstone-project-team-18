@@ -300,58 +300,6 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        {/* GitHub OAuth */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 14, color: "#aaa" }}>GitHub Access</label>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-            {githubConnected ? (
-              <button
-                onClick={handleGithubDisconnect}
-                disabled={isSaving || isLoadingConfig}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  border: "1px solid #444",
-                  background: "transparent",
-                  color: "#ff8a8a",
-                  cursor: "pointer",
-                  fontSize: 13,
-                }}
-              >
-                Disconnect GitHub
-              </button>
-            ) : (
-              <button
-                onClick={handleGithubConnect}
-                disabled={isSaving || isLoadingConfig || githubAuthStatus === "pending"}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: githubAuthStatus === "pending" ? "#222" : "#238636",
-                  color: "#fff",
-                  cursor: githubAuthStatus === "pending" ? "not-allowed" : "pointer",
-                  fontSize: 13,
-                  opacity: githubAuthStatus === "pending" ? 0.7 : 1,
-                }}
-              >
-                {githubAuthStatus === "pending" ? "Waiting for GitHub..." : "Connect GitHub"}
-              </button>
-            )}
-            <span style={{ fontSize: 13, color: githubConnected ? "#8ad6a2" : "#888" }}>
-              {githubConnected
-                ? "Connected"
-                : githubAuthStatus === "pending"
-                ? "Authorize in your browser"
-                : githubAuthStatus === "denied"
-                ? "Access denied"
-                : githubAuthStatus === "error"
-                ? `Error: ${githubAuthDetail ?? "unknown"}`
-                : "Not connected"}
-            </span>
-          </div>
-        </div>
-
         {/* Email */}
         <div style={{ marginBottom: 16 }}>
           <label style={{ fontSize: 14, color: "#aaa" }}>
