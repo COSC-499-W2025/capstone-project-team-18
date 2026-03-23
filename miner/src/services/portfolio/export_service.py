@@ -436,17 +436,20 @@ _FILTER_JS = """\
 
 def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     """
-    Build and return a ZIP archive containing a self-contained static web
-    portfolio for the given portfolio_id.
+    Build and return a ZIP archive containing a static web portfolio for the
+    given `portfolio_id`.
 
     The archive contains:
-      index.html, portfolio_data.js, style.css, filter.js
+    - `index.html`
+    - `portfolio_data.js`
+    - `style.css`
+    - `filter.js`
 
     Raises `KeyNotFoundError` if the portfolio does not exist.
     """
     portfolio = load_portfolio(session, portfolio_id)
     if portfolio is None:
-        raise KeyNotFoundError(f"No portfolio with id {portfolio_id}")
+        raise KeyNotFoundError(f"No portfolio with ID {portfolio_id}")
 
     # --- Build Part A HTML (sections) ---
     sections_html_parts = []

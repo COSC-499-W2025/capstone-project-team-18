@@ -16,7 +16,7 @@ from src.services.portfolio.github_pages_service import deploy_to_github_pages
 from src.database import load_portfolio, update_portfolio_block, get_most_recent_user_config
 from src.database.api.CRUD.portfolio import get_project_cards_for_portfolio, list_portfolios, delete_portfolio
 from src.interface.api.routers.util import get_session
-from src.utils.errors import KeyNotFoundError
+from src.utils.errors import KeyNotFoundError, UserConfigNotFoundError
 
 router = APIRouter(
     prefix="/portfolio",
@@ -316,19 +316,25 @@ async def export_portfolio(
     session: Session = Depends(get_session),
 ):
     """
-    GET /portfolio/{id}/export
+    Pushes a static website of a portfolio to the user's `portfolio` repo and
+    deploys it via GitHub Pages.
 
-    If the user has a GitHub access token stored, deploys the portfolio as a
-    GitHub Pages site and returns the Pages URL as JSON.
+    If the user has a GitHub access token stored, the selected portfolio is
+    deployed as a GitHub Pages site. If there is no GitHub auth, the site
+    is downloaded as a `.zip` file.
 
-    Falls back to returning the static bundle as a ZIP download when no
-    GitHub access token is present.
+    Body Parameters:
+    - `portfolio_id`: The selected portfolio's ID
 
     Returns (GitHub auth present):
-        {"pages_url": "https://{username}.github.io/portfolio"}
+        200: {"pages_url": "https://{username}.github.io/portfolio"}
 
     Returns (no GitHub auth):
-        ZIP archive — Content-Disposition: attachment; filename="portfolio_{id}.zip"
+        200: ZIP archive — Content-Disposition: attachment; filename="portfolio_{id}.zip"
+
+    Raises:
+    - 404 `ID_NOT_FOUND`: Portfolio with ID `portfolio_id` not found in the database.
+    - 404 `USER_CONFIG_NOT_FOUND`: No user configuration has been created yet.
     """
     try:
         zip_bytes = export_portfolio_static(portfolio_id, session)
@@ -336,12 +342,18 @@ async def export_portfolio(
         raise HTTPException(status_code=404, detail=str(e))
 
     user_config = get_most_recent_user_config(session)
+    if not user_config:
+        raise UserConfigNotFoundError("No user config found")
+
     access_token = user_config.access_token if user_config else None
 
     if access_token:
-        pages_url = await deploy_to_github_pages(access_token, zip_bytes)
+        portfolio = load_portfolio(session, portfolio_id)
+        portfolio_name = portfolio.title if portfolio else f"Portfolio {portfolio_id}"
+        pages_url = await deploy_to_github_pages(access_token, zip_bytes, portfolio_name)
         return {"pages_url": pages_url}
 
+    # return the zip file to be downloaded since user hasn't authorized GitHub
     return Response(
         content=zip_bytes,
         media_type="application/zip",

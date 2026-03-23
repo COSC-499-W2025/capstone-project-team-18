@@ -97,11 +97,19 @@ export default function PortfolioEditPage() {
 
   // Action states
   const [refreshing, setRefreshing] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [deploying, setDeploying] = useState(false);
   const [exportedPagesUrl, setExportedPagesUrl] = useState<string | null>(null);
+  const [showDeployConfirm, setShowDeployConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // A toast to notify the user that their portfolio has been deployed
+  useEffect(() => {
+    if (!exportedPagesUrl) return;
+    const timer = setTimeout(() => setExportedPagesUrl(null), 6000); // clears after 6 seconds
+    return () => clearTimeout(timer);
+  }, [exportedPagesUrl]);
 
   // Per-card edit state: { [project_name]: { titleDraft, summaryDraft, tagsDraft, saving, error } }
   const [cardEdits, setCardEdits] = useState<
@@ -227,7 +235,8 @@ export default function PortfolioEditPage() {
   }
 
   async function handleExport() {
-    setExporting(true);
+    setShowDeployConfirm(false);
+    setDeploying(true);
     setExportedPagesUrl(null);
     let objectUrl: string | null = null;
     try {
@@ -245,7 +254,7 @@ export default function PortfolioEditPage() {
       setError(e?.message ?? "Failed to export.");
     } finally {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setExporting(false);
+      setDeploying(false);
     }
   }
 
@@ -524,19 +533,19 @@ export default function PortfolioEditPage() {
           </button>
 
           <button
-            onClick={handleExport}
-            disabled={exporting}
+            onClick={() => setShowDeployConfirm(true)}
+            disabled={deploying}
             style={{
               padding: "10px 14px",
               background: "transparent",
               border: "1px solid #2a2a2a",
               borderRadius: 10,
-              color: exporting ? "#666" : "#ddd",
-              cursor: exporting ? "not-allowed" : "pointer",
-              opacity: exporting ? 0.6 : 1,
+              color: deploying ? "#666" : "#ddd",
+              cursor: deploying ? "not-allowed" : "pointer",
+              opacity: deploying ? 0.6 : 1,
             }}
           >
-            {exporting ? "Exporting..." : "Export ZIP"}
+            {deploying ? "Deploying..." : "Publish to GitHub"}
           </button>
 
           <button
@@ -579,17 +588,22 @@ export default function PortfolioEditPage() {
         </div>
       )}
 
-      {/* GitHub Pages deployment success */}
+      {/* GitHub Pages deployment success toast */}
       {exportedPagesUrl && (
         <div
           style={{
-            marginTop: 16,
+            position: "fixed",
+            bottom: 28,
+            right: 28,
+            zIndex: 1100,
             fontSize: 14,
             border: "1px solid #1f3a1f",
             borderRadius: 12,
-            padding: 12,
+            padding: "14px 18px",
             background: "#111a11",
             color: "#8aff8a",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+            maxWidth: 420,
           }}
         >
           Portfolio deployed to GitHub Pages:{" "}
@@ -994,6 +1008,87 @@ export default function PortfolioEditPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ---- Deploy Confirmation Modal ---- */}
+      {showDeployConfirm && (
+        <div
+          onClick={() => {
+            if (!deploying) setShowDeployConfirm(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.68)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: "#1b1b1b",
+              border: "1px solid #2a2a2a",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Deploy to GitHub Pages</h2>
+            <p style={{ color: "#ccc", lineHeight: 1.6 }}>
+              Are you sure you want to deploy a static website of your portfolio
+              to a GitHub Pages site? This will create or update the{" "}
+              <strong>portfolio</strong> repository on your GitHub account and
+              make it publicly accessible (note: it may take a few minutes for
+              the site to update).
+            </p>
+
+            <p style={{ color: "#ccc", lineHeight: 1.6 }}>
+              <strong>
+                WARNING: This action will wipe and replace any existing files in
+                the repository.
+              </strong>
+            </p>
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowDeployConfirm(false)}
+                disabled={deploying}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "transparent",
+                  color: deploying ? "#666" : "#ddd",
+                  cursor: deploying ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleExport}
+                disabled={deploying}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #1f3a1f",
+                  background: deploying ? "#202020" : "#1f3a1f",
+                  color: "#8aff8a",
+                  cursor: deploying ? "not-allowed" : "pointer",
+                  opacity: deploying ? 0.7 : 1,
+                }}
+              >
+                {deploying ? "Deploying..." : "Deploy"}
+              </button>
+            </div>
           </div>
         </div>
       )}

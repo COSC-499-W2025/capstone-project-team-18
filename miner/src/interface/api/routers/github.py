@@ -138,13 +138,12 @@ def github_login():
 @router.get("/oauth-status")
 def github_oauth_status(state: str):
     """
-    Called by the frontend every 2 sec to poll the
-    backend OAuth status for a generated state.
+    Called by the frontend every 2 sec to poll the backend OAuth status
+    for a generated state.
 
-    This is a fallback if the deep link fails so
-    that the frontend still knowns what the result
-    (user accepts or denies) is so that it can switch
-    from "pending" to "Connected".
+    This is a fallback if the deep link fails so that the frontend still
+    knowns what the result (user accepts or denies) is so that it can
+    switch from "Pending" to "Connected".
     """
     oauth_state = _get_oauth_state_or_raise(state)
     return {
