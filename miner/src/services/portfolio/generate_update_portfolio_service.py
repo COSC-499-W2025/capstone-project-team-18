@@ -6,7 +6,6 @@ from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
 
 from src.core.report import UserReport
-from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.portfolio.portfolio import Portfolio
 from src.core.portfolio.cards.project_card import ProjectCard
 from src.core.statistic import ProjectStatCollection

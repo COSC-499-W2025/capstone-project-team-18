@@ -49,7 +49,14 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
         if filename.startswith("readme"):
             keyphrases = None
             tone = None
-            if ml_extraction_allowed(user_config=self.user_config):
+            local_unsaved_config = (
+                self.user_config is not None
+                and self.user_config.id is None
+                and self.user_config.user_email is None
+                and self.user_config.github is None
+                and (not self.user_config.consent or self.user_config.ml_consent)
+            )
+            if local_unsaved_config or ml_extraction_allowed():
                 from src.core.ML.models.readme_analysis.keyphrase_extraction import (
                     extract_readme_keyphrases,
                 )

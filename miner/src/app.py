@@ -24,8 +24,13 @@ load_dotenv()
 
 
 def _init_db() -> None:
-    """Compatibility hook for API startup; schema management is handled elsewhere."""
-    return None
+
+    from sqlmodel import SQLModel
+
+    from src.database.core.base import get_engine
+    import src.database.api.models
+
+    SQLModel.metadata.create_all(get_engine())
 
 
 def init_system() -> tuple[bool, str]:
