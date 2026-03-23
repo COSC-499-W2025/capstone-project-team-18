@@ -79,6 +79,7 @@ def init_system() -> tuple[bool, str]:
 
 
 def main():
+    _init_db()
     _, startup_message = init_system()
     print(startup_message)
 
