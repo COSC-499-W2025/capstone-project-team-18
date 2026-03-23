@@ -181,59 +181,69 @@ export default function HomePage() {
         >
           <div>
             <h2 style={{ marginTop: 0 }}>Projects</h2>
-
-            {(loading || isProjectAnalysisInProgress) ? (
+            
+            {loading && projects.length === 0 ? (
               <>
               <div style={{ color: "#999", marginBottom: 12 }}>
-                Project Analysis In Progress...
+                Loading projects...
                 </div>
                 <ProjectSkeleton count={3} />
                 </>
-                ) : !error && projects.length === 0 ? (
-                <div>No Projects Found.</div>
-              ) : !error ? (
-              <div style={{ display: "grid", gap: 12 }}>
-                {projects.map((project) => (
-                  <Link
-                  key={project.project_name}
-                  to={`/projects/${encodeURIComponent(project.project_name)}`}
-                  onMouseEnter={() => setHoveredProjectName(project.project_name)}
-                  onMouseLeave={() => setHoveredProjectName(null)}
-                  style={{
-                    display: "block",
-                    textDecoration: "none",
-                    color: "inherit",
-                    border: "1px solid #2a2a2a",
-                    borderRadius: 12,
-                    padding: 14,
-                    background:
-                    hoveredProjectName === project.project_name
-                    ? "#151515"
-                    : "#101010",
-                    transition: "background 0.2s ease, transform 0.2s ease",
-                    transform:
-                    hoveredProjectName === project.project_name
-                    ? "translateY(-1px)"
-                    : "translateY(0)",
-                  }}
-                  >
-                    <div style={{ fontWeight: 600, color: "#ddd" }}>
-                      {project.project_name}
-                      </div>
-                      <div
-                      style={{
-                        fontSize: 12,
-                        color: "#999",
-                        marginTop: 6,
-                      }}
-                      >
-                        Created: {formatDate(project.created_at)}
-                        </div>
-                        </Link>
-                      ))}
-                      </div>
-                    ) : null}
-          </div>
+                ) : (
+                <>
+                {isProjectAnalysisInProgress && (
+                  <div style={{ color: "#999", marginBottom: 12 }}>
+                    Project analysis in progress...
+                    </div>
+                  )}
+                  {!error && projects.length === 0 && !isProjectAnalysisInProgress && (
+                    <div>No projects found.</div>
+                    )}
+                    {!error && (
+                      <div style={{ display: "grid", gap: 12 }}>
+                        {projects.map((project) => (
+                          <Link
+                          key={project.project_name}
+                          to={`/projects/${encodeURIComponent(project.project_name)}`}
+                          onMouseEnter={() => setHoveredProjectName(project.project_name)}
+                          onMouseLeave={() => setHoveredProjectName(null)}
+                          style={{
+                            display: "block",
+                            textDecoration: "none",
+                            color: "inherit",
+                            border: "1px solid #2a2a2a",
+                            borderRadius: 12,
+                            padding: 14,
+                            background:
+                            hoveredProjectName === project.project_name
+                            ? "#151515"
+                            : "#101010",
+                            transition: "background 0.2s ease, transform 0.2s ease",
+                            transform:
+                            hoveredProjectName === project.project_name
+                            ? "translateY(-1px)"
+                            : "translateY(0)",
+                          }}
+                          >
+                            <div style={{ fontWeight: 600, color: "#ddd" }}>{project.project_name}
+                            </div>
+                          <div
+                          style={{
+                            fontSize: 12,
+                            color: "#999",
+                            marginTop: 6,
+                          }}
+                          >
+                            Created: {formatDate(project.created_at)}
+                            </div>
+                            </Link>
+                          ))}
+                          {isProjectAnalysisInProgress && <ProjectSkeleton count={3} />}
+                          </div>
+                        )}
+                        </>
+                      )}
+                </div>
 
           <div style={{ marginTop: 20 }}>
             <Link to="/projects" style={{ color: "#6f7cff" }}>
