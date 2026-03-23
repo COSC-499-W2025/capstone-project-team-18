@@ -125,14 +125,14 @@ def save_project_report(
             select(FileReportModel).where(
                 FileReportModel.project_name == previous_project_name)
         ).all()
-        for row in stale_files:
-            session.delete(row)
+        if stale_files:
+            session.delete(stale_files)
 
         stale_insights = session.exec(
             select(ProjectInsightsModel).where(
                 ProjectInsightsModel.project_name == previous_project_name)
-        ).first()
-        if stale_insights is not None:
+        ).all()
+        if stale_insights:
             session.delete(stale_insights)
 
         for file_model in incoming_files:
