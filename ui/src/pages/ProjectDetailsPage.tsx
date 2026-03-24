@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type ProjectInsightsResponse } from "../api/apiClient";
 
 type ProjectReport = {
   project_name: string;
   user_config_used?: number | null;
-  image_data?: unknown | null;
+  image_data?: string | null;
   created_at?: string;
   last_updated?: string;
   description?: string;
@@ -33,6 +33,14 @@ function formatDate(value?: string) {
   if (!value) return "—";
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+}
+
+function getImageSrc(base64: string): string {
+  if (base64.startsWith("/9j/")) return `data:image/jpeg;base64,${base64}`;
+  if (base64.startsWith("iVBOR")) return `data:image/png;base64,${base64}`;
+  if (base64.startsWith("R0lG")) return `data:image/gif;base64,${base64}`;
+  if (base64.startsWith("UklG")) return `data:image/webp;base64,${base64}`;
+  return `data:image/jpeg;base64,${base64}`;
 }
 
 function formatStatisticValue(value: unknown): string {
@@ -83,6 +91,23 @@ export default function ProjectDetailsPage() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [dismissedInsights, setDismissedInsights] = useState<Record<string, boolean>>({});
   const [usefulInsights, setUsefulInsights] = useState<Record<string, boolean>>({});
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageUpload(file: File) {
+    setImageUploading(true);
+    setImageUploadError(null);
+    try {
+      await api.uploadProjectImage(projectName, file);
+      const refreshed = (await api.getProject(projectName)) as ProjectReport;
+      setProject(refreshed);
+    } catch (e: any) {
+      setImageUploadError(e?.message ?? "Failed to upload image");
+    } finally {
+      setImageUploading(false);
+    }
+  }
 
   const visibleInsights = insights.filter((insight, index) => {
     const insightId = getInsightId(projectName, insight, index);
@@ -215,6 +240,88 @@ export default function ProjectDetailsPage() {
             <p style={{ marginTop: 8, color: "#666" }}>
               Review uploaded project metadata and mined output.
             </p>
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImageUpload(file);
+                e.target.value = "";
+              }}
+            />
+
+            {project.image_data ? (
+              <div style={{ display: "inline-flex", flexDirection: "column", gap: 10 }}>
+                <div
+                  style={{
+                    width: 240,
+                    aspectRatio: "1 / 1",
+                    overflow: "hidden",
+                    borderRadius: 12,
+                    border: "1px solid #2a2a2a",
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src={getImageSrc(project.image_data)}
+                    alt="Project thumbnail"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={imageUploading}
+                  onClick={() => imageInputRef.current?.click()}
+                  style={{
+                    border: "1px solid #2a2a2a",
+                    borderRadius: 8,
+                    background: "transparent",
+                    color: "#6f7cff",
+                    padding: "6px 14px",
+                    cursor: imageUploading ? "not-allowed" : "pointer",
+                    fontSize: 13,
+                    opacity: imageUploading ? 0.6 : 1,
+                  }}
+                >
+                  {imageUploading ? "Uploading…" : "Change Image"}
+                </button>
+                {imageUploadError && (
+                  <div style={{ color: "#ff8a8a", fontSize: 12 }}>
+                    {imageUploadError}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  disabled={imageUploading}
+                  onClick={() => imageInputRef.current?.click()}
+                  style={{
+                    border: "1px dashed #3a3a3a",
+                    borderRadius: 10,
+                    background: "#161616",
+                    color: "#6f7cff",
+                    padding: "14px 24px",
+                    cursor: imageUploading ? "not-allowed" : "pointer",
+                    fontSize: 14,
+                    opacity: imageUploading ? 0.6 : 1,
+                  }}
+                >
+                  {imageUploading ? "Uploading…" : "+ Upload Project Thumbnail"}
+                </button>
+                {imageUploadError && (
+                  <div style={{ marginTop: 6, color: "#ff8a8a", fontSize: 12 }}>
+                    {imageUploadError}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div
