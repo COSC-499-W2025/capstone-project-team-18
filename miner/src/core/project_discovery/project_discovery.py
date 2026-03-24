@@ -11,7 +11,7 @@ from git import Repo
 from sqlmodel import Session
 import os
 
-from src.database.api.CRUD.projects import get_project_report_model_by_name
+from src.database.api.CRUD.projects import get_project_report_model_by_name, _get_latest_related_project_model
 from src.database.core.base import get_engine
 from .ignore_constants import *
 from src.infrastructure.log.logging import get_logger
@@ -73,8 +73,10 @@ def discover_projects(unzipped_dir: str) -> list[ProjectLayout]:
 
             engine = get_engine()
             with Session(engine) as session:
-                pre_analyzed = True if get_project_report_model_by_name(
-                    session, str(dir_path.name)) is not None else False
+                pre_analyzed = (
+                    get_project_report_model_by_name(session, str(dir_path.name)) is not None
+                    or _get_latest_related_project_model(session, str(dir_path.name)) is not None
+                )
 
             file_paths = filter_files(dir_path)
 
