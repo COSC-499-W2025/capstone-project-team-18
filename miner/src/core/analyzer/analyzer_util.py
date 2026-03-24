@@ -104,7 +104,7 @@ def extract_file_reports(
         for file in project_files
     ]
 
-    with Pool(processes=workers) as pool:
+    with Pool(processes=2) as pool:
         results = pool.starmap(single_file_analysis, args)
 
     file_reports = []

@@ -1035,6 +1035,24 @@ class ProjectTotalContributionPercentage(ProjectStatisticCalculation):
         return to_return
 
 
+class ProjectCommitActivityTimeline(ProjectStatisticCalculation):
+    def calculate(self, report):
+        commits_dict = {}
+        user_commits_dict = {}
+
+        if report.project_repo:
+            for commit in report.project_repo.iter_commits():
+                date = datetime.fromtimestamp(
+                    commit.authored_date).strftime("%Y-%m-%d")
+                commits_dict[date] = commits_dict.get(date, 0) + 1
+
+                if commit.author.email == report.email or (report.github and report.github in commit.author.email):
+                    user_commits_dict[date] = user_commits_dict.get(
+                        date, 0) + 1
+
+        return [Statistic(ProjectStatCollection.COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(user_commits_dict.items()))), Statistic(ProjectStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(commits_dict.items())))]
+
+
 class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
     """Base builder for project reports."""
 
@@ -1048,6 +1066,7 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
             ProjectAnalyzeGitAuthorship,
             ProjectTotalContributionPercentage,
             ProjectContributionPatterns,
+            ProjectCommitActivityTimeline,
         ]
 
         # If specific calculator classes are requested, filter to only those

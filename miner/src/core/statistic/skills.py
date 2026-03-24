@@ -10,17 +10,17 @@ from pathlib import Path
 
 
 class Skill(Enum):
-    MACHINE_LEARNING = "Machine Learning"
+    MACHINE_LEARNING = "ML"
     DATA_ANALYTICS = "Data Analytics"
     DEVOPS = "DevOps"
     CI_CD = "CI/CD"
-    WEB_DEVELOPMENT = "Web Development"
+    WEB_DEVELOPMENT = "Web Dev"
     CLOUD_COMPUTING = "Cloud Computing"
     DATABASE = "Database"
     TESTING = "Testing"
     CONTAINERIZATION = "Containerization"
-    API_DEVELOPMENT = "API Development"
-    MOBILE_DEVELOPMENT = "Mobile Development"
+    API_DEVELOPMENT = "API Dev"
+    MOBILE_DEVELOPMENT = "Mobile Dev"
     SECURITY = "Security"
 
 
