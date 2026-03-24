@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/apiClient";
 import TextBlockEditor from "../components/blocks/TextBlockEditor";
 import TextListBlockEditor from "../components/blocks/TextListBlockEditor";
+import ContributionMap from "../components/ContributionMap";
+import SkillTimelineGraph from "../components/SkillTimelineGraph";
 
 // ---- Types ----------------------------------------------------------------
 
@@ -119,6 +121,16 @@ export default function PortfolioEditPage() {
   // Per-block edit state: { ["sectionId::blockTag"]: { draft, saving, error } }
   const [blockEdits, setBlockEdits] = useState<Record<string, BlockEditEntry>>({});
 
+  // Contribution map state
+  const [contributionData, setContributionData] = useState<{
+    personal_timeline: Record<string, number>;
+    total_timeline: Record<string, number>;
+  } | null>(null);
+  const [skillTimelineData, setSkillTimelineData] = useState<
+    Record<string, Record<string, number>>
+  >({});
+  const [contributionLoading, setContributionLoading] = useState(false);
+
   // ---- Load ----------------------------------------------------------------
 
   useEffect(() => {
@@ -138,6 +150,76 @@ export default function PortfolioEditPage() {
       setTitleDraft(data.title);
       initCardEdits(data.project_cards);
       initBlockEdits(data.sections);
+
+      try {
+        setContributionLoading(true);
+        const projectNames = data.project_cards.map((c) => c.project_name);
+        const personal_timeline: Record<string, number> = {};
+        const total_timeline: Record<string, number> = {};
+        const skill_timeline: Record<string, Record<string, number>> = {};
+
+        const projectResults = await Promise.all(
+          projectNames.map((projectName) =>
+            api
+              .getProject(projectName)
+              .then((projectData) => ({ projectName, projectData }))
+              .catch((e: any) => ({ projectName, error: e }))
+          )
+        );
+
+        for (const result of projectResults) {
+          const { projectName } = result as { projectName: string };
+
+          if ("error" in result) {
+            const e = (result as { projectName: string; error: any }).error;
+            console.warn(`Failed to load contribution data for ${projectName}:`, e?.message);
+            continue;
+          }
+
+          const projectData = (result as { projectName: string; projectData: any }).projectData;
+          const statistic = projectData?.statistic || {};
+
+          // Extract contribution timelines from project statistics
+          const personalTimeline = statistic.COMMIT_ACTIVITY_TIMELINE || {};
+          const totalTimeline = statistic.TOTAL_COMMIT_ACTIVITY_TIMELINE || {};
+          const projectSkillActivity = statistic.PROJECT_SKILL_ACTIVITY || {};
+
+          // Merge into aggregate timelines
+          for (const [date, count] of Object.entries(personalTimeline)) {
+            personal_timeline[date] = (personal_timeline[date] || 0) + (count as number);
+          }
+          for (const [date, count] of Object.entries(totalTimeline)) {
+            total_timeline[date] = (total_timeline[date] || 0) + (count as number);
+          }
+
+          // Merge PROJECT_SKILL_ACTIVITY across all projects.
+          // Expected shape: { "Skill": ["YYYY-MM-DD", ...] }
+          for (const [skill, dates] of Object.entries(projectSkillActivity)) {
+            if (!Array.isArray(dates)) continue;
+            if (!skill_timeline[skill]) {
+              skill_timeline[skill] = {};
+            }
+            for (const dateValue of dates) {
+              if (typeof dateValue !== "string") continue;
+              skill_timeline[skill][dateValue] =
+                (skill_timeline[skill][dateValue] || 0) + 1;
+            }
+          }
+        }
+
+        setContributionData({
+          personal_timeline,
+          total_timeline,
+        });
+        setSkillTimelineData(skill_timeline);
+      } catch (e: any) {
+        // Silently fail contribution loading so it doesn't block the page
+        console.warn("Failed to load contribution map:", e?.message);
+        setContributionData(null);
+        setSkillTimelineData({});
+      } finally {
+        setContributionLoading(false);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Failed to load portfolio");
     } finally {
@@ -572,6 +654,30 @@ export default function PortfolioEditPage() {
           {error}
         </div>
       )}
+
+      {contributionLoading && (
+        <div style={{ marginTop: 16, color: "#999", fontSize: 13 }}>
+          Loading activity graphs...
+        </div>
+      )}
+
+      {/* ---- Contribution Map ---- */}
+      {contributionData && (
+        <div style={{ marginTop: 40 }}>
+          <ContributionMap
+            personalTimeline={contributionData.personal_timeline}
+            totalTimeline={contributionData.total_timeline}
+          />
+        </div>
+      )}
+
+      {/* ---- Skill Timeline ---- */}
+      {Object.keys(skillTimelineData).length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <SkillTimelineGraph data={skillTimelineData} />
+        </div>
+      )}
+
 
       {/* ---- Project Cards ---- */}
       <div style={{ marginTop: 40 }}>
