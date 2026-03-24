@@ -120,7 +120,7 @@ export default function ProjectsPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
             gap: 20,
             alignItems: "stretch",
           }}
