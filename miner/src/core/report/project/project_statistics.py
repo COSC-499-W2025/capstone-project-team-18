@@ -359,6 +359,9 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
             group_project_framework_counter
         )
 
+        to_return.append(Statistic(ProjectStatCollection.PROJECT_SKILL_ACTIVITY.value,
+                         self._build_project_skill_activity(report, dirnames)))
+
         return to_return
 
     def _get_nonUser_authors_per_file(self, repo, email) -> dict[str, int]:
@@ -708,7 +711,7 @@ class ProjectActivityTypeContributions(ProjectStatisticCalculation):
         return [Statistic(
             ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines),
             Statistic(
-                ProjectStatCollection.ACTIVITY_TYPE_RATIO.value, average_activity_type_to_lines)]
+                ProjectStatCollection.ACTIVITY_TYPE_RATIO.value, average_activity_type_to_lines),]
 
 
 class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):

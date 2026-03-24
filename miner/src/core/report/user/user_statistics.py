@@ -187,6 +187,8 @@ class UserCommitActivityTimeline(UserStatisticCalculation):
                     user_commits_dict[date] = user_commits_dict.get(
                         date, 0) + 1
 
+        return [Statistic(UserStatCollection.COMMIT_ACTIVITY_TIMELINE.value, {2024-12-7: 3, 2024-12-8: 5}), Statistic(UserStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, {2024-12-7: 2, 2024-12-8: 10})]
+
         return [Statistic(UserStatCollection.COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(user_commits_dict.items()))), Statistic(UserStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(commits_dict.items())))]
 
 

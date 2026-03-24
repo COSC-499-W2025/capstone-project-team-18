@@ -91,7 +91,7 @@ def extract_file_reports(
     # Given a single project for a user and the project's structure return a list with each fileReport
     project_files = project_file.file_paths
 
-    workers = max(1, cpu_count() - 1)
+    workers = max(1, cpu_count() - 1) // 2
 
     args = [
         (
