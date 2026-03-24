@@ -1,6 +1,7 @@
 """
 Generation service for a portfolio.
 """
+import base64
 from typing import Optional
 from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
@@ -87,7 +88,7 @@ def _build_project_cards(
         cards.append(ProjectCard(
             portfolio_id=-1,  # placeholder; assigned after flush in save_portfolio
             project_name=model.project_name,
-            image_data=model.image_data,
+            image_data=base64.b64encode(model.image_data).decode("utf-8") if model.image_data else None,
             summary=summary,
             themes=[str(t) for t in themes],
             tones=tones,
