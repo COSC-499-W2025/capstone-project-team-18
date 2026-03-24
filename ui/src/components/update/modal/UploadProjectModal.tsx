@@ -34,6 +34,7 @@ export default function UploadProjectModal({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [configuredGithub, setConfiguredGithub] = useState<string>("");
+  const [hasConsent, setHasConsent] = useState<boolean | null>(null);
 
   const fileValidationError = useMemo(() => {
     if (!selectedFile) return null;
@@ -57,10 +58,12 @@ export default function UploadProjectModal({
         if (!alive) return;
 
         setConfiguredGithub(res?.github?.trim?.() ?? "");
+        setHasConsent(res?.consent ?? false);
       } catch {
         if (!alive) return;
 
         setConfiguredGithub("");
+        setHasConsent(false);
       } finally {
         if (alive) setIsLoadingConfig(false);
       }
@@ -83,6 +86,7 @@ export default function UploadProjectModal({
     setUploadError(null);
     setUploadSuccess(null);
     setConfiguredGithub("");
+    setHasConsent(null);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -301,6 +305,29 @@ export default function UploadProjectModal({
           </div>
         )}
 
+        {!isLoadingConfig && hasConsent === false && (
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              background: "#1f1410",
+              border: "1px solid #7a3a1a",
+              borderRadius: 12,
+              padding: 14,
+              marginBottom: 16,
+              color: "#ffb07a",
+            }}
+          >
+            <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+            <div style={{ fontSize: 14, lineHeight: 1.5 }}>
+              You must complete your settings before uploading a project. Open{" "}
+              <strong>Settings</strong> (top-right of the app) and save your
+              preferences, including accepting the data consent, then try again.
+            </div>
+          </div>
+        )}
+
         <div
           style={{
             display: "flex",
@@ -408,7 +435,8 @@ export default function UploadProjectModal({
                 !selectedFile ||
                 !!fileValidationError ||
                 isUploading ||
-                isLoadingConfig
+                isLoadingConfig ||
+                hasConsent === false
               }
               style={{
                 padding: "10px 16px",
@@ -418,7 +446,8 @@ export default function UploadProjectModal({
                   !selectedFile ||
                   fileValidationError ||
                   isUploading ||
-                  isLoadingConfig
+                  isLoadingConfig ||
+                  hasConsent === false
                     ? "#202020"
                     : "#2b2b2b",
                 color: "#fff",
@@ -426,19 +455,21 @@ export default function UploadProjectModal({
                   !selectedFile ||
                   fileValidationError ||
                   isUploading ||
-                  isLoadingConfig
+                  isLoadingConfig ||
+                  hasConsent === false
                     ? 0.6
                     : 1,
                 cursor:
                   !selectedFile ||
                   fileValidationError ||
                   isUploading ||
-                  isLoadingConfig
+                  isLoadingConfig ||
+                  hasConsent === false
                     ? "not-allowed"
                     : "pointer",
               }}
             >
-              {isUploading ? "Analzing..." : "Start Mining"}
+              {isUploading ? "Analyzing..." : "Start Mining"}
             </button>
           </div>
         </div>
