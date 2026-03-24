@@ -11,17 +11,18 @@ import UploadProjectModal from "../components/update/modal/UploadProjectModal";
 type PortfolioListItem = {
   id: number;
   title: string;
-  creation_time?: string;
 };
 
 type ListPortfoliosResponse = {
   portfolios: PortfolioListItem[];
 };
 
-function formatDate(value?: string) {
-  if (!value) return "—";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+function getImageSrc(base64: string): string {
+  if (base64.startsWith("/9j/")) return `data:image/jpeg;base64,${base64}`;
+  if (base64.startsWith("iVBOR")) return `data:image/png;base64,${base64}`;
+  if (base64.startsWith("R0lG")) return `data:image/gif;base64,${base64}`;
+  if (base64.startsWith("UklG")) return `data:image/webp;base64,${base64}`;
+  return `data:image/jpeg;base64,${base64}`;
 }
 
 export default function HomePage() {
@@ -35,8 +36,6 @@ export default function HomePage() {
   const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
   const [latestResume, setLatestResume] = useState<ResumeResponse | null>(null);
-  const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
-
   async function loadProjects() {
     try {
       setLoading(true);
@@ -163,41 +162,41 @@ export default function HomePage() {
                 {projects.map((project) => (
                   <Link
                     key={project.project_name}
-                    to={`/projects/${encodeURIComponent(
-                      project.project_name
-                    )}`}
-                    onMouseEnter={() => setHoveredProjectName(project.project_name)}
-                    onMouseLeave={() => setHoveredProjectName(null)}
+                    to={`/projects/${encodeURIComponent(project.project_name)}`}
                     style={{
-                      display: "block",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                       textDecoration: "none",
                       color: "inherit",
                       border: "1px solid #2a2a2a",
                       borderRadius: 12,
                       padding: 14,
-                      background:
-                        hoveredProjectName === project.project_name
-                          ? "#151515"
-                          : "#101010",
-                      transition: "background 0.2s ease, transform 0.2s ease",
-                      transform:
-                        hoveredProjectName === project.project_name
-                          ? "translateY(-1px)"
-                          : "translateY(0)",
+                      background: "#101010",
+                      gap: 12,
+                      transition: "border-color 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "#6f7cff";
+                      (e.currentTarget as HTMLElement).style.background = "#1a1a2e";
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
+                      (e.currentTarget as HTMLElement).style.background = "#101010";
                     }}
                   >
-                    <div style={{ fontWeight: 600, color: "#ddd" }}>
+                    <div style={{ fontWeight: 600, color: "#ddd", flex: 1, wordBreak: "break-word" }}>
                       {project.project_name}
                     </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#999",
-                        marginTop: 6,
-                      }}
-                    >
-                      Created: {formatDate(project.created_at)}
-                    </div>
+                    {project.image_data && (
+                      <div style={{ width: 64, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0d0d0d" }}>
+                        <img
+                          src={getImageSrc(project.image_data)}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        />
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -317,12 +316,19 @@ export default function HomePage() {
                       border: "1px solid #2a2a2a",
                       borderRadius: 12,
                       padding: 14,
+                      background: "#101010",
+                      transition: "border-color 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "#6f7cff";
+                      (e.currentTarget as HTMLElement).style.background = "#1a1a2e";
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
+                      (e.currentTarget as HTMLElement).style.background = "#101010";
                     }}
                   >
                     <div style={{ fontWeight: 600 }}>{p.title}</div>
-                    <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
-                      Created: {formatDate(p.creation_time)}
-                    </div>
                   </Link>
                 ))}
               </div>

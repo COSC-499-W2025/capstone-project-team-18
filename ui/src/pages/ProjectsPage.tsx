@@ -4,9 +4,6 @@ import { api } from "../api/apiClient";
 
 type ProjectListItem = {
   project_name: string;
-  created_at?: string;
-  last_updated?: string;
-  user_config_used?: number | null;
   image_data?: string | null;
 };
 
@@ -22,16 +19,6 @@ type ListProjectsResponse = {
   projects: ProjectListItem[];
 };
 
-function formatDate(value?: string) {
-  if (!value) return "—";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
-}
-
-function formatUserConfigLabel(value?: number | null) {
-  if (value === null || value === undefined) return "No config";
-  return `Config #${value}`;
-}
 
 export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
@@ -139,101 +126,48 @@ export default function ProjectsPage() {
           }}
         >
           {projects.map((p) => (
-            <section
+            <Link
               key={p.project_name}
+              to={`/projects/${encodeURIComponent(p.project_name)}`}
               style={{
                 border: "1px solid #2a2a2a",
                 borderRadius: 16,
                 background: "#161616",
-                minHeight: 220,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
                 overflow: "hidden",
+                padding: 20,
+                textDecoration: "none",
+                color: "inherit",
+                cursor: "pointer",
+                transition: "border-color 0.15s, background 0.15s",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = "#6f7cff";
+                (e.currentTarget as HTMLElement).style.background = "#1a1a2e";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
+                (e.currentTarget as HTMLElement).style.background = "#161616";
               }}
             >
-              {p.image_data && (
-                <div style={{ width: "100%", height: 160, overflow: "hidden", flexShrink: 0, background: "#0d0d0d", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <img
-                    src={getImageSrc(p.image_data)}
-                    alt={`${p.project_name} thumbnail`}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      display: "block",
-                    }}
-                  />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: 20, lineHeight: 1.3, wordBreak: "break-word", flex: 1 }}>
+                  {p.project_name}
                 </div>
-              )}
 
-              <div style={{ padding: 20, flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: 12,
-                      marginBottom: 16,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 20,
-                        lineHeight: 1.3,
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {p.project_name}
-                    </div>
-
-                    {p.user_config_used !== null && p.user_config_used !== undefined && (
-                      <div
-                        style={{
-                          padding: "6px 10px",
-                          borderRadius: 999,
-                          border: "1px solid #2a2a2a",
-                          background: "#101010",
-                          fontSize: 12,
-                          color: "#bbb",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {formatUserConfigLabel(p.user_config_used)}
-                      </div>
-                    )}
+                {p.image_data && (
+                  <div style={{ width: 120, height: 80, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: "#0d0d0d" }}>
+                    <img
+                      src={getImageSrc(p.image_data)}
+                      alt={`${p.project_name} thumbnail`}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
                   </div>
-
-                  <Link
-                    to={`/projects/${encodeURIComponent(p.project_name)}`}
-                    style={{
-                      display: "block",
-                      textDecoration: "none",
-                      color: "inherit",
-                      border: "1px solid #2a2a2a",
-                      borderRadius: 12,
-                      padding: 14,
-                    }}
-                  >
-                    <div style={{ color: "#999", fontSize: 14, lineHeight: 1.7 }}>
-                      <div>Created: {formatDate(p.created_at)}</div>
-                      <div>Updated: {formatDate(p.last_updated)}</div>
-                    </div>
-                  </Link>
-                </div>
-
-                <div style={{ marginTop: 20 }}>
-                  <Link
-                    to={`/projects/${encodeURIComponent(p.project_name)}`}
-                    style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}
-                  >
-                    View →
-                  </Link>
-                </div>
+                )}
               </div>
-            </section>
+            </Link>
           ))}
         </div>
       )}
