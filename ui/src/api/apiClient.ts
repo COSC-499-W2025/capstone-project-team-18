@@ -319,6 +319,9 @@ export const api = {
     );
   },
 
+  deleteProjectImage: (projectName: string) =>
+    deleteJson(`/projects/${encodeURIComponent(projectName)}/image`),
+
   getResume: (resumeId: string | number) =>
     getJson<ResumeResponse>(`/resume/${encodeURIComponent(String(resumeId))}`),
 

@@ -832,6 +832,45 @@ def upload_project_image(
             f"Failed to upload image: {str(e)}") from e
 
 
+@router.delete("/{project_name}/image")
+def delete_project_image(
+    project_name: str,
+    session=Depends(get_session),
+):
+    """
+    Remove the thumbnail image from the specified project.
+
+    Path parameters:
+    - `project_name`: The name of the project to remove the image from.
+
+    Returns:
+    - 200: `{"message": "..."}` on success.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 500 `DATABASE_OPERATION_FAILED`: The image could not be removed; changes were rolled back.
+    """
+    project_model = session.query(ProjectReportModel).filter_by(project_name=project_name).first()
+    if not project_model:
+        raise ProjectNotFoundError(f"No project report named {project_name}")
+
+    try:
+        project_model.image_data = None
+        project_model.last_updated = datetime.now()
+
+        session.add(project_model)
+        session.commit()
+
+        return {"message": f"Image successfully removed from project '{project_name}'."}
+
+    except Exception as e:
+        session.rollback()
+        logger.error("Error removing image for project %s: %s",
+                     project_name, str(e))
+        raise DatabaseOperationError(
+            f"Failed to remove image: {str(e)}") from e
+
+
 @router.put("/representation/reorder")
 def reorder_projects(request: ReorderProjectsRequest, session=Depends(get_session)):
     """

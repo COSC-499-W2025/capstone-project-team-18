@@ -92,6 +92,7 @@ export default function ProjectDetailsPage() {
   const [dismissedInsights, setDismissedInsights] = useState<Record<string, boolean>>({});
   const [usefulInsights, setUsefulInsights] = useState<Record<string, boolean>>({});
   const [imageUploading, setImageUploading] = useState(false);
+  const [imageRemoving, setImageRemoving] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -106,6 +107,20 @@ export default function ProjectDetailsPage() {
       setImageUploadError(e?.message ?? "Failed to upload image");
     } finally {
       setImageUploading(false);
+    }
+  }
+
+  async function handleImageRemove() {
+    setImageRemoving(true);
+    setImageUploadError(null);
+    try {
+      await api.deleteProjectImage(projectName);
+      const refreshed = (await api.getProject(projectName)) as ProjectReport;
+      setProject(refreshed);
+    } catch (e: any) {
+      setImageUploadError(e?.message ?? "Failed to remove image");
+    } finally {
+      setImageRemoving(false);
     }
   }
 
@@ -260,36 +275,59 @@ export default function ProjectDetailsPage() {
                 <div
                   style={{
                     width: 240,
-                    aspectRatio: "1 / 1",
+                    height: 240,
                     overflow: "hidden",
                     borderRadius: 12,
                     border: "1px solid #2a2a2a",
+                    background: "#0d0d0d",
                     flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
                   <img
                     src={getImageSrc(project.image_data)}
                     alt="Project thumbnail"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
                   />
                 </div>
-                <button
-                  type="button"
-                  disabled={imageUploading}
-                  onClick={() => imageInputRef.current?.click()}
-                  style={{
-                    border: "1px solid #2a2a2a",
-                    borderRadius: 8,
-                    background: "transparent",
-                    color: "#6f7cff",
-                    padding: "6px 14px",
-                    cursor: imageUploading ? "not-allowed" : "pointer",
-                    fontSize: 13,
-                    opacity: imageUploading ? 0.6 : 1,
-                  }}
-                >
-                  {imageUploading ? "Uploading…" : "Change Image"}
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    disabled={imageUploading || imageRemoving}
+                    onClick={() => imageInputRef.current?.click()}
+                    style={{
+                      border: "1px solid #2a2a2a",
+                      borderRadius: 8,
+                      background: "transparent",
+                      color: "#6f7cff",
+                      padding: "6px 14px",
+                      cursor: imageUploading || imageRemoving ? "not-allowed" : "pointer",
+                      fontSize: 13,
+                      opacity: imageUploading || imageRemoving ? 0.6 : 1,
+                    }}
+                  >
+                    {imageUploading ? "Uploading…" : "Change Image"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={imageUploading || imageRemoving}
+                    onClick={handleImageRemove}
+                    style={{
+                      border: "1px solid #4a2020",
+                      borderRadius: 8,
+                      background: "transparent",
+                      color: "#ff8a8a",
+                      padding: "6px 14px",
+                      cursor: imageUploading || imageRemoving ? "not-allowed" : "pointer",
+                      fontSize: 13,
+                      opacity: imageUploading || imageRemoving ? 0.6 : 1,
+                    }}
+                  >
+                    {imageRemoving ? "Removing…" : "Remove Thumbnail"}
+                  </button>
+                </div>
                 {imageUploadError && (
                   <div style={{ color: "#ff8a8a", fontSize: 12 }}>
                     {imageUploadError}
@@ -315,6 +353,9 @@ export default function ProjectDetailsPage() {
                 >
                   {imageUploading ? "Uploading…" : "+ Upload Project Thumbnail"}
                 </button>
+                <div style={{ marginTop: 8, color: "#666", fontSize: 12 }}>
+                  Supported formats: PNG, JPEG, WebP, GIF · Recommended size: 512×512px or larger
+                </div>
                 {imageUploadError && (
                   <div style={{ marginTop: 6, color: "#ff8a8a", fontSize: 12 }}>
                     {imageUploadError}

@@ -153,14 +153,14 @@ export default function ProjectsPage() {
               }}
             >
               {p.image_data && (
-                <div style={{ width: "100%", aspectRatio: "1 / 1", overflow: "hidden", flexShrink: 0 }}>
+                <div style={{ width: "100%", height: 160, overflow: "hidden", flexShrink: 0, background: "#0d0d0d", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <img
                     src={getImageSrc(p.image_data)}
                     alt={`${p.project_name} thumbnail`}
                     style={{
                       width: "100%",
                       height: "100%",
-                      objectFit: "cover",
+                      objectFit: "contain",
                       display: "block",
                     }}
                   />
