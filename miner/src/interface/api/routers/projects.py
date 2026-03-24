@@ -1,9 +1,11 @@
+import base64
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import field_serializer
 from sqlmodel import Field, SQLModel
 from src.database.api.CRUD.projects import (get_all_project_report_models,
                                             get_project_report_by_name,
@@ -32,6 +34,12 @@ class ProjectReportResponse(SQLModel):
     created_at: datetime
     statistic: dict
     last_updated: datetime
+
+    @field_serializer("image_data")
+    def encode_image_data(self, value: Optional[bytes]) -> Optional[str]:
+        if value is None:
+            return None
+        return base64.b64encode(value).decode("utf-8")
 
 
 class UploadProjectResponse(SQLModel):
