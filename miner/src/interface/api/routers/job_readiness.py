@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import Session
 
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
 from src.services.job_readiness_service import (
@@ -66,6 +67,11 @@ def analyze_job_readiness(
     - 503 `AI_SERVICE_UNAVAILABLE`: Azure OpenAI is not configured or the deployment
       is unreachable.
     """
+    if not ml_extraction_allowed(session=session):
+        raise AIServiceUnavailableError(
+            "Job readiness analysis is unavailable because machine learning consent has not been granted."
+        )
+
     try:
         user_profile = build_user_profile(
             session=session,

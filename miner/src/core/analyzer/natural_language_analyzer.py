@@ -3,8 +3,7 @@ from pathlib import Path
 
 from src.core.statistic import Statistic, FileStatCollection, FileDomain
 from src.core.analyzer.text_file_analyzer import TextFileAnalyzer
-from src.core.ML.models.readme_analysis.keyphrase_extraction import extract_readme_keyphrases
-from src.core.ML.models.readme_analysis.readme_insights import classify_readme_tone
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -48,24 +47,41 @@ class NaturalLanguageAnalyzer(TextFileAnalyzer):
 
         filename = Path(self.filepath).name.lower()
         if filename.startswith("readme"):
-            keyphrases = extract_readme_keyphrases(self.text_content)
-            if keyphrases is not None:
-                stats.append(
-                    Statistic(FileStatCollection.README_KEYPHRASES.value,
-                              keyphrases)
+            keyphrases = None
+            tone = None
+            local_unsaved_config = (
+                self.user_config is not None
+                and self.user_config.id is None
+                and self.user_config.user_email is None
+                and self.user_config.github is None
+                and (not self.user_config.consent or self.user_config.ml_consent)
+            )
+            if local_unsaved_config or ml_extraction_allowed():
+                from src.core.ML.models.readme_analysis.keyphrase_extraction import (
+                    extract_readme_keyphrases,
+                )
+                from src.core.ML.models.readme_analysis.readme_insights import (
+                    classify_readme_tone,
                 )
 
-            tone = classify_readme_tone(self.text_content)
-            if tone:
-                stats.append(
-                    Statistic(FileStatCollection.README_TONE.value, tone)
-                )
+                keyphrases = extract_readme_keyphrases(self.text_content)
+                if keyphrases is not None:
+                    stats.append(
+                        Statistic(FileStatCollection.README_KEYPHRASES.value,
+                                  keyphrases)
+                    )
+
+                tone = classify_readme_tone(self.text_content)
+                if tone:
+                    stats.append(
+                        Statistic(FileStatCollection.README_TONE.value, tone)
+                    )
 
             if not keyphrases or not tone:
                 logger.info(
                     "README insights for %s: keyphrases=%d tone=%s",
                     self.relative_path,
-                    len(keyphrases),
+                    len(keyphrases or []),
                     tone or "None",
                 )
 

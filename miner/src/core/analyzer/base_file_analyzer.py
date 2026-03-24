@@ -50,6 +50,7 @@ class BaseFileAnalyzer:
 
     def __init__(self, user_config: UserConfig, project_context: ProjectLayout, relative_path: str):
 
+        self.user_config = user_config
         self.path_to_top_level_project = str(project_context.root_path)
         self.relative_path = relative_path
         self.filepath = f"{self.path_to_top_level_project}/{relative_path}"

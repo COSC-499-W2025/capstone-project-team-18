@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import Session
 
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
 from src.services.interview_service import (
@@ -136,6 +137,11 @@ def start_interview(
     - 503 `AI_SERVICE_UNAVAILABLE`: Azure OpenAI is not configured or the deployment
       is unreachable.
     """
+    if not ml_extraction_allowed(session=session):
+        raise AIServiceUnavailableError(
+            "Mock interview generation is unavailable because machine learning consent has not been granted."
+        )
+
     interview_context = _build_context_or_raise(
         session=session,
         job_description=request.job_description,
@@ -189,6 +195,11 @@ def answer_interview_question(
     - 503 `AI_SERVICE_UNAVAILABLE`: Azure OpenAI is not configured or the deployment
       is unreachable.
     """
+    if not ml_extraction_allowed(session=session):
+        raise AIServiceUnavailableError(
+            "Mock interview generation is unavailable because machine learning consent has not been granted."
+        )
+
     interview_context = _build_context_or_raise(
         session=session,
         job_description=request.job_description,
