@@ -38,7 +38,9 @@ def _build_project_cards(
     portfolio_id is set to -1 as a placeholder; it is assigned during save_portfolio
     after the PortfolioModel has been flushed and its PK is known.
     """
-    from src.core.portfolio.builder.concrete_builders import ProjectSummariesSectionBuilder
+    from src.core.portfolio.project_summary import build_project_summary, configure_summary_run
+
+    configure_summary_run(len(project_reports))
 
     # Determine default showcase set: top N by representation_rank
     ranked = sorted(
@@ -51,7 +53,6 @@ def _build_project_cards(
     )
     showcase_names = {pm.project_name for pm, _ in ranked[:top_n_showcase]}
 
-    summary_builder = ProjectSummariesSectionBuilder()
     cards = []
 
     for model, report in zip(project_models, project_reports):
@@ -77,7 +78,7 @@ def _build_project_cards(
             ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value) or {}
         activity = report.get_value(ProjectStatCollection.ACTIVITY_METRICS.value) or {}
 
-        summary = summary_builder._build_project_summary(report) or ""
+        summary = build_project_summary(report) or ""
 
         # Normalise skill/framework objects to plain strings
         skill_names = [getattr(s, "skill_name", str(s)) for s in skills_raw]
