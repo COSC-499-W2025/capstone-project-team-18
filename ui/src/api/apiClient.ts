@@ -513,6 +513,10 @@ export const api = {
       title_override?: string | null;
       summary_override?: string | null;
       tags_override?: string[] | null;
+      skills?: string[];
+      themes?: string[];
+      tones?: string;
+      frameworks?: string[];
     }
   ) =>
     patchJson<any>(

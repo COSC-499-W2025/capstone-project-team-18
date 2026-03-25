@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/apiClient";
 import TextBlockEditor from "../components/blocks/TextBlockEditor";
@@ -39,6 +39,7 @@ type PortfolioCard = {
   skills: string[];
   frameworks: string[];
   is_showcase: boolean;
+  collaboration_role?: string;
   title_override?: string | null;
   summary_override?: string | null;
   tags_override?: string[] | null;
@@ -81,6 +82,110 @@ function pillStyle(color?: string) {
   };
 }
 
+// ---- Shared card field styles ---------------------------------------------
+
+const sectionLabel: React.CSSProperties = {
+  fontSize: 12,
+  color: "#888",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  display: "block",
+  marginBottom: 8,
+};
+
+const fieldInput: React.CSSProperties = {
+  width: "100%",
+  padding: "8px 10px",
+  borderRadius: 8,
+  border: "1px solid #2a2a2a",
+  background: "#111",
+  color: "#fff",
+  fontSize: 13,
+  boxSizing: "border-box",
+  outline: "none",
+};
+
+// ---- PillField sub-component -----------------------------------------------
+
+type PillFieldProps = {
+  label: string;
+  pills: string[];
+  inputValue: string;
+  pillColor: string;
+  borderColor: string;
+  bgColor: string;
+  placeholder: string;
+  onRemove: (value: string) => void;
+  onInputChange: (value: string) => void;
+  onAdd: (value: string) => void;
+};
+
+function PillField({
+  label,
+  pills,
+  inputValue,
+  pillColor,
+  borderColor,
+  bgColor,
+  placeholder,
+  onRemove,
+  onInputChange,
+  onAdd,
+}: PillFieldProps) {
+  return (
+    <div>
+      <div style={sectionLabel}>{label}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+        {pills.map((p) => (
+          <span
+            key={p}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 12,
+              color: pillColor,
+              border: `1px solid ${borderColor}`,
+              borderRadius: 999,
+              padding: "3px 10px",
+              background: bgColor,
+            }}
+          >
+            {p}
+            <button
+              onClick={() => onRemove(p)}
+              style={{ background: "transparent", border: "none", color: pillColor + "99", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input
+          value={inputValue}
+          onChange={(e) => onInputChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onAdd(inputValue.trim());
+            }
+          }}
+          placeholder={placeholder}
+          style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid #2a2a2a", background: "#111", color: "#fff", fontSize: 12, outline: "none" }}
+        />
+        <button
+          onClick={() => onAdd(inputValue.trim())}
+          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #2a2a2a", background: "transparent", color: "#aaa", cursor: "pointer", fontSize: 12 }}
+        >
+          + Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ---- Component ------------------------------------------------------------
 
 export default function PortfolioEditPage() {
@@ -114,16 +219,32 @@ export default function PortfolioEditPage() {
     return () => clearTimeout(timer);
   }, [exportedPagesUrl]);
 
-  // Per-card edit state: { [project_name]: { titleDraft, summaryDraft, tagsDraft, saving, error } }
+
+  // Per-card edit state
   const [cardEdits, setCardEdits] = useState<
     Record<
       string,
       {
+        // User-override fields (preserved on portfolio refresh)
         titleDraft: string;
         summaryDraft: string;
-        tagsDraft: string;
+        tagsDraft: string[];
+        // Directly-updated fields (overwritten on portfolio refresh)
+        skillsDraft: string[];
+        themesDraft: string[];
+        toneDraft: string;
+        frameworksDraft: string[];
+        // Inline add inputs
+        newSkillInput: string;
+        newThemeInput: string;
+        newTagInput: string;
+        newFrameworkInput: string;
+        // UI state
         saving: boolean;
         error: string | null;
+        showEditModal: boolean;
+        showConfirmModal: boolean;
+        showUnsavedWarning: boolean;
       }
     >
   >({});
@@ -245,14 +366,35 @@ export default function PortfolioEditPage() {
     const edits: typeof cardEdits = {};
     for (const c of cards) {
       edits[c.project_name] = {
-        titleDraft: c.title_override ?? "",
-        summaryDraft: c.summary_override ?? "",
-        tagsDraft: (c.tags_override ?? c.tags ?? []).join(", "),
+        titleDraft: c.title_override ?? c.project_name,
+        summaryDraft: c.summary_override ?? c.summary ?? "",
+        tagsDraft: c.tags_override ?? c.tags ?? [],
+        skillsDraft: c.skills ?? [],
+        themesDraft: c.themes ?? [],
+        toneDraft: c.tones ?? "",
+        frameworksDraft: c.frameworks ?? [],
+        newSkillInput: "",
+        newThemeInput: "",
+        newTagInput: "",
+        newFrameworkInput: "",
         saving: false,
         error: null,
+        showEditModal: false,
+        showConfirmModal: false,
+        showUnsavedWarning: false,
       };
     }
     setCardEdits(edits);
+  }
+
+  function updateCard(
+    projectName: string,
+    update: Partial<(typeof cardEdits)[string]>
+  ) {
+    setCardEdits((prev) => ({
+      ...prev,
+      [projectName]: { ...prev[projectName], ...update },
+    }));
   }
 
   function initBlockEdits(sections: PortfolioSection[]) {
@@ -392,36 +534,50 @@ export default function PortfolioEditPage() {
     }
   }
 
+  function isCardDirty(card: PortfolioCard, edit: (typeof cardEdits)[string]): boolean {
+    const arrEq = (a: string[], b: string[]) =>
+      JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+    return (
+      edit.titleDraft !== (card.title_override ?? card.project_name) ||
+      edit.summaryDraft !== (card.summary_override ?? card.summary ?? "") ||
+      !arrEq(edit.tagsDraft, card.tags_override ?? card.tags ?? []) ||
+      !arrEq(edit.skillsDraft, card.skills ?? []) ||
+      !arrEq(edit.themesDraft, card.themes ?? []) ||
+      edit.toneDraft !== (card.tones ?? "") ||
+      !arrEq(edit.frameworksDraft, card.frameworks ?? [])
+    );
+  }
+
+  function handleCloseEditModal(projectName: string) {
+    const edit = cardEdits[projectName];
+    const card = portfolio?.project_cards.find((c) => c.project_name === projectName);
+    if (card && edit && isCardDirty(card, edit)) {
+      updateCard(projectName, { showUnsavedWarning: true });
+      return;
+    }
+    updateCard(projectName, { showEditModal: false });
+  }
+
   async function handleSaveCard(projectName: string) {
     const edits = cardEdits[projectName];
     if (!edits) return;
-    setCardEdits((prev) => ({
-      ...prev,
-      [projectName]: { ...prev[projectName], saving: true, error: null },
-    }));
+    updateCard(projectName, { showConfirmModal: false, saving: true, error: null });
     try {
-      const tagsArr = edits.tagsDraft
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
       await api.patchPortfolioCard(id!, projectName, {
         title_override: edits.titleDraft || null,
         summary_override: edits.summaryDraft || null,
-        tags_override: tagsArr.length > 0 ? tagsArr : null,
+        tags_override: edits.tagsDraft,   // always send array so empty [] clears tags instead of falling back to auto-generated
+        skills: edits.skillsDraft,
+        themes: edits.themesDraft,
+        tones: edits.toneDraft,
+        frameworks: edits.frameworksDraft,
       });
-      setCardEdits((prev) => ({
-        ...prev,
-        [projectName]: { ...prev[projectName], saving: false, error: null },
-      }));
+      updateCard(projectName, { saving: false, error: null });
     } catch (e: any) {
-      setCardEdits((prev) => ({
-        ...prev,
-        [projectName]: {
-          ...prev[projectName],
-          saving: false,
-          error: e?.message ?? "Failed to save card.",
-        },
-      }));
+      updateCard(projectName, {
+        saving: false,
+        error: e?.message ?? "Failed to save card.",
+      });
     }
   }
 
@@ -504,9 +660,7 @@ export default function PortfolioEditPage() {
   const sortedSections = [...portfolio.sections].sort(
     (a, b) => a.order - b.order
   );
-  const sortedCards = [...portfolio.project_cards].sort(
-    (a, b) => (a.is_showcase === b.is_showcase ? 0 : a.is_showcase ? -1 : 1)
-  );
+  const sortedCards = portfolio.project_cards;
 
   // ---- Render: Main -------------------------------------------------------
 
@@ -747,221 +901,332 @@ export default function PortfolioEditPage() {
           </div>
         )}
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            gap: 16,
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(480px, 1fr))", gap: 8, alignItems: "start" }}>
           {sortedCards.map((card) => {
             const edit = cardEdits[card.project_name];
             if (!edit) return null;
+
             return (
               <div
                 key={card.project_name}
                 style={{
-                  border: card.is_showcase
-                    ? "1px solid #b8860b"
-                    : "1px solid #2a2a2a",
-                  borderRadius: 16,
-                  padding: 18,
+                  border: card.is_showcase ? "1px solid #b8860b" : "1px solid #2a2a2a",
+                  borderRadius: 14,
                   background: "#161616",
+                  overflow: "hidden",
                 }}
               >
-                {/* Card header */}
+                {/* ── Card row ── */}
                 <div
+                  onClick={() => updateCard(card.project_name, { showEditModal: true })}
                   style={{
                     display: "flex",
+                    alignItems: "center",
                     justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: 14,
-                    gap: 10,
+                    padding: "14px 18px",
+                    gap: 12,
+                    cursor: "pointer",
                   }}
                 >
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>
-                    {card.project_name}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <span style={{ fontWeight: 600, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {edit.titleDraft || card.project_name}
+                    </span>
                   </div>
-                  <button
-                    onClick={() => handleToggleShowcase(card.project_name)}
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleShowcase(card.project_name);
+                      }}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        border: `1px solid ${card.is_showcase ? "#b8860b" : "#333"}`,
+                        background: "transparent",
+                        color: card.is_showcase ? "#f5c518" : "#777",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {card.is_showcase ? "★ Showcased" : "☆ Showcase"}
+                    </button>
+                    <span style={{ color: "#555", fontSize: 15, userSelect: "none" }}>✎</span>
+                  </div>
+                </div>
+
+                {/* ── Edit Modal ── */}
+                {edit.showEditModal && (
+                  <div
+                    onClick={() => handleCloseEditModal(card.project_name)}
                     style={{
-                      padding: "4px 10px",
-                      borderRadius: 999,
-                      border: `1px solid ${card.is_showcase ? "#b8860b" : "#2a2a2a"}`,
-                      background: "transparent",
-                      color: card.is_showcase ? "#f5c518" : "#999",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      whiteSpace: "nowrap",
+                      position: "fixed",
+                      inset: 0,
+                      background: "rgba(0,0,0,0.72)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 1100,
+                      padding: 24,
                     }}
                   >
-                    {card.is_showcase ? "★ Showcase" : "☆ Showcase"}
-                  </button>
-                </div>
-
-                {/* Read-only metadata pills */}
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 6,
-                    marginBottom: 14,
-                  }}
-                >
-                  {card.themes?.map((t) => (
-                    <span key={t} style={pillStyle("#6f7cff")}>
-                      {t}
-                    </span>
-                  ))}
-                  {card.tones && (
-                    <span style={pillStyle("#8ad6a2")}>{card.tones}</span>
-                  )}
-                  {card.skills?.slice(0, 4).map((s) => (
-                    <span key={s} style={pillStyle()}>
-                      {s}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Editable fields */}
-                <div style={{ display: "grid", gap: 10 }}>
-                  <div>
-                    <label
-                      style={{
-                        fontSize: 12,
-                        color: "#aaa",
-                        display: "block",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Title Override
-                    </label>
-                    <input
-                      value={edit.titleDraft}
-                      onChange={(e) =>
-                        setCardEdits((prev) => ({
-                          ...prev,
-                          [card.project_name]: {
-                            ...prev[card.project_name],
-                            titleDraft: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder="Leave blank to use project name"
+                    <div
+                      onClick={(e) => e.stopPropagation()}
                       style={{
                         width: "100%",
-                        padding: "8px 10px",
-                        borderRadius: 8,
+                        maxWidth: "min(720px, 95vw)",
+                        maxHeight: "90vh",
+                        background: "#1b1b1b",
                         border: "1px solid #2a2a2a",
-                        background: "#111",
-                        color: "#fff",
-                        fontSize: 13,
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      style={{
-                        fontSize: 12,
-                        color: "#aaa",
-                        display: "block",
-                        marginBottom: 4,
+                        borderRadius: 16,
+                        boxShadow: "0 24px 64px rgba(0,0,0,0.55)",
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
                       }}
                     >
-                      Summary Override
-                    </label>
-                    <textarea
-                      value={edit.summaryDraft}
-                      onChange={(e) =>
-                        setCardEdits((prev) => ({
-                          ...prev,
-                          [card.project_name]: {
-                            ...prev[card.project_name],
-                            summaryDraft: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder="Leave blank to use generated summary"
-                      rows={3}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: "1px solid #2a2a2a",
-                        background: "#111",
-                        color: "#fff",
-                        fontSize: 13,
-                        resize: "vertical",
-                        boxSizing: "border-box",
-                        fontFamily: "inherit",
-                      }}
-                    />
-                  </div>
+                      {/* Modal header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #222", flexShrink: 0 }}>
+                        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
+                          {edit.titleDraft || card.project_name}
+                        </h2>
+                        <button
+                          onClick={() => handleCloseEditModal(card.project_name)}
+                          style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "2px 6px", borderRadius: 6 }}
+                        >
+                          ✕
+                        </button>
+                      </div>
 
-                  <div>
-                    <label
-                      style={{
-                        fontSize: 12,
-                        color: "#aaa",
-                        display: "block",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Tags Override (comma-separated)
-                    </label>
-                    <input
-                      value={edit.tagsDraft}
-                      onChange={(e) =>
-                        setCardEdits((prev) => ({
-                          ...prev,
-                          [card.project_name]: {
-                            ...prev[card.project_name],
-                            tagsDraft: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder="e.g. python, api, machine-learning"
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: "1px solid #2a2a2a",
-                        background: "#111",
-                        color: "#fff",
-                        fontSize: 13,
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
-                </div>
+                      {/* Modal scrollable body */}
+                      <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: 20 }}>
+                        {/* Title */}
+                        <div>
+                          <label style={sectionLabel}>Title</label>
+                          <input
+                            value={edit.titleDraft}
+                            onChange={(e) => updateCard(card.project_name, { titleDraft: e.target.value })}
+                            style={fieldInput}
+                          />
+                        </div>
 
-                {edit.error && (
-                  <div
-                    style={{ color: "#ff8a8a", fontSize: 12, marginTop: 8 }}
-                  >
-                    {edit.error}
+                        {/* Summary */}
+                        <div>
+                          <label style={sectionLabel}>Summary</label>
+                          <textarea
+                            value={edit.summaryDraft}
+                            onChange={(e) => updateCard(card.project_name, { summaryDraft: e.target.value })}
+                            rows={4}
+                            style={{ ...fieldInput, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" } as React.CSSProperties}
+                          />
+                        </div>
+
+                        {/* Skills */}
+                        <PillField
+                          label="Skills"
+                          pills={edit.skillsDraft}
+                          inputValue={edit.newSkillInput}
+                          pillColor="#ddd"
+                          borderColor="#2a2a2a"
+                          bgColor="transparent"
+                          onRemove={(s) => updateCard(card.project_name, { skillsDraft: edit.skillsDraft.filter((x) => x !== s) })}
+                          onInputChange={(v) => updateCard(card.project_name, { newSkillInput: v })}
+                          onAdd={(v) => {
+                            if (v && !edit.skillsDraft.includes(v))
+                              updateCard(card.project_name, { skillsDraft: [...edit.skillsDraft, v], newSkillInput: "" });
+                            else
+                              updateCard(card.project_name, { newSkillInput: "" });
+                          }}
+                          placeholder="Add a skill…"
+                        />
+
+                        {/* Frameworks */}
+                        <PillField
+                          label="Frameworks"
+                          pills={edit.frameworksDraft}
+                          inputValue={edit.newFrameworkInput}
+                          pillColor="#e08060"
+                          borderColor="#e0806044"
+                          bgColor="#e0806011"
+                          onRemove={(f) => updateCard(card.project_name, { frameworksDraft: edit.frameworksDraft.filter((x) => x !== f) })}
+                          onInputChange={(v) => updateCard(card.project_name, { newFrameworkInput: v })}
+                          onAdd={(v) => {
+                            if (v && !edit.frameworksDraft.includes(v))
+                              updateCard(card.project_name, { frameworksDraft: [...edit.frameworksDraft, v], newFrameworkInput: "" });
+                            else
+                              updateCard(card.project_name, { newFrameworkInput: "" });
+                          }}
+                          placeholder="Add a framework…"
+                        />
+
+                        <div style={{ borderTop: "1px solid #222" }} />
+
+                        {/* Tone */}
+                        <div>
+                          <label style={sectionLabel}>Tone</label>
+                          <input
+                            value={edit.toneDraft}
+                            onChange={(e) => updateCard(card.project_name, { toneDraft: e.target.value })}
+                            placeholder="e.g. professional, casual, technical"
+                            style={fieldInput}
+                          />
+                        </div>
+
+                        {/* Themes */}
+                        <PillField
+                          label="Themes"
+                          pills={edit.themesDraft}
+                          inputValue={edit.newThemeInput}
+                          pillColor="#6f7cff"
+                          borderColor="#6f7cff44"
+                          bgColor="#6f7cff11"
+                          onRemove={(t) => updateCard(card.project_name, { themesDraft: edit.themesDraft.filter((x) => x !== t) })}
+                          onInputChange={(v) => updateCard(card.project_name, { newThemeInput: v })}
+                          onAdd={(v) => {
+                            if (v && !edit.themesDraft.includes(v))
+                              updateCard(card.project_name, { themesDraft: [...edit.themesDraft, v], newThemeInput: "" });
+                            else
+                              updateCard(card.project_name, { newThemeInput: "" });
+                          }}
+                          placeholder="Add a theme…"
+                        />
+
+                        {/* Tags */}
+                        <PillField
+                          label="Tags"
+                          pills={edit.tagsDraft}
+                          inputValue={edit.newTagInput}
+                          pillColor="#8ad6a2"
+                          borderColor="#8ad6a244"
+                          bgColor="#8ad6a211"
+                          onRemove={(t) => updateCard(card.project_name, { tagsDraft: edit.tagsDraft.filter((x) => x !== t) })}
+                          onInputChange={(v) => updateCard(card.project_name, { newTagInput: v })}
+                          onAdd={(v) => {
+                            if (v && !edit.tagsDraft.includes(v))
+                              updateCard(card.project_name, { tagsDraft: [...edit.tagsDraft, v], newTagInput: "" });
+                            else
+                              updateCard(card.project_name, { newTagInput: "" });
+                          }}
+                          placeholder="Add a tag…"
+                        />
+
+                        {edit.error && (
+                          <div style={{ color: "#ff8a8a", fontSize: 13, padding: "8px 12px", background: "#3a1111", borderRadius: 8 }}>
+                            {edit.error}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Modal footer */}
+                      <div style={{ padding: "16px 24px", borderTop: "1px solid #222", flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
+                        <button
+                          onClick={() => updateCard(card.project_name, { showConfirmModal: true })}
+                          disabled={edit.saving}
+                          style={{
+                            padding: "10px 20px",
+                            borderRadius: 10,
+                            border: "none",
+                            background: edit.saving ? "#1a2a1a" : "#1c3a1c",
+                            color: edit.saving ? "#666" : "#8aff8a",
+                            cursor: edit.saving ? "not-allowed" : "pointer",
+                            fontSize: 14,
+                            fontWeight: 600,
+                            opacity: edit.saving ? 0.6 : 1,
+                          }}
+                        >
+                          {edit.saving ? "Saving…" : "Submit Changes"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                <button
-                  onClick={() => handleSaveCard(card.project_name)}
-                  disabled={edit.saving}
-                  style={{
-                    marginTop: 12,
-                    padding: "8px 14px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: edit.saving ? "#202020" : "#2b2b2b",
-                    color: "#fff",
-                    cursor: edit.saving ? "not-allowed" : "pointer",
-                    opacity: edit.saving ? 0.6 : 1,
-                    fontSize: 13,
-                  }}
-                >
-                  {edit.saving ? "Saving..." : "Save Card"}
-                </button>
+                {/* ── Unsaved Changes Warning Modal ── */}
+                {edit.showUnsavedWarning && (
+                  <div
+                    onClick={() => updateCard(card.project_name, { showUnsavedWarning: false })}
+                    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1300, padding: 24 }}
+                  >
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ width: "100%", maxWidth: 420, background: "#1b1b1b", border: "1px solid #2a2a2a", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.45)" }}
+                    >
+                      <h2 style={{ marginTop: 0, fontSize: 18 }}>Unsaved Changes</h2>
+                      <p style={{ color: "#ccc", lineHeight: 1.6, fontSize: 14 }}>
+                        You have unsaved changes to{" "}
+                        <strong>"{edit.titleDraft || card.project_name}"</strong>.
+                        If you close now, your edits will be lost.
+                      </p>
+                      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+                        <button
+                          onClick={() => updateCard(card.project_name, { showUnsavedWarning: false })}
+                          style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "transparent", color: "#ddd", cursor: "pointer", fontSize: 13 }}
+                        >
+                          Keep Editing
+                        </button>
+                        <button
+                          onClick={() => updateCard(card.project_name, { showUnsavedWarning: false, showEditModal: false })}
+                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#3a1111", color: "#ff8a8a", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                        >
+                          Discard Changes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Confirm Save Modal ── */}
+                {edit.showConfirmModal && (
+                  <div
+                    onClick={() => updateCard(card.project_name, { showConfirmModal: false })}
+                    style={{
+                      position: "fixed",
+                      inset: 0,
+                      background: "rgba(0,0,0,0.72)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 1200,
+                      padding: 24,
+                    }}
+                  >
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        width: "100%",
+                        maxWidth: 420,
+                        background: "#1b1b1b",
+                        border: "1px solid #2a2a2a",
+                        borderRadius: 16,
+                        padding: 24,
+                        boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+                      }}
+                    >
+                      <h2 style={{ marginTop: 0, fontSize: 18 }}>Save Changes?</h2>
+                      <p style={{ color: "#ccc", lineHeight: 1.6, fontSize: 14 }}>
+                        You are about to save your edits to{" "}
+                        <strong>"{edit.titleDraft || card.project_name}"</strong>.
+                        These changes are permanent and will replace the current card content.
+                      </p>
+                      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+                        <button
+                          onClick={() => updateCard(card.project_name, { showConfirmModal: false })}
+                          style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "transparent", color: "#ddd", cursor: "pointer", fontSize: 13 }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleSaveCard(card.project_name)}
+                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#1c3a1c", color: "#8aff8a", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
