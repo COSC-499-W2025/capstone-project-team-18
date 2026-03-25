@@ -103,16 +103,6 @@ class UserReport(BaseReport):
         """
         from src.core.portfolio.builder.concrete_builders import (
             UserSummarySectionBuilder,
-            UserSkillsSectionBuilder,
-            UserCodingLanguageRatioSectionBuilder,
-            UserGenericStatisticsSectionBuilder,
-            ChronologicalProjectsSectionBuilder,
-            ProjectSummariesSectionBuilder,
-            ProjectTagsSectionBuilder,
-            ProjectThemesSectionBuilder,
-            ProjectTonesSectionBuilder,
-            ProjectActivityMetricsSectionBuilder,
-            ProjectCommitFocusSectionBuilder,
         )
 
         builder = PortfolioBuilder()
@@ -124,21 +114,6 @@ class UserReport(BaseReport):
         else:
             # Case we want to include every section
             builder.register_section_builder(UserSummarySectionBuilder())
-            builder.register_section_builder(UserSkillsSectionBuilder())
-            builder.register_section_builder(
-                UserCodingLanguageRatioSectionBuilder())
-            builder.register_section_builder(
-                UserGenericStatisticsSectionBuilder())
-            builder.register_section_builder(
-                ChronologicalProjectsSectionBuilder())
-            builder.register_section_builder(ProjectSummariesSectionBuilder())
-            builder.register_section_builder(ProjectTagsSectionBuilder())
-            builder.register_section_builder(ProjectThemesSectionBuilder())
-            builder.register_section_builder(ProjectTonesSectionBuilder())
-            builder.register_section_builder(
-                ProjectActivityMetricsSectionBuilder())
-            builder.register_section_builder(
-                ProjectCommitFocusSectionBuilder())
 
         return builder.build(self)
 
