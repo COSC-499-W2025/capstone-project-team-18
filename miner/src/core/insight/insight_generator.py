@@ -35,6 +35,18 @@ class InsightCalculator(ABC):
             "Subclasses must implement the calculate method.")
 
 
+def _join_terms(items: list[str], limit: int = 3) -> str:
+    cleaned = [str(item).strip() for item in items if str(item).strip()]
+    top = cleaned[:limit]
+    if not top:
+        return ""
+    if len(top) == 1:
+        return top[0]
+    if len(top) == 2:
+        return f"{top[0]} and {top[1]}"
+    return f"{top[0]}, {top[1]}, and {top[2]}"
+
+
 class ActivityInsightCalculator(InsightCalculator):
     """Highlights file domains where the user made notable contributions."""
 
@@ -184,6 +196,14 @@ class CollaborationInsightCalculator(InsightCalculator):
                         "Can you give a concrete example of something you delivered in that capacity?"
                     ),
                 ))
+        else:
+            if role_desc:
+                insights.append(ProjectInsight(
+                    message=(
+                        f"Your contribution pattern suggests this role: \"{role_desc}\" "
+                        "What concrete outcome or deliverable best demonstrates that impact on your resume?"
+                    ),
+                ))
 
         return insights
 
@@ -222,12 +242,7 @@ class SkillsInsightCalculator(InsightCalculator):
         if not top:
             return []
 
-        if len(top) == 1:
-            skills_str = top[0]
-        elif len(top) == 2:
-            skills_str = f"{top[0]} and {top[1]}"
-        else:
-            skills_str = f"{top[0]}, {top[1]}, and {top[2]}"
+        skills_str = _join_terms(top)
 
         return [ProjectInsight(
             message=(
@@ -236,6 +251,106 @@ class SkillsInsightCalculator(InsightCalculator):
                 "Concrete examples make resume bullet points much stronger."
             ),
         )]
+
+
+class ReadmeNarrativeInsightCalculator(InsightCalculator):
+    """Prompts the user to translate README-level ML signals into resume language."""
+
+    def calculate(self, report: "ProjectReport") -> list[ProjectInsight]:
+        themes = report.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
+        tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+        tone = report.get_value(ProjectStatCollection.PROJECT_TONE.value)
+
+        candidates: list[tuple[int, ProjectInsight]] = []
+
+        if themes:
+            theme_text = _join_terms(themes, limit=2)
+            candidates.append((3, ProjectInsight(
+                message=(
+                    f"Your project narrative centers on {theme_text}. "
+                    "How would you describe the problem space, the users served, and the outcome you delivered?"
+                ),
+            )))
+
+        if tags:
+            tag_text = _join_terms(tags, limit=3)
+            candidates.append((2, ProjectInsight(
+                message=(
+                    f"Key project ideas inferred from the README include {tag_text}. "
+                    "Which of those best reflects the project impact you want to emphasize on your resume?"
+                ),
+            )))
+
+        if tone:
+            candidates.append((1, ProjectInsight(
+                message=(
+                    f"The README presents this work with a {tone.lower()} tone. "
+                    "What evidence from the codebase or deliverables supports telling that story in a resume bullet?"
+                ),
+            )))
+
+        ranked_insights = sorted(
+            candidates,
+            key=lambda candidate: candidate[0],
+            reverse=True,
+        )
+        return [insight for _, insight in ranked_insights[:2]]
+
+
+class CommitFocusInsightCalculator(InsightCalculator):
+    """Prompts based on the dominant ML-inferred commit focus for the project."""
+
+    def calculate(self, report: "ProjectReport") -> list[ProjectInsight]:
+        distribution = report.get_value(
+            ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value
+        )
+        if not distribution:
+            return []
+
+        ranked = sorted(
+            ((str(label).strip().lower(), float(weight)) for label, weight in distribution.items()),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+        if not ranked:
+            return []
+
+        top_label, top_weight = ranked[0]
+        if not top_label or top_weight <= 0:
+            return []
+
+        if top_label in {"feature", "features"}:
+            message = (
+                f"About {round(top_weight)}% of your commits were feature-focused. "
+                "Which end-user capability or product improvement best captures that delivery work on your resume?"
+            )
+        elif top_label in {"fix", "bugfix", "bug", "bugs"}:
+            message = (
+                f"A large share of your commits ({round(top_weight)}%) were focused on fixes. "
+                "What reliability, stability, or production issue did you resolve that is worth highlighting?"
+            )
+        elif top_label in {"refactor", "cleanup", "maintenance"}:
+            message = (
+                f"Roughly {round(top_weight)}% of your commits were refactoring-oriented. "
+                "What did you improve in the system design, maintainability, or code quality that would strengthen a resume bullet?"
+            )
+        elif top_label in {"docs", "documentation"}:
+            message = (
+                f"Documentation-related commits made up about {round(top_weight)}% of your work. "
+                "What important documentation, onboarding material, or technical communication did you own?"
+            )
+        elif top_label in {"test", "tests", "testing", "qa"}:
+            message = (
+                f"Testing-focused work accounted for about {round(top_weight)}% of your commits. "
+                "What test coverage or quality improvements did you deliver that are worth calling out?"
+            )
+        else:
+            message = (
+                f"Your dominant commit focus was '{top_label}' at about {round(top_weight)}% of commits. "
+                "What concrete accomplishment best represents that pattern of work on your resume?"
+            )
+
+        return [ProjectInsight(message=message)]
 
 
 class WorkPatternInsightCalculator(InsightCalculator):
@@ -286,7 +401,9 @@ class InsightGenerator:
         OwnershipInsightCalculator,
         CollaborationInsightCalculator,
         SkillsInsightCalculator,
-        WorkPatternInsightCalculator
+        ReadmeNarrativeInsightCalculator,
+        CommitFocusInsightCalculator,
+        WorkPatternInsightCalculator,
     ]
 
     @classmethod

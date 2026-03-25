@@ -40,11 +40,11 @@ class UserStatCollection(Enum):
     COMMIT_ACTIVITY_TIMELINE = StatisticTemplate(
         name="COMMIT_ACTIVITY_TIMELINE",
         description="Commit counts per day, keyed by ISO date string",
-        expected_type=dict  # {"2024-03-01": 3, "2024-03-02": 1, ...}
+        expected_type=dict[str, int]  # {"2024-03-01": 3, "2024-03-02": 1, ...}
     )
 
     TOTAL_COMMIT_ACTIVITY_TIMELINE = StatisticTemplate(
         name="TOTAL_COMMIT_ACTIVITY_TIMELINE",
         description="total commit counts per day in a group project, keyed by ISO date string",
-        expected_type=dict  # {"2024-03-01": 3, "2024-03-02": 1, ...}
+        expected_type=dict[str, int]  # {"2024-03-01": 3, "2024-03-02": 1, ...}
     )
