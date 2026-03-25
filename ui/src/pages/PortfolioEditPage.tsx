@@ -859,33 +859,153 @@ export default function PortfolioEditPage() {
         </div>
       )}
 
-      {contributionLoading && (
-        <div style={{ marginTop: 16, color: "#999", fontSize: 13 }}>
-          Loading activity graphs...
-        </div>
-      )}
-
-      {/* ---- Contribution Map ---- */}
-      {contributionData && (
+      {/* ---- Narrative Sections ---- */}
+      {sortedSections.length > 0 && (
         <div style={{ marginTop: 40 }}>
-          <ContributionMap
-            personalTimeline={contributionData.personal_timeline}
-            totalTimeline={contributionData.total_timeline}
-          />
+          <h2 style={{ marginBottom: 16 }}>Narrative Sections</h2>
+
+          <div style={{ display: "grid", gap: 24 }}>
+            {sortedSections.map((section) => (
+              <div
+                key={section.id}
+                style={{
+                  border: "1px solid #2a2a2a",
+                  borderRadius: 16,
+                  padding: 20,
+                  background: "#161616",
+                }}
+              >
+                <h3 style={{ marginTop: 0, marginBottom: 16 }}>
+                  {section.title}
+                </h3>
+
+                <div style={{ display: "grid", gap: 16 }}>
+                  {section.block_order.map((blockTag) => {
+                    const block = section.blocks_by_tag[blockTag];
+                    if (!block) return null;
+                    const key = `${section.id}::${blockTag}`;
+                    const edit = blockEdits[key];
+                    if (!edit) return null;
+                    const contentType =
+                      block.content_type ??
+                      block.current_content?.content_type ??
+                      "";
+                    const isText = contentType === "Text";
+                    const isTextList = contentType === "TextList";
+
+                    return (
+                      <div key={blockTag}>
+                        {block.metadata?.in_conflict && (
+                          <div
+                            style={{
+                              color: "#ff8a8a",
+                              fontSize: 12,
+                              marginBottom: 10,
+                              padding: "6px 10px",
+                              background: "#3a1111",
+                              borderRadius: 8,
+                            }}
+                          >
+                            Conflict detected — system has new content
+                          </div>
+                        )}
+
+                        {isText && (
+                          <TextBlockEditor
+                            draft={edit.draft as string}
+                            saving={edit.saving}
+                            error={edit.error}
+                            onChange={(value) =>
+                              setBlockEdits((prev) => ({
+                                ...prev,
+                                [key]: { ...prev[key], draft: value },
+                              }))
+                            }
+                            onSave={() =>
+                              handleSaveBlock(section.id, blockTag, block.content_type)
+                            }
+                          />
+                        )}
+
+                        {isTextList && (
+                          <TextListBlockEditor
+                            draft={edit.draft as string[]}
+                            saving={edit.saving}
+                            error={edit.error}
+                            onChange={(items) =>
+                              setBlockEdits((prev) => ({
+                                ...prev,
+                                [key]: { ...prev[key], draft: items },
+                              }))
+                            }
+                            onSave={() =>
+                              handleSaveBlock(section.id, blockTag, block.content_type)
+                            }
+                          />
+                        )}
+
+                        {!isText && !isTextList && (
+                          <pre
+                            style={{
+                              margin: 0,
+                              padding: "8px 10px",
+                              borderRadius: 8,
+                              border: "1px solid #2a2a2a",
+                              background: "#0d0d0d",
+                              color: "#999",
+                              fontSize: 12,
+                              overflowX: "auto",
+                              fontFamily: "monospace",
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {typeof edit.draft === "string"
+                              ? edit.draft || "(empty)"
+                              : JSON.stringify(edit.draft)}
+                          </pre>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* ---- Skill Timeline ---- */}
-      {Object.keys(skillTimelineData).length > 0 && (
-        <div style={{ marginTop: 24 }}>
-          <SkillTimelineGraph data={skillTimelineData} />
+      {/* ---- Figures ---- */}
+      {(contributionLoading || contributionData || Object.keys(skillTimelineData).length > 0) && (
+        <div style={{ marginTop: 40 }}>
+          <h2 style={{ marginBottom: 16 }}>Figures</h2>
+
+          {contributionLoading && (
+            <div style={{ color: "#999", fontSize: 13 }}>
+              Loading activity graphs...
+            </div>
+          )}
+
+          {contributionData && (
+            <div style={{ marginTop: 16 }}>
+              <ContributionMap
+                personalTimeline={contributionData.personal_timeline}
+                totalTimeline={contributionData.total_timeline}
+              />
+            </div>
+          )}
+
+          {Object.keys(skillTimelineData).length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <SkillTimelineGraph data={skillTimelineData} />
+            </div>
+          )}
         </div>
       )}
 
 
       {/* ---- Project Cards ---- */}
-      <div style={{ marginTop: 40 }}>
-        <h2 style={{ marginBottom: 16 }}>Project Cards</h2>
+      <div style={{ marginTop: 40, paddingBottom: 80 }}>
+        <h2 style={{ marginBottom: 16 }}>Projects</h2>
 
         {sortedCards.length === 0 && (
           <div
@@ -953,7 +1073,10 @@ export default function PortfolioEditPage() {
                     >
                       {card.is_showcase ? "★ Showcased" : "☆ Showcase"}
                     </button>
-                    <span style={{ color: "#555", fontSize: 15, userSelect: "none" }}>✎</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
                   </div>
                 </div>
 
@@ -1232,161 +1355,6 @@ export default function PortfolioEditPage() {
           })}
         </div>
       </div>
-
-      {/* ---- Narrative Sections ---- */}
-      {sortedSections.length > 0 && (
-        <div style={{ marginTop: 40 }}>
-          <h2 style={{ marginBottom: 16 }}>Narrative Sections</h2>
-
-          <div style={{ display: "grid", gap: 24 }}>
-            {sortedSections.map((section) => (
-              <div
-                key={section.id}
-                style={{
-                  border: "1px solid #2a2a2a",
-                  borderRadius: 16,
-                  padding: 20,
-                  background: "#161616",
-                }}
-              >
-                <h3 style={{ marginTop: 0, marginBottom: 16 }}>
-                  {section.title}
-                </h3>
-
-                <div style={{ display: "grid", gap: 16 }}>
-                  {section.block_order.map((blockTag) => {
-                    const block = section.blocks_by_tag[blockTag];
-                    if (!block) return null;
-                    const key = `${section.id}::${blockTag}`;
-                    const edit = blockEdits[key];
-                    if (!edit) return null;
-                    const contentType =
-                      block.content_type ??
-                      block.current_content?.content_type ??
-                      "";
-                    const isText = contentType === "Text";
-                    const isTextList = contentType === "TextList";
-
-                    return (
-                      <div
-                        key={blockTag}
-                        style={{
-                          border: block.metadata?.in_conflict
-                            ? "1px solid #ff8a8a"
-                            : "1px solid #2a2a2a",
-                          borderRadius: 12,
-                          padding: 14,
-                          background: "#111",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: 10,
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: 12,
-                              color: "#999",
-                              fontFamily: "monospace",
-                            }}
-                          >
-                            {blockTag}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color: "#666",
-                              border: "1px solid #2a2a2a",
-                              borderRadius: 999,
-                              padding: "2px 8px",
-                            }}
-                          >
-                            {block.content_type}
-                          </span>
-                        </div>
-
-                        {block.metadata?.in_conflict && (
-                          <div
-                            style={{
-                              color: "#ff8a8a",
-                              fontSize: 12,
-                              marginBottom: 10,
-                              padding: "6px 10px",
-                              background: "#3a1111",
-                              borderRadius: 8,
-                            }}
-                          >
-                            Conflict detected — system has new content
-                          </div>
-                        )}
-
-                        {isText && (
-                          <TextBlockEditor
-                            draft={edit.draft as string}
-                            saving={edit.saving}
-                            error={edit.error}
-                            onChange={(value) =>
-                              setBlockEdits((prev) => ({
-                                ...prev,
-                                [key]: { ...prev[key], draft: value },
-                              }))
-                            }
-                            onSave={() =>
-                              handleSaveBlock(section.id, blockTag, block.content_type)
-                            }
-                          />
-                        )}
-
-                        {isTextList && (
-                          <TextListBlockEditor
-                            draft={edit.draft as string[]}
-                            saving={edit.saving}
-                            error={edit.error}
-                            onChange={(items) =>
-                              setBlockEdits((prev) => ({
-                                ...prev,
-                                [key]: { ...prev[key], draft: items },
-                              }))
-                            }
-                            onSave={() =>
-                              handleSaveBlock(section.id, blockTag, block.content_type)
-                            }
-                          />
-                        )}
-
-                        {!isText && !isTextList && (
-                          <pre
-                            style={{
-                              margin: 0,
-                              padding: "8px 10px",
-                              borderRadius: 8,
-                              border: "1px solid #2a2a2a",
-                              background: "#0d0d0d",
-                              color: "#999",
-                              fontSize: 12,
-                              overflowX: "auto",
-                              fontFamily: "monospace",
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {typeof edit.draft === "string"
-                              ? edit.draft || "(empty)"
-                              : JSON.stringify(edit.draft)}
-                          </pre>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ---- Deploy Confirmation Modal ---- */}
       {showDeployConfirm && (
