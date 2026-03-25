@@ -203,20 +203,16 @@ export default function ResumePage() {
 
       {!loading && resume && (
         <>
-          <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ marginBottom: 20 }}>
   <Link
     to="/resumes"
     style={{
-      display: "inline-block",
-      padding: "10px 14px",
-      borderRadius: 10,
-      border: "1px solid #2a2a2a",
-      background: "#1a1a1a",
-      color: "#ddd",
+      color: "#6f7cff",
       textDecoration: "none",
+      fontSize: 14,
     }}
   >
-    Back to Resumes
+    ← Back to Resumes
   </Link>
 </div>
 

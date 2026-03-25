@@ -256,80 +256,79 @@ async function handleCreateResume() {
           }}
         >
           {/* Resumes */}
-<section
-  style={{
-    border: "1px solid #2a2a2a",
-    borderRadius: 16,
-    padding: 20,
-    background: "#161616",
-    minHeight: 220,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-  }}
->
-  <div>
-    <h2 style={{ marginTop: 0 }}>Resumes</h2>
-    <div style={{ color: "#999", lineHeight: 1.6, marginBottom: 16 }}>
-      Create and manage different resume versions for different project
-      selections and use cases.
-    </div>
-
-    {resumesLoading && <div>Loading resumes…</div>}
-
-    {!resumesLoading && resumesError && (
-      <div style={{ color: "#ff8a8a", fontSize: 14 }}>
-        Failed to load resumes.
-      </div>
-    )}
-
-    {!resumesLoading && !resumesError && resumes.length === 0 && (
-      <div style={{ color: "#999" }}>No resumes yet.</div>
-    )}
-
-    {!resumesLoading && !resumesError && resumes.length > 0 && (
-      <div style={{ display: "grid", gap: 12 }}>
-        {resumes.slice(0, 3).map((resume) => (
-          <Link
-            key={resume.id}
-            to={`/resume/${resume.id}`}
-            style={{
-              display: "block",
-              textDecoration: "none",
-              color: "inherit",
-              border: "1px solid #2a2a2a",
-              borderRadius: 12,
-              padding: 14,
-              background: "#101010",
+          <section
+          style={{
+            border: "1px solid #2a2a2a",
+            borderRadius: 16,
+            padding: 20,
+            background: "#161616",
+            minHeight: 220,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
             }}
-          >
-            <div style={{ fontWeight: 600 }}>
-              Resume #{resume.id}
-            </div>
-            <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
-              Items: {resume.item_count}
-            </div>
-            <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
-              Updated: {formatDate(resume.last_updated ?? undefined)}
-            </div>
-          </Link>
-        ))}
-      </div>
-    )}
-  </div>
-
-  <div
-    style={{
-      marginTop: 20,
-      display: "flex",
-      gap: 12,
-      flexWrap: "wrap",
-    }}
-  >
-    <Link to="/resumes" style={{ color: "#6f7cff" }}>
-      View all
-    </Link>
-  </div>
+            >
+              <div>
+                <h2 style={{ marginTop: 0 }}>Resumes</h2>
+                <div style={{ color: "#999", lineHeight: 1.6, marginBottom: 16 }}>
+                  Create and manage different resume versions for different project
+                  selections and use cases.
+                  </div>
+                  
+                  {resumesLoading && <div>Loading resumes…</div>}
+                  {!resumesLoading && resumesError && (
+                    <div style={{ color: "#ff8a8a", fontSize: 14 }}>
+                      Failed to load resumes.
+                      </div>
+                    )}
+                    
+                    {!resumesLoading && !resumesError && resumes.length === 0 && (
+                      <div style={{ color: "#999" }}>No resumes yet.</div>
+                      )}
+                      
+                      {!resumesLoading && !resumesError && resumes.length > 0 && (
+                        <div style={{ display: "grid", gap: 12 }}>
+                          {resumes.slice(0, 3).map((resume) => (
+                            <Link
+                            key={resume.id}
+                            to={`/resume/${resume.id}`}
+                            style={{
+                              display: "block",
+                              textDecoration: "none",
+                              color: "inherit",
+                              border: "1px solid #2a2a2a",
+                              borderRadius: 12,
+                              padding: 14,
+                              background: "#101010",
+                            }}
+                            >
+                              <div style={{ fontWeight: 600 }}>
+                                Resume #{resume.id}
+                                </div>
+                                <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
+                                  Items: {resume.item_count}
+                                </div>
+                                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                                  Updated: {formatDate(resume.last_updated ?? undefined)}
+                                </div>
+                                </Link>
+                              ))}
+                              </div>
+                            )}
+                        </div>
+                        
+                        <div
+                        style={{
+                          marginTop: 20,
+                          display: "flex",
+                          gap: 12,
+                          flexWrap: "wrap",
+                        }}
+                        >
+                          <Link to="/resumes" style={{ color: "#6f7cff" }}>
+                          View all
+                          </Link>
+                          </div>
           </section>
 
         {/* Portfolios */}

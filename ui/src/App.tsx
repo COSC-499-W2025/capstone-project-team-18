@@ -1,4 +1,4 @@
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
@@ -23,6 +23,16 @@ function ResumeRedirect() {
 
 export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  const location = useLocation();
+  const isResumeRoute =
+    location.pathname === "/resumes" ||
+    location.pathname === "/resume" ||
+    location.pathname.startsWith("/resume/");
+
+  const isProjectsRoute =
+    location.pathname === "/projects" ||
+    location.pathname.startsWith("/projects/");
 
   return (
     <div style={{ fontFamily: "system-ui" }}>
@@ -55,20 +65,21 @@ export default function App() {
               </NavLink>
 
           <NavLink
-          to="/projects"
-          end
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Projects
-              </NavLink>
+  to="/projects"
+  style={() => ({
+    padding: "8px 14px",
+    borderRadius: 12,
+    textDecoration: "none",
+    color: isProjectsRoute ? "#fff" : "#ccc",
+    background: isProjectsRoute
+      ? "rgba(255, 255, 255, 0.12)"
+      : "transparent",
+    transition: "all 0.2s ease",
+    display: "inline-block",
+  })}
+>
+  Projects
+</NavLink>
 
           <NavLink
           to="/portfolios"
@@ -103,17 +114,17 @@ export default function App() {
 
           <NavLink
           to="/resumes"
-          style={({ isActive }) => ({
+          style={() => ({
             padding: "8px 14px",
             borderRadius: 12,
             textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+            color: isResumeRoute ? "#fff" : "#ccc",
+            background: isResumeRoute ? "rgba(255, 255, 255, 0.12)" : "transparent",
             transition: "all 0.2s ease",
             display: "inline-block",
             })}
             >
-              Resume
+              Resumes
           </NavLink>
 
           <button
