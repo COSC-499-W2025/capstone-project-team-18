@@ -572,7 +572,7 @@ export default function PortfolioEditPage() {
         tones: edits.toneDraft,
         frameworks: edits.frameworksDraft,
       });
-      updateCard(projectName, { saving: false, error: null });
+      updateCard(projectName, { saving: false, error: null, showEditModal: false, showConfirmModal: false });
     } catch (e: any) {
       updateCard(projectName, {
         saving: false,
