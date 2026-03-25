@@ -22,11 +22,12 @@ def test_user_config_auto_created(temp_db):
         assert user_config.id is not None
         assert user_config.user_email is None
         assert user_config.github is None
+        assert user_config.ml_consent is False
 
 
 def test_saving_user_config_object(temp_db):
     update_data = UserConfigUpdate(
-        user_email="sam@gmail.com", github="sam-github")
+        user_email="sam@gmail.com", github="sam-github", ml_consent=True)
 
     with Session(temp_db) as session:
         db_config = get_most_recent_user_config(session)
@@ -37,6 +38,7 @@ def test_saving_user_config_object(temp_db):
         session.refresh(updated_uc)
         assert updated_uc.user_email == "sam@gmail.com"
         assert updated_uc.github == "sam-github"
+        assert updated_uc.ml_consent is True
 
 
 def test_many_different_user_config_object(temp_db):

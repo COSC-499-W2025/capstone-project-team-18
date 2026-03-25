@@ -22,20 +22,21 @@ logger = get_logger(__name__)
 load_dotenv()
 
 
+
 def _init_db() -> None:
-    """
-    Initialize database schema at startup.
-    """
+
     from sqlmodel import SQLModel
+
     from src.database.core.base import get_engine
+    import src.database.api.models
+
     SQLModel.metadata.create_all(get_engine())
 
 
 def init_system() -> tuple[bool, str]:
     """
     This function does any setup and warmup tasks that are needed for a cold
-    session start for the system. This includes both database configuration
-    and ML warm-up.
+    session start for the system. This currently covers ML warm-up only.
     """
     if os.environ.get("ARTIFACT_MINER_WARMUP_MODELS", "1") == "0":
         message = "ML warmup disabled via env variable."

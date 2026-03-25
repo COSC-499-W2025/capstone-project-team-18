@@ -438,7 +438,7 @@ export default function UploadProjectModal({
                     : "pointer",
               }}
             >
-              {isUploading ? "Analzing..." : "Start Mining"}
+              {isUploading ? "Analyzing..." : "Start Mining"}
             </button>
           </div>
         </div>
