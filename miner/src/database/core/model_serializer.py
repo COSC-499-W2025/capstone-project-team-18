@@ -121,6 +121,7 @@ def serialize_resume(resume: Resume) -> ResumeModel:
 
     return ResumeModel(
         id=None,
+        title=resume.title,
         email=resume.email,
         github=resume.github,
         skills=resume.skills,
@@ -145,7 +146,7 @@ def serialize_resume_item(
 
     return ResumeItemModel(
         id=None,
-        project_name=project_name,
+        project_name=project_name if project_name is not None else resume_item.project_name,
         title=resume_item.title,
         frameworks=frameworks_json,
         bullet_points=resume_item.bullet_points,

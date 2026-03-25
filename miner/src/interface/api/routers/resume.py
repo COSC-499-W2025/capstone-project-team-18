@@ -14,6 +14,7 @@ from src.database.api.CRUD.resume import (
     load_resume,
     get_resume_model_by_id,
     list_resumes,
+    delete_resume,
 )
 from src.core.report.user.user_report import UserReport
 from src.utils.errors import ResumeNotFoundError, ProjectNotFoundError, DatabaseOperationError
@@ -29,10 +30,12 @@ class GenerateResumeRequest(SQLModel):
     """Request model for generating a resume"""
     project_names: List[str]
     user_config_id: Optional[int] = None
+    title: Optional[str] = None
 
 
 class EditResumeMetadataRequest(SQLModel):
     """Request model for editing a resume"""
+    title: Optional[str] = None
     email: Optional[str] = None
     github_username: Optional[str] = None
 
@@ -80,6 +83,7 @@ class SkillsByExpertiseResponse(SQLModel):
 class ResumeResponse(SQLModel):
     """Response model for a resume with items"""
     id: Optional[int] = None
+    title: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
     skills: List[str]
@@ -93,6 +97,7 @@ class ResumeResponse(SQLModel):
 class ResumeListItemResponse(SQLModel):
     """Lightweight response model for listing produced resumes"""
     id: int
+    title: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
     created_at: Optional[datetime.datetime] = None
@@ -168,6 +173,7 @@ def _build_resume_response(resume_model, session) -> ResumeResponse:
 
     return ResumeResponse(
         id=resume_model.id,
+        title=resume_model.title,
         email=resume_model.email,
         github=resume_model.github,
         skills=resume_model.skills,
@@ -189,6 +195,7 @@ def _build_resume_list_item(resume_model) -> ResumeListItemResponse:
     ]
     return ResumeListItemResponse(
         id=resume_model.id,
+        title=resume_model.title,
         email=resume_model.email,
         github=resume_model.github,
         created_at=resume_model.created_at,
@@ -356,11 +363,14 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
             user_github,
             education=user_education,
             awards=user_awards
-
         )
 
         # Save using serialize_resume
         resume_model = save_resume(session, resume_domain)
+
+        # Apply optional title after save
+        if request.title:
+            resume_model.title = request.title.strip() or None
         session.commit()
 
         return _build_resume_response(resume_model, session)
@@ -402,6 +412,9 @@ def edit_resume_metadata(
             status_code=404, detail=f"No resume found with id {resume_id}")
 
     try:
+        if request.title is not None:
+            resume_model.title = request.title.strip() or None
+
         if request.email is not None:
             resume_model.email = request.email
 
@@ -745,3 +758,34 @@ def edit_resume_item_frameworks(
     except Exception as e:
         session.rollback()
         raise DatabaseOperationError(f"Failed to edit frameworks: {str(e)}") from e
+
+
+@router.delete("/{resume_id}", status_code=200)
+def delete_resume_endpoint(
+    resume_id: int,
+    session=Depends(get_session)
+):
+    """
+    Delete a resume and all its items by ID.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Returns:
+    - 200: `{"message": "Resume deleted."}` on success.
+
+    Raises:
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: Deletion failed; changes were rolled back.
+    """
+    try:
+        deleted = delete_resume(session, resume_id)
+        if not deleted:
+            raise ResumeNotFoundError(f"No resume found with id {resume_id}")
+        session.commit()
+        return {"message": "Resume deleted."}
+    except ResumeNotFoundError:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise DatabaseOperationError(f"Failed to delete resume: {str(e)}") from e

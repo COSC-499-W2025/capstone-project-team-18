@@ -25,12 +25,23 @@ load_dotenv()
 
 def _init_db() -> None:
 
-    from sqlmodel import SQLModel
+    from sqlmodel import SQLModel, text
 
     from src.database.core.base import get_engine
+    from sqlalchemy import inspect as sa_inspect
     import src.database.api.models
 
-    SQLModel.metadata.create_all(get_engine())
+    engine = get_engine()
+    SQLModel.metadata.create_all(engine)
+
+    # Add new nullable columns to existing tables when they are missing.
+    inspector = sa_inspect(engine)
+    if inspector.has_table("resumemodel"):
+        existing_cols = {col["name"] for col in inspector.get_columns("resumemodel")}
+        with engine.connect() as conn:
+            if "title" not in existing_cols:
+                conn.execute(text("ALTER TABLE resumemodel ADD COLUMN title TEXT"))
+                conn.commit()
 
 
 def init_system() -> tuple[bool, str]:

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   api,
   type ResumeResponse,
@@ -884,12 +884,24 @@ function ItemCard({
 
 export default function ResumePage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const resumeId = id ?? "1";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [resume, setResume] = useState<ResumeResponse | null>(null);
+
+  // Title editing
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Delete
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -901,6 +913,7 @@ export default function ResumePage() {
         const res = await api.getResume(resumeId);
         if (!alive) return;
         setResume(res);
+        setTitleDraft(res.title ?? "");
       } catch {
         if (!alive) return;
         setResume(null);
@@ -923,6 +936,34 @@ export default function ResumePage() {
   function handleUpdated(res: ResumeResponse) {
     setResume(res);
     showSuccess("Saved.");
+  }
+
+  async function handleSaveTitle() {
+    setSavingTitle(true);
+    setSaveError(null);
+    try {
+      const res = await api.editResumeTitle(Number(resumeId), {
+        title: titleDraft.trim() || null,
+      });
+      setResume(res);
+      setEditingTitle(false);
+    } catch (e: any) {
+      setSaveError(e?.message ?? "Failed to save.");
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.deleteResume(Number(resumeId));
+      navigate("/resumes");
+    } catch (e: any) {
+      setDeleteError(e?.message ?? "Failed to delete.");
+      setDeleting(false);
+    }
   }
 
   if (loading) {
@@ -979,15 +1020,160 @@ export default function ResumePage() {
     );
   }
 
+  const displayTitle = resume.title || `Resume #${resume.id}`;
+
   return (
     <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
-      <div style={{ marginBottom: 20 }}>
-        <Link to="/resumes" style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}>
-          ← Back to Resumes
-        </Link>
+      {/* Back */}
+      <Link to="/resumes" style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}>
+        ← Back to Resumes
+      </Link>
+
+      {/* Header */}
+      <div
+        style={{
+          marginTop: 20,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+          marginBottom: 24,
+        }}
+      >
+        {/* Title */}
+        <div>
+          {editingTitle ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveTitle();
+                  if (e.key === "Escape") setEditingTitle(false);
+                }}
+                placeholder="Resume title…"
+                style={{
+                  fontSize: 24,
+                  fontWeight: 700,
+                  padding: "6px 10px",
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "#111",
+                  color: "#fff",
+                  minWidth: 280,
+                  fontFamily: "inherit",
+                  outline: "none",
+                }}
+                autoFocus
+              />
+              <button
+                onClick={() => setEditingTitle(false)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "transparent",
+                  color: "#ddd",
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTitle}
+                disabled={savingTitle}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "transparent",
+                  color: savingTitle ? "#666" : "#ddd",
+                  cursor: savingTitle ? "not-allowed" : "pointer",
+                  fontSize: 14,
+                  opacity: savingTitle ? 0.6 : 1,
+                }}
+              >
+                Apply
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <h1 style={{ margin: 0, fontSize: 28 }}>{displayTitle}</h1>
+              <button
+                onClick={() => setEditingTitle(true)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                  border: "1px solid #2a2a2a",
+                  background: "transparent",
+                  color: "#999",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                Edit
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Action bar */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={handleSaveTitle}
+            disabled={savingTitle}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid #3a3a3a",
+              background: "#1f1f1f",
+              color: "#fff",
+              cursor: savingTitle ? "not-allowed" : "pointer",
+              fontSize: 14,
+              opacity: savingTitle ? 0.6 : 1,
+            }}
+          >
+            {savingTitle ? "Saving..." : "Save"}
+          </button>
+
+          <button
+            disabled
+            style={{
+              padding: "10px 14px",
+              background: "transparent",
+              border: "1px solid #2a2a2a",
+              borderRadius: 10,
+              color: "#555",
+              cursor: "not-allowed",
+              fontSize: 14,
+              opacity: 0.5,
+            }}
+          >
+            Export
+          </button>
+
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            style={{
+              padding: "10px 14px",
+              background: "transparent",
+              border: "1px solid #3a1111",
+              borderRadius: 10,
+              color: "#ff8a8a",
+              cursor: "pointer",
+              fontSize: 14,
+            }}
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
-      <h1 style={{ margin: "0 0 20px", fontSize: 26, fontWeight: 700 }}>Resume #{resume.id}</h1>
+      {saveError && (
+        <div style={{ color: "#ff8a8a", fontSize: 14, marginBottom: 14 }}>{saveError}</div>
+      )}
 
       {error && <Toast message={error} type="error" />}
       {success && <Toast message={success} type="success" />}
@@ -1031,6 +1217,91 @@ export default function ResumePage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          onClick={() => { if (!deleting) setShowDeleteConfirm(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.68)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              background: "#1b1b1b",
+              border: "1px solid #2a2a2a",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Delete Resume</h2>
+            <p style={{ color: "#ccc", lineHeight: 1.6 }}>
+              Are you sure you want to delete{" "}
+              <strong>"{displayTitle}"</strong>? This will permanently remove
+              the resume and all its content. This cannot be undone.
+            </p>
+
+            {deleteError && (
+              <div
+                style={{
+                  color: "#ff8a8a",
+                  fontSize: 14,
+                  marginBottom: 16,
+                  padding: "8px 12px",
+                  background: "#3a1111",
+                  borderRadius: 8,
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "transparent",
+                  color: deleting ? "#666" : "#ddd",
+                  cursor: deleting ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #3a1111",
+                  background: deleting ? "#202020" : "#3a1111",
+                  color: "#ff8a8a",
+                  cursor: deleting ? "not-allowed" : "pointer",
+                  opacity: deleting ? 0.7 : 1,
+                }}
+              >
+                {deleting ? "Deleting..." : "Delete Resume"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

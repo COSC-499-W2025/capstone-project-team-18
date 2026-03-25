@@ -162,7 +162,8 @@ class ProjectReport(BaseReport):
             frameworks=frameworks if frameworks else [],
             bullet_points=bullet_points,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            project_name=self.project_name,
         )
 
     def generate_since_last_analysis_item(self) -> Optional[ResumeItem]:

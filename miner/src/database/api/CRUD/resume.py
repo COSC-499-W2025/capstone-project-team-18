@@ -76,3 +76,20 @@ def list_resumes(session: Session) -> list[ResumeModel]:
         .order_by(ResumeModel.last_updated.desc())
     )
     return list(session.exec(statement).all())
+
+
+def delete_resume(session: Session, resume_id: int) -> bool:
+    """
+    Delete a resume and all its items by ID.
+    Returns True if deleted, False if not found.
+    Does NOT commit — caller must commit.
+    """
+    resume_model = get_resume_model_by_id(session, resume_id)
+    if resume_model is None:
+        return False
+
+    for item in list(resume_model.items or []):
+        session.delete(item)
+
+    session.delete(resume_model)
+    return True

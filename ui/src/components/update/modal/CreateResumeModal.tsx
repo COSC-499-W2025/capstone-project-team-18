@@ -19,6 +19,7 @@ export default function CreateResumeModal({
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(
     new Set()
   );
+  const [title, setTitle] = useState("");
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export default function CreateResumeModal({
 
   function resetState() {
     setSelectedProjects(new Set());
+    setTitle("");
     setSubmitError(null);
   }
 
@@ -96,6 +98,7 @@ export default function CreateResumeModal({
       const res = await api.generateResume({
         project_names: [...selectedProjects],
         user_config_id: userConfigId,
+        title: title.trim() || null,
       });
 
       const newId = res?.id;
@@ -161,6 +164,38 @@ export default function CreateResumeModal({
           >
             ×
           </button>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label
+            style={{
+              fontSize: 14,
+              color: "#aaa",
+              display: "block",
+              marginBottom: 6,
+            }}
+          >
+            Title <span style={{ color: "#555" }}>(optional)</span>
+          </label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={isSubmitting}
+            placeholder="e.g. Software Engineer Resume"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "9px 12px",
+              borderRadius: 10,
+              border: "1px solid #2a2a2a",
+              background: "#151515",
+              color: "#fff",
+              fontSize: 14,
+              outline: "none",
+              fontFamily: "inherit",
+              opacity: isSubmitting ? 0.6 : 1,
+            }}
+          />
         </div>
 
         <div style={{ marginBottom: 20 }}>

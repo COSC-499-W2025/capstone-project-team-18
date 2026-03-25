@@ -56,6 +56,7 @@ export default function ResumesPage() {
     navigate(`/resume/${newId}`);
   }
 
+
   return (
     <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
       {/* Header */}
@@ -132,27 +133,20 @@ export default function ResumesPage() {
       {!loading && !error && resumes.length === 0 && (
         <div
           style={{
-            border: "1px dashed #2a2a2a",
+            border: "1px solid #2a2a2a",
             borderRadius: 14,
-            padding: 40,
-            background: "#111",
-            color: "#555",
-            textAlign: "center",
+            padding: 20,
+            background: "#161616",
+            color: "#999",
           }}
         >
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#888", marginBottom: 8 }}>
-            No resumes yet
-          </div>
-          <div style={{ fontSize: 14 }}>
-            Click "Create Resume" to generate your first resume from your projects.
-          </div>
+          No resumes yet. Click "Create Resume" to get started.
         </div>
       )}
 
       {!loading && !error && resumes.length > 0 && (
         <div style={{ display: "grid", gap: 12 }}>
-          {resumes.map((resume, idx) => (
+          {resumes.map((resume) => (
             <Link
               key={resume.id}
               to={`/resume/${resume.id}`}
@@ -186,7 +180,7 @@ export default function ResumesPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* Title */}
                   <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 10 }}>
-                    Resume #{resume.id}
+                    {resume.title || `Resume #${resume.id}`}
                   </div>
 
                   {/* Project pills */}

@@ -270,11 +270,7 @@ async function handleCreateResume() {
             >
               <div>
                 <h2 style={{ marginTop: 0 }}>Resumes</h2>
-                <div style={{ color: "#999", lineHeight: 1.6, marginBottom: 16 }}>
-                  Create and manage different resume versions for different project
-                  selections and use cases.
-                  </div>
-                  
+
                   {resumesLoading && <div>Loading resumes…</div>}
                   {!resumesLoading && resumesError && (
                     <div style={{ color: "#ff8a8a", fontSize: 14 }}>
@@ -303,13 +299,7 @@ async function handleCreateResume() {
                             }}
                             >
                               <div style={{ fontWeight: 600 }}>
-                                Resume #{resume.id}
-                                </div>
-                                <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
-                                  Items: {resume.item_count}
-                                </div>
-                                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
-                                  Updated: {formatDate(resume.last_updated ?? undefined)}
+                                {resume.title || `Resume #${resume.id}`}
                                 </div>
                                 </Link>
                               ))}
