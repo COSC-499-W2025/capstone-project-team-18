@@ -33,7 +33,8 @@ def get_most_recent_user_config(session: Session) -> UserConfigModel:
         resume_config = ResumeConfigModel(
             user_config_id=user_config.id,
             education=[],
-            awards=[]
+            awards=[],
+            skills=[],
         )
         session.add(resume_config)
         user_config.resume_config = resume_config

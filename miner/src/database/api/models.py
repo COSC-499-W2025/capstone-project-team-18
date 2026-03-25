@@ -137,6 +137,12 @@ class ResumeConfigModel(SQLModel, table=True):
         default_factory=list
     )
 
+    # User-supplied skills (e.g., ["Python", "React"])
+    skills: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
     created_at: datetime = Field(default_factory=lambda: datetime.now())
     last_updated: datetime = Field(default_factory=lambda: datetime.now())
 

@@ -140,6 +140,7 @@ describe("SettingsModal", () => {
         ml_consent: true,
         user_email: "test@example.com",
         github: "valid-user",
+        resume_config: { education: [], awards: [], skills: [] },
       });
     });
 
@@ -170,6 +171,7 @@ describe("SettingsModal", () => {
         ml_consent: false,
         user_email: "test@example.com",
         github: "",
+        resume_config: { education: [], awards: [], skills: [] },
       });
     });
   });
