@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis import readme_insights
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.core.ML.models.contribution_analysis.commit_classifier import ContributionPatternOutput, CONTRIBUTION_PATTERN_PROMPT
 from src.core.project_discovery.ignore_constants import *
 from typing import Optional
@@ -509,6 +510,7 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
         return None
 
     def calculate(self, report: ProjectReport) -> list[Statistic]:
+        ml_allowed = ml_extraction_allowed()
         tags: list[str] = []
         tag_seen: set[str] = set()
         theme_counts: dict[str, int] = {}
@@ -579,7 +581,7 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
 
         # Dynamic fallback: infer tags/themes from source structure when README
         # signals are missing (e.g., mobile projects without README files).
-        if not tags:
+        if ml_allowed and not tags:
             inferred_tags = self._infer_tags_from_paths(report.file_reports)
             if inferred_tags:
                 tags.extend(inferred_tags)
@@ -588,7 +590,7 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
                     report.project_name,
                     len(inferred_tags),
                 )
-        if not theme_counts and tags:
+        if ml_allowed and not theme_counts and tags:
             inferred_themes = self._infer_themes_from_tags(tags)
             for theme in inferred_themes:
                 theme_counts[theme] = 1
@@ -618,7 +620,7 @@ class ProjectReadmeInsights(ProjectStatisticCalculation):
             )
 
         majority_tone = self._pick_majority(tone_counts)
-        if not majority_tone:
+        if not majority_tone and ml_allowed:
             majority_tone = self._infer_tone_fallback(
                 tags,
                 [name for name in theme_counts.keys()],
@@ -854,6 +856,11 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
         if not report.project_repo or not report.email:
             logger.info(
                 "Skipping contribution pattern analysis: no repo or email")
+            return []
+
+        if not ml_extraction_allowed():
+            logger.info(
+                "Skipping contribution pattern analysis: ML consent not granted")
             return []
 
         if not azure_openai_enabled():

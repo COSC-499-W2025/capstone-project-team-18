@@ -6,42 +6,63 @@ Team 18's project miner. This README has been updated with Milestone 2 requireme
 
 This project is built with a API running in a docker container, and a front end built locally.
 
+### Prerequisites
+- **Docker** (v4.65.0 or higher)
+- VSCode's [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
+- **npm** (v11.6.1 or higher)
+
 ### Backend
 
 The easiest way to start the back-end for the project is through a Dev Container.
 
-**Prerequisites:**
-- Docker
-- Dev Container Extension on VSCode
-
-**Steps:**
+#### Steps:
 1. Clone, and open the repo folder in VSCode.
-2. Accept the prompt to create a Dev Container or run the command `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all pip packages within the contianer.
-3. To download the `.env` file, you will need to log into your UBC Microsoft account. Follow to this link: https://ubcca-my.sharepoint.com/:u:/g/personal/sjsikora_student_ubc_ca/IQCss_DFCoE_TbVqdZxIKyvEATSWrX-LNnfKJ7RXmS6kJhM?e=bkpo6o , then run the command `source .env`
-4. Once you are within the container run `cd miner && fastapi dev ./src/interface/api/api.py` to start the API.
 
-Note if you get a `sqlalchemy.exc.OperationalError` it is likely because you are not cd-ed into miner.
+2. Accept the prompt to create a Dev Container or do the following:
+  - Open the Command Palette by pressing `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS).
+  - Enter `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all necessary dependencies within it.
 
-Verify the API and container is running by going to http://127.0.0.1:8000/ping in your browser. You should see "pong". To view the Swagger UI docs vist http://127.0.0.1:8000/docs.
+3. To download the `.env` file, you will need to log into your UBC Microsoft account. You can download the file [here](https://ubcca-my.sharepoint.com/:u:/g/personal/ataschuk_student_ubc_ca/IQClK5YDUTpxQZBVlP2vqhKtAS-VBQtvIZyO0TrRWBriubY?e=KvJypq). Once it downloads, place the file in the project's root directory.
 
-To test the backend, while cd'ed into the miner, run `pytest`. By deafult, ML tests are skipped, but may be explictly activated by running `RUN_ML_TESTS=1 pytest`.
+4. After the porject has opened in the dev container, run:
+
+    ```bash
+    source .env
+    ```
+
+    Then, start the API with:
+    ```bash
+    cd miner && fastapi dev ./src/interface/api/api.py
+    ```
+
+**Note:** if you get a `sqlalchemy.exc.OperationalError` it is likely because you are not CD'd into `/miner`.
+
+You can verify the API is running by going to http://127.0.0.1:8000/ping in your browser. You should see "pong".
+
+To test the backend, while CD'd into the miner, run `pytest`. By deafult, ML tests are skipped, but may be explictly included by running `RUN_ML_TESTS=1 pytest`.
+
+---
 
 ### Frontend
 
-While M2 may be run and verified straight from Swagger, we also do have a in-progress front end. While it is not fully fleshed out, it provides an interactive experience and providing here for completeness.
+While Milestone 2 may be run and verified straight from Swagger, we also have an Electron app for our front end.
 
-**Prerequisites:**
-- npm
+#### Steps:
+1. **Outside of the dev container** cd into the `ui/` folder.
 
-**Steps:**
-1. Clone the repo and cd into the `ui/` folder.
-2. Install the packages with `npm install`.
-3. Then, run the webserver with `npm run dev`.
+2. Download and install the UI's packages, libraries, etc:
+    ```bash
+    npm install
+    ```
 
-Vite will print `http://localhost:5173` for the web renderer. For the Electron app, use the Electron window that opens when running npm run dev.
+3. Start the Electron app:
+    ```bash
+    npm run dev
+    ```
 
-If you run into errors, check the `ui/README.md` for more detailed instructions.
+Vite will print `http://localhost:5173` for the web renderer. For the Electron app, use the Electron window that opens after running `npm run dev`.
 
+If you run into any errors, check the `ui/README.md` for more detailed instructions.
 
 
 ## Endpoints

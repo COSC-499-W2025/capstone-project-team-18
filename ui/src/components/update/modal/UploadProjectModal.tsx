@@ -141,37 +141,36 @@ export default function UploadProjectModal({
   }
 
   async function handleUpload() {
-    setUploadError(null);
-    setUploadSuccess(null);
+  setUploadError(null);
+  setUploadSuccess(null);
 
-    if (!selectedFile) {
-      setUploadError("Please select a project archive before uploading.");
-      return;
-    }
-
-    if (fileValidationError) {
-      setUploadError(fileValidationError);
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-
-      const response = await api.uploadProject({
-        file: selectedFile,
-      });
-
-      setUploadSuccess(
-        response?.message ?? `Project Analyzed successfully: ${selectedFile.name}`
-      );
-
-      onUploadSuccess?.();
-    } catch (error: any) {
-      setUploadError(error?.message ?? "Upload failed.");
-    } finally {
-      setIsUploading(false);
-    }
+  if (!selectedFile) {
+    setUploadError("Please select a project archive before uploading.");
+    return;
   }
+
+  if (fileValidationError) {
+    setUploadError(fileValidationError);
+    return;
+  }
+
+  const fileToUpload = selectedFile;
+
+  setIsUploading(true);
+  resetState();
+  onClose();
+  onUploadSuccess?.();
+
+  try {
+    await api.uploadProject({
+      file: fileToUpload,
+    });
+  } catch (error: any) {
+    console.error(error);
+  } finally {
+    setIsUploading(false);
+  }
+}
 
   return (
     <div
@@ -438,7 +437,7 @@ export default function UploadProjectModal({
                     : "pointer",
               }}
             >
-              {isUploading ? "Analzing..." : "Start Mining"}
+              {isUploading ? "Analyzing..." : "Start Mining"}
             </button>
           </div>
         </div>

@@ -2,7 +2,6 @@ import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
-import SkillsPage from "./pages/SkillsPage";
 import ResumePage from "./pages/ResumePage";
 import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
@@ -85,22 +84,6 @@ export default function App() {
           </NavLink>
 
           <NavLink
-          to="/skills"
-          end
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Skills
-          </NavLink>
-
-          <NavLink
           to="/resume"
           style={({ isActive }) => ({
             padding: "8px 14px",
@@ -135,7 +118,6 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailsPage />} />
-        <Route path="/skills" element={<SkillsPage />} />
         <Route path="/resume" element={<ResumeRedirect />} />
         <Route path="/resume/new" element={<ResumePage />} />
         <Route path="/resume/:id" element={<ResumePage />} />
