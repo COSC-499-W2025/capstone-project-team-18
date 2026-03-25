@@ -28,6 +28,7 @@ def _summary_diagnostics_enabled() -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
+
 class UserDateSectionBuilder(PortfolioSectionBuilder):
     """
     Builds a PortfolioSection

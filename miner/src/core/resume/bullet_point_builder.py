@@ -13,6 +13,7 @@ from typing import Any, List, Protocol
 
 from src.core.statistic import (CodingLanguage, FileDomain,
                                 ProjectStatCollection, StatisticTemplate)
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.utils.data_processing import float_to_percent
 
 
@@ -207,6 +208,9 @@ class ContributionPatternBulletPoint(BulletPoint):
     """Create bullets from contribution-pattern statistics."""
 
     def generate(self, report: ProjectReport) -> List[str]:
+        if not ml_extraction_allowed():
+            return []
+
         bullets: List[str] = []
 
         role_desc = report.get_value(

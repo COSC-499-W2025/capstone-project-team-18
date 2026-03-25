@@ -22,6 +22,7 @@ def get_most_recent_user_config(session: Session) -> UserConfigModel:
         # with None values and store it in the database
         user_config = UserConfigModel(
             id=None,
+            ml_consent=False,
             user_email=None,
             github=None
         )
@@ -46,6 +47,7 @@ def get_most_recent_user_config(session: Session) -> UserConfigModel:
 
 class UserConfigUpdate(BaseModel):
     consent: Optional[bool] = None
+    ml_consent: Optional[bool] = None
     user_email: Optional[str] = None
     github: Optional[str] = None
 

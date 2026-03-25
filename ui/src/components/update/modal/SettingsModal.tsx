@@ -26,6 +26,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [github, setGithub] = useState("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
+  const [mlConsent, setMlConsent] = useState(false);
 
   type RatedSkill = { name: string; rating: number }; // rating 1–5
 
@@ -97,6 +98,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             return { name, rating };
           })
         );
+        setMlConsent(Boolean(res?.ml_consent));
         setGithubConnected(Boolean(res?.github_connected));
       } catch (e: any) {
         if (!alive) return;
@@ -107,6 +109,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         setEducation([]);
         setAwards([]);
         setSkills([]);
+        setMlConsent(false);
         setError(e?.message ?? "Failed to load saved settings.");
       } finally {
         if (alive) setIsLoadingConfig(false);
@@ -140,6 +143,13 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
     onClose();
   }
 
+  function handleConsentChange(checked: boolean) {
+    setConsent(checked);
+    if (!checked) {
+      setMlConsent(false);
+    }
+  }
+
   async function handleSave() {
     setError(null);
     setSuccess(null);
@@ -154,6 +164,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
       await api.updateUserConfig({
         consent,
+        ml_consent: consent && mlConsent,
         user_email: email.trim(),
         github: github.trim(),
         resume_config: {
@@ -378,20 +389,66 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         <div
           style={{
             marginBottom: 16,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
+            padding: 14,
+            borderRadius: 12,
+            border: "1px solid #2a2a2a",
+            background: "#141414",
           }}
         >
-          <input
-            type="checkbox"
-            checked={consent}
-            disabled={isSaving || isLoadingConfig}
-            onChange={(e) => setConsent(e.target.checked)}
-          />
-          <span style={{ fontSize: 14 }}>
-            I consent to data processing for project mining *
-          </span>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+              fontSize: 14,
+              marginBottom: 10,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={consent}
+              disabled={isSaving || isLoadingConfig}
+              onChange={(e) => handleConsentChange(e.target.checked)}
+            />
+            <span>
+              <strong style={{ display: "block", color: "#f1f1f1" }}>
+                I consent to project data processing for mining *
+              </strong>
+              <span style={{ color: "#aaa", lineHeight: 1.5 }}>
+                This allows the app to analyze your project files and Git data to generate reports and portfolio content.
+              </span>
+            </span>
+          </label>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+              fontSize: 14,
+              opacity: consent ? 1 : 0.6,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={mlConsent}
+              disabled={!consent || isSaving || isLoadingConfig}
+              onChange={(e) => setMlConsent(e.target.checked)}
+            />
+            <span>
+              <strong style={{ display: "block", color: consent ? "#f1f1f1" : "#888" }}>
+                I also consent to ML-assisted analysis
+              </strong>
+              <span style={{ color: "#aaa", lineHeight: 1.5 }}>
+                Optional. This lets the app use ML for deeper analysis on top of the base project mining above.
+              </span>
+              {!consent && (
+                <span style={{ display: "block", color: "#888", marginTop: 4 }}>
+                  Enable project data processing first to choose ML-assisted analysis.
+                </span>
+              )}
+            </span>
+          </label>
 
           {email.trim() !== "" && !consent && (
             <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>

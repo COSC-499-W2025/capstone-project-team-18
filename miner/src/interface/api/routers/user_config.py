@@ -29,6 +29,7 @@ class UserConfigRequest(SQLModel):
     Now includes nested resume_config for education/awards/skills
     """
     consent: bool
+    ml_consent: bool = False
     user_email: str
     github: Optional[str] = None
     resume_config: Optional[ResumeConfigRequest] = None
@@ -51,6 +52,7 @@ class UserConfigResponse(SQLModel):
     """
     id: int
     consent: bool
+    ml_consent: bool
     user_email: Optional[str] = None
     github: Optional[str] = None
     github_connected: bool = False
@@ -111,6 +113,7 @@ def get_user_config(session=Depends(get_session)):
     return UserConfigResponse(
         id=config.id,
         consent=config.consent,
+        ml_consent=config.ml_consent,
         user_email=config.user_email,
         github=config.github,
         github_connected=bool(config.access_token),
@@ -144,6 +147,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
         # Build update data for core fields
         update_data = UserConfigUpdate(
             consent=request.consent,
+            ml_consent=request.ml_consent,
             user_email=request.user_email,
             github=request.github
         )
@@ -190,6 +194,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
         return UserConfigResponse(
                 id=config.id,
                 consent=config.consent,
+                ml_consent=config.ml_consent,
                 user_email=config.user_email,
                 github=config.github,
                 github_connected=bool(config.access_token),

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
+from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel, UserConfigModel
 from src.interface.api.routers.interview import router as interview_router
 from src.interface.api.routers.util import get_session
 from src.utils.errors import AIServiceUnavailableError
@@ -68,6 +68,12 @@ def _insert_resume_with_project(blank_db) -> None:
 
         session.add(resume)
         session.add(project)
+        session.add(UserConfigModel(
+            consent=True,
+            ml_consent=True,
+            user_email="candidate@example.com",
+            github="candidate",
+        ))
         session.commit()
 
 
@@ -421,3 +427,26 @@ def test_evaluate_answer_relaxes_borderline_rejection(monkeypatch):
     assert "on-topic" in result.feedback.strengths.lower()
     assert result.next_action != "retry_same_question"
 
+
+
+def test_interview_start_endpoint_requires_ml_consent(blank_db):
+    client = _test_client(blank_db)
+
+    response = client.post(
+        "/interview/start",
+        json={
+            "job_description": "Backend engineer with FastAPI and SQL experience.",
+            "user_profile": {
+                "resume_text": "Built backend APIs",
+                "project_summaries": ["FastAPI service"],
+                "tags": ["backend"],
+                "extracted_skills": ["Python", "FastAPI"],
+                "repository_history_summary": [],
+                "repository_file_evidence": [],
+                "collaboration_signals": [],
+            },
+        },
+    )
+
+    assert response.status_code == 503
+    assert "consent" in response.json()["message"].lower()

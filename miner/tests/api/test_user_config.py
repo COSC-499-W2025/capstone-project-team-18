@@ -31,6 +31,8 @@ class TestGetUserConfig:
         data = response.json()
         assert "id" in data
         assert "consent" in data
+        assert "ml_consent" in data
+        assert data["ml_consent"] is False
         assert "resume_config" in data
 
     def test_get_user_config_with_data(self, client):
@@ -38,6 +40,7 @@ class TestGetUserConfig:
         # First, create config with data
         client.put("/user-config", json={
             "consent": True,
+            "ml_consent": True,
             "user_email": "test@example.com",
             "github": "testuser",
             "resume_config": {
@@ -52,6 +55,7 @@ class TestGetUserConfig:
         assert response.status_code == 200
         data = response.json()
         assert data["user_email"] == "test@example.com"
+        assert data["ml_consent"] is True
         assert data["resume_config"]["education"] == ["BSc Computer Science, UBC, 2024"]
         assert data["resume_config"]["awards"] == ["Dean's List 2023"]
 
@@ -63,6 +67,7 @@ class TestUpdateUserConfig:
         """Test updating user config creates new resume config if it doesn't exist"""
         response = client.put("/user-config", json={
             "consent": True,
+            "ml_consent": True,
             "user_email": "test@example.com",
             "github": "testuser",
             "resume_config": {
@@ -82,6 +87,7 @@ class TestUpdateUserConfig:
         # First create
         client.put("/user-config", json={
             "consent": True,
+            "ml_consent": True,
             "user_email": "test@example.com",
             "github": "testuser",
             "resume_config": {
@@ -93,6 +99,7 @@ class TestUpdateUserConfig:
         # Then update
         response = client.put("/user-config", json={
             "consent": True,
+            "ml_consent": True,
             "user_email": "test@example.com",
             "github": "testuser",
             "resume_config": {
@@ -111,6 +118,7 @@ class TestUpdateUserConfig:
         # First create
         client.put("/user-config", json={
             "consent": True,
+            "ml_consent": True,
             "user_email": "test@example.com",
             "github": "testuser",
             "resume_config": {
@@ -122,6 +130,7 @@ class TestUpdateUserConfig:
         # Update only education
         response = client.put("/user-config", json={
             "consent": True,
+            "ml_consent": True,
             "user_email": "test@example.com",
             "github": "testuser",
             "resume_config": {
@@ -138,6 +147,7 @@ class TestUpdateUserConfig:
         """Test updating user config without providing resume_config"""
         response = client.put("/user-config", json={
             "consent": False,
+            "ml_consent": False,
             "user_email": "test@example.com",
             "github": "testuser"
         })
@@ -145,13 +155,15 @@ class TestUpdateUserConfig:
         assert response.status_code == 200
         data = response.json()
         assert data["consent"] is False
+        assert data["ml_consent"] is False
         # resume_config should still exist (auto-created by CRUD)
         assert data["resume_config"] is not None
 
     def test_update_user_config_missing_required_fields(self, client):
         """Test that missing required fields returns 422"""
         response = client.put("/user-config", json={
-            "consent": True
+            "consent": True,
+            "ml_consent": True
             # Missing user_email
         })
 
@@ -166,6 +178,7 @@ class TestUpdateUserConfig:
         """Test updating with multiple education entries"""
         response = client.put("/user-config", json={
             "consent": True,
+            "ml_consent": True,
             "user_email": "test@example.com",
             "github": "testuser",
             "resume_config": {

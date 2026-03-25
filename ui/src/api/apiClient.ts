@@ -155,6 +155,7 @@ export type ResumeConfigRequest = {
 export type UserConfigResponse = {
   id: number;
   consent: boolean;
+  ml_consent: boolean;
   user_email?: string | null;
   github?: string | null;
   github_connected?: boolean;
@@ -180,6 +181,7 @@ export type GithubOauthStatusResponse = {
 
 export type UpdateUserConfigPayload = {
   consent: boolean;
+  ml_consent?: boolean;
   user_email: string;
   github?: string | null;
   resume_config?: ResumeConfigRequest | null;
@@ -197,6 +199,15 @@ export type ProjectListItem = {
 export type ListProjectsResponse = {
   projects: ProjectListItem[];
   count: number;
+};
+
+export type ProjectInsightResponse = {
+  message: string;
+};
+
+export type ProjectInsightsResponse = {
+  project_name: string;
+  insights: ProjectInsightResponse[];
 };
 
 export type UploadProjectResponse = {
@@ -283,6 +294,11 @@ export const api = {
 
   getProject: (name: string | number) =>
     getJson<any>(`/projects/${encodeURIComponent(String(name))}`),
+
+  getProjectInsights: (name: string | number) =>
+    getJson<ProjectInsightsResponse>(
+      `/projects/${encodeURIComponent(String(name))}/insights`
+    ),
 
   getUserConfig: () => getJson<UserConfigResponse>("/user-config"),
 

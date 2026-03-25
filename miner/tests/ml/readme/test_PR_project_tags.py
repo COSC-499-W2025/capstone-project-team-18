@@ -6,6 +6,7 @@ from src.core.statistic import (
     ProjectStatCollection,
 )
 from src.core.ML.models.readme_analysis import keyphrase_extraction, readme_insights
+import src.core.report.project.project_statistics as project_statistics
 from src.core.report.project.project_statistics import ProjectReadmeInsights
 
 
@@ -148,3 +149,18 @@ def test_theme_generic_terms_filtered():
         ["startup", "run", "install", "tkinter"]
     )
     assert cleaned == ["tkinter"]
+
+
+def test_no_fallback_tags_themes_or_tone_when_ml_consent_is_off(monkeypatch):
+    monkeypatch.setattr(project_statistics, "ml_extraction_allowed", lambda: False)
+
+    file_report = FileReport(StatisticIndex(), filepath="mobile/MainActivity.java")
+    report = ProjectReport(
+        file_reports=[file_report],
+        project_name="NoMlFallbacks",
+        calculator_classes=[ProjectReadmeInsights],
+    )
+
+    assert report.get_value(ProjectStatCollection.PROJECT_TAGS.value) is None
+    assert report.get_value(ProjectStatCollection.PROJECT_THEMES.value) is None
+    assert report.get_value(ProjectStatCollection.PROJECT_TONE.value) is None

@@ -67,7 +67,7 @@ def test_save_project_report_versions_existing_project(temp_db):
             project_name="Project1"
         )
 
-        saved_model = save_project_report(session, new_report, 0)
+        saved_model = save_project_report(session, new_report, 0, True)
         session.commit()
 
         assert saved_model.project_name == "Project1_2"
@@ -83,14 +83,14 @@ def test_save_project_report_versions_chain_parent_points_to_latest(temp_db):
             file_reports=[_build_file_report("Project1", "v2.py")],
             project_name="Project1"
         )
-        save_project_report(session, report_v2, 0)
+        save_project_report(session, report_v2, 0, True)
         session.commit()
 
         report_v3 = ProjectReport(
             file_reports=[_build_file_report("Project1", "v3.py")],
             project_name="Project1"
         )
-        saved_v3 = save_project_report(session, report_v3, 0)
+        saved_v3 = save_project_report(session, report_v3, 0, True)
         session.commit()
 
         assert saved_v3.project_name == "Project1_3"
