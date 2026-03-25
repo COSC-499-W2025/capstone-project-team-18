@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   api,
-  type ListProjectsResponse,
-  type ProjectListItem,
   type ResumeResponse,
-  type UserConfigResponse,
 } from "../api/apiClient";
 
 function formatDate(value?: string | null) {
@@ -16,11 +13,9 @@ function formatDate(value?: string | null) {
 
 export default function ResumePage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const resumeId = id ?? "1";
 
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +47,7 @@ export default function ResumePage() {
         if (!alive) return;
 
         setResume(null);
-        setError("No resume found yet. Generate one first.");
+        setError("No resume found yet. Create one from the resumes page first.");
       } finally {
         if (alive) setLoading(false);
       }
@@ -64,54 +59,6 @@ export default function ResumePage() {
       alive = false;
     };
   }, [resumeId]);
-
-  async function handleGenerateResume() {
-    try {
-      setGenerating(true);
-      setError(null);
-      setSuccess(null);
-
-      const projectsResponse = (await api.getProjects()) as ListProjectsResponse;
-      const projectNames = Array.isArray(projectsResponse?.projects)
-        ? projectsResponse.projects
-            .map((project: ProjectListItem) => project.project_name)
-            .filter(Boolean)
-        : [];
-
-      if (projectNames.length === 0) {
-        throw new Error("No uploaded projects found. Upload and mine a project first.");
-      }
-
-      let userConfigId: number | null = null;
-      try {
-        const userConfig = (await api.getUserConfig()) as UserConfigResponse;
-        userConfigId = userConfig?.id ?? null;
-      } catch {
-        userConfigId = null;
-      }
-
-      const generatedResume = await api.generateResume({
-        project_names: projectNames,
-        user_config_id: userConfigId,
-      });
-
-      setResume(generatedResume);
-      setSuccess("Resume generated successfully.");
-
-      window.setTimeout(() => {
-        setSuccess(null);
-      }, 2500);
-
-      if (generatedResume?.id) {
-        navigate(`/resume/${generatedResume.id}`);
-      }
-
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to generate resume.");
-    } finally {
-      setGenerating(false);
-    }
-  }
 
   async function handleSaveChanges() {
     try {
@@ -207,87 +154,71 @@ export default function ResumePage() {
       )}
 
       {!loading && !resume && (
-        <div
-          style={{
-            border: "1px solid #2a2a2a",
-            borderRadius: 16,
-            padding: 20,
-            background: "#161616",
-          }}
-        >
-          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-            No resume found
-          </div>
-          <div style={{ color: "#999", marginBottom: 16 }}>
-            Generate a resume from your uploaded projects to view and edit it here.
-          </div>
+  <div
+    style={{
+      border: "1px solid #2a2a2a",
+      borderRadius: 16,
+      padding: 20,
+      background: "#161616",
+    }}
+  >
+    <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+      No resume found
+    </div>
+    <div style={{ color: "#999", marginBottom: 16 }}>
+      Create a resume from the resumes page, then open it here to edit.
+    </div>
 
-          {error && (
-            <div
-              style={{
-                border: "1px solid #3a1f1f",
-                borderRadius: 12,
-                padding: 14,
-                background: "#1a1111",
-                color: "#ff8a8a",
-                marginBottom: 16,
-              }}
-            >
-              {error}
-            </div>
-          )}
+    {error && (
+      <div
+        style={{
+          border: "1px solid #3a1f1f",
+          borderRadius: 12,
+          padding: 14,
+          background: "#1a1111",
+          color: "#ff8a8a",
+          marginBottom: 16,
+        }}
+      >
+        {error}
+      </div>
+    )}
 
-          <button
-            type="button"
-            onClick={handleGenerateResume}
-            disabled={generating || saving}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: "1px solid #2a2a2a",
-              background: "#1a1a1a",
-              color: "#ddd",
-              cursor: generating || saving ? "not-allowed" : "pointer",
-              opacity: generating || saving ? 0.7 : 1,
-            }}
-          >
-            {generating ? "Generating..." : "Generate Resume"}
-          </button>
-        </div>
-      )}
+    <Link
+      to="/resumes"
+      style={{
+        display: "inline-block",
+        padding: "10px 14px",
+        borderRadius: 10,
+        border: "1px solid #2a2a2a",
+        background: "#1a1a1a",
+        color: "#ddd",
+        textDecoration: "none",
+      }}
+    >
+      Go to Resumes
+    </Link>
+  </div>
+)}
 
       {!loading && resume && (
         <>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 16,
-              marginBottom: 24,
-            }}
-          >
-            <h1 style={{ margin: 0 }}>Resume</h1>
-
-            <div style={{ display: "flex", gap: 12 }}>
-              <button
-                type="button"
-                onClick={handleGenerateResume}
-                disabled={generating || saving}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #2a2a2a",
-                  background: "#1a1a1a",
-                  color: "#ddd",
-                  cursor: generating || saving ? "not-allowed" : "pointer",
-                  opacity: generating || saving ? 0.7 : 1,
-                }}
-              >
-                {generating ? "Generating..." : "Generate Resume"}
-              </button>
-            </div>
-          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+  <Link
+    to="/resumes"
+    style={{
+      display: "inline-block",
+      padding: "10px 14px",
+      borderRadius: 10,
+      border: "1px solid #2a2a2a",
+      background: "#1a1a1a",
+      color: "#ddd",
+      textDecoration: "none",
+    }}
+  >
+    Back to Resumes
+  </Link>
+</div>
 
           {error && (
             <div
@@ -418,7 +349,7 @@ export default function ResumePage() {
                                   onClick={() =>
                                     handleStartEditing(index, bulletIndex, bullet)
                                   }
-                                  disabled={saving || generating}
+                                  disabled={saving}
                                   style={{
                                     padding: "6px 10px",
                                     borderRadius: 10,
@@ -426,10 +357,10 @@ export default function ResumePage() {
                                     background: "transparent",
                                     color: "#ddd",
                                     cursor:
-                                      saving || generating
+                                      saving
                                         ? "not-allowed"
                                         : "pointer",
-                                    opacity: saving || generating ? 0.7 : 1,
+                                    opacity: saving ? 0.7 : 1,
                                     whiteSpace: "nowrap",
                                   }}
                                 >
@@ -501,7 +432,7 @@ export default function ResumePage() {
                                   <button
                                     type="button"
                                     onClick={handleSaveChanges}
-                                    disabled={saving || generating || !hasEditedBulletChanges}
+                                    disabled={saving || !hasEditedBulletChanges}
                                     style={{
                                       padding: "8px 12px",
                                       borderRadius: 10,
@@ -509,10 +440,10 @@ export default function ResumePage() {
                                       background: "#1a1a1a",
                                       color: "#ddd",
                                       cursor:
-                                      saving || generating || !hasEditedBulletChanges
+                                      saving || !hasEditedBulletChanges
                                       ? "not-allowed"
                                       : "pointer",
-                                      opacity: saving || generating || !hasEditedBulletChanges ? 0.7 : 1,
+                                      opacity: saving || !hasEditedBulletChanges ? 0.7 : 1,
                                       }}
                                       >
                                         {saving ? "Saving..." : "Save Changes"}

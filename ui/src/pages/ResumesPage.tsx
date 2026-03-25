@@ -8,6 +8,7 @@ import {
   type ResumeListResponse,
   type UserConfigResponse,
 } from "../api/apiClient";
+import CreateResumeModal from "../components/update/modal/CreateResumeModal";
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
@@ -19,11 +20,10 @@ export default function ResumesPage() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  
   const [error, setError] = useState<string | null>(null);
-  const [createError, setCreateError] = useState<string | null>(null);
-
+  
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
 
   async function load() {
@@ -45,47 +45,10 @@ export default function ResumesPage() {
     load();
   }, []);
 
-  async function handleCreateResume() {
-    try {
-      setCreating(true);
-      setCreateError(null);
-      setError(null);
-
-      const projectsResponse = (await api.getProjects()) as ListProjectsResponse;
-      const projectNames = Array.isArray(projectsResponse?.projects)
-        ? projectsResponse.projects
-            .map((project: ProjectListItem) => project.project_name)
-            .filter(Boolean)
-        : [];
-
-      if (projectNames.length === 0) {
-        throw new Error("No uploaded projects found. Upload and mine a project first.");
-      }
-
-      let userConfigId: number | null = null;
-      try {
-        const userConfig = (await api.getUserConfig()) as UserConfigResponse;
-        userConfigId = userConfig?.id ?? null;
-      } catch {
-        userConfigId = null;
-      }
-
-      const generatedResume = await api.generateResume({
-        project_names: projectNames,
-        user_config_id: userConfigId,
-      });
-
-      if (!generatedResume?.id) {
-        throw new Error("Resume was created but no id was returned.");
-      }
-
-      navigate(`/resume/${generatedResume.id}`);
-    } catch (e: any) {
-      setCreateError(e?.message ?? "Failed to create resume.");
-    } finally {
-      setCreating(false);
-    }
-  }
+  function handleCreated(newId: number) {
+  setShowCreateModal(false);
+  navigate(`/resume/${newId}`);
+}
 
   return (
     <div style={{ padding: 24, paddingTop: 40 }}>
@@ -107,28 +70,18 @@ export default function ResumesPage() {
         </div>
 
         <button
-          onClick={handleCreateResume}
-          disabled={creating}
-          style={{ padding: "10px 14px" }}
+        onClick={() => setShowCreateModal(true)}
+        style={{ padding: "10px 14px" }}
         >
-          {creating ? "Creating..." : "Create Resume"}
+            Create Resume
         </button>
       </div>
 
-      {createError && (
-        <div
-          style={{
-            border: "1px solid #3a1f1f",
-            borderRadius: 16,
-            padding: 20,
-            background: "#1a1111",
-            color: "#ff8a8a",
-            marginBottom: 16,
-          }}
-        >
-          <strong>Error:</strong> {createError}
-        </div>
-      )}
+      <CreateResumeModal
+      open={showCreateModal}
+      onClose={() => setShowCreateModal(false)}
+      onCreated={handleCreated}
+      />
 
       {loading && (
         <div

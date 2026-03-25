@@ -4,7 +4,8 @@ import {
   api,
   getLatestResumeId,
   type ProjectListItem,
-  type ResumeResponse,
+  type ResumeListItem,
+  type ResumeListResponse,
 } from "../api/apiClient";
 import UploadProjectModal from "../components/update/modal/UploadProjectModal";
 
@@ -33,8 +34,12 @@ export default function HomePage() {
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
   const [portfoliosLoading, setPortfoliosLoading] = useState(true);
   const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
+  
+  const [resumes, setResumes] = useState<ResumeListItem[]>([]);
+  const [resumesLoading, setResumesLoading] = useState(true);
+  const [resumesError, setResumesError] = useState<string | null>(null);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
-  const [latestResume, setLatestResume] = useState<ResumeResponse | null>(null);
+  
   const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
 
   async function loadProjects() {
@@ -66,33 +71,65 @@ export default function HomePage() {
     }
   }
 
+  async function loadResumes() {
+  try {
+    setResumesLoading(true);
+    setResumesError(null);
+
+    const res = (await api.getResumes()) as ResumeListResponse;
+    setResumes(Array.isArray(res?.resumes) ? res.resumes : []);
+  } catch (e: any) {
+    setResumesError(e?.message ?? "Failed to load resumes");
+    setResumes([]);
+  } finally {
+    setResumesLoading(false);
+  }
+}
+
   useEffect(() => {
     loadProjects();
     loadPortfolios();
+    loadResumes();
     loadLatestResume();
   }, []);
 
-  async function loadLatestResume() {
-    const resumeId = getLatestResumeId();
-    setLatestResumeId(resumeId);
-
-    if (!resumeId) {
-      setLatestResume(null);
-      return;
-    }
-
-    try {
-      const resume = await api.getResume(resumeId);
-      setLatestResume(resume);
-    } catch {
-      setLatestResume(null);
-    }
-  }
+  function loadLatestResume() {
+  const resumeId = getLatestResumeId();
+  setLatestResumeId(resumeId);
+}
 
   async function handleUploadSuccess() {
-    setShowUploadModal(false);
-    await loadProjects();
+  setShowUploadModal(false);
+  await loadProjects();
+}
+
+async function handleCreateResume() {
+  try {
+    setError(null);
+
+    const res = await api.getProjects();
+    const projectNames = Array.isArray(res?.projects)
+      ? res.projects.map((p) => p.project_name).filter(Boolean)
+      : [];
+
+    if (projectNames.length === 0) {
+      throw new Error("No projects available to generate a resume.");
+    }
+
+    const generated = await api.generateResume({
+      project_names: projectNames,
+      user_config_id: null,
+    });
+
+    if (!generated?.id) {
+      throw new Error("Resume created but no id returned.");
+    }
+
+    window.location.href = `/resume/${generated.id}`;
+  } catch (e: any) {
+    setError(e?.message ?? "Failed to create resume.");
   }
+}
 
   return (
     <div style={{ padding: 24, paddingTop: 40 }}>
@@ -218,62 +255,81 @@ export default function HomePage() {
             gap: 20,
           }}
         >
-          {/* Resume */}
-          <section
+          {/* Resumes */}
+<section
+  style={{
+    border: "1px solid #2a2a2a",
+    borderRadius: 16,
+    padding: 20,
+    background: "#161616",
+    minHeight: 220,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+  }}
+>
+  <div>
+    <h2 style={{ marginTop: 0 }}>Resumes</h2>
+    <div style={{ color: "#999", lineHeight: 1.6, marginBottom: 16 }}>
+      Create and manage different resume versions for different project
+      selections and use cases.
+    </div>
+
+    {resumesLoading && <div>Loading resumes…</div>}
+
+    {!resumesLoading && resumesError && (
+      <div style={{ color: "#ff8a8a", fontSize: 14 }}>
+        Failed to load resumes.
+      </div>
+    )}
+
+    {!resumesLoading && !resumesError && resumes.length === 0 && (
+      <div style={{ color: "#999" }}>No resumes yet.</div>
+    )}
+
+    {!resumesLoading && !resumesError && resumes.length > 0 && (
+      <div style={{ display: "grid", gap: 12 }}>
+        {resumes.slice(0, 3).map((resume) => (
+          <Link
+            key={resume.id}
+            to={`/resume/${resume.id}`}
             style={{
+              display: "block",
+              textDecoration: "none",
+              color: "inherit",
               border: "1px solid #2a2a2a",
-              borderRadius: 16,
-              padding: 20,
-              background: "#161616",
-              minHeight: 220,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
+              borderRadius: 12,
+              padding: 14,
+              background: "#101010",
             }}
           >
-            <div>
-              <h2 style={{ marginTop: 0 }}>Resume</h2>
-              <div style={{ color: "#999", lineHeight: 1.6, marginBottom: 16 }}>
-                View generated resume content, review extracted skills, and
-                review resume items.
-              </div>
-
-              {latestResume?.items && latestResume.items.length > 0 ? (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {latestResume.items.map((item, index) => (
-                    <div
-                      key={`${item.title}-${index}`}
-                      style={{
-                        border: "1px solid #2a2a2a",
-                        borderRadius: 10,
-                        padding: "10px 12px",
-                        background: "#101010",
-                        color: "#ddd",
-                      }}
-                    >
-                      {item.title}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ color: "#999" }}>No generated resume items yet.</div>
-              )}
+            <div style={{ fontWeight: 600 }}>
+              Resume #{resume.id}
             </div>
-
-            <div style={{ marginTop: 20 }}>
-              {latestResumeId ? (
-                <Link
-                  to={`/resume/${latestResumeId}`}
-                  style={{ color: "#6f7cff" }}
-                >
-                  Open Resume
-                </Link>
-              ) : (
-                <span style={{ color: "#999" }}>
-                  Generate a resume to view it here.
-                </span>
-              )}
+            <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
+              Items: {resume.item_count}
             </div>
+            <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+              Updated: {formatDate(resume.last_updated ?? undefined)}
+            </div>
+          </Link>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <div
+    style={{
+      marginTop: 20,
+      display: "flex",
+      gap: 12,
+      flexWrap: "wrap",
+    }}
+  >
+    <Link to="/resumes" style={{ color: "#6f7cff" }}>
+      View all
+    </Link>
+  </div>
           </section>
 
         {/* Portfolios */}
