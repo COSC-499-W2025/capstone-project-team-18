@@ -9,7 +9,12 @@ from src.interface.api.routers.user_config import get_user_config_safe
 from src.database import (
     get_project_report_by_name
 )
-from src.database.api.CRUD.resume import save_resume, load_resume, get_resume_model_by_id
+from src.database.api.CRUD.resume import (
+    save_resume,
+    load_resume,
+    get_resume_model_by_id,
+    list_resumes,
+)
 from src.core.report.user.user_report import UserReport
 from src.utils.errors import ResumeNotFoundError, ProjectNotFoundError, DatabaseOperationError
 from datetime import date
@@ -85,6 +90,21 @@ class ResumeResponse(SQLModel):
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
 
+class ResumeListItemResponse(SQLModel):
+    """Lightweight response model for listing produced resumes"""
+    id: int
+    email: Optional[str] = None
+    github: Optional[str] = None
+    created_at: Optional[datetime.datetime] = None
+    last_updated: Optional[datetime.datetime] = None
+    item_count: int = 0
+
+
+class ResumeListResponse(SQLModel):
+    """Response model for all produced resumes"""
+    resumes: List[ResumeListItemResponse]
+    count: int
+
 # Helper function.
 def _build_resume_response(resume_model, session) -> ResumeResponse:
     """
@@ -158,6 +178,19 @@ def _build_resume_response(resume_model, session) -> ResumeResponse:
         last_updated=resume_model.last_updated,
     )
 
+def _build_resume_list_item(resume_model) -> ResumeListItemResponse:
+    """
+    Build a lightweight response object for the resume list page.
+    """
+    return ResumeListItemResponse(
+        id=resume_model.id,
+        email=resume_model.email,
+        github=resume_model.github,
+        created_at=resume_model.created_at,
+        last_updated=resume_model.last_updated,
+        item_count=len(resume_model.items or []),
+    )
+
 class EditSkillsRequest(SQLModel):
     """Request model for editing categorized skills"""
     expert: List[str]
@@ -166,6 +199,23 @@ class EditSkillsRequest(SQLModel):
 
 
 # ---------- Resume API Endpoints ----------
+
+@router.get("", response_model=ResumeListResponse)
+def get_all_resumes(session=Depends(get_session)):
+    """
+    GET /resume
+
+    Returns a lightweight list of all produced resumes.
+    Each entry contains: id, email, github, created_at, last_updated, item_count.
+    """
+    resume_models = list_resumes(session)
+    resumes = [_build_resume_list_item(resume_model) for resume_model in resume_models]
+
+    return ResumeListResponse(
+        resumes=resumes,
+        count=len(resumes),
+    )
+
 @router.get("/{resume_id}", response_model=ResumeResponse)
 def get_resume(resume_id: int, session=Depends(get_session)):
     """

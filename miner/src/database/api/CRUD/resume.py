@@ -6,7 +6,6 @@ from typing import Optional
 from src.database.core.model_deserializer import deserialize_resume
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
-from sqlmodel import Session
 from src.core.resume.resume import Resume
 from src.database.api.models import ResumeModel
 from src.database.core.model_serializer import (
@@ -64,3 +63,16 @@ def get_resume_model_by_id(session: Session, resume_id: int) -> Optional[ResumeM
         .options(selectinload(ResumeModel.items))  # pyright: ignore
     )
     return session.exec(statement).first()
+
+def list_resumes(session: Session) -> list[ResumeModel]:
+    """
+    Returns a lightweight list of all produced resumes.
+    Loads resume items so item_count can be derived by the router.
+    Most recently updated resumes are returned first.
+    """
+    statement = (
+        select(ResumeModel)
+        .options(selectinload(ResumeModel.items))  # pyright: ignore
+        .order_by(ResumeModel.last_updated.desc())
+    )
+    return list(session.exec(statement).all())

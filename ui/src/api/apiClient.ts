@@ -236,6 +236,20 @@ export type ResumeResponse = {
   last_updated?: string | null;
 };
 
+export type ResumeListItem = {
+  id: number;
+  email?: string | null;
+  github?: string | null;
+  created_at?: string | null;
+  last_updated?: string | null;
+  item_count: number;
+};
+
+export type ResumeListResponse = {
+  resumes: ResumeListItem[];
+  count: number;
+};
+
 export type GenerateResumePayload = {
   project_names: string[];
   user_config_id?: number | null;
@@ -313,6 +327,8 @@ export const api = {
     return postFormData<UploadProjectResponse>("/projects/upload", formData);
   },
 
+  getResumes: () => getJson<ResumeListResponse>("/resume"),
+  
   getResume: (resumeId: string | number) =>
     getJson<ResumeResponse>(`/resume/${encodeURIComponent(String(resumeId))}`),
 
