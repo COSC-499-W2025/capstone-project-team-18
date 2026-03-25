@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/apiClient";
+import ProjectSkeleton from "@/components/ProjectSkeleton";
 
 type ProjectListItem = {
   project_name: string;
@@ -72,16 +73,19 @@ export default function ProjectsPage() {
 
       {loading && (
         <div
-          style={{
-            border: "1px solid #2a2a2a",
-            borderRadius: 16,
-            padding: 20,
-            background: "#161616",
-          }}
+        style={{
+          border: "1px solid #2a2a2a",
+          borderRadius: 16,
+          padding: 20,
+          background: "#161616",
+        }}
         >
-          Loading projects...
-        </div>
-      )}
+          <div style={{ color: "#999", marginBottom: 16 }}>
+            Project analysis in progress...
+            </div>
+            <ProjectSkeleton count={6} />
+            </div>
+          )}
 
       {!loading && error && (
         <div

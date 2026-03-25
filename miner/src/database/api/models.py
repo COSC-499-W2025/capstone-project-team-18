@@ -15,6 +15,7 @@ from sqlalchemy import Column, JSON, LargeBinary
 class UserConfigModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     consent: bool = Field(default=False)
+    ml_consent: bool = Field(default=False)
     user_email: Optional[str] = None
     github: Optional[str] = None
     access_token: Optional[str] = None
@@ -134,6 +135,12 @@ class ResumeConfigModel(SQLModel, table=True):
 
     # Awards/honors (e.g., ["Dean's List 2023"])
     awards: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
+    # User-supplied skills (e.g., ["Python", "React"])
+    skills: List[str] = Field(
         sa_column=Column(JSON, nullable=False),
         default_factory=list
     )
