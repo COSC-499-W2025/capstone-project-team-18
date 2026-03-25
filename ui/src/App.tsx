@@ -4,6 +4,7 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import SkillsPage from "./pages/SkillsPage";
 import ResumePage from "./pages/ResumePage";
+import ResumesPage from "./pages/ResumesPage";
 import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
 import { useState } from "react";
@@ -101,7 +102,7 @@ export default function App() {
           </NavLink>
 
           <NavLink
-          to="/resume"
+          to="/resumes"
           style={({ isActive }) => ({
             padding: "8px 14px",
             borderRadius: 12,
@@ -136,6 +137,7 @@ export default function App() {
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailsPage />} />
         <Route path="/skills" element={<SkillsPage />} />
+        <Route path="/resumes" element={<ResumesPage />} />
         <Route path="/resume" element={<ResumeRedirect />} />
         <Route path="/resume/new" element={<ResumePage />} />
         <Route path="/resume/:id" element={<ResumePage />} />
