@@ -25,6 +25,8 @@ class ErrorCode(str, Enum):
     USER_CONFIG_NOT_FOUND = "USER_CONFIG_NOT_FOUND"
     AI_SERVICE_UNAVAILABLE = "AI_SERVICE_UNAVAILABLE"
     DATABASE_OPERATION_FAILED = "DATABASE_OPERATION_FAILED"
+    BAD_OAUTH_STATE = "BAD_OAUTH_STATE"
+    EXPIRED_OAUTH_STATE = "EXPIRED_OAUTH_STATE"
 
 
 class KeyNotFoundError(Exception):
@@ -118,3 +120,19 @@ class AIServiceUnavailableError(ArtifactMinerException):
 class DatabaseOperationError(ArtifactMinerException):
     """A write or read operation against the database failed unexpectedly."""
     error_code = ErrorCode.DATABASE_OPERATION_FAILED
+
+
+class BadOAuthStateError(ArtifactMinerException):
+    """
+    The OAuth state that is passed in when GitHub makes a request to the
+    callback endpoint is invalid.
+    """
+    error_code = ErrorCode.BAD_OAUTH_STATE
+
+
+class ExpiredOAuthState(ArtifactMinerException):
+    """
+    The OAuth state that is passed in when GitHub makes a request to the
+    callback endpoint has expired.
+    """
+    error_code = ErrorCode.EXPIRED_OAUTH_STATE

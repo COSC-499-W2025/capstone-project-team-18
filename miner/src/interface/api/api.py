@@ -20,6 +20,8 @@ from src.utils.errors import (
     UserConfigNotFoundError,
     AIServiceUnavailableError,
     DatabaseOperationError,
+    BadOAuthStateError,
+    ExpiredOAuthState
 )
 from src.app import init_system, _init_db
 from src.interface.api.routers.projects import router as projects_router
@@ -31,12 +33,13 @@ from src.interface.api.routers.privacy_consent import router as privacy_consent_
 from src.interface.api.routers.job_readiness import router as job_readiness_router
 from src.interface.api.routers.insights import router as insights_router
 from src.interface.api.routers.interview import router as interview_router
+from src.interface.api.routers.github import router as github_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Commands to run on startup
-    _init_db() # Create database tables first
+    _init_db()  # Create database tables first
     init_system()
 
     yield
@@ -78,6 +81,7 @@ app.include_router(privacy_consent_router)
 app.include_router(job_readiness_router)
 app.include_router(insights_router)
 app.include_router(interview_router)
+app.include_router(github_router)
 
 # Error handlers. If these errors are ever raised in our code, return the following JSON
 
@@ -127,6 +131,22 @@ async def database_operation_error_handler(request: Request, exc: DatabaseOperat
     return JSONResponse(
         status_code=500,
         content={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+@app.exception_handler(BadOAuthStateError)
+async def bad_oauth_state_error_handler(request: Request, exc: BadOAuthStateError):
+    return JSONResponse(
+        status_code=404,
+        content={"error_code": exc.error_code, "message": str(exc)}
+    )
+
+
+@app.exception_handler(ExpiredOAuthState)
+async def expired_oauth_state_error_handler(request: Request, exc: BadOAuthStateError):
+    return JSONResponse(
+        status_code=410,
+        content={"error_code": exc.error_code, "message": str(exc)}
     )
 
 

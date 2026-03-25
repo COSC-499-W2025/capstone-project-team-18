@@ -6,42 +6,63 @@ Team 18's project miner. This README has been updated with Milestone 2 requireme
 
 This project is built with a API running in a docker container, and a front end built locally.
 
+### Prerequisites
+- **Docker** (v4.65.0 or higher)
+- VSCode's [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
+- **npm** (v11.6.1 or higher)
+
 ### Backend
 
 The easiest way to start the back-end for the project is through a Dev Container.
 
-**Prerequisites:**
-- Docker
-- Dev Container Extension on VSCode
-
-**Steps:**
+#### Steps:
 1. Clone, and open the repo folder in VSCode.
-2. Accept the prompt to create a Dev Container or run the command `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all pip packages within the contianer.
-3. To download the `.env` file, you will need to log into your UBC Microsoft account. Follow to this link: https://ubcca-my.sharepoint.com/:u:/g/personal/sjsikora_student_ubc_ca/IQCss_DFCoE_TbVqdZxIKyvEATSWrX-LNnfKJ7RXmS6kJhM?e=bkpo6o , then run the command `source .env`
-4. Once you are within the container run `cd miner && fastapi dev ./src/interface/api/api.py` to start the API.
 
-Note if you get a `sqlalchemy.exc.OperationalError` it is likely because you are not cd-ed into miner.
+2. Accept the prompt to create a Dev Container or do the following:
+  - Open the Command Palette by pressing `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS).
+  - Enter `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all necessary dependencies within it.
 
-Verify the API and container is running by going to http://127.0.0.1:8000/ping in your browser. You should see "pong". To view the Swagger UI docs vist http://127.0.0.1:8000/docs.
+3. To download the `.env` file, you will need to log into your UBC Microsoft account. You can download the file [here](https://ubcca-my.sharepoint.com/:u:/g/personal/ataschuk_student_ubc_ca/IQClK5YDUTpxQZBVlP2vqhKtAS-VBQtvIZyO0TrRWBriubY?e=KvJypq). Once it downloads, place the file in the project's root directory.
 
-To test the backend, while cd'ed into the miner, run `pytest`. By deafult, ML tests are skipped, but may be explictly activated by running `RUN_ML_TESTS=1 pytest`.
+4. After the porject has opened in the dev container, run:
+
+    ```bash
+    source .env
+    ```
+
+    Then, start the API with:
+    ```bash
+    cd miner && fastapi dev ./src/interface/api/api.py
+    ```
+
+**Note:** if you get a `sqlalchemy.exc.OperationalError` it is likely because you are not CD'd into `/miner`.
+
+You can verify the API is running by going to http://127.0.0.1:8000/ping in your browser. You should see "pong".
+
+To test the backend, while CD'd into the miner, run `pytest`. By deafult, ML tests are skipped, but may be explictly included by running `RUN_ML_TESTS=1 pytest`.
+
+---
 
 ### Frontend
 
-While M2 may be run and verified straight from Swagger, we also do have a in-progress front end. While it is not fully fleshed out, it provides an interactive experience and providing here for completeness.
+While Milestone 2 may be run and verified straight from Swagger, we also have an Electron app for our front end.
 
-**Prerequisites:**
-- npm
+#### Steps:
+1. **Outside of the dev container** cd into the `ui/` folder.
 
-**Steps:**
-1. Clone the repo and cd into the `ui/` folder.
-2. Install the packages with `npm install`.
-3. Then, run the webserver with `npm run dev`.
+2. Download and install the UI's packages, libraries, etc:
+    ```bash
+    npm install
+    ```
 
-Vite will print `http://localhost:5173` for the web renderer. For the Electron app, use the Electron window that opens when running npm run dev.
+3. Start the Electron app:
+    ```bash
+    npm run dev
+    ```
 
-If you run into errors, check the `ui/README.md` for more detailed instructions.
+Vite will print `http://localhost:5173` for the web renderer. For the Electron app, use the Electron window that opens after running `npm run dev`.
 
+If you run into any errors, check the `ui/README.md` for more detailed instructions.
 
 
 ## Endpoints
@@ -183,6 +204,83 @@ Updates the user configuration.
 **Request body:** Full `UserConfig` object.
 
 ---
+
+### `GET /github/login`
+
+Called by the frontend to generate an OAuth state. Generates and returns a
+GitHub authorization URL. The frontend should open the URL with the OS browser
+to get the user's auth code (which will be used to get the access token).
+
+**Response:**
+```json
+{
+  "state": state,
+  "authorization_url": authorization_url,
+  "callback_scheme": ELECTRON_CALLBACK_SCHEME,
+}
+```
+
+**Raises:**
+- 500: `GITHUB_CLIENT_ID` and/or `GITHUB_REDIRECT_URI` missing from `.env`.
+
+---
+
+### `GET github/oauth-status`
+
+Called by the frontend every 2 sec to poll the backend OAuth status for a generated state. This is a fallback if the deep link fails so that the frontend still knowns what the result (user accepts or denies) is so that it can switch from "pending" to "Connected".
+
+Response:
+```json
+{
+  "state": state,
+  "status": oauth_state.get("status"),
+  "detail": oauth_state.get("detail"),
+}
+```
+
+---
+
+### `GET github/callback`
+
+ Called by GitHub when the user does (or doesn't) authenticate our app. This gives us the auth code, which we use to get the access token (needed to take action on the user's behalf). A short piece of HTML to prompt the user to reopen our Electron app is returned in response.
+- e.g., http://localhost:8000/api/github/callback?code=abcdef123456
+
+**Request body:**
+```json
+{
+  "state": state,
+  "code": code,
+  "error": error,
+}
+```
+
+**Returns:**  An HTML popup in the browswer prompting the user to return to the Electron app.
+
+**Raises:**
+- Error: Thrown when the user denies access or some generalized error occurs.
+- Code Error: Missing authorization code.
+- No user configuration has been created yet (equivalent to `USER_CONFIG_NOT_FOUND`).
+- HTTP Error: Error generating HTML page for popup to return to Electron.
+
+---
+
+### `PUT github/revoke_access_token`
+
+Sets the `access_token` column in the `UserConfigModel` to `None`.
+
+**Returns:**
+```json
+{
+  "message": "Access token revoked"
+}
+```
+
+**Raises:**
+- 404 `USER_CONFIG_NOT_FOUND`: No user configuration has been created yet.
+- 500 `DATABASE_OPERATION_FAILED`: Failed to set user's access token to `None`.
+
+***Note*:** This endpoint should be called in conjunction with frontend logic to send the user to https://github.com/settings/applications so that they can revoke access on their end too.
+
 
 ### `POST /resume/generate`
 

@@ -1,4 +1,6 @@
 import pytest
+import src.core.portfolio.builder.concrete_builders as concrete_builders
+import src.services.portfolio.generate_update_portfolio_service as portfolio_service
 from sqlmodel import Session
 
 from src.utils.errors import KeyNotFoundError
@@ -93,3 +95,14 @@ def test_update_portfolio(mock_engine, prs_db, pr2_updated):
             # Explicitly check that no blocks are in conflict
             assert block.in_conflict is False, f"Block '{block.tag}' in section '{section.section_id}' incorrectly entered conflict mode"
             assert not block.conflict_content, f"Block '{block.tag}' has conflict content but shouldn't"
+
+
+def test_generate_portfolio_preserves_existing_project_metadata_when_ml_consent_off(mock_engine, monkeypatch):
+    model = generate_and_save_portfolio(["pr1", "pr2"], "Consent Off Portfolio")
+    cards_by_name = {card.project_name: card for card in model.project_cards}
+
+    assert cards_by_name["pr1"].tags == ["pytest", "python-backend", "data-modeling"]
+    assert cards_by_name["pr1"].activity_metrics == {"avg_commits_per_week": 5.5, "consistency_score": 0.92}
+    assert cards_by_name["pr2"].tones == "Creative and accessible"
+    assert cards_by_name["pr2"].work_pattern == "burst"
+    assert cards_by_name["pr2"].commit_type_distribution == {"feat": 60.0, "fix": 15.0, "style": 25.0}
