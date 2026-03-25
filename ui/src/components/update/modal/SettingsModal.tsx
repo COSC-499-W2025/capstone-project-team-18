@@ -1,6 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../../api/apiClient";
 
+const SKILL_LABELS: Record<number, string> = {
+  1: "Beginner",
+  2: "Basic",
+  3: "Intermediate",
+  4: "Advanced",
+  5: "Expert",
+};
+
+const SKILL_LABEL_TO_NUM: Record<string, number> = {
+  Beginner: 1,
+  Basic: 2,
+  Intermediate: 3,
+  Advanced: 4,
+  Expert: 5,
+};
+
 type SettingsModalProps = {
   open: boolean;
   onClose: () => void;
@@ -10,11 +26,17 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [github, setGithub] = useState("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
+
+  type RatedSkill = { name: string; rating: number }; // rating 1–5
+
   const [education, setEducation] = useState<string[]>([]);
-  const [awards, setAwards] = useState<string[]>([]);
   const [educationInput, setEducationInput] = useState("");
-  const [skillInput, setSkillInput] = useState("");
+  const [awards, setAwards] = useState<string[]>([]);
   const [awardInput, setAwardInput] = useState("");
+  const [skills, setSkills] = useState<RatedSkill[]>([]);
+  const [skillInput, setSkillInput] = useState("");
+  const [skillRating, setSkillRating] = useState<number>(3);
+
 
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -65,6 +87,16 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         setConsent(Boolean(res?.consent));
         setEducation(res?.resume_config?.education ?? []);
         setAwards(res?.resume_config?.awards ?? []);
+        // parses "SkillName:rating" back into RatedSkill on load
+        setSkills(
+          (res?.resume_config?.skills ?? []).map((s: string) => {
+            const lastColon = s.lastIndexOf(":");
+            const name = lastColon >= 0 ? s.slice(0, lastColon) : s;
+            const label = lastColon >= 0 ? s.slice(lastColon + 1) : "Intermediate";
+            const rating = SKILL_LABEL_TO_NUM[label] ?? (parseInt(label, 10) || 3);
+            return { name, rating };
+          })
+        );
         setGithubConnected(Boolean(res?.github_connected));
       } catch (e: any) {
         if (!alive) return;
@@ -74,6 +106,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         setConsent(false);
         setEducation([]);
         setAwards([]);
+        setSkills([]);
         setError(e?.message ?? "Failed to load saved settings.");
       } finally {
         if (alive) setIsLoadingConfig(false);
@@ -123,7 +156,11 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
         consent,
         user_email: email.trim(),
         github: github.trim(),
-        resume_config: { education, awards },
+        resume_config: {
+          education,
+          awards,
+          skills: skills.map((s) => `${s.name}:${SKILL_LABELS[s.rating] ?? "Intermediate"}`),
+        },
       });
 
       setSuccess("Settings saved successfully.");
@@ -253,9 +290,9 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           />
           {github && !githubIsValid && (
             <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
-                Please enter a valid GitHub username (e.g. paulatreides)
-                </div>
-            )}
+              Please enter a valid GitHub username (e.g. paulatreides)
+            </div>
+          )}
         </div>
 
         {/* GitHub OAuth */}
@@ -300,12 +337,12 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
               {githubConnected
                 ? "Connected"
                 : githubAuthStatus === "pending"
-                ? "Authorize in your browser"
-                : githubAuthStatus === "denied"
-                ? "Access denied"
-                : githubAuthStatus === "error"
-                ? `Error: ${githubAuthDetail ?? "unknown"}`
-                : "Not connected"}
+                  ? "Authorize in your browser"
+                  : githubAuthStatus === "denied"
+                    ? "Access denied"
+                    : githubAuthStatus === "error"
+                      ? `Error: ${githubAuthDetail ?? "unknown"}`
+                      : "Not connected"}
             </span>
           </div>
         </div>
@@ -332,9 +369,9 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           />
           {email && !emailIsValid && (
             <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
-                Please enter a valid email (e.g. example@gmail.com)
-                </div>
-            )}
+              Please enter a valid email (e.g. example@gmail.com)
+            </div>
+          )}
         </div>
 
         {/* Consent */}
@@ -358,9 +395,9 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 
           {email.trim() !== "" && !consent && (
             <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
-                Please provide consent to enable saving
-                </div>
-            )}
+              Please provide consent to enable saving
+            </div>
+          )}
         </div>
         {/* Education */}
         <div style={{ marginBottom: 16 }}>
@@ -518,6 +555,114 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
         </div>
 
+        {/* Skills */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 14, color: "#aaa" }}>Skills (optional)</label>
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <input
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && skillInput.trim()) {
+                  setSkills((prev) => [...prev, { name: skillInput.trim(), rating: skillRating }]);
+                  setSkillInput("");
+                  setSkillRating(3);
+                }
+              }}
+              placeholder="e.g. Python"
+              disabled={isSaving || isLoadingConfig}
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "#111",
+                color: "#fff",
+              }}
+            />
+            <select
+              value={skillRating}
+              onChange={(e) => setSkillRating(Number(e.target.value))}
+              disabled={isSaving || isLoadingConfig}
+              style={{
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "#111",
+                color: "#fff",
+                fontSize: 13,
+              }}
+            >
+              <option value={1}>Beginner</option>
+              <option value={2}>Basic</option>
+              <option value={3}>Intermediate</option>
+              <option value={4}>Advanced</option>
+              <option value={5}>Expert</option>
+            </select>
+            <button
+              onClick={() => {
+                if (skillInput.trim()) {
+                  setSkills((prev) => [...prev, { name: skillInput.trim(), rating: skillRating }]);
+                  setSkillInput("");
+                  setSkillRating(3);
+                }
+              }}
+              disabled={isSaving || isLoadingConfig || !skillInput.trim()}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "#2b2b2b",
+                color: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              Add
+            </button>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {skills.map((sk, i) => (
+              <span
+                key={i}
+                style={{
+                  background: "#2a2a2a",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {sk.name}
+                <span style={{
+                  fontSize: 11,
+                  color: "#888",
+                  background: "#1a1a1a",
+                  borderRadius: 4,
+                  padding: "1px 5px",
+                }}>
+                  {SKILL_LABELS[sk.rating] ?? "Intermediate"}
+                </span>
+                <button
+                  onClick={() => setSkills((prev) => prev.filter((_, j) => j !== i))}
+                  disabled={isSaving || isLoadingConfig}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#aaa",
+                    cursor: "pointer",
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* Errors / Success */}
         {error && (
           <div style={{ color: "#ff8a8a", marginBottom: 12 }}>
@@ -543,8 +688,8 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             {isLoadingConfig
               ? "Loading saved settings..."
               : isSaving
-              ? "Saving..."
-              : "Fill all required fields"}
+                ? "Saving..."
+                : "Fill all required fields"}
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>

@@ -66,12 +66,12 @@ export default function SkillsPage() {
           <section style={{ marginTop: 24 }}>
             <h2 style={{ marginBottom: 8, fontSize: 18 }}>Your Skills</h2>
             <p style={{ color: "#666", marginTop: 0, fontSize: 13 }}>
-              Manually added via Settings. Used in resume generation.
+              Manually added via Profile. Used in resume generation.
             </p>
             {userSkills.length === 0 ? (
               <div style={{ color: "#888" }}>
                 No skills added yet. Add them in{" "}
-                <strong>Settings → Skills</strong>.
+                <strong>Profile → Skills</strong>.
               </div>
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
