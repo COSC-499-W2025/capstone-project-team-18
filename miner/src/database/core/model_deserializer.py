@@ -3,6 +3,7 @@ This file will take the models from the database and load
 them into domain classes
 """
 
+import base64
 from src.core.report import FileReport, ProjectReport
 from src.core.resume.resume import Resume, ResumeItem
 from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
@@ -177,7 +178,7 @@ def deserialize_project_card(model: PortfolioProjectCardModel) -> ProjectCard:
     return ProjectCard(
         portfolio_id=model.portfolio_id,
         project_name=model.project_name,
-        image_data=model.image_data,
+        image_data=base64.b64encode(model.image_data).decode("utf-8") if model.image_data else None,
         summary=model.summary or "",
         themes=list(model.themes or []),
         tones=model.tones or "",

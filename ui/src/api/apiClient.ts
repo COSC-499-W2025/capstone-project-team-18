@@ -313,6 +313,18 @@ export const api = {
     return postFormData<UploadProjectResponse>("/projects/upload", formData);
   },
 
+  uploadProjectImage: (projectName: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return postFormData<{ message: string }>(
+      `/projects/${encodeURIComponent(projectName)}/image`,
+      formData
+    );
+  },
+
+  deleteProjectImage: (projectName: string) =>
+    deleteJson(`/projects/${encodeURIComponent(projectName)}/image`),
+
   getResume: (resumeId: string | number) =>
     getJson<ResumeResponse>(`/resume/${encodeURIComponent(String(resumeId))}`),
 
