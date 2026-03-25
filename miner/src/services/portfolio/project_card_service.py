@@ -23,10 +23,17 @@ def edit_project_card(
     title_override: Optional[str] = None,
     summary_override: Optional[str] = None,
     tags_override: Optional[list[str]] = None,
+    skills: Optional[list[str]] = None,
+    themes: Optional[list[str]] = None,
+    tones: Optional[str] = None,
+    frameworks: Optional[list[str]] = None,
 ) -> PortfolioProjectCardModel:
     """
     Apply user overrides to a project card. Only non-None arguments are written.
     Sets last_user_edit_at to now.
+
+    title_override / summary_override / tags_override are preserved across portfolio refreshes.
+    skills / themes / tones are written directly and will be overwritten on portfolio refresh.
     """
     model = get_project_card_model(session, portfolio_id, project_name)
     if not model:
@@ -40,6 +47,14 @@ def edit_project_card(
         model.summary_override = summary_override
     if tags_override is not None:
         model.tags_override = list(tags_override)
+    if skills is not None:
+        model.skills = list(skills)
+    if themes is not None:
+        model.themes = list(themes)
+    if tones is not None:
+        model.tones = tones
+    if frameworks is not None:
+        model.frameworks = list(frameworks)
 
     model.last_user_edit_at = datetime.now()
     session.add(model)

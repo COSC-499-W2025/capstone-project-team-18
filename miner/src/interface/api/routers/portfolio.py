@@ -260,6 +260,10 @@ class EditCardRequest(BaseModel):
     title_override: Optional[str] = None
     summary_override: Optional[str] = None
     tags_override: Optional[list[str]] = None
+    skills: Optional[list[str]] = None
+    themes: Optional[list[str]] = None
+    tones: Optional[str] = None
+    frameworks: Optional[list[str]] = None
 
 
 @router.patch("/{portfolio_id}/cards/{project_name}")
@@ -273,7 +277,8 @@ def patch_card(
     PATCH /portfolio/{id}/cards/{project_name}
 
     Edit user overrides on a project card (title, summary, tags).
-    Auto-populated fields (themes, tones, skills, etc.) are not affected.
+    Also supports directly updating skills, themes, and tones.
+    Note: directly updated skills/themes/tones will be overwritten on portfolio refresh.
     """
     try:
         return edit_project_card(
@@ -281,6 +286,10 @@ def patch_card(
             title_override=request.title_override,
             summary_override=request.summary_override,
             tags_override=request.tags_override,
+            skills=request.skills,
+            themes=request.themes,
+            tones=request.tones,
+            frameworks=request.frameworks,
         )
     except KeyNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
