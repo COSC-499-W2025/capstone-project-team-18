@@ -20,6 +20,8 @@ from src.utils.errors import (
     UserConfigNotFoundError,
     AIServiceUnavailableError,
     DatabaseOperationError,
+    BadOAuthStateError,
+    ExpiredOAuthState
 )
 from src.app import init_system, _init_db
 from src.interface.api.routers.projects import router as projects_router
@@ -37,7 +39,7 @@ from src.interface.api.routers.github import router as github_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Commands to run on startup
-    _init_db() # Create database tables first
+    _init_db()  # Create database tables first
     init_system()
 
     yield
@@ -129,6 +131,22 @@ async def database_operation_error_handler(request: Request, exc: DatabaseOperat
     return JSONResponse(
         status_code=500,
         content={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+@app.exception_handler(BadOAuthStateError)
+async def bad_oauth_state_error_handler(request: Request, exc: BadOAuthStateError):
+    return JSONResponse(
+        status_code=404,
+        content={"error_code": exc.error_code, "message": str(exc)}
+    )
+
+
+@app.exception_handler(ExpiredOAuthState)
+async def expired_oauth_state_error_handler(request: Request, exc: BadOAuthStateError):
+    return JSONResponse(
+        status_code=410,
+        content={"error_code": exc.error_code, "message": str(exc)}
     )
 
 

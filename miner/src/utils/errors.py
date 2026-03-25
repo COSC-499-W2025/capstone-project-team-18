@@ -135,3 +135,4 @@ class ExpiredOAuthState(ArtifactMinerException):
     The OAuth state that is passed in when GitHub makes a request to the
     callback endpoint has expired.
     """
+    error_code = ErrorCode.EXPIRED_OAUTH_STATE
