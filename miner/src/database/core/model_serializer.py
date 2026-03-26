@@ -2,6 +2,7 @@
 This file will take the domain classes in our code base and turn
 them into their respective SQLModels to be stored for future use
 """
+import base64
 from src.database.api.models import ResumeModel, ResumeItemModel
 from typing import Optional
 
@@ -121,6 +122,7 @@ def serialize_resume(resume: Resume) -> ResumeModel:
 
     return ResumeModel(
         id=None,
+        title=resume.title,
         email=resume.email,
         github=resume.github,
         skills=resume.skills,
@@ -145,7 +147,7 @@ def serialize_resume_item(
 
     return ResumeItemModel(
         id=None,
-        project_name=project_name,
+        project_name=project_name if project_name is not None else resume_item.project_name,
         title=resume_item.title,
         frameworks=frameworks_json,
         bullet_points=resume_item.bullet_points,
@@ -189,7 +191,7 @@ def serialize_project_card(card: ProjectCard, portfolio_id: int) -> PortfolioPro
     return PortfolioProjectCardModel(
         portfolio_id=portfolio_id,
         project_name=card.project_name,
-        image_data=card.image_data,
+        image_data=base64.b64decode(card.image_data) if card.image_data else None,
         summary=card.summary,
         themes=list(card.themes),
         tones=card.tones,

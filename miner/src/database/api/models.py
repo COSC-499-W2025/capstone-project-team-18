@@ -3,9 +3,11 @@ Defines the SQLModels for the database. Note these are also valid
 returnable types for FastAPI
 """
 
+import base64
 from datetime import datetime, date
 from typing import Optional, List, Any
 from datetime import datetime
+from pydantic import field_serializer
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, JSON, LargeBinary
 
@@ -13,6 +15,7 @@ from sqlalchemy import Column, JSON, LargeBinary
 class UserConfigModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     consent: bool = Field(default=False)
+    ml_consent: bool = Field(default=False)
     user_email: Optional[str] = None
     github: Optional[str] = None
     access_token: Optional[str] = None
@@ -136,6 +139,12 @@ class ResumeConfigModel(SQLModel, table=True):
         default_factory=list
     )
 
+    # User-supplied skills (e.g., ["Python", "React"])
+    skills: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
     created_at: datetime = Field(default_factory=lambda: datetime.now())
     last_updated: datetime = Field(default_factory=lambda: datetime.now())
 
@@ -143,6 +152,7 @@ class ResumeConfigModel(SQLModel, table=True):
 
 class ResumeModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    title: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
@@ -298,3 +308,9 @@ class PortfolioProjectCardModel(SQLModel, table=True):
 
     portfolio: Optional["PortfolioModel"] = Relationship(
         back_populates="project_cards")
+
+    @field_serializer("image_data")
+    def encode_image_data(self, value: Optional[bytes]) -> Optional[str]:
+        if value is None:
+            return None
+        return base64.b64encode(value).decode("utf-8")

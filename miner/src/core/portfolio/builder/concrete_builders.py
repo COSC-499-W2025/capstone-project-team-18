@@ -2,7 +2,7 @@ import re
 
 from src.core.report import UserReport
 from src.core.portfolio.sections.block.block import Block
-from src.core.portfolio.sections.block.block_content import TextListBlock, TextBlock
+from src.core.portfolio.sections.block.block_content import TextBlock
 from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
 from src.utils.data_processing import fmt_mdy, join_english
 from src.core.statistic import ProjectStatCollection, UserStatCollection
@@ -148,7 +148,8 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
 
         fallback = self._build_deterministic_summary(facts)
         if fallback:
-            logger.info("Summary generated from builder-level deterministic fallback")
+            logger.info(
+                "Summary generated from builder-level deterministic fallback")
             return fallback
         return None
 
@@ -521,4 +522,3 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         if word_count < 20 or word_count > 140:
             return False
         return 1 <= sentence_count <= 6
-

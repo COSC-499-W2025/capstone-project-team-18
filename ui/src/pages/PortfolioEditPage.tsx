@@ -284,7 +284,6 @@ export default function PortfolioEditPage() {
       setTitleDraft(data.title);
       initCardEdits(data.project_cards);
       initBlockEdits(data.sections);
-      setGithubConnected(Boolean(userConfig?.github_connected));
 
       try {
         setContributionLoading(true);
@@ -355,6 +354,7 @@ export default function PortfolioEditPage() {
       } finally {
         setContributionLoading(false);
       }
+      setGithubConnected(Boolean(userConfig?.github_connected));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load portfolio");
     } finally {
@@ -828,6 +828,30 @@ export default function PortfolioEditPage() {
           {error}
         </div>
       )}
+
+      {contributionLoading && (
+        <div style={{ marginTop: 16, color: "#999", fontSize: 13 }}>
+          Loading activity graphs...
+        </div>
+      )}
+
+      {/* ---- Contribution Map ---- */}
+      {contributionData && (
+        <div style={{ marginTop: 40 }}>
+          <ContributionMap
+            personalTimeline={contributionData.personal_timeline}
+            totalTimeline={contributionData.total_timeline}
+          />
+        </div>
+      )}
+
+      {/* ---- Skill Timeline ---- */}
+      {Object.keys(skillTimelineData).length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <SkillTimelineGraph data={skillTimelineData} />
+        </div>
+      )}
+
 
       {/* GitHub Pages deployment success toast */}
       {exportedPagesUrl && (

@@ -148,11 +148,13 @@ async function postFormData<T>(path: string, formData: FormData): Promise<T> {
 export type ResumeConfigRequest = {
   education?: string[] | null;
   awards?: string[] | null;
+  skills?: string[] | null;
 };
 
 export type UserConfigResponse = {
   id: number;
   consent: boolean;
+  ml_consent: boolean;
   user_email?: string | null;
   github?: string | null;
   github_connected?: boolean;
@@ -160,6 +162,7 @@ export type UserConfigResponse = {
     id: number;
     education: string[];
     awards: string[];
+    skills: string[];
   } | null;
 };
 
@@ -177,6 +180,7 @@ export type GithubOauthStatusResponse = {
 
 export type UpdateUserConfigPayload = {
   consent: boolean;
+  ml_consent?: boolean;
   user_email: string;
   github?: string | null;
   resume_config?: ResumeConfigRequest | null;
@@ -222,9 +226,11 @@ export type ResumeItemResponse = {
 
 export type ResumeResponse = {
   id?: number | null;
+  title?: string | null;
   email?: string | null;
   github?: string | null;
   skills: string[];
+  skills_by_expertise?: SkillsByExpertise | null;
   education?: string[];
   awards?: string[];
   items: ResumeItemResponse[];
@@ -232,9 +238,36 @@ export type ResumeResponse = {
   last_updated?: string | null;
 };
 
+export type ResumeListItem = {
+  id: number;
+  title?: string | null;
+  email?: string | null;
+  github?: string | null;
+  created_at?: string | null;
+  last_updated?: string | null;
+  item_count: number;
+  project_names?: string[];
+};
+
+export type SkillsByExpertise = {
+  expert: string[];
+  intermediate: string[];
+  exposure: string[];
+};
+
+export type ResumeListResponse = {
+  resumes: ResumeListItem[];
+  count: number;
+};
+
 export type GenerateResumePayload = {
   project_names: string[];
   user_config_id?: number | null;
+  title?: string | null;
+};
+
+export type EditResumeTitlePayload = {
+  title: string | null;
 };
 
 export type EditResumeBulletPointPayload = {
@@ -243,6 +276,30 @@ export type EditResumeBulletPointPayload = {
   new_content: string;
   append: boolean;
   bullet_point_index?: number | null;
+};
+
+export type DeleteResumeBulletPointPayload = {
+  item_index: number;
+  bullet_point_index: number;
+};
+
+export type EditResumeItemPayload = {
+  resume_id: number;
+  item_index: number;
+  start_date: string; // YYYY-MM-DD
+  end_date: string;   // YYYY-MM-DD
+  title: string;
+};
+
+export type EditResumeFrameworksPayload = {
+  item_index: number;
+  frameworks: string[];
+};
+
+export type EditResumeSkillsPayload = {
+  expert: string[];
+  intermediate: string[];
+  exposure: string[];
 };
 
 export function getLatestResumeId(): number | null {
@@ -309,6 +366,22 @@ export const api = {
     return postFormData<UploadProjectResponse>("/projects/upload", formData);
   },
 
+  getResumes: () => getJson<ResumeListResponse>("/resume"),
+
+  deleteResume: (resumeId: number) =>
+    deleteJson(`/resume/${encodeURIComponent(String(resumeId))}`),
+  uploadProjectImage: (projectName: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return postFormData<{ message: string }>(
+      `/projects/${encodeURIComponent(projectName)}/image`,
+      formData
+    );
+  },
+
+  deleteProjectImage: (projectName: string) =>
+    deleteJson(`/projects/${encodeURIComponent(projectName)}/image`),
+
   getResume: (resumeId: string | number) =>
     getJson<ResumeResponse>(`/resume/${encodeURIComponent(String(resumeId))}`),
 
@@ -328,6 +401,66 @@ export const api = {
   ) => {
     const res = await postJson<ResumeResponse>(
       `/resume/${encodeURIComponent(String(resumeId))}/edit/bullet_point`,
+      payload
+    );
+
+    if (res?.id) {
+      setLatestResumeId(res.id);
+    }
+
+    return res;
+  },
+
+  deleteResumeBulletPoint: async (
+    resumeId: number,
+    payload: DeleteResumeBulletPointPayload
+  ) => {
+    const res = await postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/bullet_point/delete`,
+      payload
+    );
+
+    if (res?.id) {
+      setLatestResumeId(res.id);
+    }
+
+    return res;
+  },
+
+  editResumeFrameworks: async (
+    resumeId: number,
+    payload: EditResumeFrameworksPayload
+  ) => {
+    const res = await postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/frameworks`,
+      payload
+    );
+
+    if (res?.id) {
+      setLatestResumeId(res.id);
+    }
+
+    return res;
+  },
+
+  editResumeTitle: (resumeId: number, payload: EditResumeTitlePayload) =>
+    postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/metadata`,
+      payload
+    ),
+
+  editResumeItem: (resumeId: number, payload: EditResumeItemPayload) =>
+    postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/resume_item`,
+      payload
+    ),
+
+  editResumeSkills: async (
+    resumeId: number,
+    payload: EditResumeSkillsPayload
+  ) => {
+    const res = await postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/skills`,
       payload
     );
 

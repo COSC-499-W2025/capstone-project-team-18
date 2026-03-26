@@ -4,24 +4,27 @@ import {
   api,
   getLatestResumeId,
   type ProjectListItem,
-  type ResumeResponse,
+  type ResumeListItem,
+  type ResumeListResponse,
 } from "../api/apiClient";
 import UploadProjectModal from "../components/update/modal/UploadProjectModal";
+import ProjectSkeleton from "@/components/ProjectSkeleton";
 
 type PortfolioListItem = {
   id: number;
   title: string;
-  creation_time?: string;
 };
 
 type ListPortfoliosResponse = {
   portfolios: PortfolioListItem[];
 };
 
-function formatDate(value?: string) {
-  if (!value) return "—";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+function getImageSrc(base64: string): string {
+  if (base64.startsWith("/9j/")) return `data:image/jpeg;base64,${base64}`;
+  if (base64.startsWith("iVBOR")) return `data:image/png;base64,${base64}`;
+  if (base64.startsWith("R0lG")) return `data:image/gif;base64,${base64}`;
+  if (base64.startsWith("UklG")) return `data:image/webp;base64,${base64}`;
+  return `data:image/jpeg;base64,${base64}`;
 }
 
 export default function HomePage() {
@@ -33,9 +36,16 @@ export default function HomePage() {
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
   const [portfoliosLoading, setPortfoliosLoading] = useState(true);
   const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
+  
+  const [resumes, setResumes] = useState<ResumeListItem[]>([]);
+  const [resumesLoading, setResumesLoading] = useState(true);
+  const [resumesError, setResumesError] = useState<string | null>(null);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
-  const [latestResume, setLatestResume] = useState<ResumeResponse | null>(null);
+  
   const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
+
+  const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(false);
+  const [projectCountBeforeUpload, setProjectCountBeforeUpload] = useState(0);
 
   async function loadProjects() {
     try {
@@ -66,33 +76,92 @@ export default function HomePage() {
     }
   }
 
+  async function loadResumes() {
+  try {
+    setResumesLoading(true);
+    setResumesError(null);
+
+    const res = (await api.getResumes()) as ResumeListResponse;
+    setResumes(Array.isArray(res?.resumes) ? res.resumes : []);
+  } catch (e: any) {
+    setResumesError(e?.message ?? "Failed to load resumes");
+    setResumes([]);
+  } finally {
+    setResumesLoading(false);
+  }
+}
+
   useEffect(() => {
     loadProjects();
     loadPortfolios();
+    loadResumes();
     loadLatestResume();
   }, []);
 
-  async function loadLatestResume() {
-    const resumeId = getLatestResumeId();
-    setLatestResumeId(resumeId);
+  function loadLatestResume() {
+  const resumeId = getLatestResumeId();
+  setLatestResumeId(resumeId);
+}
 
-    if (!resumeId) {
-      setLatestResume(null);
-      return;
-    }
+  useEffect(() => {
+  if (!isProjectAnalysisInProgress) return;
 
+  const interval = setInterval(async () => {
     try {
-      const resume = await api.getResume(resumeId);
-      setLatestResume(resume);
-    } catch {
-      setLatestResume(null);
-    }
-  }
+      const res = await api.getProjects();
+      const updatedProjects = Array.isArray(res?.projects) ? res.projects : [];
 
-  async function handleUploadSuccess() {
-    setShowUploadModal(false);
-    await loadProjects();
+      setProjects(updatedProjects);
+      setError(null);
+      setLoading(false);
+
+      if (updatedProjects.length > projectCountBeforeUpload) {
+        setIsProjectAnalysisInProgress(false);
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load projects");
+      setIsProjectAnalysisInProgress(false);
+    }
+  }, 3000);
+
+  return () => clearInterval(interval);
+}, [isProjectAnalysisInProgress, projectCountBeforeUpload]);
+
+async function handleCreateResume() {
+  try {
+    setError(null);
+
+    const res = await api.getProjects();
+    const projectNames = Array.isArray(res?.projects)
+      ? res.projects.map((p) => p.project_name).filter(Boolean)
+      : [];
+
+    if (projectNames.length === 0) {
+      throw new Error("No projects available to generate a resume.");
+    }
+
+    const generated = await api.generateResume({
+      project_names: projectNames,
+      user_config_id: null,
+    });
+
+    if (!generated?.id) {
+      throw new Error("Resume created but no id returned.");
+    }
+
+    setLatestResumeId(generated.id);
+    window.location.href = `/resume/${generated.id}`;
+  } catch (e: any) {
+    setError(e?.message ?? "Failed to create resume.");
   }
+}
+
+async function handleUploadSuccess() {
+  setProjectCountBeforeUpload(projects.length);
+  setShowUploadModal(false);
+  setIsProjectAnalysisInProgress(true);
+  await loadProjects();
+}
 
   return (
     <div style={{ padding: 24, paddingTop: 40 }}>
@@ -152,61 +221,76 @@ export default function HomePage() {
           <div>
             <h2 style={{ marginTop: 0 }}>Projects</h2>
 
-            {loading && <div>Loading projects…</div>}
-
-            {!loading && !error && projects.length === 0 && (
-              <div>No projects found.</div>
-            )}
-
-            {!loading && !error && projects.length > 0 && (
-              <div style={{ display: "grid", gap: 12 }}>
-                {projects.map((project) => (
-                  <Link
-                    key={project.project_name}
-                    to={`/projects/${encodeURIComponent(
-                      project.project_name
-                    )}`}
-                    onMouseEnter={() => setHoveredProjectName(project.project_name)}
-                    onMouseLeave={() => setHoveredProjectName(null)}
-                    style={{
-                      display: "block",
-                      textDecoration: "none",
-                      color: "inherit",
-                      border: "1px solid #2a2a2a",
-                      borderRadius: 12,
-                      padding: 14,
-                      background:
-                        hoveredProjectName === project.project_name
-                          ? "#151515"
-                          : "#101010",
-                      transition: "background 0.2s ease, transform 0.2s ease",
-                      transform:
-                        hoveredProjectName === project.project_name
-                          ? "translateY(-1px)"
-                          : "translateY(0)",
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: "#ddd" }}>
-                      {project.project_name}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#999",
-                        marginTop: 6,
-                      }}
-                    >
-                      Created: {formatDate(project.created_at)}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+            {loading && projects.length === 0 ? (
+              <>
+                <div style={{ color: "#999", marginBottom: 12 }}>
+                  Loading Projects...
+                </div>
+                <ProjectSkeleton count={3} />
+              </>
+            ) : (
+              <>
+                {isProjectAnalysisInProgress && (
+                  <div style={{ color: "#999", marginBottom: 12 }}>
+                    Project Analysis In Progress...
+                  </div>
+                )}
+                {!error && projects.length === 0 && !isProjectAnalysisInProgress && (
+                  <div>No projects found.</div>
+                )}
+                {!error && (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {projects.map((project) => (
+                      <Link
+                        key={project.project_name}
+                        to={`/projects/${encodeURIComponent(project.project_name)}`}
+                        onMouseEnter={() => setHoveredProjectName(project.project_name)}
+                        onMouseLeave={() => setHoveredProjectName(null)}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          textDecoration: "none",
+                          color: "inherit",
+                          border: "1px solid #2a2a2a",
+                          borderRadius: 12,
+                          padding: 14,
+                          background:
+                            hoveredProjectName === project.project_name
+                              ? "#151515"
+                              : "#101010",
+                          gap: 12,
+                          transition: "background 0.2s ease, transform 0.2s ease",
+                          transform:
+                            hoveredProjectName === project.project_name
+                              ? "translateY(-1px)"
+                              : "translateY(0)",
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, color: "#ddd", flex: 1, wordBreak: "break-word" }}>
+                          {project.project_name}
+                        </div>
+                        {project.image_data && (
+                          <div style={{ width: 64, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0d0d0d" }}>
+                            <img
+                              src={getImageSrc(project.image_data)}
+                              alt=""
+                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                            />
+                          </div>
+                        )}
+                      </Link>
+                    ))}
+                    {isProjectAnalysisInProgress && <ProjectSkeleton count={3} />}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
           <div style={{ marginTop: 20 }}>
             <Link to="/projects" style={{ color: "#6f7cff" }}>
-              View all
+              View All
             </Link>
           </div>
         </section>
@@ -218,62 +302,70 @@ export default function HomePage() {
             gap: 20,
           }}
         >
-          {/* Resume */}
+          {/* Resumes */}
           <section
-            style={{
-              border: "1px solid #2a2a2a",
-              borderRadius: 16,
-              padding: 20,
-              background: "#161616",
-              minHeight: 220,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
+          style={{
+            border: "1px solid #2a2a2a",
+            borderRadius: 16,
+            padding: 20,
+            background: "#161616",
+            minHeight: 220,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
             }}
-          >
-            <div>
-              <h2 style={{ marginTop: 0 }}>Resume</h2>
-              <div style={{ color: "#999", lineHeight: 1.6, marginBottom: 16 }}>
-                View generated resume content, review extracted skills, and
-                review resume items.
-              </div>
+            >
+              <div>
+                <h2 style={{ marginTop: 0 }}>Resumes</h2>
 
-              {latestResume?.items && latestResume.items.length > 0 ? (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {latestResume.items.map((item, index) => (
-                    <div
-                      key={`${item.title}-${index}`}
-                      style={{
-                        border: "1px solid #2a2a2a",
-                        borderRadius: 10,
-                        padding: "10px 12px",
-                        background: "#101010",
-                        color: "#ddd",
-                      }}
-                    >
-                      {item.title}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ color: "#999" }}>No generated resume items yet.</div>
-              )}
-            </div>
-
-            <div style={{ marginTop: 20 }}>
-              {latestResumeId ? (
-                <Link
-                  to={`/resume/${latestResumeId}`}
-                  style={{ color: "#6f7cff" }}
-                >
-                  Open Resume
-                </Link>
-              ) : (
-                <span style={{ color: "#999" }}>
-                  Generate a resume to view it here.
-                </span>
-              )}
-            </div>
+                  {resumesLoading && <div>Loading resumes…</div>}
+                  {!resumesLoading && resumesError && (
+                    <div style={{ color: "#ff8a8a", fontSize: 14 }}>
+                      Failed to load resumes.
+                      </div>
+                    )}
+                    
+                    {!resumesLoading && !resumesError && resumes.length === 0 && (
+                      <div style={{ color: "#999" }}>No resumes yet.</div>
+                      )}
+                      
+                      {!resumesLoading && !resumesError && resumes.length > 0 && (
+                        <div style={{ display: "grid", gap: 12 }}>
+                          {resumes.slice(0, 3).map((resume) => (
+                            <Link
+                            key={resume.id}
+                            to={`/resume/${resume.id}`}
+                            style={{
+                              display: "block",
+                              textDecoration: "none",
+                              color: "inherit",
+                              border: "1px solid #2a2a2a",
+                              borderRadius: 12,
+                              padding: 14,
+                              background: "#101010",
+                            }}
+                            >
+                              <div style={{ fontWeight: 600 }}>
+                                {resume.title || `Resume #${resume.id}`}
+                                </div>
+                                </Link>
+                              ))}
+                              </div>
+                            )}
+                        </div>
+                        
+                        <div
+                        style={{
+                          marginTop: 20,
+                          display: "flex",
+                          gap: 12,
+                          flexWrap: "wrap",
+                        }}
+                        >
+                          <Link to="/resumes" style={{ color: "#6f7cff" }}>
+                          View all
+                          </Link>
+                          </div>
           </section>
 
         {/* Portfolios */}
@@ -317,12 +409,19 @@ export default function HomePage() {
                       border: "1px solid #2a2a2a",
                       borderRadius: 12,
                       padding: 14,
+                      background: "#101010",
+                      transition: "border-color 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "#6f7cff";
+                      (e.currentTarget as HTMLElement).style.background = "#1a1a2e";
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
+                      (e.currentTarget as HTMLElement).style.background = "#101010";
                     }}
                   >
                     <div style={{ fontWeight: 600 }}>{p.title}</div>
-                    <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
-                      Created: {formatDate(p.creation_time)}
-                    </div>
                   </Link>
                 ))}
               </div>
