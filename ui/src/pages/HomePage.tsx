@@ -103,10 +103,6 @@ export default function HomePage() {
   setLatestResumeId(resumeId);
 }
 
-  async function handleUploadSuccess() {
-  setShowUploadModal(false);
-  await loadProjects();
-}
   useEffect(() => {
   if (!isProjectAnalysisInProgress) return;
 
@@ -131,10 +127,6 @@ export default function HomePage() {
   return () => clearInterval(interval);
 }, [isProjectAnalysisInProgress, projectCountBeforeUpload]);
 
-  async function loadLatestResume() {
-    const resumeId = getLatestResumeId();
-    setLatestResumeId(resumeId);
-
 async function handleCreateResume() {
   try {
     setError(null);
@@ -157,7 +149,14 @@ async function handleCreateResume() {
       throw new Error("Resume created but no id returned.");
     }
 
-  async function handleUploadSuccess() {
+    setLatestResumeId(generated.id);
+    window.location.href = `/resume/${generated.id}`;
+  } catch (e: any) {
+    setError(e?.message ?? "Failed to create resume.");
+  }
+}
+
+async function handleUploadSuccess() {
   setProjectCountBeforeUpload(projects.length);
   setShowUploadModal(false);
   setIsProjectAnalysisInProgress(true);

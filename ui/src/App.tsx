@@ -6,6 +6,7 @@ import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
 import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
+import SkillsPage from "./pages/SkillsPage";
 import { useState } from "react";
 import SettingsModal from "./components/update/modal/SettingsModal";
 import { getLatestResumeId } from "./api/apiClient";
