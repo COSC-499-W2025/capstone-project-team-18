@@ -25,8 +25,8 @@ class ProjectCard:
     portfolio_id: int
     project_name: str
 
-    # Auto-populated from project statistics
-    image_data: Optional[bytes] = None
+    # Auto-populated from project statistics (base64-encoded string, or None)
+    image_data: Optional[str] = None
     summary: str = ""
     themes: list[str] = field(default_factory=list)
     tones: str = ""                          # single dominant tone string

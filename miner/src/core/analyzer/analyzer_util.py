@@ -91,7 +91,7 @@ def extract_file_reports(
     # Given a single project for a user and the project's structure return a list with each fileReport
     project_files = project_file.file_paths
 
-    workers = max(1, cpu_count() - 1)
+    workers = max(1, cpu_count() - 1) // 2
 
     args = [
         (
@@ -104,7 +104,7 @@ def extract_file_reports(
         for file in project_files
     ]
 
-    with Pool(processes=workers) as pool:
+    with Pool(processes=2) as pool:
         results = pool.starmap(single_file_analysis, args)
 
     file_reports = []

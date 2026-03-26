@@ -488,11 +488,7 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
             "commit_type_distribution": c.commit_type_distribution or {},
             "activity_metrics": c.activity_metrics or {},
             "is_showcase": c.is_showcase,
-            # Inline image as base64 string (or null)
-            "image_data": (
-                base64.b64encode(c.image_data).decode("utf-8")
-                if c.image_data else None
-            ),
+            "image_data": c.image_data,
         })
 
     portfolio_data = {

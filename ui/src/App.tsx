@@ -2,7 +2,6 @@ import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom"
 import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
-import SkillsPage from "./pages/SkillsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
 import PortfoliosPage from "./pages/PortfoliosPage";

@@ -360,6 +360,9 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
             group_project_framework_counter
         )
 
+        to_return.append(Statistic(ProjectStatCollection.PROJECT_SKILL_ACTIVITY.value,
+                         self._build_project_skill_activity(report, dirnames)))
+
         return to_return
 
     def _get_nonUser_authors_per_file(self, repo, email) -> dict[str, int]:
@@ -710,7 +713,7 @@ class ProjectActivityTypeContributions(ProjectStatisticCalculation):
         return [Statistic(
             ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value, activity_type_to_lines),
             Statistic(
-                ProjectStatCollection.ACTIVITY_TYPE_RATIO.value, average_activity_type_to_lines)]
+                ProjectStatCollection.ACTIVITY_TYPE_RATIO.value, average_activity_type_to_lines),]
 
 
 class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
@@ -1039,6 +1042,24 @@ class ProjectTotalContributionPercentage(ProjectStatisticCalculation):
         return to_return
 
 
+class ProjectCommitActivityTimeline(ProjectStatisticCalculation):
+    def calculate(self, report):
+        commits_dict = {}
+        user_commits_dict = {}
+
+        if report.project_repo:
+            for commit in report.project_repo.iter_commits():
+                date = datetime.fromtimestamp(
+                    commit.authored_date).strftime("%Y-%m-%d")
+                commits_dict[date] = commits_dict.get(date, 0) + 1
+
+                if commit.author.email == report.email or (report.github and report.github in commit.author.email):
+                    user_commits_dict[date] = user_commits_dict.get(
+                        date, 0) + 1
+
+        return [Statistic(ProjectStatCollection.COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(user_commits_dict.items()))), Statistic(ProjectStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(commits_dict.items())))]
+
+
 class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
     """Base builder for project reports."""
 
@@ -1052,6 +1073,7 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
             ProjectAnalyzeGitAuthorship,
             ProjectTotalContributionPercentage,
             ProjectContributionPatterns,
+            ProjectCommitActivityTimeline,
         ]
 
         # If specific calculator classes are requested, filter to only those

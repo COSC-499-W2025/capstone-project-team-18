@@ -1,3 +1,4 @@
+import base64
 from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
 from typing import Optional
@@ -290,7 +291,7 @@ def update_portfolio_from_domain(session: Session, portfolio_id: int, domain_por
         if domain_card.project_name in existing_cards_map:
             card_model = existing_cards_map[domain_card.project_name]
             # Always refresh auto-populated fields
-            card_model.image_data = domain_card.image_data
+            card_model.image_data = base64.b64decode(domain_card.image_data) if domain_card.image_data else None
             card_model.summary = domain_card.summary
             card_model.themes = list(domain_card.themes)
             card_model.tones = domain_card.tones

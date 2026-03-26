@@ -163,9 +163,9 @@ class UserWeightedSkills(UserStatisticCalculation):
 
 class UserCommitActivityTimeline(UserStatisticCalculation):
     """
-    Calculates the timeline of each commit, to use in a contribution graph.
+    Merges the project level timeline, to use in a contribution graph.
 
-    Maps through commit history and also gets average
+    Maps through commit history and also gets total
     commits for the group to utilize in
     an alternative contribution graph view.
     """
@@ -175,17 +175,17 @@ class UserCommitActivityTimeline(UserStatisticCalculation):
         user_commits_dict = {}
 
         for project_report in report.project_reports:
-            if project_report.project_repo is None:
-                continue
+            project_commits_dict = project_report.get_value(
+                ProjectStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value)
+            project_user_commits_dict = project_report.get_value(
+                ProjectStatCollection.COMMIT_ACTIVITY_TIMELINE.value)
 
-            for commit in project_report.project_repo.iter_commits():
-                date = datetime.fromtimestamp(
-                    commit.authored_date).strftime("%Y-%m-%d")
-                commits_dict[date] = commits_dict.get(date, 0) + 1
-
-                if commit.author.email == project_report.email or (project_report.github and project_report.github in commit.author.email):
-                    user_commits_dict[date] = user_commits_dict.get(
-                        date, 0) + 1
+            # merge project commits into user level
+            if project_commits_dict:
+                commits_dict = {date: project_commits_dict.get(date, 0) + commits_dict.get(
+                    date, 0) for date in set(project_commits_dict).union(commits_dict)}
+                user_commits_dict = {date: project_user_commits_dict.get(date, 0) + user_commits_dict.get(
+                    date, 0) for date in set(project_user_commits_dict).union(user_commits_dict)}
 
         return [Statistic(UserStatCollection.COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(user_commits_dict.items()))), Statistic(UserStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(commits_dict.items())))]
 

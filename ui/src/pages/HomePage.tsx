@@ -8,21 +8,23 @@ import {
   type ResumeListResponse,
 } from "../api/apiClient";
 import UploadProjectModal from "../components/update/modal/UploadProjectModal";
+import ProjectSkeleton from "@/components/ProjectSkeleton";
 
 type PortfolioListItem = {
   id: number;
   title: string;
-  creation_time?: string;
 };
 
 type ListPortfoliosResponse = {
   portfolios: PortfolioListItem[];
 };
 
-function formatDate(value?: string) {
-  if (!value) return "—";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+function getImageSrc(base64: string): string {
+  if (base64.startsWith("/9j/")) return `data:image/jpeg;base64,${base64}`;
+  if (base64.startsWith("iVBOR")) return `data:image/png;base64,${base64}`;
+  if (base64.startsWith("R0lG")) return `data:image/gif;base64,${base64}`;
+  if (base64.startsWith("UklG")) return `data:image/webp;base64,${base64}`;
+  return `data:image/jpeg;base64,${base64}`;
 }
 
 export default function HomePage() {
@@ -41,6 +43,9 @@ export default function HomePage() {
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
   
   const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
+
+  const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(false);
+  const [projectCountBeforeUpload, setProjectCountBeforeUpload] = useState(0);
 
   async function loadProjects() {
     try {
@@ -102,6 +107,33 @@ export default function HomePage() {
   setShowUploadModal(false);
   await loadProjects();
 }
+  useEffect(() => {
+  if (!isProjectAnalysisInProgress) return;
+
+  const interval = setInterval(async () => {
+    try {
+      const res = await api.getProjects();
+      const updatedProjects = Array.isArray(res?.projects) ? res.projects : [];
+
+      setProjects(updatedProjects);
+      setError(null);
+      setLoading(false);
+
+      if (updatedProjects.length > projectCountBeforeUpload) {
+        setIsProjectAnalysisInProgress(false);
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load projects");
+      setIsProjectAnalysisInProgress(false);
+    }
+  }, 3000);
+
+  return () => clearInterval(interval);
+}, [isProjectAnalysisInProgress, projectCountBeforeUpload]);
+
+  async function loadLatestResume() {
+    const resumeId = getLatestResumeId();
+    setLatestResumeId(resumeId);
 
 async function handleCreateResume() {
   try {
@@ -125,10 +157,11 @@ async function handleCreateResume() {
       throw new Error("Resume created but no id returned.");
     }
 
-    window.location.href = `/resume/${generated.id}`;
-  } catch (e: any) {
-    setError(e?.message ?? "Failed to create resume.");
-  }
+  async function handleUploadSuccess() {
+  setProjectCountBeforeUpload(projects.length);
+  setShowUploadModal(false);
+  setIsProjectAnalysisInProgress(true);
+  await loadProjects();
 }
 
   return (
@@ -189,61 +222,76 @@ async function handleCreateResume() {
           <div>
             <h2 style={{ marginTop: 0 }}>Projects</h2>
 
-            {loading && <div>Loading projects…</div>}
-
-            {!loading && !error && projects.length === 0 && (
-              <div>No projects found.</div>
-            )}
-
-            {!loading && !error && projects.length > 0 && (
-              <div style={{ display: "grid", gap: 12 }}>
-                {projects.map((project) => (
-                  <Link
-                    key={project.project_name}
-                    to={`/projects/${encodeURIComponent(
-                      project.project_name
-                    )}`}
-                    onMouseEnter={() => setHoveredProjectName(project.project_name)}
-                    onMouseLeave={() => setHoveredProjectName(null)}
-                    style={{
-                      display: "block",
-                      textDecoration: "none",
-                      color: "inherit",
-                      border: "1px solid #2a2a2a",
-                      borderRadius: 12,
-                      padding: 14,
-                      background:
-                        hoveredProjectName === project.project_name
-                          ? "#151515"
-                          : "#101010",
-                      transition: "background 0.2s ease, transform 0.2s ease",
-                      transform:
-                        hoveredProjectName === project.project_name
-                          ? "translateY(-1px)"
-                          : "translateY(0)",
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: "#ddd" }}>
-                      {project.project_name}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#999",
-                        marginTop: 6,
-                      }}
-                    >
-                      Created: {formatDate(project.created_at)}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+            {loading && projects.length === 0 ? (
+              <>
+                <div style={{ color: "#999", marginBottom: 12 }}>
+                  Loading Projects...
+                </div>
+                <ProjectSkeleton count={3} />
+              </>
+            ) : (
+              <>
+                {isProjectAnalysisInProgress && (
+                  <div style={{ color: "#999", marginBottom: 12 }}>
+                    Project Analysis In Progress...
+                  </div>
+                )}
+                {!error && projects.length === 0 && !isProjectAnalysisInProgress && (
+                  <div>No projects found.</div>
+                )}
+                {!error && (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {projects.map((project) => (
+                      <Link
+                        key={project.project_name}
+                        to={`/projects/${encodeURIComponent(project.project_name)}`}
+                        onMouseEnter={() => setHoveredProjectName(project.project_name)}
+                        onMouseLeave={() => setHoveredProjectName(null)}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          textDecoration: "none",
+                          color: "inherit",
+                          border: "1px solid #2a2a2a",
+                          borderRadius: 12,
+                          padding: 14,
+                          background:
+                            hoveredProjectName === project.project_name
+                              ? "#151515"
+                              : "#101010",
+                          gap: 12,
+                          transition: "background 0.2s ease, transform 0.2s ease",
+                          transform:
+                            hoveredProjectName === project.project_name
+                              ? "translateY(-1px)"
+                              : "translateY(0)",
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, color: "#ddd", flex: 1, wordBreak: "break-word" }}>
+                          {project.project_name}
+                        </div>
+                        {project.image_data && (
+                          <div style={{ width: 64, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0d0d0d" }}>
+                            <img
+                              src={getImageSrc(project.image_data)}
+                              alt=""
+                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                            />
+                          </div>
+                        )}
+                      </Link>
+                    ))}
+                    {isProjectAnalysisInProgress && <ProjectSkeleton count={3} />}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
           <div style={{ marginTop: 20 }}>
             <Link to="/projects" style={{ color: "#6f7cff" }}>
-              View all
+              View All
             </Link>
           </div>
         </section>
@@ -362,12 +410,19 @@ async function handleCreateResume() {
                       border: "1px solid #2a2a2a",
                       borderRadius: 12,
                       padding: 14,
+                      background: "#101010",
+                      transition: "border-color 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "#6f7cff";
+                      (e.currentTarget as HTMLElement).style.background = "#1a1a2e";
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
+                      (e.currentTarget as HTMLElement).style.background = "#101010";
                     }}
                   >
                     <div style={{ fontWeight: 600 }}>{p.title}</div>
-                    <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
-                      Created: {formatDate(p.creation_time)}
-                    </div>
                   </Link>
                 ))}
               </div>

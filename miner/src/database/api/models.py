@@ -3,9 +3,11 @@ Defines the SQLModels for the database. Note these are also valid
 returnable types for FastAPI
 """
 
+import base64
 from datetime import datetime, date
 from typing import Optional, List, Any
 from datetime import datetime
+from pydantic import field_serializer
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, JSON, LargeBinary
 
@@ -306,3 +308,9 @@ class PortfolioProjectCardModel(SQLModel, table=True):
 
     portfolio: Optional["PortfolioModel"] = Relationship(
         back_populates="project_cards")
+
+    @field_serializer("image_data")
+    def encode_image_data(self, value: Optional[bytes]) -> Optional[str]:
+        if value is None:
+            return None
+        return base64.b64encode(value).decode("utf-8")
