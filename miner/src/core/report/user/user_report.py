@@ -103,6 +103,7 @@ class UserReport(BaseReport):
         """
         from src.core.portfolio.builder.concrete_builders import (
             UserSummarySectionBuilder,
+            ProjectSummariesSectionBuilder,
         )
 
         builder = PortfolioBuilder()
@@ -114,6 +115,7 @@ class UserReport(BaseReport):
         else:
             # Case we want to include every section
             builder.register_section_builder(UserSummarySectionBuilder())
+            builder.register_section_builder(ProjectSummariesSectionBuilder())
 
         return builder.build(self)
 

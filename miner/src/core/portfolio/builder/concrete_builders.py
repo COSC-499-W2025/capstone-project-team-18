@@ -4,13 +4,20 @@ from src.core.report import UserReport
 from src.core.portfolio.sections.block.block import Block
 from src.core.portfolio.sections.block.block_content import TextBlock
 from src.core.portfolio.builder.build_system import PortfolioSectionBuilder
-from src.utils.data_processing import fmt_mdy, join_english
+from src.utils.data_processing import fmt_mdy, fmt_mdy_short, join_english
 from src.core.statistic import ProjectStatCollection, UserStatCollection
 from src.core.statistic.skills import SkillMapper
 from src.core.ML.models.contribution_analysis import (
     generate_signature,
     build_signature_facts,
     resolve_experience_stage_with_ml,
+    generate_project_summary,
+)
+from src.core.portfolio.project_summary import (
+    _build_project_summary_facts,
+    _build_project_summary_deterministic,
+    _is_summary_well_formed,
+    _summary_requirement_checks as _project_summary_requirement_checks,
 )
 from src.infrastructure.log.logging import get_logger
 
@@ -528,3 +535,150 @@ class UserSummarySectionBuilder(PortfolioSectionBuilder):
         if word_count < 20 or word_count > 140:
             return False
         return 1 <= sentence_count <= 6
+
+
+class ChronologicalProjectsSectionBuilder(PortfolioSectionBuilder):
+    """Builds a section listing projects in chronological order."""
+
+    section_id = "chronological_projects"
+    section_title = "Chronological Projects"
+
+    def get_chronological_projects(self, report: UserReport) -> list[str]:
+        projects = []
+        for pr in report.project_reports:
+            start_date = pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            end_date = pr.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+            name = getattr(pr, "project_name", None) or "Unknown Project"
+            projects.append((start_date, end_date, name))
+
+        dated = sorted(
+            [(sd, ed, n) for sd, ed, n in projects if sd is not None],
+            key=lambda x: x[0],
+        )
+        undated = [(sd, ed, n) for sd, ed, n in projects if sd is None]
+        sorted_projects = dated + undated
+
+        lines = []
+        for i, (start_date, end_date, name) in enumerate(sorted_projects, start=1):
+            start_str = fmt_mdy_short(start_date)
+            end_str = f"Ended {fmt_mdy_short(end_date)}" if end_date is not None else "End date unknown"
+            lines.append(f"{i}. {name} - Started {start_str} ({end_str})")
+        return lines
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        lines = self.get_chronological_projects(report)
+        if not lines:
+            return []
+        return [Block("chronological_projects", TextBlock(text="\n".join(lines)))]
+
+
+class UserSkillsSectionBuilder(PortfolioSectionBuilder):
+    """Builds a section listing user skills ordered by when they were first exercised."""
+
+    section_id = "chronological_skills"
+    section_title = "Skills"
+
+    def get_chronological_skills(self, report: UserReport) -> list[str]:
+        skill_dates: dict[str, object] = {}
+
+        for pr in report.project_reports:
+            start_date = pr.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+            skills = pr.get_value(ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value) or []
+            for skill in skills:
+                name = getattr(skill, "skill_name", str(skill))
+                current = skill_dates.get(name, "missing")
+                if start_date is None:
+                    if current == "missing":
+                        skill_dates[name] = None
+                else:
+                    if current == "missing" or current is None or start_date < current:
+                        skill_dates[name] = start_date
+
+        if not skill_dates:
+            return []
+
+        dated = sorted(
+            [(n, d) for n, d in skill_dates.items() if d is not None],
+            key=lambda x: x[1],
+        )
+        undated = [(n, None) for n, d in skill_dates.items() if d is None]
+
+        lines = []
+        for name, date in dated:
+            lines.append(f"{name} — First exercised {fmt_mdy_short(date)}")
+        for name, _ in undated:
+            lines.append(f"{name} — First exercised on an unknown date")
+        return lines
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        lines = self.get_chronological_skills(report)
+        if not lines:
+            return []
+        return [Block("chronological_skills", TextBlock(text="\n".join(lines)))]
+
+
+class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
+    """Builds a section with a short summary for each project."""
+
+    section_id = "project_summaries"
+    section_title = "Project Summaries"
+
+    def get_project_summaries(self, report: UserReport) -> list[str]:
+        lines = []
+        for pr in report.project_reports:
+            facts = _build_project_summary_facts(pr)
+            if not facts:
+                continue
+            project_name = getattr(pr, "project_name", None) or "Unknown Project"
+            summary = generate_project_summary(facts)
+            if not summary or not _is_summary_well_formed(summary):
+                summary = _build_project_summary_deterministic(facts)
+            if summary:
+                lines.append(f"{project_name}: {summary}")
+        return lines
+
+    def _summary_requirement_checks(self, summary: str, facts: dict) -> tuple[bool, bool, bool]:
+        return _project_summary_requirement_checks(summary, facts)
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        lines = self.get_project_summaries(report)
+        blocks = []
+        for i, line in enumerate(lines):
+            blocks.append(Block(f"project_summary_{i}", TextBlock(text=line)))
+        return blocks
+
+
+class UserCodingLanguageRatioSectionBuilder(PortfolioSectionBuilder):
+    """Builds a section showing the user's coding language distribution."""
+
+    section_id = "language_ratio"
+    section_title = "Coding Languages"
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        lang_ratio = report.get_value(UserStatCollection.USER_CODING_LANGUAGE_RATIO.value)
+        if not lang_ratio:
+            return []
+        ranked = sorted(lang_ratio.items(), key=lambda kv: kv[1], reverse=True)
+        items = []
+        for lang, ratio in ranked:
+            lang_name = getattr(lang, "value", str(lang))
+            pct = ratio * 100 if ratio <= 1.0 else ratio
+            items.append(f"{lang_name} ({pct:.2f}%)")
+        if not items:
+            return []
+        return [Block("language_ratio", TextBlock(text="\n".join(items)))]
+
+
+class UserGenericStatisticsSectionBuilder(PortfolioSectionBuilder):
+    """Builds a section showing all user statistics as readable key-value pairs."""
+
+    section_id = "generic_stats"
+    section_title = "Statistics"
+
+    def create_blocks(self, report: UserReport) -> list[Block]:
+        blocks = []
+        for stat in report.statistics:
+            name = stat.statistic_template.name.replace("_", " ").title()
+            tag = f"stat_{stat.statistic_template.name.lower()}"
+            blocks.append(Block(tag, TextBlock(text=f"{name}: {stat.value}")))
+        return blocks
