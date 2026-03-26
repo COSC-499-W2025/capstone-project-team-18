@@ -11,13 +11,6 @@ from src.core.ML.models.contribution_analysis import (
     generate_signature,
     build_signature_facts,
     resolve_experience_stage_with_ml,
-    generate_project_summary,
-)
-from src.core.portfolio.project_summary import (
-    _build_project_summary_facts,
-    _build_project_summary_deterministic,
-    _is_summary_well_formed,
-    _summary_requirement_checks as _project_summary_requirement_checks,
 )
 from src.infrastructure.log.logging import get_logger
 
@@ -609,37 +602,6 @@ class UserSkillsSectionBuilder(PortfolioSectionBuilder):
         if not lines:
             return []
         return [Block("chronological_skills", TextBlock(text="\n".join(lines)))]
-
-
-class ProjectSummariesSectionBuilder(PortfolioSectionBuilder):
-    """Builds a section with a short summary for each project."""
-
-    section_id = "project_summaries"
-    section_title = "Project Summaries"
-
-    def get_project_summaries(self, report: UserReport) -> list[str]:
-        lines = []
-        for pr in report.project_reports:
-            facts = _build_project_summary_facts(pr)
-            if not facts:
-                continue
-            project_name = getattr(pr, "project_name", None) or "Unknown Project"
-            summary = generate_project_summary(facts)
-            if not summary or not _is_summary_well_formed(summary):
-                summary = _build_project_summary_deterministic(facts)
-            if summary:
-                lines.append(f"{project_name}: {summary}")
-        return lines
-
-    def _summary_requirement_checks(self, summary: str, facts: dict) -> tuple[bool, bool, bool]:
-        return _project_summary_requirement_checks(summary, facts)
-
-    def create_blocks(self, report: UserReport) -> list[Block]:
-        lines = self.get_project_summaries(report)
-        blocks = []
-        for i, line in enumerate(lines):
-            blocks.append(Block(f"project_summary_{i}", TextBlock(text=line)))
-        return blocks
 
 
 class UserCodingLanguageRatioSectionBuilder(PortfolioSectionBuilder):
