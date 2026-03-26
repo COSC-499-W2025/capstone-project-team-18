@@ -26,6 +26,7 @@ class ResumeItem:
     bullet_points: list[str]
     start_date: date
     end_date: date
+    project_name: Optional[str] = None
 
     # Keep only the top three frameworks
     def __post_init__(self):
@@ -57,10 +58,12 @@ class Resume:
         weight_skills: Optional[list[WeightedSkills]] = None,
         education: Optional[list[str]] = None,
         awards: Optional[list[str]] = None,
+        title: Optional[str] = None,
     ):
         self.items = []
         self.email = email if email else None
         self.github = github if github else None
+        self.title = title
         self.skills = []
         self.education = education or []
         self.awards = awards or []

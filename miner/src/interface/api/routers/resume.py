@@ -9,7 +9,13 @@ from src.interface.api.routers.user_config import get_user_config_safe
 from src.database import (
     get_project_report_by_name
 )
-from src.database.api.CRUD.resume import save_resume, load_resume, get_resume_model_by_id
+from src.database.api.CRUD.resume import (
+    save_resume,
+    load_resume,
+    get_resume_model_by_id,
+    list_resumes,
+    delete_resume,
+)
 from src.core.report.user.user_report import UserReport
 from src.utils.errors import ResumeNotFoundError, ProjectNotFoundError, DatabaseOperationError
 from datetime import date
@@ -24,10 +30,12 @@ class GenerateResumeRequest(SQLModel):
     """Request model for generating a resume"""
     project_names: List[str]
     user_config_id: Optional[int] = None
+    title: Optional[str] = None
 
 
 class EditResumeMetadataRequest(SQLModel):
     """Request model for editing a resume"""
+    title: Optional[str] = None
     email: Optional[str] = None
     github_username: Optional[str] = None
 
@@ -75,6 +83,7 @@ class SkillsByExpertiseResponse(SQLModel):
 class ResumeResponse(SQLModel):
     """Response model for a resume with items"""
     id: Optional[int] = None
+    title: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
     skills: List[str]
@@ -84,6 +93,23 @@ class ResumeResponse(SQLModel):
     items: List[ResumeItemResponse] = []
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
+
+class ResumeListItemResponse(SQLModel):
+    """Lightweight response model for listing produced resumes"""
+    id: int
+    title: Optional[str] = None
+    email: Optional[str] = None
+    github: Optional[str] = None
+    created_at: Optional[datetime.datetime] = None
+    last_updated: Optional[datetime.datetime] = None
+    item_count: int = 0
+    project_names: List[str] = []
+
+
+class ResumeListResponse(SQLModel):
+    """Response model for all produced resumes"""
+    resumes: List[ResumeListItemResponse]
+    count: int
 
 # Helper function.
 def _build_resume_response(resume_model, session) -> ResumeResponse:
@@ -147,6 +173,7 @@ def _build_resume_response(resume_model, session) -> ResumeResponse:
 
     return ResumeResponse(
         id=resume_model.id,
+        title=resume_model.title,
         email=resume_model.email,
         github=resume_model.github,
         skills=resume_model.skills,
@@ -158,6 +185,25 @@ def _build_resume_response(resume_model, session) -> ResumeResponse:
         last_updated=resume_model.last_updated,
     )
 
+def _build_resume_list_item(resume_model) -> ResumeListItemResponse:
+    """
+    Build a lightweight response object for the resume list page.
+    """
+    project_names = [
+        item.project_name for item in (resume_model.items or [])
+        if item.project_name
+    ]
+    return ResumeListItemResponse(
+        id=resume_model.id,
+        title=resume_model.title,
+        email=resume_model.email,
+        github=resume_model.github,
+        created_at=resume_model.created_at,
+        last_updated=resume_model.last_updated,
+        item_count=len(resume_model.items or []),
+        project_names=project_names,
+    )
+
 class EditSkillsRequest(SQLModel):
     """Request model for editing categorized skills"""
     expert: List[str]
@@ -165,7 +211,36 @@ class EditSkillsRequest(SQLModel):
     exposure: List[str]
 
 
+class DeleteBulletPointRequest(SQLModel):
+    """Request model for deleting a bullet point"""
+    item_index: int
+    bullet_point_index: int
+
+
+class EditFrameworksRequest(SQLModel):
+    """Request model for editing frameworks for a resume item"""
+    item_index: int
+    frameworks: List[str]
+
+
 # ---------- Resume API Endpoints ----------
+
+@router.get("", response_model=ResumeListResponse)
+def get_all_resumes(session=Depends(get_session)):
+    """
+    GET /resume
+
+    Returns a lightweight list of all produced resumes.
+    Each entry contains: id, email, github, created_at, last_updated, item_count.
+    """
+    resume_models = list_resumes(session)
+    resumes = [_build_resume_list_item(resume_model) for resume_model in resume_models]
+
+    return ResumeListResponse(
+        resumes=resumes,
+        count=len(resumes),
+    )
+
 @router.get("/{resume_id}", response_model=ResumeResponse)
 def get_resume(resume_id: int, session=Depends(get_session)):
     """
@@ -288,11 +363,14 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
             user_github,
             education=user_education,
             awards=user_awards
-
         )
 
         # Save using serialize_resume
         resume_model = save_resume(session, resume_domain)
+
+        # Apply optional title after save
+        if request.title:
+            resume_model.title = request.title.strip() or None
         session.commit()
 
         return _build_resume_response(resume_model, session)
@@ -334,6 +412,9 @@ def edit_resume_metadata(
             status_code=404, detail=f"No resume found with id {resume_id}")
 
     try:
+        if request.title is not None:
+            resume_model.title = request.title.strip() or None
+
         if request.email is not None:
             resume_model.email = request.email
 
@@ -562,3 +643,149 @@ def refresh_resume(
     except Exception as e:
         session.rollback()
         raise DatabaseOperationError(f"Failed to refresh resume: {str(e)}") from e
+
+
+@router.post("/{resume_id}/edit/bullet_point/delete", response_model=ResumeResponse)
+def delete_resume_item_bullet_point(
+    resume_id: int,
+    request: DeleteBulletPointRequest,
+    session=Depends(get_session)
+):
+    """
+    Delete a bullet point from a specific resume item.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Body parameters:
+    - `item_index`: Zero-based index of the resume item.
+    - `bullet_point_index`: Zero-based index of the bullet point to delete.
+
+    Returns:
+    - 200: The updated `ResumeResponse`.
+
+    Raises:
+    - 400: item_index or bullet_point_index is out of bounds.
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: The delete failed; changes were rolled back.
+    """
+
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
+
+    if request.item_index < 0 or request.item_index >= len(resume_model.items):
+        raise HTTPException(
+            status_code=400, detail=f"Invalid item_index {request.item_index}. Out of bounds."
+        )
+
+    resume_item = resume_model.items[request.item_index]
+    updated_bullets = list(resume_item.bullet_points)
+
+    if request.bullet_point_index < 0 or request.bullet_point_index >= len(updated_bullets):
+        raise HTTPException(
+            status_code=400, detail=f"Invalid bullet_point_index {request.bullet_point_index}. Out of bounds."
+        )
+
+    try:
+        updated_bullets.pop(request.bullet_point_index)
+        resume_item.bullet_points = updated_bullets
+        resume_item.last_updated = datetime.datetime.now()
+        resume_model.last_updated = datetime.datetime.now()
+
+        session.add(resume_item)
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model, session)
+
+    except Exception as e:
+        session.rollback()
+        raise DatabaseOperationError(f"Failed to delete bullet point: {str(e)}") from e
+
+
+@router.post("/{resume_id}/edit/frameworks", response_model=ResumeResponse)
+def edit_resume_item_frameworks(
+    resume_id: int,
+    request: EditFrameworksRequest,
+    session=Depends(get_session)
+):
+    """
+    Replace the frameworks list for a specific resume item.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Body parameters:
+    - `item_index`: Zero-based index of the resume item to edit.
+    - `frameworks`: New list of framework/technology names.
+
+    Returns:
+    - 200: The updated `ResumeResponse`.
+
+    Raises:
+    - 400: item_index is out of bounds.
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: The edit failed; changes were rolled back.
+    """
+
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise ResumeNotFoundError(f"No resume found with id {resume_id}")
+
+    if request.item_index < 0 or request.item_index >= len(resume_model.items):
+        raise HTTPException(
+            status_code=400, detail=f"Invalid item_index {request.item_index}. Out of bounds."
+        )
+
+    resume_item = resume_model.items[request.item_index]
+
+    try:
+        resume_item.frameworks = list(request.frameworks)
+        resume_item.last_updated = datetime.datetime.now()
+        resume_model.last_updated = datetime.datetime.now()
+
+        session.add(resume_item)
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model, session)
+
+    except Exception as e:
+        session.rollback()
+        raise DatabaseOperationError(f"Failed to edit frameworks: {str(e)}") from e
+
+
+@router.delete("/{resume_id}", status_code=200)
+def delete_resume_endpoint(
+    resume_id: int,
+    session=Depends(get_session)
+):
+    """
+    Delete a resume and all its items by ID.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Returns:
+    - 200: `{"message": "Resume deleted."}` on success.
+
+    Raises:
+    - 404 `RESUME_NOT_FOUND`: No resume exists with the given ID.
+    - 500 `DATABASE_OPERATION_FAILED`: Deletion failed; changes were rolled back.
+    """
+    try:
+        deleted = delete_resume(session, resume_id)
+        if not deleted:
+            raise ResumeNotFoundError(f"No resume found with id {resume_id}")
+        session.commit()
+        return {"message": "Resume deleted."}
+    except ResumeNotFoundError:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise DatabaseOperationError(f"Failed to delete resume: {str(e)}") from e

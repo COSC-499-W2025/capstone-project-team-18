@@ -152,6 +152,7 @@ class ResumeConfigModel(SQLModel, table=True):
 
 class ResumeModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    title: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))

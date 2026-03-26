@@ -1,10 +1,12 @@
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import ResumePage from "./pages/ResumePage";
+import ResumesPage from "./pages/ResumesPage";
 import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
+import SkillsPage from "./pages/SkillsPage";
 import { useState } from "react";
 import SettingsModal from "./components/update/modal/SettingsModal";
 import { getLatestResumeId } from "./api/apiClient";
@@ -21,6 +23,16 @@ function ResumeRedirect() {
 
 export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  const location = useLocation();
+  const isResumeRoute =
+    location.pathname === "/resumes" ||
+    location.pathname === "/resume" ||
+    location.pathname.startsWith("/resume/");
+
+  const isProjectsRoute =
+    location.pathname === "/projects" ||
+    location.pathname.startsWith("/projects/");
 
   return (
     <div style={{ fontFamily: "system-ui" }}>
@@ -53,20 +65,21 @@ export default function App() {
               </NavLink>
 
           <NavLink
-          to="/projects"
-          end
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Projects
-              </NavLink>
+  to="/projects"
+  style={() => ({
+    padding: "8px 14px",
+    borderRadius: 12,
+    textDecoration: "none",
+    color: isProjectsRoute ? "#fff" : "#ccc",
+    background: isProjectsRoute
+      ? "rgba(255, 255, 255, 0.12)"
+      : "transparent",
+    transition: "all 0.2s ease",
+    display: "inline-block",
+  })}
+>
+  Projects
+</NavLink>
 
           <NavLink
           to="/portfolios"
@@ -84,7 +97,8 @@ export default function App() {
           </NavLink>
 
           <NavLink
-          to="/resume"
+          to="/skills"
+          end
           style={({ isActive }) => ({
             padding: "8px 14px",
             borderRadius: 12,
@@ -95,7 +109,22 @@ export default function App() {
             display: "inline-block",
             })}
             >
-              Resume
+              Skills
+          </NavLink>
+
+          <NavLink
+          to="/resumes"
+          style={() => ({
+            padding: "8px 14px",
+            borderRadius: 12,
+            textDecoration: "none",
+            color: isResumeRoute ? "#fff" : "#ccc",
+            background: isResumeRoute ? "rgba(255, 255, 255, 0.12)" : "transparent",
+            transition: "all 0.2s ease",
+            display: "inline-block",
+            })}
+            >
+              Resumes
           </NavLink>
 
           <button
@@ -118,6 +147,8 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+        <Route path="/skills" element={<SkillsPage />} />
+        <Route path="/resumes" element={<ResumesPage />} />
         <Route path="/resume" element={<ResumeRedirect />} />
         <Route path="/resume/new" element={<ResumePage />} />
         <Route path="/resume/:id" element={<ResumePage />} />
