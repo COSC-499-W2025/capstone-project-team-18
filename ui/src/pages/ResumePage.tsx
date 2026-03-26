@@ -242,7 +242,7 @@ export default function ResumePage() {
         </div>
       )}
 
-      {/* Page header - keep Generate button top-right for consistency */}
+      {/* Page header */}
       <div
         style={{
           display: "flex",
