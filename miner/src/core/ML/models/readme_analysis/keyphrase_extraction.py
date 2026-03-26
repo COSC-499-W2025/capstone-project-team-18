@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 from src.core.ML.models.azure_foundry_manager import AzureFoundryManager
 from src.core.ML.models.azure_openai_runtime import azure_openai_enabled
-from keybert import KeyBERT
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis.constants import URL_STOPWORDS
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
@@ -70,7 +69,8 @@ def _extract_with_keybert(text: str, top_n: int) -> list[str]:
     if not ml_extraction_allowed():
         return []
     if os.environ.get("ARTIFACT_MINER_DISABLE_KEYBERT") == "1":
-        logger.info("KeyBERT extraction disabled via ARTIFACT_MINER_DISABLE_KEYBERT")
+        logger.info(
+            "KeyBERT extraction disabled via ARTIFACT_MINER_DISABLE_KEYBERT")
         return []
     if _KEYBERT_FAILED:
         logger.info("Skipping KeyBERT extraction due to previous failure")
@@ -110,13 +110,16 @@ def _extract_with_azure_openai(text: str, top_n: int) -> list[str]:
         temperature=0.0,
     )
     if response is None:
-        logger.warning("[TASK=README_KEYPHRASES] Azure generation returned no structured response")
+        logger.warning(
+            "[TASK=README_KEYPHRASES] Azure generation returned no structured response")
         return []
     return response.keyphrases
 
 
 def extract_readme_keyphrases(text: str, top_n: int = _DEFAULT_TOP_N) -> list[str]:
     """Extract and cache README keyphrases, truncating long inputs."""
+    from keybert import KeyBERT
+
     if not text or not text.strip():
         logger.info("Skipping README keyphrase extraction for empty text")
         return []
