@@ -351,6 +351,7 @@ def list_portfolios(session: Session) -> list[dict]:
             "title": m.title,
             "creation_time": m.creation_time,
             "last_updated_at": m.last_updated_at,
+            "project_names": m.project_ids_include or [],
         }
         for m in models
     ]

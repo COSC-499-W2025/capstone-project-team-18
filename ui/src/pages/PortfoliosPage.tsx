@@ -8,16 +8,29 @@ type PortfolioListItem = {
   title: string;
   creation_time?: string;
   last_updated_at?: string;
+  project_names?: string[];
 };
 
 type ListPortfoliosResponse = {
   portfolios: PortfolioListItem[];
 };
 
-function formatDate(value?: string) {
+function formatRelativeDate(value?: string | null) {
   if (!value) return "—";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+  if (Number.isNaN(d.getTime())) return value;
+
+  const now = Date.now();
+  const diff = now - d.getTime();
+  const minutes = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days = Math.floor(diff / 86_400_000);
+
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function PortfoliosPage() {
@@ -51,37 +64,58 @@ export default function PortfoliosPage() {
   }
 
   return (
-    <div style={{ padding: 24, paddingTop: 40 }}>
+    <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
+      {/* Header */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
+          alignItems: "flex-start",
+          marginBottom: 28,
+          gap: 16,
+          flexWrap: "wrap",
         }}
       >
         <div>
-          <h1 style={{ margin: 0 }}>Portfolios</h1>
-          <p style={{ marginTop: 8, color: "#666" }}>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Portfolios</h1>
+          <p style={{ marginTop: 6, color: "#666", margin: "6px 0 0" }}>
             Create and manage your portfolio showcases.
           </p>
         </div>
 
         <button
           onClick={() => setShowCreateModal(true)}
-          style={{ padding: "10px 14px" }}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 10,
+            border: "1px solid #3a3a3a",
+            background: "#1f1f1f",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
         >
-          Create Portfolio
+          + Create Portfolio
         </button>
       </div>
+
+      <CreatePortfolioModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={handleCreated}
+      />
 
       {loading && (
         <div
           style={{
             border: "1px solid #2a2a2a",
-            borderRadius: 16,
+            borderRadius: 14,
             padding: 20,
             background: "#161616",
+            color: "#666",
+            fontSize: 14,
           }}
         >
           Loading portfolios...
@@ -92,7 +126,7 @@ export default function PortfoliosPage() {
         <div
           style={{
             border: "1px solid #3a1f1f",
-            borderRadius: 16,
+            borderRadius: 14,
             padding: 20,
             background: "#1a1111",
             color: "#ff8a8a",
@@ -106,18 +140,18 @@ export default function PortfoliosPage() {
         <div
           style={{
             border: "1px solid #2a2a2a",
-            borderRadius: 16,
+            borderRadius: 14,
             padding: 20,
             background: "#161616",
             color: "#999",
           }}
         >
-          No portfolios yet. Click "Create Portfolio" to get started.
+          No portfolios yet. Click "+ Create Portfolio" to get started.
         </div>
       )}
 
       {!loading && !error && portfolios.length > 0 && (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gap: 12 }}>
           {portfolios.map((p) => (
             <Link
               key={p.id}
@@ -127,40 +161,74 @@ export default function PortfoliosPage() {
                 textDecoration: "none",
                 color: "inherit",
                 border: "1px solid #2a2a2a",
-                borderRadius: 16,
-                padding: 18,
+                borderRadius: 14,
+                padding: "18px 20px",
                 background: "#161616",
+                transition: "border-color 0.15s ease, background 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "#3a3a3a";
+                (e.currentTarget as HTMLElement).style.background = "#1a1a1a";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
+                (e.currentTarget as HTMLElement).style.background = "#161616";
               }}
             >
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  gap: 16,
                   alignItems: "flex-start",
+                  gap: 16,
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 20 }}>{p.title}</div>
-                  <div style={{ fontSize: 13, color: "#999", marginTop: 8 }}>
-                    Created: {formatDate(p.creation_time)}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Title */}
+                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 10 }}>
+                    {p.title || `Portfolio #${p.id}`}
                   </div>
-                  <div style={{ fontSize: 13, color: "#999", marginTop: 4 }}>
-                    Updated: {formatDate(p.last_updated_at)}
+
+                  {/* Project pills */}
+                  {p.project_names && p.project_names.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                      {p.project_names.map((name) => (
+                        <span
+                          key={name}
+                          style={{
+                            padding: "3px 10px",
+                            borderRadius: 999,
+                            border: "1px solid #333",
+                            background: "#1e1e1e",
+                            fontSize: 12,
+                            color: "#aaa",
+                          }}
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>
+                      No projects
+                    </div>
+                  )}
+
+                  {/* Last updated */}
+                  <div style={{ fontSize: 12, color: "#555" }}>
+                    Updated {formatRelativeDate(p.last_updated_at)}
                   </div>
                 </div>
 
+                {/* Arrow */}
+                <div style={{ color: "#444", fontSize: 18, flexShrink: 0, marginTop: 2 }}>
+                  →
+                </div>
               </div>
             </Link>
           ))}
         </div>
       )}
-
-      <CreatePortfolioModal
-        open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreated={handleCreated}
-      />
     </div>
   );
 }
