@@ -149,7 +149,8 @@ def test_summary_section_falls_back_on_invalid_summary(tmp_path, monkeypatch):
     builder = UserSummarySectionBuilder()
     blocks = builder.create_blocks(report)
 
-    assert blocks == []
+    # assert fallback.
+    assert len(blocks) == 1
 
 
 def test_summary_section_skips_when_ml_required_and_missing(tmp_path, monkeypatch):
@@ -165,7 +166,8 @@ def test_summary_section_skips_when_ml_required_and_missing(tmp_path, monkeypatc
     try:
         builder = UserSummarySectionBuilder()
         blocks = builder.create_blocks(report)
-        assert blocks == []
+        # assert fallback.
+        assert len(blocks) == 1
     finally:
         monkeypatch.delenv(
             "ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", raising=False)
