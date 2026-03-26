@@ -835,24 +835,6 @@ export default function PortfolioEditPage() {
         </div>
       )}
 
-      {/* ---- Contribution Map ---- */}
-      {contributionData && (
-        <div style={{ marginTop: 40 }}>
-          <ContributionMap
-            personalTimeline={contributionData.personal_timeline}
-            totalTimeline={contributionData.total_timeline}
-          />
-        </div>
-      )}
-
-      {/* ---- Skill Timeline ---- */}
-      {Object.keys(skillTimelineData).length > 0 && (
-        <div style={{ marginTop: 24 }}>
-          <SkillTimelineGraph data={skillTimelineData} />
-        </div>
-      )}
-
-
       {/* GitHub Pages deployment success toast */}
       {exportedPagesUrl && (
         <div
