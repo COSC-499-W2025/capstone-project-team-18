@@ -133,6 +133,7 @@ export default function ProjectsPage() {
             <Link
               key={p.project_name}
               to={`/projects/${encodeURIComponent(p.project_name)}`}
+              state={{ from: "/projects" }}
               style={{
                 border: "1px solid #2a2a2a",
                 borderRadius: 16,

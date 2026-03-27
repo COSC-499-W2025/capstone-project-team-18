@@ -150,6 +150,7 @@ export default function ResumesPage() {
             <Link
               key={resume.id}
               to={`/resume/${resume.id}`}
+              state={{ from: "/resumes" }}
               style={{
                 display: "block",
                 textDecoration: "none",

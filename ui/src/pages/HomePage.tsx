@@ -245,6 +245,7 @@ async function handleUploadSuccess() {
                       <Link
                         key={project.project_name}
                         to={`/projects/${encodeURIComponent(project.project_name)}`}
+                        state={{ from: "/" }}
                         onMouseEnter={() => setHoveredProjectName(project.project_name)}
                         onMouseLeave={() => setHoveredProjectName(null)}
                         style={{
@@ -336,6 +337,7 @@ async function handleUploadSuccess() {
                             <Link
                             key={resume.id}
                             to={`/resume/${resume.id}`}
+                            state={{ from: "/" }}
                             style={{
                               display: "block",
                               textDecoration: "none",
@@ -403,6 +405,7 @@ async function handleUploadSuccess() {
                   <Link
                     key={p.id}
                     to={`/portfolios/${p.id}`}
+                    state={{ from: "/" }}
                     style={{
                       display: "block",
                       textDecoration: "none",

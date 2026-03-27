@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, type ProjectInsightsResponse } from "../api/apiClient";
 
 type ProjectReport = {
@@ -81,6 +81,9 @@ function formatStatisticValue(value: unknown): string {
 
 export default function ProjectDetailsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo: string = (location.state as any)?.from ?? "/projects";
+  const backLabel = backTo === "/" ? "← Back to Dashboard" : "← Back to Projects";
   const { id } = useParams();
   const projectName = id ?? "";
 
@@ -195,7 +198,7 @@ export default function ProjectDetailsPage() {
       <div style={{ marginBottom: 20 }}>
         <button
           type="button"
-          onClick={() => navigate("/projects")}
+          onClick={() => navigate(backTo)}
           style={{
             background: "transparent",
             border: "none",
@@ -205,7 +208,7 @@ export default function ProjectDetailsPage() {
             fontSize: 16,
           }}
         >
-          ← Back to Projects
+          {backLabel}
         </button>
       </div>
 

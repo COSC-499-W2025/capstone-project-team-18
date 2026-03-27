@@ -156,6 +156,7 @@ export default function PortfoliosPage() {
             <Link
               key={p.id}
               to={`/portfolios/${p.id}`}
+              state={{ from: "/portfolios" }}
               style={{
                 display: "block",
                 textDecoration: "none",
