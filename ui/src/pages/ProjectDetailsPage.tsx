@@ -89,8 +89,8 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState<ProjectReport | null>(null);
   const [insights, setInsights] = useState<ProjectInsight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(false);
-  const [dismissedInsights, setDismissedInsights] = useState<Record<string, boolean>>({});
-  const [usefulInsights, setUsefulInsights] = useState<Record<string, boolean>>({});
+  const [insightFeedbackError, setInsightFeedbackError] = useState<string | null>(null);
+  const [updatingInsightIds, setUpdatingInsightIds] = useState<Record<string, boolean>>({});
   const [imageUploading, setImageUploading] = useState(false);
   const [imageRemoving, setImageRemoving] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
@@ -124,10 +124,38 @@ export default function ProjectDetailsPage() {
     }
   }
 
-  const visibleInsights = insights.filter((insight, index) => {
-    const insightId = getInsightId(projectName, insight, index);
-    return !dismissedInsights[insightId];
-  });
+  async function handleInsightFeedback(
+    insight: ProjectInsight,
+    index: number,
+    payload: { useful?: boolean; dismissed?: boolean }
+  ) {
+    if (!project) return;
+
+    const insightId = getInsightId(project.project_name, insight, index);
+    setInsightFeedbackError(null);
+    setUpdatingInsightIds((current) => ({
+      ...current,
+      [insightId]: true,
+    }));
+
+    try {
+      const response = await api.updateProjectInsightFeedback(project.project_name, {
+        message: insight.message,
+        ...payload,
+      });
+      setInsights(response.insights ?? []);
+    } catch (e: any) {
+      setInsightFeedbackError(e?.message ?? "Failed to update insight feedback");
+    } finally {
+      setUpdatingInsightIds((current) => {
+        const next = { ...current };
+        delete next[insightId];
+        return next;
+      });
+    }
+  }
+
+  const visibleInsights = insights.filter((insight) => !insight.dismissed);
 
   const projectStatistics =
     project?.statistic && typeof project.statistic === "object"
@@ -153,8 +181,8 @@ export default function ProjectDetailsPage() {
         setProject(null);
         setInsights([]);
         setInsightsLoading(true);
-        setDismissedInsights({});
-        setUsefulInsights({});
+        setInsightFeedbackError(null);
+        setUpdatingInsightIds({});
 
         const projectRes = (await api.getProject(projectName)) as ProjectReport;
 
@@ -435,6 +463,12 @@ export default function ProjectDetailsPage() {
               Project-specific prompts to help turn this work into stronger resume bullets.
             </p>
 
+            {insightFeedbackError && (
+              <div style={{ marginBottom: 12, color: "#ff8a8a", lineHeight: 1.6 }}>
+                {insightFeedbackError}
+              </div>
+            )}
+
             {insightsLoading ? (
               <div style={{ color: "#999", lineHeight: 1.6 }}>
                 Loading resume insights...
@@ -443,8 +477,9 @@ export default function ProjectDetailsPage() {
               <div style={{ display: "grid", gap: 12 }}>
                 {insights.map((insight, index) => {
                   const insightId = getInsightId(project.project_name, insight, index);
-                  const isDismissed = dismissedInsights[insightId];
-                  const isUseful = usefulInsights[insightId];
+                  const isDismissed = Boolean(insight.dismissed);
+                  const isUseful = Boolean(insight.useful);
+                  const isUpdating = Boolean(updatingInsightIds[insightId]);
 
                   if (isDismissed) {
                     return null;
@@ -467,11 +502,9 @@ export default function ProjectDetailsPage() {
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                         <button
                           type="button"
+                          disabled={isUpdating}
                           onClick={() =>
-                            setUsefulInsights((current) => ({
-                              ...current,
-                              [insightId]: !current[insightId],
-                            }))
+                            handleInsightFeedback(insight, index, { useful: !isUseful })
                           }
                           style={{
                             border: "1px solid #355c2b",
@@ -479,18 +512,17 @@ export default function ProjectDetailsPage() {
                             background: isUseful ? "#355c2b" : "transparent",
                             color: isUseful ? "#f4ffe8" : "#9fce8a",
                             padding: "6px 12px",
-                            cursor: "pointer",
+                            cursor: isUpdating ? "not-allowed" : "pointer",
+                            opacity: isUpdating ? 0.6 : 1,
                           }}
                         >
                           {isUseful ? "Marked useful" : "Mark useful"}
                         </button>
                         <button
                           type="button"
+                          disabled={isUpdating}
                           onClick={() =>
-                            setDismissedInsights((current) => ({
-                              ...current,
-                              [insightId]: true,
-                            }))
+                            handleInsightFeedback(insight, index, { dismissed: true })
                           }
                           style={{
                             border: "1px solid #4a2a2a",
@@ -498,7 +530,8 @@ export default function ProjectDetailsPage() {
                             background: "transparent",
                             color: "#ff9a9a",
                             padding: "6px 12px",
-                            cursor: "pointer",
+                            cursor: isUpdating ? "not-allowed" : "pointer",
+                            opacity: isUpdating ? 0.6 : 1,
                           }}
                         >
                           Dismiss
@@ -566,9 +599,7 @@ export default function ProjectDetailsPage() {
                 ))}
               </div>
             ) : (
-              <div style={{ color: "#999", lineHeight: 1.6 }}>
-                No statistics are currently available for this project.
-              </div>
+              <div style={{ color: "#999" }}>No statistics available for this project.</div>
             )}
           </section>
         </>

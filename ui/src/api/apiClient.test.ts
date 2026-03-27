@@ -137,3 +137,27 @@ it("calls /resume/generate with correct URL and payload", async () => {
     })
   );
 });
+
+it("calls PATCH /projects/:project_name/insights/feedback with correct URL and payload", async () => {
+  fetchMock.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ project_name: "My Project", insights: [] }),
+  });
+
+  await api.updateProjectInsightFeedback("My Project", {
+    message: "Explain your ownership of the backend.",
+    dismissed: true,
+  });
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/projects/My%20Project/insights/feedback",
+    expect.objectContaining({
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Explain your ownership of the backend.",
+        dismissed: true,
+      }),
+    })
+  );
+});

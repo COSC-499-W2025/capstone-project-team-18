@@ -202,11 +202,19 @@ export type ListProjectsResponse = {
 
 export type ProjectInsightResponse = {
   message: string;
+  useful?: boolean;
+  dismissed?: boolean;
 };
 
 export type ProjectInsightsResponse = {
   project_name: string;
   insights: ProjectInsightResponse[];
+};
+
+export type UpdateProjectInsightFeedbackPayload = {
+  message: string;
+  useful?: boolean;
+  dismissed?: boolean;
 };
 
 export type UploadProjectResponse = {
@@ -350,6 +358,15 @@ export const api = {
   getProjectInsights: (name: string | number) =>
     getJson<ProjectInsightsResponse>(
       `/projects/${encodeURIComponent(String(name))}/insights`
+    ),
+
+  updateProjectInsightFeedback: (
+    name: string | number,
+    payload: UpdateProjectInsightFeedbackPayload
+  ) =>
+    patchJson<ProjectInsightsResponse>(
+      `/projects/${encodeURIComponent(String(name))}/insights/feedback`,
+      payload
     ),
 
   getUserConfig: () => getJson<UserConfigResponse>("/user-config"),

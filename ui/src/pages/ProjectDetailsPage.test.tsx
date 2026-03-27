@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ProjectDetailsPage from "./ProjectDetailsPage";
@@ -10,6 +10,7 @@ vi.mock("../api/apiClient", () => ({
   api: {
     getProject: vi.fn(),
     getProjectInsights: vi.fn(),
+    updateProjectInsightFeedback: vi.fn(),
   },
 }));
 
@@ -38,8 +39,16 @@ describe("ProjectDetailsPage", () => {
     vi.mocked(api.getProjectInsights).mockResolvedValue({
       project_name: "Insight Project",
       insights: [
-        { message: "Describe the feature you shipped." },
-        { message: "Explain your ownership of the backend." },
+        { message: "Describe the feature you shipped.", useful: false, dismissed: false },
+        { message: "Explain your ownership of the backend.", useful: false, dismissed: false },
+      ],
+    });
+
+    vi.mocked(api.updateProjectInsightFeedback).mockResolvedValue({
+      project_name: "Insight Project",
+      insights: [
+        { message: "Describe the feature you shipped.", useful: true, dismissed: false },
+        { message: "Explain your ownership of the backend.", useful: false, dismissed: false },
       ],
     });
   });
@@ -84,17 +93,42 @@ describe("ProjectDetailsPage", () => {
     expect(screen.queryByText(/error:/i)).not.toBeInTheDocument();
   });
 
-  it("lets users mark insights as useful and dismiss them", async () => {
+  it("marks an insight as useful through the backend", async () => {
     const user = userEvent.setup();
 
     render(<ProjectDetailsPage />);
 
     const usefulButtons = await screen.findAllByRole("button", { name: "Mark useful" });
     await user.click(usefulButtons[0]);
-    expect(screen.getByRole("button", { name: "Marked useful" })).toBeInTheDocument();
 
-    const dismissButtons = screen.getAllByRole("button", { name: "Dismiss" });
+    expect(api.updateProjectInsightFeedback).toHaveBeenCalledWith("Insight Project", {
+      message: "Describe the feature you shipped.",
+      useful: true,
+    });
+    expect(await screen.findByRole("button", { name: "Marked useful" })).toBeInTheDocument();
+  });
+
+  it("dismisses an insight through the backend", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.updateProjectInsightFeedback).mockResolvedValueOnce({
+      project_name: "Insight Project",
+      insights: [
+        { message: "Describe the feature you shipped.", useful: false, dismissed: true },
+        { message: "Explain your ownership of the backend.", useful: false, dismissed: false },
+      ],
+    });
+
+    render(<ProjectDetailsPage />);
+
+    const dismissButtons = await screen.findAllByRole("button", { name: "Dismiss" });
     await user.click(dismissButtons[0]);
-    expect(screen.queryByText("Describe the feature you shipped.")).not.toBeInTheDocument();
+
+    expect(api.updateProjectInsightFeedback).toHaveBeenCalledWith("Insight Project", {
+      message: "Describe the feature you shipped.",
+      dismissed: true,
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Describe the feature you shipped.")).not.toBeInTheDocument();
+    });
   });
 });
