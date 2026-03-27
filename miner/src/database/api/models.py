@@ -90,6 +90,14 @@ class ProjectInsightsModel(SQLModel, table=True):
         ondelete="CASCADE"
     )
     insights: List[str] = Field(sa_column=Column(JSON, nullable=False))
+    useful_insights: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, nullable=False),
+    )
+    dismissed_insights: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, nullable=False),
+    )
     generated_at: datetime = Field(default_factory=lambda: datetime.now())
 
     # Relationship

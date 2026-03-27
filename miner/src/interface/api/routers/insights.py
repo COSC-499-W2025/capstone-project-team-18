@@ -11,7 +11,7 @@ expensive or ML-based generators are only invoked once per project.
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session
 
 from src.core.insight.insight_generator import (
@@ -22,8 +22,13 @@ from src.core.insight.insight_generator import (
     SkillsInsightCalculator,
 )
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
-from src.database.api.CRUD.insights import get_project_insights, save_project_insights
+from src.database.api.CRUD.insights import (
+    get_project_insights,
+    save_project_insights,
+    update_project_insight_feedback,
+)
 from src.database.api.CRUD.projects import get_project_report_by_name
+from src.database.api.models import ProjectInsightsModel
 from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
 from src.utils.errors import ProjectNotFoundError
@@ -45,11 +50,37 @@ NON_ML_INSIGHT_CALCULATORS: list[type[InsightCalculator]] = [
 
 class InsightResponse(BaseModel):
     message: str
+    useful: bool = False
+    dismissed: bool = False
 
 
 class ProjectInsightsResponse(BaseModel):
     project_name: str
     insights: list[InsightResponse]
+
+
+class InsightFeedbackRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: str
+    useful: bool | None = None
+    dismissed: bool | None = None
+
+
+def _serialize_insights(project_name: str, cached: ProjectInsightsModel | None, messages: list[str]) -> ProjectInsightsResponse:
+    useful_messages = set(cached.useful_insights if cached is not None else [])
+    dismissed_messages = set(cached.dismissed_insights if cached is not None else [])
+    return ProjectInsightsResponse(
+        project_name=project_name,
+        insights=[
+            InsightResponse(
+                message=message,
+                useful=message in useful_messages,
+                dismissed=message in dismissed_messages,
+            )
+            for message in messages
+        ],
+    )
 
 
 @router.get("/{project_name}/insights", response_model=ProjectInsightsResponse)
@@ -82,10 +113,7 @@ def get_project_insights_endpoint(
     # non-ML subset so previously cached ML-derived prompts are not returned.
     cached = get_project_insights(session, decoded_name)
     if cached is not None and ml_allowed:
-        return ProjectInsightsResponse(
-            project_name=decoded_name,
-            insights=[InsightResponse(message=m) for m in cached.insights],
-        )
+        return _serialize_insights(decoded_name, cached, cached.insights)
 
     report = get_project_report_by_name(session, decoded_name)
     if report is None:
@@ -108,11 +136,49 @@ def get_project_insights_endpoint(
     # Save only when ML-derived insights are currently allowed. The cache does
     # not record per-message source metadata, so persisting filtered non-ML
     # results here would overwrite a fuller cache generated under consent.
+    cached_result = None
     if ml_allowed:
-        save_project_insights(session, decoded_name, messages)
+        cached_result = save_project_insights(session, decoded_name, messages)
         session.commit()
 
-    return ProjectInsightsResponse(
-        project_name=decoded_name,
-        insights=[InsightResponse(message=m) for m in messages],
-    )
+    return _serialize_insights(decoded_name, cached_result, messages)
+
+
+@router.patch("/{project_name}/insights/feedback", response_model=ProjectInsightsResponse)
+def update_project_insights_feedback_endpoint(
+    project_name: str,
+    request: InsightFeedbackRequest,
+    session: Session = Depends(get_session),
+):
+    """Update persisted useful/dismissed feedback for a cached project insight."""
+    decoded_name = unquote(project_name)
+
+    if get_project_report_by_name(session, decoded_name) is None:
+        raise ProjectNotFoundError(f"Project '{decoded_name}' not found.")
+
+    if request.useful is None and request.dismissed is None:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one feedback field must be provided.",
+        )
+
+    try:
+        cached = update_project_insight_feedback(
+            session,
+            decoded_name,
+            request.message,
+            useful=request.useful,
+            dismissed=request.dismissed,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if cached is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Project insights must be generated before feedback can be updated.",
+        )
+
+    session.commit()
+    session.refresh(cached)
+    return _serialize_insights(decoded_name, cached, cached.insights)

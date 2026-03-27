@@ -5,7 +5,11 @@ Tests CRUD for the ProjectReport object
 import datetime
 from sqlmodel import Session
 from src.database.api.CRUD.projects import get_project_report_by_name, save_project_report
-from src.database.api.CRUD.insights import get_project_insights, save_project_insights
+from src.database.api.CRUD.insights import (
+    get_project_insights,
+    save_project_insights,
+    update_project_insight_feedback,
+)
 from src.core.report import FileReport, ProjectReport
 from src.core.statistic import FileStatCollection, StatisticIndex, Statistic
 from src.core.statistic.statistic_models import FileDomain
@@ -145,3 +149,41 @@ def test_save_project_report_new_project_initializes_analysis_fields(temp_db):
         assert saved_model.project_name == "BrandNewProject"
         assert saved_model.analyzed_count == 1
         assert saved_model.parent is None
+
+
+def test_update_project_insight_feedback_persists_useful_and_dismissed_flags(temp_db):
+    with Session(temp_db) as session:
+        save_project_insights(session, "Project1", ["Insight A", "Insight B"])
+        session.commit()
+
+        updated = update_project_insight_feedback(
+            session,
+            "Project1",
+            "Insight A",
+            useful=True,
+            dismissed=True,
+        )
+        session.commit()
+
+        assert updated is not None
+        refreshed = get_project_insights(session, "Project1")
+        assert refreshed is not None
+        assert refreshed.useful_insights == ["Insight A"]
+        assert refreshed.dismissed_insights == ["Insight A"]
+
+
+def test_save_project_insights_prunes_feedback_for_removed_messages(temp_db):
+    with Session(temp_db) as session:
+        save_project_insights(session, "Project1", ["Insight A", "Insight B"])
+        update_project_insight_feedback(session, "Project1", "Insight A", useful=True)
+        update_project_insight_feedback(session, "Project1", "Insight B", dismissed=True)
+        session.commit()
+
+        save_project_insights(session, "Project1", ["Insight B", "Insight C"])
+        session.commit()
+
+        refreshed = get_project_insights(session, "Project1")
+        assert refreshed is not None
+        assert refreshed.insights == ["Insight B", "Insight C"]
+        assert refreshed.useful_insights == []
+        assert refreshed.dismissed_insights == ["Insight B"]

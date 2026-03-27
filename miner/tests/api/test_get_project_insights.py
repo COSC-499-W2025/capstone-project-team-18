@@ -37,11 +37,20 @@ def _insert_project(engine, name: str):
         session.commit()
 
 
-def _insert_cached_insights(engine, project_name: str, messages: list[str]):
+def _insert_cached_insights(
+    engine,
+    project_name: str,
+    messages: list[str],
+    *,
+    useful_messages: list[str] | None = None,
+    dismissed_messages: list[str] | None = None,
+):
     with Session(engine) as session:
         session.add(ProjectInsightsModel(
             project_name=project_name,
             insights=messages,
+            useful_insights=useful_messages or [],
+            dismissed_insights=dismissed_messages or [],
         ))
         session.commit()
 
@@ -240,3 +249,73 @@ def test_get_project_insights_returns_non_ml_only_when_ml_consent_not_granted(cl
     _, kwargs = mock_gen.call_args
     assert kwargs["requested_classes"] == NON_ML_INSIGHT_CALCULATORS
     mock_save.assert_not_called()
+
+
+def test_get_project_insights_includes_persisted_feedback_flags(client, blank_db):
+    _insert_project(blank_db, "FeedbackProject")
+    _insert_ml_consent(blank_db, True)
+    _insert_cached_insights(
+        blank_db,
+        "FeedbackProject",
+        ["Insight one.", "Insight two."],
+        useful_messages=["Insight one."],
+        dismissed_messages=["Insight two."],
+    )
+
+    response = client.get(f"/projects/{quote('FeedbackProject')}/insights")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["insights"][0]["useful"] is True
+    assert data["insights"][0]["dismissed"] is False
+    assert data["insights"][1]["useful"] is False
+    assert data["insights"][1]["dismissed"] is True
+
+
+def test_patch_project_insight_feedback_persists_feedback_state(client, blank_db):
+    _insert_project(blank_db, "PatchProject")
+    _insert_ml_consent(blank_db, True)
+    _insert_cached_insights(blank_db, "PatchProject", ["Insight A", "Insight B"])
+
+    response = client.patch(
+        f"/projects/{quote('PatchProject')}/insights/feedback",
+        json={"message": "Insight A", "useful": True, "dismissed": True},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    matching = next(insight for insight in payload["insights"] if insight["message"] == "Insight A")
+    assert matching["useful"] is True
+    assert matching["dismissed"] is True
+
+    with Session(blank_db) as session:
+        cached = session.get(ProjectInsightsModel, "PatchProject")
+        assert cached is not None
+        assert cached.useful_insights == ["Insight A"]
+        assert cached.dismissed_insights == ["Insight A"]
+
+
+def test_patch_project_insight_feedback_requires_cached_insights(client, blank_db):
+    _insert_project(blank_db, "UncachedProject")
+    _insert_ml_consent(blank_db, True)
+
+    response = client.patch(
+        f"/projects/{quote('UncachedProject')}/insights/feedback",
+        json={"message": "Insight A", "dismissed": True},
+    )
+
+    assert response.status_code == 409
+
+
+def test_patch_project_insight_feedback_rejects_unknown_message(client, blank_db):
+    _insert_project(blank_db, "KnownProject")
+    _insert_ml_consent(blank_db, True)
+    _insert_cached_insights(blank_db, "KnownProject", ["Insight A"])
+
+    response = client.patch(
+        f"/projects/{quote('KnownProject')}/insights/feedback",
+        json={"message": "Unknown insight", "dismissed": True},
+    )
+
+    assert response.status_code == 400
+    assert "not found" in response.json()["detail"].lower()
