@@ -8,7 +8,7 @@ import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
 import SkillsPage from "./pages/SkillsPage";
 import { useState } from "react";
-import SettingsModal from "./components/update/modal/SettingsModal";
+import SettingsModal from "./components/update/Modal/SettingsModal";
 import { getLatestResumeId } from "./api/apiClient";
 
 function ResumeRedirect() {
@@ -38,11 +38,15 @@ export default function App() {
     <div style={{ fontFamily: "system-ui" }}>
       <header
         style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           padding: "8px 24px 8px 80px",
           borderBottom: "1px solid #eee",
+          backgroundColor: "#242424",
           WebkitAppRegion: "drag",
         } as React.CSSProperties}
       >
