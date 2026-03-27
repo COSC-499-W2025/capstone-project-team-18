@@ -1,30 +1,36 @@
-// Patches the Electron binary's Info.plist so the macOS menu bar shows
-// "Artifact Miner" instead of "Electron" when running in dev mode.
-import { readFileSync, writeFileSync } from 'fs'
+// Renames the Electron.app bundle and patches Info.plist so macOS shows
+// "Artifact Miner" in the dock instead of "Electron" in dev mode.
+import { execSync } from 'child_process'
+import { existsSync, readFileSync, writeFileSync, renameSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const plistPath = join(
-  __dirname,
-  '../node_modules/electron/dist/Electron.app/Contents/Info.plist'
-)
+if (process.platform !== 'darwin') process.exit(0)
 
-try {
-  let content = readFileSync(plistPath, 'utf8')
-  const updated = content
-    .replace(
-      /<key>CFBundleName<\/key>\s*<string>[^<]*<\/string>/,
-      '<key>CFBundleName</key>\n\t<string>Artifact Miner</string>'
-    )
-    .replace(
-      /<key>CFBundleDisplayName<\/key>\s*<string>[^<]*<\/string>/,
-      '<key>CFBundleDisplayName</key>\n\t<string>Artifact Miner</string>'
-    )
-  if (updated !== content) {
-    writeFileSync(plistPath, updated)
-    console.log('Patched Electron.app name → Artifact Miner')
-  }
-} catch {
-  // Not on macOS, or Electron not yet installed — skip silently
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const distDir = join(__dirname, '../node_modules/electron/dist')
+const oldApp = join(distDir, 'Electron.app')
+const newApp = join(distDir, 'Artifact Miner.app')
+const pathTxt = join(__dirname, '../node_modules/electron/path.txt')
+
+// Rename Electron.app → Artifact Miner.app if not already done
+if (existsSync(oldApp)) {
+  renameSync(oldApp, newApp)
+  console.log('Renamed Electron.app → Artifact Miner.app')
+} else if (!existsSync(newApp)) {
+  console.error('Could not find Electron.app or Artifact Miner.app in', distDir)
+  process.exit(1)
 }
+
+// Update electron/path.txt so vite-plugin-electron finds the binary
+const currentPath = readFileSync(pathTxt, 'utf8').trim()
+const newPath = currentPath.replace('Electron.app', 'Artifact Miner.app')
+writeFileSync(pathTxt, newPath)
+console.log('Updated electron/path.txt')
+
+// Patch Info.plist
+const pb = '/usr/libexec/PlistBuddy'
+const plistPath = join(newApp, 'Contents/Info.plist')
+execSync(`${pb} -c "Set :CFBundleName 'Artifact Miner'" "${plistPath}"`)
+execSync(`${pb} -c "Set :CFBundleDisplayName 'Artifact Miner'" "${plistPath}"`)
+console.log('Patched Info.plist → Artifact Miner')
