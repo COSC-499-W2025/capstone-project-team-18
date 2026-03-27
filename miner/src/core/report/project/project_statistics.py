@@ -740,10 +740,6 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
         commit_count_by_author = self._get_commits_by_author(
             repo=report.project_repo)
 
-        # total_commits = sum(commit_count_by_author.values())
-        # if total_commits == 0:
-        #    return []
-
         '''
         Check for user's email address AND for their GitHub noreply email address.
         E.g., user's email is paulatreides@gmail.com, and their username is patreides.
@@ -764,14 +760,11 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
                 if key not in distinct_authors:
                     distinct_authors.append(key)
 
-        # user_commits = [value for key, value in commit_count_by_author.items()
-        #                if key == report.email or (report.github and f"{report.github}@" in key)]
         total_commits = user_commits + group_commits
         if total_commits == 0:
             return []
 
         # Calculate user's commit percentage
-        # user_commit_count = sum(user_commits) if user_commits else 0
         user_commit_percentage = round(
             (user_commits / total_commits) * 100, 2)
 
