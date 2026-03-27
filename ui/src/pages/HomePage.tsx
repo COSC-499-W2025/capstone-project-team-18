@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   api,
   getLatestResumeId,
@@ -28,6 +28,7 @@ function getImageSrc(base64: string): string {
 }
 
 export default function HomePage({ backendReady }: { backendReady: boolean }) {
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
@@ -98,6 +99,12 @@ export default function HomePage({ backendReady }: { backendReady: boolean }) {
     loadResumes();
     loadLatestResume();
   }, [backendReady]);
+
+  useEffect(() => {
+    if ((location.state as any)?.openUploadModal) {
+      setShowUploadModal(true);
+    }
+  }, [location.state]);
 
   function loadLatestResume() {
   const resumeId = getLatestResumeId();

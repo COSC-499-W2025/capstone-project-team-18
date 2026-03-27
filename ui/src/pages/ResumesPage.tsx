@@ -91,7 +91,7 @@ export default function ResumesPage() {
             whiteSpace: "nowrap",
           }}
         >
-          + Create Resume
+          Create Resume
         </button>
       </div>
 

@@ -97,7 +97,7 @@ export default function PortfoliosPage() {
             whiteSpace: "nowrap",
           }}
         >
-          + Create Portfolio
+          Create Portfolio
         </button>
       </div>
 

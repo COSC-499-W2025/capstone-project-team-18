@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/apiClient";
 import ProjectSkeleton from "@/components/ProjectSkeleton";
 
@@ -22,6 +22,7 @@ type ListProjectsResponse = {
 
 
 export default function ProjectsPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
@@ -46,52 +47,64 @@ export default function ProjectsPage() {
   }, []);
 
   return (
-    <div style={{ padding: 24, paddingTop: 40 }}>
+    <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
+      {/* Header */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
+          alignItems: "flex-start",
+          marginBottom: 28,
+          gap: 16,
+          flexWrap: "wrap",
         }}
       >
         <div>
-          <h1 style={{ margin: 0 }}>Projects</h1>
-          <p style={{ marginTop: 8, color: "#666" }}>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Projects</h1>
+          <p style={{ marginTop: 6, color: "#666", margin: "6px 0 0" }}>
             Browse uploaded projects and open a project to view details.
           </p>
         </div>
 
         <button
-          onClick={load}
-          disabled={loading}
-          style={{ padding: "10px 14px" }}
+          onClick={() => navigate("/", { state: { openUploadModal: true } })}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 10,
+            border: "1px solid #3a3a3a",
+            background: "#1f1f1f",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
         >
-          {loading ? "Refreshing..." : "Refresh"}
+          Upload Project
         </button>
       </div>
 
       {loading && (
         <div
-        style={{
-          border: "1px solid #2a2a2a",
-          borderRadius: 16,
-          padding: 20,
-          background: "#161616",
-        }}
+          style={{
+            border: "1px solid #2a2a2a",
+            borderRadius: 14,
+            padding: 20,
+            background: "#161616",
+          }}
         >
-          <div style={{ color: "#999", marginBottom: 16 }}>
-            Project analysis in progress...
-            </div>
-            <ProjectSkeleton count={6} />
-            </div>
-          )}
+          <div style={{ color: "#666", fontSize: 14, marginBottom: 16 }}>
+            Loading projects...
+          </div>
+          <ProjectSkeleton count={6} />
+        </div>
+      )}
 
       {!loading && error && (
         <div
           style={{
             border: "1px solid #3a1f1f",
-            borderRadius: 16,
+            borderRadius: 14,
             padding: 20,
             background: "#1a1111",
             color: "#ff8a8a",
@@ -105,64 +118,55 @@ export default function ProjectsPage() {
         <div
           style={{
             border: "1px solid #2a2a2a",
-            borderRadius: 20,
-            padding: 28,
+            borderRadius: 14,
+            padding: 20,
             background: "#161616",
             color: "#999",
           }}
         >
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
-            No projects found
-          </div>
-          <div style={{ lineHeight: 1.6 }}>
-            Upload and mine a project from the dashboard to see it appear here.
-          </div>
+          No projects yet. Click "Upload Project" to get started.
         </div>
       )}
 
       {!loading && !error && projects.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            gap: 20,
-            alignItems: "stretch",
-          }}
-        >
+        <div style={{ display: "grid", gap: 12 }}>
           {projects.map((p) => (
             <Link
               key={p.project_name}
               to={`/projects/${encodeURIComponent(p.project_name)}`}
               state={{ from: "/projects" }}
               style={{
-                border: "1px solid #2a2a2a",
-                borderRadius: 16,
-                background: "#161616",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                overflow: "hidden",
-                padding: 20,
+                display: "block",
                 textDecoration: "none",
                 color: "inherit",
-                cursor: "pointer",
-                transition: "border-color 0.15s, background 0.15s",
+                border: "1px solid #2a2a2a",
+                borderRadius: 14,
+                padding: "18px 20px",
+                background: "#161616",
+                transition: "border-color 0.15s ease, background 0.15s ease",
               }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.borderColor = "#6f7cff";
-                (e.currentTarget as HTMLElement).style.background = "#1a1a2e";
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "#3a3a3a";
+                (e.currentTarget as HTMLElement).style.background = "#1a1a1a";
               }}
-              onMouseLeave={e => {
+              onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
                 (e.currentTarget as HTMLElement).style.background = "#161616";
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-                <div style={{ fontWeight: 700, fontSize: 20, lineHeight: 1.3, wordBreak: "break-word", flex: 1 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 16,
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 17, wordBreak: "break-word", flex: 1 }}>
                   {p.project_name}
                 </div>
 
-                {p.image_data && (
+                {p.image_data ? (
                   <div style={{ width: 120, height: 80, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: "#0d0d0d" }}>
                     <img
                       src={getImageSrc(p.image_data)}
@@ -170,6 +174,8 @@ export default function ProjectsPage() {
                       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                     />
                   </div>
+                ) : (
+                  <div style={{ color: "#444", fontSize: 18, flexShrink: 0 }}>→</div>
                 )}
               </div>
             </Link>
