@@ -246,6 +246,7 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                 non_user_authors_by_file = self._get_nonUser_authors_per_file(
                     report.project_repo,
                     report.email,
+                    report.github,
                 )
             except Exception:
                 non_user_authors_by_file = {}
@@ -365,7 +366,7 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
 
         return to_return
 
-    def _get_nonUser_authors_per_file(self, repo, email) -> dict[str, int]:
+    def _get_nonUser_authors_per_file(self, repo, email, github_username: str | None = None) -> dict[str, int]:
         """We want to increment certain statistics if they are contributed to by authors other than the user"""
         authors_per_file: dict[str, set[str]] = {}
 
@@ -374,7 +375,7 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                 continue
 
             author_email = commit.author.email
-            if author_email == email:
+            if author_email == email or (github_username and f"{github_username}@" in author_email):
                 continue
 
             # Get files changed in this commit
@@ -737,28 +738,50 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
             return []
 
         commit_count_by_author = self._get_commits_by_author(
-            repo=report.project_repo
-        )
+            repo=report.project_repo)
 
-        user_commits = [value for key, value in commit_count_by_author.items()
-                        if key == report.email]
+        # total_commits = sum(commit_count_by_author.values())
+        # if total_commits == 0:
+        #    return []
 
-        total_commits = sum(commit_count_by_author.values())
+        '''
+        Check for user's email address AND for their GitHub noreply email address.
+        E.g., user's email is paulatreides@gmail.com, and their username is patreides.
+        We need to look for the email they gave us, and any email address that contains
+        "patreides@".
+        See https://docs.github.com/en/account-and-profile/reference/email-addresses-reference#email-verification-for-managed-user-accounts
+        '''
+        user_commits = 0
+        group_commits = 0  # any authors other than the user
+        distinct_authors = []  # stores each contributing author once
+        for key, value in commit_count_by_author.items():
+            if key == report.email or (report.github and f"{report.github}@" in key):
+                user_commits += value
+                if key == report.email and key not in distinct_authors:
+                    distinct_authors.append(key)  # only add the user once
+            else:
+                group_commits += value
+                if key not in distinct_authors:
+                    distinct_authors.append(key)
 
+        # user_commits = [value for key, value in commit_count_by_author.items()
+        #                if key == report.email or (report.github and f"{report.github}@" in key)]
+        total_commits = user_commits + group_commits
         if total_commits == 0:
             return []
 
         # Calculate user's commit percentage
-        user_commit_count = sum(user_commits) if user_commits else 0
+        # user_commit_count = sum(user_commits) if user_commits else 0
         user_commit_percentage = round(
-            (user_commit_count / total_commits) * 100, 2)
+            (user_commits / total_commits) * 100, 2)
 
         # Determine if it's a group project
-        num_authors = len(commit_count_by_author)
+        num_authors = len(distinct_authors)
         is_group_project = num_authors > 1
 
         # Calculate authors per file
-        authors_per_file = self._get_authors_per_file(report.project_repo)
+        authors_per_file = self._get_authors_per_file(
+            report.project_repo, report.email, report.github)
 
         stats = [
             Statistic(
@@ -778,7 +801,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
         # Only add user commit percentage for group projects
         if is_group_project:
             group_contributions = self._get_commits_by_author(
-                report.project_repo)
+                report.project_repo, report.email, report.github)
 
             stats.append(
                 Statistic(
@@ -795,19 +818,25 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
 
         return stats
 
-    def _get_commits_by_author(self, repo) -> dict[str, int]:
-        """Returns a dictionary mapping author emails to commit counts."""
+    def _get_commits_by_author(self, repo, user_email: str | None = None, github_username: str | None = None) -> dict[str, int]:
+        """Returns a dictionary mapping author emails to commit counts.
+
+        The user's noreply GitHub email is normalized to their primary email so
+        all their commits are counted under a single key.
+        """
         commit_count_by_author: dict[str, int] = {}
         for commit in repo.iter_commits():
             if hasattr(commit, "author") and hasattr(commit.author, "email"):
                 email = commit.author.email
+                if user_email and github_username and f"{github_username}@" in email:
+                    email = user_email
                 commit_count_by_author[email] = (
                     commit_count_by_author.get(email, 0) + 1
                 )
         return commit_count_by_author
 
-    def _get_authors_per_file(self, repo) -> dict[str, int]:
-        """Returns a dictionary mapping file paths to number of unique authors."""
+    def _get_authors_per_file(self, repo, user_email: str | None = None, github_username: str | None = None) -> dict[str, int]:
+        """Returns a dictionary mapping file paths to number of distinct authors."""
         authors_per_file: dict[str, set[str]] = {}
 
         for commit in repo.iter_commits():
@@ -815,6 +844,11 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
                 continue
 
             author_email = commit.author.email
+
+            # Normalize noreply GitHub email to the user's primary email so it
+            # isn't counted as a second distinct author for a file.
+            if user_email and github_username and f"{github_username}@" in author_email:
+                author_email = user_email
 
             # Get files changed in this commit
             if commit.parents:
@@ -871,7 +905,10 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
         try:
             user_commits = [
                 c for c in report.project_repo.iter_commits()
-                if getattr(c, "author", None) and getattr(c.author, "email", None) == report.email
+                if getattr(c, "author", None) and (
+                    getattr(c.author, "email", None) == report.email
+                    or (report.github and f"{report.github}@" in getattr(c.author, "email", ""))
+                )
             ]
 
             if not user_commits:
@@ -1053,7 +1090,8 @@ class ProjectCommitActivityTimeline(ProjectStatisticCalculation):
                     commit.authored_date).strftime("%Y-%m-%d")
                 commits_dict[date] = commits_dict.get(date, 0) + 1
 
-                if commit.author.email == report.email or (report.github and report.github in commit.author.email):
+                author_email = commit.author.email or ""
+                if author_email == report.email or (report.github and f"{report.github}@" in author_email):
                     user_commits_dict[date] = user_commits_dict.get(
                         date, 0) + 1
 
@@ -1078,18 +1116,14 @@ class ProjectStatisticReportBuilder(StatisticReportBuilder[ProjectReport]):
 
         # If specific calculator classes are requested, filter to only those
         if calculator_classes is not None:
-
             if len(calculator_classes) == 0:
                 logger.warning(
                     "ProjectStatisticReportBuilder was called with no requested calulators. Was this intended?")
                 self.calculators = []
-
                 return
 
             self.calculators = [
-                cls() for cls in all_calculator_classes
-                if cls in calculator_classes
-            ]
+                cls() for cls in all_calculator_classes if cls in calculator_classes]
         else:
             self.calculators = [cls() for cls in all_calculator_classes]
 
