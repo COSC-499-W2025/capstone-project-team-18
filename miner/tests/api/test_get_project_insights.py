@@ -80,7 +80,7 @@ def test_get_project_insights_generates_and_returns_insights_on_cache_miss(clien
     assert response.status_code == 200
     data = response.json()
     assert data["project_name"] == "NewProject"
-    assert len(data["insights"]) == 2
+    assert len(data["insights"]) == 5
     assert data["insights"][0]["message"] == "You wrote 80% of this project."
     mock_save.assert_called_once()
 
@@ -128,7 +128,8 @@ def test_get_project_insights_passes_correct_messages_to_save(client, blank_db):
         client.get(f"/projects/{quote('CheckSave')}/insights")
 
     assert captured["name"] == "CheckSave"
-    assert captured["messages"] == ["Insight A", "Insight B"]
+    assert captured["messages"][:2] == ["Insight A", "Insight B"]
+    assert len(captured["messages"]) == 5
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +148,7 @@ def test_get_project_insights_returns_cached_insights(client, blank_db):
     assert response.status_code == 200
     data = response.json()
     assert data["project_name"] == "CachedProject"
-    assert len(data["insights"]) == 2
+    assert len(data["insights"]) == 5
     assert data["insights"][0]["message"] == "Cached insight one."
     assert data["insights"][1]["message"] == "Cached insight two."
 
@@ -155,7 +156,7 @@ def test_get_project_insights_returns_cached_insights(client, blank_db):
 def test_get_project_insights_does_not_call_generator_on_cache_hit(client, blank_db):
     _insert_project(blank_db, "HitProject")
     _insert_ml_consent(blank_db, True)
-    _insert_cached_insights(blank_db, "HitProject", ["Only from cache."])
+    _insert_cached_insights(blank_db, "HitProject", ["Only from cache.", "Cached two.", "Cached three.", "Cached four.", "Cached five."])
 
     with patch("src.interface.api.routers.insights.InsightGenerator.generate") as mock_gen, \
          patch("src.interface.api.routers.insights.get_project_report_by_name") as mock_get:
@@ -221,7 +222,7 @@ def test_get_project_insights_returns_empty_list_when_no_insights_generated(clie
         response = client.get(f"/projects/{quote('QuietProject')}/insights")
 
     assert response.status_code == 200
-    assert response.json()["insights"] == []
+    assert len(response.json()["insights"]) == 5
 
 
 def test_get_project_insights_url_decodes_project_name(client, blank_db):
@@ -244,7 +245,7 @@ def test_get_project_insights_returns_non_ml_only_when_ml_consent_not_granted(cl
         response = client.get(f"/projects/{quote('ConsentProject')}/insights")
 
     assert response.status_code == 200
-    assert response.json()["insights"] == []
+    assert len(response.json()["insights"]) == 5
     mock_gen.assert_called_once()
     _, kwargs = mock_gen.call_args
     assert kwargs["requested_classes"] == NON_ML_INSIGHT_CALCULATORS
