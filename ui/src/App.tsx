@@ -41,13 +41,16 @@ export default function App() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 24px",
-          borderBottom: "1px solid #eee"
-        }}
+          padding: "8px 24px 8px 80px",
+          borderBottom: "1px solid #eee",
+          WebkitAppRegion: "drag",
+        } as React.CSSProperties}
       >
-        <div style={{ fontWeight: 700 }}>Digital Artifact Miner</div>
+        <NavLink to="/" style={{ fontWeight: 700, color: "inherit", textDecoration: "none", WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+          Digital Artifact Miner
+        </NavLink>
 
-        <nav style={{ display: "flex", gap: 8 }}>
+        <nav style={{ display: "flex", gap: 8, WebkitAppRegion: "no-drag" } as React.CSSProperties}>
           <NavLink
           to="/"
           end
