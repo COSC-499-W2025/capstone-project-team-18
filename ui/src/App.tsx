@@ -43,13 +43,42 @@ export default function App() {
     <div style={{ fontFamily: "system-ui" }}>
       {backendDown && (
         <div style={{
-          backgroundColor: "#7f1d1d",
-          color: "#fecaca",
-          textAlign: "center",
-          padding: "8px 16px",
-          fontSize: 14,
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(0,0,0,0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
         }}>
-          Cannot connect to the backend. Please ensure the API server is running.
+          <div style={{
+            backgroundColor: "#1c1c1c",
+            border: "1px solid #3f3f3f",
+            borderRadius: 12,
+            padding: "32px 40px",
+            textAlign: "center",
+            maxWidth: 400,
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Backend Unreachable</div>
+            <div style={{ color: "#aaa", marginBottom: 24, fontSize: 14 }}>
+              Cannot connect to the API server. Please ensure the backend is running and try again.
+            </div>
+            <button
+              onClick={() => api.ping().then((ok) => setBackendDown(!ok))}
+              style={{
+                padding: "8px 24px",
+                borderRadius: 8,
+                border: "none",
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: 14,
+              }}
+            >
+              Refresh
+            </button>
+          </div>
         </div>
       )}
       <header
@@ -167,7 +196,7 @@ export default function App() {
       </header>
 
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<HomePage backendReady={!backendDown} />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailsPage />} />
         <Route path="/skills" element={<SkillsPage />} />

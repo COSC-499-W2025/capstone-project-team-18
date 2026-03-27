@@ -7,7 +7,7 @@ import {
   type ResumeListItem,
   type ResumeListResponse,
 } from "../api/apiClient";
-import UploadProjectModal from "../components/update/modal/UploadProjectModal";
+import UploadProjectModal from "../components/update/Modal/UploadProjectModal";
 import ProjectSkeleton from "@/components/ProjectSkeleton";
 
 type PortfolioListItem = {
@@ -27,7 +27,7 @@ function getImageSrc(base64: string): string {
   return `data:image/jpeg;base64,${base64}`;
 }
 
-export default function HomePage() {
+export default function HomePage({ backendReady }: { backendReady: boolean }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
@@ -92,11 +92,12 @@ export default function HomePage() {
 }
 
   useEffect(() => {
+    if (!backendReady) return;
     loadProjects();
     loadPortfolios();
     loadResumes();
     loadLatestResume();
-  }, []);
+  }, [backendReady]);
 
   function loadLatestResume() {
   const resumeId = getLatestResumeId();
