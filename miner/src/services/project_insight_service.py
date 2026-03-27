@@ -96,6 +96,15 @@ def _to_json_safe(value: Any) -> Any:
     return str(value)
 
 
+def _as_int(value: Any) -> int | None:
+    if isinstance(value, bool): return int(value)
+    if isinstance(value, (int, float)): return int(value)
+    if isinstance(value, str):
+        try: return int(value.strip())
+        except ValueError: return None
+    return None
+
+
 def _project_context(report: ProjectReport) -> dict[str, Any]:
     files = getattr(report, "file_reports", [])[:20]
     return {
@@ -127,7 +136,7 @@ def _fallback_candidates(report: ProjectReport) -> list[str]:
     extras = [
         *([f"You used {', '.join(tech_text.split(', ')[:3])} in {project_name}. Where did those technologies make the biggest difference to the final outcome?"] if tech_text else []),
         *([f"The project signals for {project_name} point to themes like {', '.join(theme_text.split(', ')[:3])}. Which of those best captures the value you delivered?"] if theme_text else []),
-        *([f"{project_name} involved {total_authors} contributors. What part of the collaboration are you most comfortable claiming ownership over?"] if total_authors and int(total_authors) > 1 else []),
+        *([f"{project_name} involved {total_authors} contributors. What part of the collaboration are you most comfortable claiming ownership over?"] if (_as_int(total_authors) or 0) > 1 else []),
         *([f"Your inferred role on {project_name} was {role}. What deliverable or decision best proves that role in resume-ready terms?"] if role else []),
         *([f"Your contribution pattern on {project_name} suggests this role: {role_desc}. What concrete example demonstrates that contribution most clearly?"] if role_desc and not role else []),
         *([f"Your work pattern on {project_name} was {str(work_pattern).lower()}. What does that reveal about how you executed and delivered?"] if work_pattern else []),
