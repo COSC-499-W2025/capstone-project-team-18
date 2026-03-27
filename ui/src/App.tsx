@@ -7,9 +7,9 @@ import ResumesPage from "./pages/ResumesPage";
 import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
 import SkillsPage from "./pages/SkillsPage";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SettingsModal from "./components/update/Modal/SettingsModal";
-import { getLatestResumeId } from "./api/apiClient";
+import { getLatestResumeId, api } from "./api/apiClient";
 
 function ResumeRedirect() {
   const latestResumeId = getLatestResumeId();
@@ -23,6 +23,11 @@ function ResumeRedirect() {
 
 export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [backendDown, setBackendDown] = useState(false);
+
+  useEffect(() => {
+    api.ping().then((ok) => setBackendDown(!ok));
+  }, []);
 
   const location = useLocation();
   const isResumeRoute =
@@ -36,6 +41,17 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "system-ui" }}>
+      {backendDown && (
+        <div style={{
+          backgroundColor: "#7f1d1d",
+          color: "#fecaca",
+          textAlign: "center",
+          padding: "8px 16px",
+          fontSize: 14,
+        }}>
+          Cannot connect to the backend. Please ensure the API server is running.
+        </div>
+      )}
       <header
         style={{
           position: "sticky",
