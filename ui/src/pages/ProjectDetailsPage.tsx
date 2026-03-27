@@ -21,6 +21,8 @@ type ProjectReport = {
 
 type ProjectInsight = ProjectInsightsResponse["insights"][number];
 
+const MAX_VISIBLE_INSIGHTS = 5;
+
 function getInsightId(projectName: string, insight: ProjectInsight, index: number) {
   return `${projectName}-${index}-${insight.message}`;
 }
@@ -155,7 +157,10 @@ export default function ProjectDetailsPage() {
     }
   }
 
-  const visibleInsights = insights.filter((insight) => !insight.dismissed);
+  const visibleInsights = insights
+    .map((insight, index) => ({ insight, index }))
+    .filter(({ insight }) => !insight.dismissed)
+    .slice(0, MAX_VISIBLE_INSIGHTS);
 
   const projectStatistics =
     project?.statistic && typeof project.statistic === "object"
@@ -475,15 +480,10 @@ export default function ProjectDetailsPage() {
               </div>
             ) : visibleInsights.length > 0 ? (
               <div style={{ display: "grid", gap: 12 }}>
-                {insights.map((insight, index) => {
+                {visibleInsights.map(({ insight, index }) => {
                   const insightId = getInsightId(project.project_name, insight, index);
-                  const isDismissed = Boolean(insight.dismissed);
                   const isUseful = Boolean(insight.useful);
                   const isUpdating = Boolean(updatingInsightIds[insightId]);
-
-                  if (isDismissed) {
-                    return null;
-                  }
 
                   return (
                     <div

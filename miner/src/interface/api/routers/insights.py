@@ -31,6 +31,7 @@ from src.database.api.CRUD.projects import get_project_report_by_name
 from src.database.api.models import ProjectInsightsModel
 from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
+from src.services.project_insight_service import generate_project_insight_replacements
 from src.utils.errors import ProjectNotFoundError
 
 router = APIRouter(
@@ -39,6 +40,7 @@ router = APIRouter(
 )
 
 logger = get_logger(__name__)
+MIN_VISIBLE_INSIGHTS = 5
 
 
 NON_ML_INSIGHT_CALCULATORS: list[type[InsightCalculator]] = [
@@ -83,6 +85,36 @@ def _serialize_insights(project_name: str, cached: ProjectInsightsModel | None, 
     )
 
 
+def _undismissed_count(cached: ProjectInsightsModel) -> int:
+    dismissed = set(cached.dismissed_insights)
+    return len([message for message in cached.insights if message not in dismissed])
+
+
+def _refill_cached_insights_if_needed(
+    *,
+    session: Session,
+    project_name: str,
+    report,
+    cached: ProjectInsightsModel,
+    allow_azure: bool,
+) -> ProjectInsightsModel:
+    needed = max(0, MIN_VISIBLE_INSIGHTS - _undismissed_count(cached))
+    if needed == 0:
+        return cached
+
+    additions = generate_project_insight_replacements(
+        report=report,
+        existing_insights=cached.insights,
+        dismissed_insights=cached.dismissed_insights,
+        count=needed,
+        allow_azure=allow_azure,
+    )
+    if not additions:
+        return cached
+
+    return save_project_insights(session, project_name, cached.insights + additions)
+
+
 @router.get("/{project_name}/insights", response_model=ProjectInsightsResponse)
 def get_project_insights_endpoint(
     project_name: str,
@@ -105,24 +137,34 @@ def get_project_insights_endpoint(
     - 500: Insight generation failed unexpectedly.
     """
     decoded_name = unquote(project_name)
-
     ml_allowed = ml_extraction_allowed(session=session)
-
-    # Cached insight rows do not track whether messages were ML-derived.
-    # When ML is currently disallowed, bypass cache and regenerate only the
-    # non-ML subset so previously cached ML-derived prompts are not returned.
     cached = get_project_insights(session, decoded_name)
-    if cached is not None and ml_allowed:
+
+    if cached is not None and ml_allowed and _undismissed_count(cached) >= MIN_VISIBLE_INSIGHTS:
         return _serialize_insights(decoded_name, cached, cached.insights)
 
     report = get_project_report_by_name(session, decoded_name)
     if report is None:
         raise ProjectNotFoundError(f"Project '{decoded_name}' not found.")
 
+    if cached is not None and ml_allowed:
+        cached = _refill_cached_insights_if_needed(
+            session=session,
+            project_name=decoded_name,
+            report=report,
+            cached=cached,
+            allow_azure=ml_allowed,
+        )
+        session.commit()
+        session.refresh(cached)
+        return _serialize_insights(decoded_name, cached, cached.insights)
+
     try:
         requested_classes = None if ml_allowed else NON_ML_INSIGHT_CALCULATORS
         insights = InsightGenerator.generate(
-            report, requested_classes=requested_classes)
+            report,
+            requested_classes=requested_classes,
+        )
     except Exception:
         logger.exception(
             "Error generating insights for project '%s'", decoded_name)
@@ -132,10 +174,17 @@ def get_project_insights_endpoint(
         )
 
     messages = [i.message for i in insights]
+    if len(messages) < MIN_VISIBLE_INSIGHTS:
+        messages.extend(
+            generate_project_insight_replacements(
+                report=report,
+                existing_insights=messages,
+                dismissed_insights=[],
+                count=MIN_VISIBLE_INSIGHTS - len(messages),
+                allow_azure=ml_allowed,
+            )
+        )
 
-    # Save only when ML-derived insights are currently allowed. The cache does
-    # not record per-message source metadata, so persisting filtered non-ML
-    # results here would overwrite a fuller cache generated under consent.
     cached_result = None
     if ml_allowed:
         cached_result = save_project_insights(session, decoded_name, messages)
@@ -152,8 +201,9 @@ def update_project_insights_feedback_endpoint(
 ):
     """Update persisted useful/dismissed feedback for a cached project insight."""
     decoded_name = unquote(project_name)
+    report = get_project_report_by_name(session, decoded_name)
 
-    if get_project_report_by_name(session, decoded_name) is None:
+    if report is None:
         raise ProjectNotFoundError(f"Project '{decoded_name}' not found.")
 
     if request.useful is None and request.dismissed is None:
@@ -177,6 +227,15 @@ def update_project_insights_feedback_endpoint(
         raise HTTPException(
             status_code=409,
             detail="Project insights must be generated before feedback can be updated.",
+        )
+
+    if request.dismissed:
+        cached = _refill_cached_insights_if_needed(
+            session=session,
+            project_name=decoded_name,
+            report=report,
+            cached=cached,
+            allow_azure=ml_extraction_allowed(session=session),
         )
 
     session.commit()
