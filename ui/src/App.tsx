@@ -45,22 +45,23 @@ export default function App() {
         <div style={{
           position: "fixed",
           inset: 0,
-          backgroundColor: "rgba(0,0,0,0.6)",
+          backgroundColor: "rgba(0,0,0,0.75)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 1000,
         }}>
           <div style={{
-            backgroundColor: "#1c1c1c",
-            border: "1px solid #3f3f3f",
+            backgroundColor: "#1a0a0a",
+            border: "1.5px solid #dc2626",
             borderRadius: 12,
             padding: "32px 40px",
             textAlign: "center",
             maxWidth: 400,
           }}>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Backend Unreachable</div>
-            <div style={{ color: "#aaa", marginBottom: 24, fontSize: 14 }}>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#f87171" }}>Backend Unreachable</div>
+            <div style={{ color: "#fca5a5", marginBottom: 24, fontSize: 14 }}>
               Cannot connect to the API server. Please ensure the backend is running and try again.
             </div>
             <button
@@ -69,7 +70,7 @@ export default function App() {
                 padding: "8px 24px",
                 borderRadius: 8,
                 border: "none",
-                backgroundColor: "#3b82f6",
+                backgroundColor: "#dc2626",
                 color: "#fff",
                 fontWeight: 600,
                 cursor: "pointer",
