@@ -13,7 +13,6 @@ import zipfile
 from datetime import datetime, date
 from unittest.mock import MagicMock, patch
 
-import pytest
 from sqlmodel import Session
 
 from src.database.api.models import (
@@ -108,12 +107,12 @@ def _make_card(engine, portfolio_id: int, project_name: str, *,
         return c.id
 
 
-def _make_project_report(engine, name: str):
+def _make_project_report(engine, name: str, *, statistic=None):
     """Insert a minimal ProjectReportModel."""
     with Session(engine) as session:
         session.add(ProjectReportModel(
             project_name=name,
-            statistic={},
+            statistic=statistic or {},
             created_at=datetime.now(),
             last_updated=datetime.now(),
         ))
@@ -173,7 +172,8 @@ class TestGeneratePortfolio:
             "src.interface.api.routers.portfolio.generate_and_save_portfolio",
             return_value=mock_model,
         ) as mock_gen:
-            r = client.post("/portfolio/generate", json={"project_names": ["proj_a"]})
+            r = client.post("/portfolio/generate",
+                            json={"project_names": ["proj_a"]})
 
         assert r.status_code == 200
         mock_gen.assert_called_once_with(["proj_a"], None)
@@ -185,7 +185,8 @@ class TestGeneratePortfolio:
         ) as mock_gen:
             client.post(
                 "/portfolio/generate",
-                json={"project_names": ["p1"], "portfolio_title": "Custom Title"},
+                json={"project_names": ["p1"],
+                      "portfolio_title": "Custom Title"},
             )
 
         mock_gen.assert_called_once_with(["p1"], "Custom Title")
@@ -479,7 +480,8 @@ class TestShowcaseToggle:
 
     def test_showcase_toggle_does_not_touch_other_fields(self, client, blank_db):
         pid = _make_portfolio(blank_db)
-        _make_card(blank_db, pid, "proj", summary="Keep this summary", is_showcase=False)
+        _make_card(blank_db, pid, "proj",
+                   summary="Keep this summary", is_showcase=False)
 
         r = client.post(
             f"/portfolio/{pid}/cards/proj/showcase",
@@ -584,7 +586,8 @@ class TestExportPortfolio:
         json_str = js_src.replace("var PORTFOLIO_DATA = ", "").rstrip(";\n")
         data = json.loads(json_str)
 
-        showcase_flags = {c["project_name"]: c["is_showcase"] for c in data["project_cards"]}
+        showcase_flags = {c["project_name"]: c["is_showcase"]
+                          for c in data["project_cards"]}
         assert showcase_flags["showcase-proj"] is True
         assert showcase_flags["normal-proj"] is False
 
@@ -600,6 +603,67 @@ class TestExportPortfolio:
         r = client.get(f"/portfolio/{pid}/export")
         zf = zipfile.ZipFile(io.BytesIO(r.content))
         assert len(zf.read("filter.js")) > 100
+
+    def test_export_portfolio_data_contains_figure_timelines(self, client, blank_db):
+        pid = _make_portfolio(blank_db)
+        _make_card(blank_db, pid, "alpha")
+        _make_card(blank_db, pid, "beta")
+
+        _make_project_report(
+            blank_db,
+            "alpha",
+            statistic={
+                "COMMIT_ACTIVITY_TIMELINE": {
+                    "2025-01-01": 2,
+                    "2025-01-02": 1,
+                },
+                "TOTAL_COMMIT_ACTIVITY_TIMELINE": {
+                    "2025-01-01": 5,
+                    "2025-01-02": 4,
+                },
+                "PROJECT_SKILL_ACTIVITY": {
+                    "Python": ["2025-01-01", "2025-01-02"],
+                    "React": ["2025-01-02"],
+                },
+            },
+        )
+        _make_project_report(
+            blank_db,
+            "beta",
+            statistic={
+                "COMMIT_ACTIVITY_TIMELINE": {
+                    "2025-01-01": 3,
+                },
+                "TOTAL_COMMIT_ACTIVITY_TIMELINE": {
+                    "2025-01-01": 6,
+                },
+                "PROJECT_SKILL_ACTIVITY": {
+                    "Python": ["2025-01-01"],
+                },
+            },
+        )
+
+        r = client.get(f"/portfolio/{pid}/export")
+        zf = zipfile.ZipFile(io.BytesIO(r.content))
+        js_src = zf.read("portfolio_data.js").decode("utf-8")
+        json_str = js_src.replace("var PORTFOLIO_DATA = ", "").rstrip(";\n")
+        data = json.loads(json_str)
+
+        assert data["figures"]["contribution"]["personal_timeline"] == {
+            "2025-01-01": 5,
+            "2025-01-02": 1,
+        }
+        assert data["figures"]["contribution"]["total_timeline"] == {
+            "2025-01-01": 11,
+            "2025-01-02": 4,
+        }
+        assert data["figures"]["skill_timeline"]["Python"] == {
+            "2025-01-01": 2,
+            "2025-01-02": 1,
+        }
+        assert data["figures"]["skill_timeline"]["React"] == {
+            "2025-01-02": 1,
+        }
 
     def test_export_missing_portfolio_returns_404(self, client, blank_db):
         r = client.get("/portfolio/9999/export")
