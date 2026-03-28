@@ -10,6 +10,7 @@ from src.interface.api.routers.util import get_session
 from src.services.job_readiness_service import (
     JobReadinessResult,
     JobReadinessUserProfileInput,
+    analyze_job_readiness_with_diagnostics,
     build_user_profile,
     run_job_readiness_analysis,
 )
@@ -98,7 +99,7 @@ def analyze_job_readiness(
             detail="The request did not include enough valid evidence to analyze.",
         ) from exc
 
-    outcome = run_job_readiness_analysis(
+    outcome = analyze_job_readiness_with_diagnostics(
         job_description=request.job_description,
         user_profile=user_profile,
     )

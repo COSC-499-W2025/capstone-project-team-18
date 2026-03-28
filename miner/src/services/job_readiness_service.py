@@ -18,6 +18,9 @@ from src.core.ML.models.job_readiness_constants import (
 from src.database.api.CRUD.projects import get_project_report_models_by_names
 from src.database.api.CRUD.resume import get_resume_model_by_id
 from src.database.api.models import ProjectReportModel, ResumeModel
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class RankedFinding(BaseModel):
@@ -534,7 +537,7 @@ def _parse_job_readiness_payload(
     return result, None
 
 
-def run_job_readiness_analysis(
+def analyze_job_readiness_with_diagnostics(
     *,
     job_description: str,
     user_profile: dict[str, Any],
@@ -549,14 +552,15 @@ def run_job_readiness_analysis(
             ),
         )
 
-    if _configured_deployment_name() is None or any(
+    missing_core_config = any(
         not (os.environ.get(env_name) or "").strip()
         for env_name in (
             "AZURE_OPENAI_ENDPOINT",
             "AZURE_OPENAI_API_KEY",
             "AZURE_OPENAI_API_VERSION",
         )
-    ):
+    )
+    if missing_core_config:
         return JobReadinessAnalysisOutcome(
             result=None,
             error_message=_missing_azure_configuration_message(),
@@ -593,3 +597,16 @@ def run_job_readiness_analysis(
         error_message=last_error
         or "Job readiness analysis failed after repeated Azure OpenAI attempts.",
     )
+
+
+def run_job_readiness_analysis(
+    *,
+    job_description: str,
+    user_profile: dict[str, Any],
+    max_attempts: int = 2,
+) -> JobReadinessResult | None:
+    return analyze_job_readiness_with_diagnostics(
+        job_description=job_description,
+        user_profile=user_profile,
+        max_attempts=max_attempts,
+    ).result

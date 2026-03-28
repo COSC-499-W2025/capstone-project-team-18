@@ -20,7 +20,7 @@ def test_job_readiness_returns_specific_configuration_error(client, monkeypatch)
     )
     monkeypatch.setattr(
         job_readiness_module,
-        "run_job_readiness_analysis",
+        "analyze_job_readiness_with_diagnostics",
         lambda job_description, user_profile: JobReadinessAnalysisOutcome(
             result=None,
             error_message="Job readiness analysis is unavailable because Azure OpenAI is not fully configured. Missing: AZURE_OPENAI_API_KEY.",
@@ -47,7 +47,7 @@ def test_job_readiness_returns_successful_result(client, monkeypatch):
     )
     monkeypatch.setattr(
         job_readiness_module,
-        "run_job_readiness_analysis",
+        "analyze_job_readiness_with_diagnostics",
         lambda job_description, user_profile: JobReadinessAnalysisOutcome(
             result=JobReadinessResult.model_validate(
                 {
