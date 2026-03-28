@@ -1,15 +1,16 @@
+import { useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { getLatestResumeId } from "./api/apiClient";
+import SettingsModal from "./components/update/Modal/SettingsModal";
 import HomePage from "./pages/HomePage";
-import ProjectsPage from "./pages/ProjectsPage";
+import JobReadinessPage from "./pages/JobReadinessPage";
+import PortfolioEditPage from "./pages/PortfolioEditPage";
+import PortfoliosPage from "./pages/PortfoliosPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
+import ProjectsPage from "./pages/ProjectsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
-import PortfoliosPage from "./pages/PortfoliosPage";
-import PortfolioEditPage from "./pages/PortfolioEditPage";
 import SkillsPage from "./pages/SkillsPage";
-import { useState } from "react";
-import SettingsModal from "./components/update/modal/SettingsModal";
-import { getLatestResumeId } from "./api/apiClient";
 
 function ResumeRedirect() {
   const latestResumeId = getLatestResumeId();
@@ -19,6 +20,18 @@ function ResumeRedirect() {
   }
 
   return <Navigate to="/resume/new" replace />;
+}
+
+function navLinkStyle(isActive: boolean) {
+  return {
+    padding: "8px 14px",
+    borderRadius: 12,
+    textDecoration: "none",
+    color: isActive ? "#fff" : "#ccc",
+    background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+    transition: "all 0.2s ease",
+    display: "inline-block",
+  };
 }
 
 export default function App() {
@@ -34,6 +47,8 @@ export default function App() {
     location.pathname === "/projects" ||
     location.pathname.startsWith("/projects/");
 
+  const isJobReadinessRoute = location.pathname === "/job-readiness";
+
   return (
     <div style={{ fontFamily: "system-ui" }}>
       <header
@@ -42,103 +57,48 @@ export default function App() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "12px 24px",
-          borderBottom: "1px solid #eee"
+          borderBottom: "1px solid #eee",
         }}
       >
         <div style={{ fontWeight: 700 }}>Digital Artifact Miner</div>
 
-        <nav style={{ display: "flex", gap: 8 }}>
-          <NavLink
-          to="/"
-          end
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Dashboard
-              </NavLink>
-
-          <NavLink
-  to="/projects"
-  style={() => ({
-    padding: "8px 14px",
-    borderRadius: 12,
-    textDecoration: "none",
-    color: isProjectsRoute ? "#fff" : "#ccc",
-    background: isProjectsRoute
-      ? "rgba(255, 255, 255, 0.12)"
-      : "transparent",
-    transition: "all 0.2s ease",
-    display: "inline-block",
-  })}
->
-  Projects
-</NavLink>
-
-          <NavLink
-          to="/portfolios"
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Portfolios
+        <nav style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <NavLink to="/" end style={({ isActive }) => navLinkStyle(isActive)}>
+            Dashboard
           </NavLink>
 
-          <NavLink
-          to="/skills"
-          end
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Skills
+          <NavLink to="/projects" style={() => navLinkStyle(isProjectsRoute)}>
+            Projects
           </NavLink>
 
-          <NavLink
-          to="/resumes"
-          style={() => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isResumeRoute ? "#fff" : "#ccc",
-            background: isResumeRoute ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Resumes
+          <NavLink to="/job-readiness" style={() => navLinkStyle(isJobReadinessRoute)}>
+            Job Readiness
+          </NavLink>
+
+          <NavLink to="/portfolios" style={({ isActive }) => navLinkStyle(isActive)}>
+            Portfolios
+          </NavLink>
+
+          <NavLink to="/skills" end style={({ isActive }) => navLinkStyle(isActive)}>
+            Skills
+          </NavLink>
+
+          <NavLink to="/resumes" style={() => navLinkStyle(isResumeRoute)}>
+            Resumes
           </NavLink>
 
           <button
-          onClick={() => setShowSettingsModal(true)}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 12,
-            border: "none",
-            background: "transparent",
-            color: "#ccc",
-            cursor: "pointer",
+            onClick={() => setShowSettingsModal(true)}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 12,
+              border: "none",
+              background: "transparent",
+              color: "#ccc",
+              cursor: "pointer",
             }}
-            >
-              Settings
+          >
+            Settings
           </button>
         </nav>
       </header>
@@ -147,6 +107,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+        <Route path="/job-readiness" element={<JobReadinessPage />} />
         <Route path="/skills" element={<SkillsPage />} />
         <Route path="/resumes" element={<ResumesPage />} />
         <Route path="/resume" element={<ResumeRedirect />} />
@@ -156,10 +117,7 @@ export default function App() {
         <Route path="/portfolios/:id" element={<PortfolioEditPage />} />
       </Routes>
 
-      <SettingsModal
-      open={showSettingsModal}
-      onClose={() => setShowSettingsModal(false)}
-      />
+      <SettingsModal open={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
     </div>
   );
 }

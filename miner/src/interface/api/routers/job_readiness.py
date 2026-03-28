@@ -98,13 +98,13 @@ def analyze_job_readiness(
             detail="The request did not include enough valid evidence to analyze.",
         ) from exc
 
-    result = run_job_readiness_analysis(
+    outcome = run_job_readiness_analysis(
         job_description=request.job_description,
         user_profile=user_profile,
     )
-    if result is None:
+    if outcome.result is None:
         raise AIServiceUnavailableError(
-            "Job readiness analysis is unavailable. Confirm Azure OpenAI is enabled and "
-            "the configured deployment targets GPT-4o mini."
+            outcome.error_message
+            or "Job readiness analysis is unavailable. Confirm Azure OpenAI is enabled and the configured deployment targets GPT-4o mini."
         )
-    return result
+    return outcome.result
