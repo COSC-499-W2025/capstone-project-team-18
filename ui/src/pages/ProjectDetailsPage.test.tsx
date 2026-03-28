@@ -19,6 +19,7 @@ vi.mock("react-router-dom", async () => {
     ...actual,
     useNavigate: () => mockNavigate,
     useParams: () => ({ id: "Insight Project" }),
+    useLocation: () => ({ state: null, pathname: "/projects/Insight%20Project", search: "", hash: "", key: "default" }),
   };
 });
 

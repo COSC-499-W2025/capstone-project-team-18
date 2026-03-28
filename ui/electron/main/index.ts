@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, screen } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -37,6 +37,8 @@ if (process.defaultApp) {
   app.setAsDefaultProtocolClient('capstone')
 }
 
+app.setName('Artifact Miner')
+
 // Disable GPU Acceleration for Windows 7
 if (os.release().startsWith('6.1')) app.disableHardwareAcceleration()
 
@@ -53,9 +55,15 @@ const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 async function createWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+
   win = new BrowserWindow({
+    width: Math.round(width * 0.75),
+    height: Math.round(height * 0.75),
     title: 'Main window',
-    icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
+    icon: path.join(process.env.VITE_PUBLIC, 'favicon_io', 'android-chrome-512x512.png'),
+    backgroundColor: '#242424',
+    titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload,
       // Warning: Enable nodeIntegration and disable contextIsolation is not secure in production
@@ -70,7 +78,7 @@ async function createWindow() {
   if (VITE_DEV_SERVER_URL) { // #298
     win.loadURL(VITE_DEV_SERVER_URL)
     // Open devTool if the app is not packaged
-    win.webContents.openDevTools()
+    //win.webContents.openDevTools()
   } else {
     win.loadFile(indexHtml)
   }
@@ -90,7 +98,12 @@ async function createWindow() {
   update(win)
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(process.env.VITE_PUBLIC, 'favicon_io', 'icon.png'))
+  }
+  createWindow()
+})
 
 app.on('window-all-closed', () => {
   win = null

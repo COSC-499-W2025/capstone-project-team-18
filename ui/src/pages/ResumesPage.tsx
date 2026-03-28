@@ -91,7 +91,7 @@ export default function ResumesPage() {
             whiteSpace: "nowrap",
           }}
         >
-          + Create Resume
+          Create Resume
         </button>
       </div>
 
@@ -150,6 +150,7 @@ export default function ResumesPage() {
             <Link
               key={resume.id}
               to={`/resume/${resume.id}`}
+              state={{ from: "/resumes" }}
               style={{
                 display: "block",
                 textDecoration: "none",
