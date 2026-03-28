@@ -7,8 +7,7 @@ import ResumesPage from "./pages/ResumesPage";
 import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
 import SkillsPage from "./pages/SkillsPage";
-import { useState } from "react";
-import SettingsModal from "./components/update/modal/SettingsModal";
+import ProfilePage from "@/pages/ProfilePage";
 import { getLatestResumeId } from "./api/apiClient";
 
 function ResumeRedirect() {
@@ -22,8 +21,6 @@ function ResumeRedirect() {
 }
 
 export default function App() {
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-
   const location = useLocation();
   const isResumeRoute =
     location.pathname === "/resumes" ||
@@ -113,33 +110,34 @@ export default function App() {
           </NavLink>
 
           <NavLink
-          to="/resumes"
-          style={() => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isResumeRoute ? "#fff" : "#ccc",
-            background: isResumeRoute ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
+            to="/resumes"
+            style={() => ({
+              padding: "8px 14px",
+              borderRadius: 12,
+              textDecoration: "none",
+              color: isResumeRoute ? "#fff" : "#ccc",
+              background: isResumeRoute ? "rgba(255, 255, 255, 0.12)" : "transparent",
+              transition: "all 0.2s ease",
+              display: "inline-block",
             })}
-            >
-              Resumes
+          >
+            Resumes
           </NavLink>
 
-          <button
-          onClick={() => setShowSettingsModal(true)}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 12,
-            border: "none",
-            background: "transparent",
-            color: "#ccc",
-            cursor: "pointer",
-            }}
-            >
-              Settings
-          </button>
+          <NavLink
+            to="/profile"
+            style={({ isActive }) => ({
+              padding: "8px 14px",
+              borderRadius: 12,
+              textDecoration: "none",
+              color: isActive ? "#fff" : "#ccc",
+              background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+              transition: "all 0.2s ease",
+              display: "inline-block",
+            })}
+          >
+            Profile
+          </NavLink>
         </nav>
       </header>
 
@@ -154,12 +152,8 @@ export default function App() {
         <Route path="/resume/:id" element={<ResumePage />} />
         <Route path="/portfolios" element={<PortfoliosPage />} />
         <Route path="/portfolios/:id" element={<PortfolioEditPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
-
-      <SettingsModal
-      open={showSettingsModal}
-      onClose={() => setShowSettingsModal(false)}
-      />
     </div>
   );
 }

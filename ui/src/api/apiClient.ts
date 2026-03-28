@@ -155,6 +155,7 @@ export type UserConfigResponse = {
   id: number;
   consent: boolean;
   ml_consent: boolean;
+  name?: string | null;
   user_email?: string | null;
   github?: string | null;
   github_connected?: boolean;
@@ -181,6 +182,7 @@ export type GithubOauthStatusResponse = {
 export type UpdateUserConfigPayload = {
   consent: boolean;
   ml_consent?: boolean;
+  name?: string | null;
   user_email: string;
   github?: string | null;
   resume_config?: ResumeConfigRequest | null;

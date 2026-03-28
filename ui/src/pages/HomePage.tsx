@@ -36,12 +36,12 @@ export default function HomePage() {
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
   const [portfoliosLoading, setPortfoliosLoading] = useState(true);
   const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
-  
+
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [resumesLoading, setResumesLoading] = useState(true);
   const [resumesError, setResumesError] = useState<string | null>(null);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
-  
+
   const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
 
   const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(false);
@@ -177,7 +177,7 @@ async function handleUploadSuccess() {
         <div>
           <h1 style={{ margin: 0 }}>Dashboard</h1>
           <p style={{ marginTop: 8, color: "#666" }}>
-            Manage projects, resumes, portfolios, and settings.
+            Manage projects, resumes, portfolios, and your profile.
           </p>
         </div>
 
@@ -324,11 +324,11 @@ async function handleUploadSuccess() {
                       Failed to load resumes.
                       </div>
                     )}
-                    
+
                     {!resumesLoading && !resumesError && resumes.length === 0 && (
                       <div style={{ color: "#999" }}>No resumes yet.</div>
                       )}
-                      
+
                       {!resumesLoading && !resumesError && resumes.length > 0 && (
                         <div style={{ display: "grid", gap: 12 }}>
                           {resumes.slice(0, 3).map((resume) => (
@@ -353,7 +353,7 @@ async function handleUploadSuccess() {
                               </div>
                             )}
                         </div>
-                        
+
                         <div
                         style={{
                           marginTop: 20,

@@ -320,8 +320,8 @@ export default function UploadProjectModal({
           >
             <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
             <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-              You must complete your settings before uploading a project. Open{" "}
-              <strong>Settings</strong> (top-right of the app) and save your
+              You must complete your profile before uploading a project. Open{" "}
+              <strong>Profile</strong> (top-right of the app) and save your
               preferences, including accepting the data consent, then try again.
             </div>
           </div>
