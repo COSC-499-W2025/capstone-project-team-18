@@ -571,7 +571,7 @@ export default function ProfilePage() {
             border: "1px solid #2a2a2a",
           }}
         >
-          <h2 style={{ marginTop: 0, marginBottom: 16 }}>Consent & GitHub</h2>
+          <h2 style={{ marginTop: 0, marginBottom: 16 }}>Settings</h2>
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 14, color: "#aaa" }}>GitHub Access</label>
