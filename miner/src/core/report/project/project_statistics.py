@@ -4,6 +4,10 @@ it utilizes the StatisticBuilder and StatisticCalculation classes
 to create and compute various statistics related to projects.
 """
 
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
+from typing import Optional
+from src.core.project_discovery.ignore_constants import *
+from src.core.ML.models.contribution_analysis.commit_classifier import ContributionPatternOutput, CONTRIBUTION_PATTERN_PROMPT
 from typing import List, Type
 import os
 import json
@@ -18,10 +22,20 @@ from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis import readme_insights
-from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
-from src.core.ML.models.contribution_analysis.commit_classifier import ContributionPatternOutput, CONTRIBUTION_PATTERN_PROMPT
-from src.core.project_discovery.ignore_constants import *
-from typing import Optional
+
+
+def _is_github_noreply(email: str, github_username: str) -> bool:
+    """Return True iff email is a known GitHub noreply address for github_username.
+
+    GitHub uses two formats:
+      {username}@users.noreply.github.com
+      {numeric_id}+{username}@users.noreply.github.com
+    """
+    domain = "users.noreply.github.com"
+    if email == f"{github_username}@{domain}":
+        return True
+    return bool(re.match(rf"^\d+\+{re.escape(github_username)}@{re.escape(domain)}$", email))
+
 
 logger = get_logger(__name__)
 
@@ -738,23 +752,16 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
             return []
 
         commit_count_by_author = self._get_commits_by_author(
-            repo=report.project_repo)
+            repo=report.project_repo, user_email=report.email, github_username=report.github)
 
-        '''
-        Check for user's email address AND for their GitHub noreply email address.
-        E.g., user's email is paulatreides@gmail.com, and their username is patreides.
-        We need to look for the email they gave us, and any email address that contains
-        "patreides@".
-        See https://docs.github.com/en/account-and-profile/reference/email-addresses-reference#email-verification-for-managed-user-accounts
-        '''
         user_commits = 0
         group_commits = 0  # any authors other than the user
         distinct_authors = []  # stores each contributing author once
         for key, value in commit_count_by_author.items():
-            if key == report.email or (report.github and f"{report.github}@" in key):
+            if key == report.email:
                 user_commits += value
-                if key == report.email and key not in distinct_authors:
-                    distinct_authors.append(key)  # only add the user once
+                if key not in distinct_authors:
+                    distinct_authors.append(key)
             else:
                 group_commits += value
                 if key not in distinct_authors:
@@ -793,8 +800,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
 
         # Only add user commit percentage for group projects
         if is_group_project:
-            group_contributions = self._get_commits_by_author(
-                report.project_repo, report.email, report.github)
+            group_contributions = commit_count_by_author
 
             stats.append(
                 Statistic(
@@ -821,7 +827,9 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
         for commit in repo.iter_commits():
             if hasattr(commit, "author") and hasattr(commit.author, "email"):
                 email = commit.author.email
-                if user_email and github_username and f"{github_username}@" in email:
+                if not email:
+                    continue
+                if user_email and github_username and _is_github_noreply(email, github_username):
                     email = user_email
                 commit_count_by_author[email] = (
                     commit_count_by_author.get(email, 0) + 1
@@ -837,10 +845,12 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
                 continue
 
             author_email = commit.author.email
+            if not author_email:
+                continue
 
             # Normalize noreply GitHub email to the user's primary email so it
             # isn't counted as a second distinct author for a file.
-            if user_email and github_username and f"{github_username}@" in author_email:
+            if user_email and github_username and _is_github_noreply(author_email, github_username):
                 author_email = user_email
 
             # Get files changed in this commit
@@ -900,7 +910,7 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                 c for c in report.project_repo.iter_commits()
                 if getattr(c, "author", None) and (
                     getattr(c.author, "email", None) == report.email
-                    or (report.github and f"{report.github}@" in getattr(c.author, "email", ""))
+                    or (report.github and _is_github_noreply(getattr(c.author, "email", "") or "", report.github))
                 )
             ]
 
@@ -1084,7 +1094,7 @@ class ProjectCommitActivityTimeline(ProjectStatisticCalculation):
                 commits_dict[date] = commits_dict.get(date, 0) + 1
 
                 author_email = commit.author.email or ""
-                if author_email == report.email or (report.github and f"{report.github}@" in author_email):
+                if author_email == report.email or (report.github and _is_github_noreply(author_email, report.github)):
                     user_commits_dict[date] = user_commits_dict.get(
                         date, 0) + 1
 
