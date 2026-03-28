@@ -11,11 +11,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, List, Protocol
 
-from src.core.ML.models.readme_analysis.permissions import \
-    ml_extraction_allowed
 from src.core.statistic import (CodingLanguage, FileDomain,
                                 ProjectStatCollection, StatisticTemplate)
 from src.utils.data_processing import float_to_percent
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 
 
 class ProjectReport(Protocol):
@@ -169,12 +168,15 @@ class GroupProjectBulletPoint(BulletPoint):
                 ProjectStatCollection.TOTAL_AUTHORS.value)
 
             if total_authors:
-                return [f"Collaborated in a team of {total_authors - 1} contributors"]
+                if total_authors < 3:
+                    return [f"Co-engineered project solutions alongside a peer developer"]
+                else:
+                    return [f"Collaborated within a team of {total_authors - 1} to deliver shared project milestones"]
 
-            return ["Collaborated with multiple contributors"]
+            return ["Contributed as a key member of a multi-developer team"]
 
         elif is_group is False:
-            return ["Independently designed, developed, and led the project end-to-end"]
+            return ["Independently designed and developed the project end-to-end"]
 
         return []
 
@@ -192,7 +194,9 @@ class GitCommitPercentageBulletPoint(BulletPoint):
             ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value)
 
         if is_group is False:
-            total_contrib_pct = 100.0
+            # If not in a group, you built the entire thing, don't mention
+            # contribution percent.
+            return []
 
         # Pick whichever percentage is higher; emit only one bullet
         commit_val = user_commit_pct if user_commit_pct is not None else -1
