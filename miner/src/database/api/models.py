@@ -97,6 +97,16 @@ class ProjectInsightsModel(SQLModel, table=True):
         back_populates="project_insights")
 
 
+class DismissedInsightModel(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_name: str = Field(
+        foreign_key="projectreportmodel.project_name",
+        index=True,
+    )
+    message: str
+    dismissed_at: datetime = Field(default_factory=lambda: datetime.now())
+
+
 class FileReportModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     project_name: str = Field(foreign_key="projectreportmodel.project_name")
