@@ -20,21 +20,9 @@ from src.core.ML.models.azure_foundry_manager import AzureFoundryManager, azure_
 from src.core.statistic.skills import SkillMapper
 from datetime import datetime, timedelta, MINYEAR
 from src.utils.data_processing import normalize
+from src.utils.git_utils import is_github_noreply
 from src.infrastructure.log.logging import get_logger
 from src.core.ML.models.readme_analysis import readme_insights
-
-
-def _is_github_noreply(email: str, github_username: str) -> bool:
-    """Return True iff email is a known GitHub noreply address for github_username.
-
-    GitHub uses two formats:
-      {username}@users.noreply.github.com
-      {numeric_id}+{username}@users.noreply.github.com
-    """
-    domain = "users.noreply.github.com"
-    if email == f"{github_username}@{domain}":
-        return True
-    return bool(re.match(rf"^\d+\+{re.escape(github_username)}@{re.escape(domain)}$", email))
 
 
 logger = get_logger(__name__)
@@ -389,7 +377,7 @@ class ProjectWeightedSkills(ProjectStatisticCalculation):
                 continue
 
             author_email = commit.author.email
-            if author_email == email or (github_username and f"{github_username}@" in author_email):
+            if author_email == email or (github_username and is_github_noreply(author_email or "", github_username)):
                 continue
 
             # Get files changed in this commit
@@ -829,7 +817,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
                 email = commit.author.email
                 if not email:
                     continue
-                if user_email and github_username and _is_github_noreply(email, github_username):
+                if user_email and github_username and is_github_noreply(email, github_username):
                     email = user_email
                 commit_count_by_author[email] = (
                     commit_count_by_author.get(email, 0) + 1
@@ -850,7 +838,7 @@ class ProjectAnalyzeGitAuthorship(ProjectStatisticCalculation):
 
             # Normalize noreply GitHub email to the user's primary email so it
             # isn't counted as a second distinct author for a file.
-            if user_email and github_username and _is_github_noreply(author_email, github_username):
+            if user_email and github_username and is_github_noreply(author_email, github_username):
                 author_email = user_email
 
             # Get files changed in this commit
@@ -910,7 +898,7 @@ class ProjectContributionPatterns(ProjectStatisticCalculation):
                 c for c in report.project_repo.iter_commits()
                 if getattr(c, "author", None) and (
                     getattr(c.author, "email", None) == report.email
-                    or (report.github and _is_github_noreply(getattr(c.author, "email", "") or "", report.github))
+                    or (report.github and is_github_noreply(getattr(c.author, "email", "") or "", report.github))
                 )
             ]
 
@@ -1094,7 +1082,7 @@ class ProjectCommitActivityTimeline(ProjectStatisticCalculation):
                 commits_dict[date] = commits_dict.get(date, 0) + 1
 
                 author_email = commit.author.email or ""
-                if author_email == report.email or (report.github and _is_github_noreply(author_email, report.github)):
+                if author_email == report.email or (report.github and is_github_noreply(author_email, report.github)):
                     user_commits_dict[date] = user_commits_dict.get(
                         date, 0) + 1
 

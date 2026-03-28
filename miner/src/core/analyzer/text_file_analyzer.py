@@ -6,6 +6,7 @@ import logging
 from src.core.statistic import Statistic, FileStatCollection
 from src.core.analyzer.base_file_analyzer import BaseFileAnalyzer
 from src.infrastructure.log.logging import get_logger
+from src.utils.git_utils import is_github_noreply
 
 logger = get_logger(__name__)
 
@@ -70,7 +71,7 @@ class TextFileAnalyzer(BaseFileAnalyzer):
             for commit, lines in blame_info:
                 line_count += len(lines)
                 # check if github account has been set and use as additional check
-                if commit.author.email == self.email or (self.github and f"{self.github}@" in (commit.author.email or "")):
+                if commit.author.email == self.email or (self.github and is_github_noreply(commit.author.email or "", self.github)):
                     commit_count += len(lines)
             if line_count == 0:
                 file_percent = 0.0
