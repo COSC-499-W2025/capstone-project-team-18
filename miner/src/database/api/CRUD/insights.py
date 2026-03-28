@@ -71,7 +71,6 @@ def update_project_insight_feedback(
     session: Session,
     project_name: str,
     message: str,
-    *,
     useful: bool | None = None,
     dismissed: bool | None = None,
 ) -> Optional[ProjectInsightsModel]:
@@ -89,16 +88,10 @@ def update_project_insight_feedback(
     dismissed_messages = set(_dedupe_messages(insight_row.dismissed_insights))
 
     if useful is not None:
-        if useful:
-            useful_messages.add(normalized_message)
-        else:
-            useful_messages.discard(normalized_message)
+        (useful_messages.add if useful else useful_messages.discard)(normalized_message)
 
     if dismissed is not None:
-        if dismissed:
-            dismissed_messages.add(normalized_message)
-        else:
-            dismissed_messages.discard(normalized_message)
+        (dismissed_messages.add if dismissed else dismissed_messages.discard)(normalized_message)
 
     insight_row.useful_insights = [msg for msg in insight_row.insights if msg in useful_messages]
     insight_row.dismissed_insights = [msg for msg in insight_row.insights if msg in dismissed_messages]

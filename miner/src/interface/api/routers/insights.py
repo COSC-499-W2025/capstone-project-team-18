@@ -41,6 +41,7 @@ router = APIRouter(
 
 logger = get_logger(__name__)
 MIN_VISIBLE_INSIGHTS = 5
+MAX_CACHED_INSIGHTS = 10
 
 
 NON_ML_INSIGHT_CALCULATORS: list[type[InsightCalculator]] = [
@@ -91,14 +92,14 @@ def _undismissed_count(cached: ProjectInsightsModel) -> int:
 
 
 def _refill_cached_insights_if_needed(
-    *,
     session: Session,
     project_name: str,
     report,
     cached: ProjectInsightsModel,
     allow_azure: bool,
 ) -> ProjectInsightsModel:
-    needed = max(0, MIN_VISIBLE_INSIGHTS - _undismissed_count(cached))
+    remaining_capacity = max(0, MAX_CACHED_INSIGHTS - len(cached.insights))
+    needed = min(max(0, MIN_VISIBLE_INSIGHTS - _undismissed_count(cached)), remaining_capacity)
     if needed == 0:
         return cached
 
@@ -180,7 +181,7 @@ def get_project_insights_endpoint(
                 report=report,
                 existing_insights=messages,
                 dismissed_insights=[],
-                count=MIN_VISIBLE_INSIGHTS - len(messages),
+                count=min(MIN_VISIBLE_INSIGHTS - len(messages), MAX_CACHED_INSIGHTS - len(messages)),
                 allow_azure=ml_allowed,
             )
         )
@@ -199,7 +200,29 @@ def update_project_insights_feedback_endpoint(
     request: InsightFeedbackRequest,
     session: Session = Depends(get_session),
 ):
-    """Update persisted useful/dismissed feedback for a cached project insight."""
+    """
+    Update persisted useful/dismissed feedback for a cached project insight.
+
+    Persists user feedback for one insight message. If the insight is dismissed,
+    the backend will refill the cached pool so the UI can continue showing the
+    minimum visible insight count.
+
+    Path parameters:
+    - `project_name`: The URL-encoded name of the project.
+
+    Body parameters:
+    - `message`: The exact insight message being updated.
+    - `useful`: Optional boolean to mark or unmark the insight as useful.
+    - `dismissed`: Optional boolean to mark or unmark the insight as dismissed.
+
+    Returns:
+    - 200: A `ProjectInsightsResponse` containing the updated cached insight state.
+
+    Raises:
+    - 400: No feedback field was provided, or the insight message was not found.
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    - 409: Project insights have not been generated yet for the project.
+    """
     decoded_name = unquote(project_name)
     report = get_project_report_by_name(session, decoded_name)
 

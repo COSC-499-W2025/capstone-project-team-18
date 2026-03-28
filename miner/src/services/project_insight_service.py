@@ -164,7 +164,7 @@ def _append_unique(target: list[str], candidates: list[str], excluded: set[str],
     return False
 
 
-def generate_project_insight_replacements(*, report: ProjectReport, existing_insights: list[str], dismissed_insights: list[str], count: int, allow_azure: bool = True) -> list[str]:
+def generate_project_insight_replacements(report: ProjectReport, existing_insights: list[str], dismissed_insights: list[str], count: int, allow_azure: bool = True) -> list[str]:
     needed = max(0, int(count))
     if needed == 0: return []
     excluded_messages = _dedupe_messages([*existing_insights, *dismissed_insights]); excluded = {message.lower() for message in excluded_messages}; generated: list[str] = []

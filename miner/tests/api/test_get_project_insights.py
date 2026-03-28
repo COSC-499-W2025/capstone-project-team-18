@@ -41,7 +41,6 @@ def _insert_cached_insights(
     engine,
     project_name: str,
     messages: list[str],
-    *,
     useful_messages: list[str] | None = None,
     dismissed_messages: list[str] | None = None,
 ):
@@ -271,6 +270,29 @@ def test_get_project_insights_includes_persisted_feedback_flags(client, blank_db
     assert data["insights"][0]["dismissed"] is False
     assert data["insights"][1]["useful"] is False
     assert data["insights"][1]["dismissed"] is True
+
+
+def test_patch_project_insight_feedback_stops_refilling_once_project_hits_cap(client, blank_db):
+    _insert_project(blank_db, "CappedProject")
+    _insert_ml_consent(blank_db, True)
+    _insert_cached_insights(
+        blank_db,
+        "CappedProject",
+        [f"Insight {i}" for i in range(1, 11)],
+        dismissed_messages=["Insight 6", "Insight 7", "Insight 8", "Insight 9", "Insight 10"],
+    )
+
+    with patch("src.interface.api.routers.insights.generate_project_insight_replacements") as mock_refill:
+        response = client.patch(
+            f"/projects/{quote('CappedProject')}/insights/feedback",
+            json={"message": "Insight 1", "dismissed": True},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    visible_count = len([insight for insight in payload["insights"] if not insight["dismissed"]])
+    assert visible_count == 4
+    mock_refill.assert_not_called()
 
 
 def test_patch_project_insight_feedback_persists_feedback_state(client, blank_db):
