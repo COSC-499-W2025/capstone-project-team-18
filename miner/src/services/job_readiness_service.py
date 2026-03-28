@@ -552,20 +552,6 @@ def analyze_job_readiness_with_diagnostics(
             ),
         )
 
-    missing_core_config = any(
-        not (os.environ.get(env_name) or "").strip()
-        for env_name in (
-            "AZURE_OPENAI_ENDPOINT",
-            "AZURE_OPENAI_API_KEY",
-            "AZURE_OPENAI_API_VERSION",
-        )
-    )
-    if missing_core_config:
-        return JobReadinessAnalysisOutcome(
-            result=None,
-            error_message=_missing_azure_configuration_message(),
-        )
-
     user_prompt = render_job_readiness_user_prompt(job_description, user_profile)
     last_error = None
     active_deployment = _configured_deployment_name()
@@ -582,6 +568,16 @@ def analyze_job_readiness_with_diagnostics(
         result, error_message = _parse_job_readiness_payload(payload)
         if result is not None:
             return JobReadinessAnalysisOutcome(result=result)
+
+        if payload is None and last_error is None and any(
+            not (os.environ.get(env_name) or "").strip()
+            for env_name in (
+                "AZURE_OPENAI_ENDPOINT",
+                "AZURE_OPENAI_API_KEY",
+                "AZURE_OPENAI_API_VERSION",
+            )
+        ):
+            error_message = _missing_azure_configuration_message()
 
         last_error = error_message
         logger.warning(
