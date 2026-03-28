@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from datetime import datetime
 from typing import Optional, List
 from sqlmodel import Session, SQLModel
@@ -15,6 +15,8 @@ router = APIRouter(
 )
 
 # ---------- Request/Response Schemas ----------
+
+
 class ResumeConfigRequest(SQLModel):
     """
     Nested request model for resume configuration.
@@ -23,6 +25,7 @@ class ResumeConfigRequest(SQLModel):
     awards: Optional[List[str]] = None
     skills: Optional[List[str]] = None
 
+
 class UserConfigRequest(SQLModel):
     """
     Request schema for updating user configuration
@@ -30,6 +33,7 @@ class UserConfigRequest(SQLModel):
     """
     consent: bool
     ml_consent: bool = False
+    name: Optional[str] = None
     user_email: str
     github: Optional[str] = None
     resume_config: Optional[ResumeConfigRequest] = None
@@ -53,6 +57,7 @@ class UserConfigResponse(SQLModel):
     id: int
     consent: bool
     ml_consent: bool
+    name: Optional[str] = None
     user_email: Optional[str] = None
     github: Optional[str] = None
     github_connected: bool = False
@@ -76,12 +81,15 @@ def get_user_config_safe(
     if user_config_id is not None:
         config = session.get(UserConfigModel, user_config_id)
         if not config:
-            raise UserConfigNotFoundError(f"No user config found with id {user_config_id}")
+            raise UserConfigNotFoundError(
+                f"No user config found with id {user_config_id}")
         return config
 
     return get_most_recent_user_config(session)
 
 # ---------- Route Handlers ----------
+
+
 @router.get("", response_model=UserConfigResponse)
 def get_user_config(session=Depends(get_session)):
     """
@@ -114,11 +122,13 @@ def get_user_config(session=Depends(get_session)):
         id=config.id,
         consent=config.consent,
         ml_consent=config.ml_consent,
+        name=config.name,
         user_email=config.user_email,
         github=config.github,
         github_connected=bool(config.access_token),
         resume_config=resume_config_response,
     )
+
 
 @router.put("", response_model=UserConfigResponse)
 def update_user_config(request: UserConfigRequest, session=Depends(get_session)):
@@ -148,6 +158,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
         update_data = UserConfigUpdate(
             consent=request.consent,
             ml_consent=request.ml_consent,
+            name=request.name,
             user_email=request.user_email,
             github=request.github
         )
@@ -192,14 +203,16 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
             )
 
         return UserConfigResponse(
-                id=config.id,
-                consent=config.consent,
-                ml_consent=config.ml_consent,
-                user_email=config.user_email,
-                github=config.github,
-                github_connected=bool(config.access_token),
-                resume_config=resume_config_response,
-            )
+            id=config.id,
+            consent=config.consent,
+            ml_consent=config.ml_consent,
+            name=config.name,
+            user_email=config.user_email,
+            github=config.github,
+            github_connected=bool(config.access_token),
+            resume_config=resume_config_response,
+        )
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to update user config: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to update user config: {str(e)}") from e
