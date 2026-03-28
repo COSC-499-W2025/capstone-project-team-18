@@ -171,7 +171,7 @@ class GroupProjectBulletPoint(BulletPoint):
                 if total_authors < 3:
                     return [f"Co-engineered project solutions alongside a peer developer"]
                 else:
-                    return [f"Collaborated within a team of {total_authors - 1} to deliver shared project milestones"]
+                    return [f"Collaborated within a team of {total_authors - 1} other contributors to deliver shared project milestones"]
 
             return ["Contributed as a key member of a multi-developer team"]
 
