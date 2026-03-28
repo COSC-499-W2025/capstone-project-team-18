@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/apiClient";
 import TextBlockEditor from "../components/blocks/TextBlockEditor";
 import TextListBlockEditor from "../components/blocks/TextListBlockEditor";
@@ -191,6 +191,9 @@ function PillField({
 export default function PortfolioEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo: string = (location.state as any)?.from ?? "/portfolios";
+  const backLabel = backTo === "/" ? "← Back to Dashboard" : "← Back to Portfolios";
 
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
@@ -634,10 +637,10 @@ export default function PortfolioEditPage() {
     return (
       <div style={{ padding: 24, paddingTop: 40 }}>
         <Link
-          to="/portfolios"
+          to={backTo}
           style={{ color: "#6f7cff", fontSize: 14, textDecoration: "none" }}
         >
-          ← Back to Portfolios
+          {backLabel}
         </Link>
         <div
           style={{
@@ -668,10 +671,10 @@ export default function PortfolioEditPage() {
     <div style={{ padding: 24, paddingTop: 40 }}>
       {/* Back */}
       <Link
-        to="/portfolios"
+        to={backTo}
         style={{ color: "#6f7cff", fontSize: 14, textDecoration: "none" }}
       >
-        ← Back to Portfolios
+        {backLabel}
       </Link>
 
       {/* Header */}

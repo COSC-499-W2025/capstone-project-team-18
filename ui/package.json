@@ -1,5 +1,6 @@
 {
-  "name": "electron-vite-react",
+  "name": "artifact-miner",
+  "productName": "Artifact Miner",
   "version": "2.2.0",
   "main": "dist-electron/main/index.js",
   "description": "Electron Vite React boilerplate.",
@@ -16,6 +17,7 @@
   },
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/patch-electron-name.js",
     "dev": "vite",
     "dev:web": "vite",
     "build": "tsc && vite build && electron-builder",

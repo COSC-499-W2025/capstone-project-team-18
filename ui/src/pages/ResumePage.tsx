@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   api,
   type ResumeResponse,
@@ -885,6 +885,9 @@ function ItemCard({
 export default function ResumePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo: string = (location.state as any)?.from ?? "/resumes";
+  const backLabel = backTo === "/" ? "← Back to Dashboard" : "← Back to Resumes";
   const resumeId = id ?? "1";
 
   const [loading, setLoading] = useState(true);
@@ -1001,7 +1004,7 @@ export default function ResumePage() {
             {error ?? "Create a resume from the resumes page."}
           </div>
           <Link
-            to="/resumes"
+            to={backTo}
             style={{
               display: "inline-block",
               padding: "9px 16px",
@@ -1013,7 +1016,7 @@ export default function ResumePage() {
               fontSize: 14,
             }}
           >
-            ← Go to Resumes
+            {backTo === "/" ? "← Go to Dashboard" : "← Go to Resumes"}
           </Link>
         </div>
       </div>
@@ -1025,8 +1028,8 @@ export default function ResumePage() {
   return (
     <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
       {/* Back */}
-      <Link to="/resumes" style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}>
-        ← Back to Resumes
+      <Link to={backTo} style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}>
+        {backLabel}
       </Link>
 
       {/* Header */}

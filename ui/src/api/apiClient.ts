@@ -332,10 +332,14 @@ export const api = {
    * Lightweight connectivity check.
    */
   ping: async (): Promise<boolean> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
     try {
-      const res = await fetch(buildUrl("/ping"));
+      const res = await fetch(buildUrl("/ping"), { signal: controller.signal });
+      clearTimeout(timeoutId);
       return res.ok;
     } catch {
+      clearTimeout(timeoutId);
       return false;
     }
   },
