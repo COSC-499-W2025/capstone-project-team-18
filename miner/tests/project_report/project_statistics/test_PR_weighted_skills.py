@@ -113,13 +113,14 @@ def test_group_weighted_stats_include_non_user_authored_files(monkeypatch):
     monkeypatch.setattr(
         ProjectWeightedSkills,
         "_get_nonUser_authors_per_file",
-        lambda _self, _repo, _email: {"file1.py": 1},
+        lambda _self, _repo, _email, _github=None: {"file1.py": 1},
     )
 
     project = ProjectReport(
         [file1],
         project_path="Unknown Path",
         user_email="user@example.com",
+        user_github="user",
         project_repo=object(),
         calculator_classes=[ProjectWeightedSkills],
     )
@@ -185,6 +186,7 @@ def test_group_weighted_stats_include_non_user_authored_files_git_based(project_
         [shared_file],
         project_path=str(project_shared_file.root_path),
         user_email="alice@example.com",
+        user_github="user",
         project_repo=project_shared_file.repo,
         calculator_classes=[ProjectWeightedSkills],
     )
@@ -198,3 +200,103 @@ def test_group_weighted_stats_include_non_user_authored_files_git_based(project_
     assert isinstance(group_frameworks, list)
     assert any(ws.skill_name == "Data Analytics" for ws in group_skills)
     assert any(ws.skill_name == "numpy" for ws in group_frameworks)
+
+
+def test_non_user_authors_excludes_user_noreply_email(tmp_path):
+    """
+    Files committed only via the user's GitHub noreply email must not appear
+    in group skill stats — the noreply address should be treated as the user.
+    """
+    from git import Repo
+
+    project_dir = tmp_path / "NoreplyProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # Alice commits file1.py using her GitHub noreply email
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Alice")
+        config.set_value("user", "email", "alice@users.noreply.github.com")
+    (project_dir / "file1.py").write_text("import numpy")
+    repo.index.add(["file1.py"])
+    repo.index.commit("Alice via noreply")
+
+    # Bob commits file2.py with a regular email
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Bob")
+        config.set_value("user", "email", "bob@example.com")
+    (project_dir / "file2.py").write_text("import sqlalchemy")
+    repo.index.add(["file2.py"])
+    repo.index.commit("Bob's commit")
+
+    file1_stats = StatisticIndex(
+        [Statistic(FileStatCollection.IMPORTED_PACKAGES.value, ["numpy"])])
+    file2_stats = StatisticIndex(
+        [Statistic(FileStatCollection.IMPORTED_PACKAGES.value, ["sqlalchemy"])])
+
+    project = ProjectReport(
+        [FileReport(file1_stats, "file1.py"),
+         FileReport(file2_stats, "file2.py")],
+        project_path=str(project_dir),
+        user_email="alice@example.com",
+        user_github="alice",
+        project_repo=repo,
+        calculator_classes=[ProjectWeightedSkills],
+    )
+
+    group_skills = project.get_value(
+        ProjectStatCollection.GROUP_PROJECT_SKILLS_DEMONSTRATED.value)
+    group_frameworks = project.get_value(
+        ProjectStatCollection.GROUP_PROJECT_FRAMEWORKS.value)
+
+    # Bob's sqlalchemy should appear in group stats
+    assert isinstance(group_skills, list)
+    assert any(ws.skill_name == "Database" for ws in group_skills)
+
+    # Alice's noreply commit counts as the user, so Data Analytics must NOT be in group stats
+    assert not any(ws.skill_name == "Data Analytics" for ws in group_skills)
+
+    # numpy was only committed by alice's noreply address, so it must not appear as a group framework
+    framework_names = [
+        ws.skill_name for ws in group_frameworks] if group_frameworks else []
+    assert "numpy" not in framework_names
+
+
+def test_non_user_authors_includes_noreply_when_no_github_username(tmp_path):
+    """
+    Without a github username, a noreply email is treated as an unknown author
+    and IS counted as a non-user contributor (backward-compatible behaviour).
+    """
+    from git import Repo
+
+    project_dir = tmp_path / "NoreplyNoGithub"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # Someone commits file1.py using a noreply-style email
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Stranger")
+        config.set_value("user", "email", "stranger@users.noreply.github.com")
+    (project_dir / "file1.py").write_text("import numpy")
+    repo.index.add(["file1.py"])
+    repo.index.commit("Stranger via noreply")
+
+    file1_stats = StatisticIndex(
+        [Statistic(FileStatCollection.IMPORTED_PACKAGES.value, ["numpy"])])
+
+    # No user_github provided — noreply email is unrecognised, so it IS a non-user author
+    project = ProjectReport(
+        [FileReport(file1_stats, "file1.py")],
+        project_path=str(project_dir),
+        user_email="alice@example.com",
+        user_github=None,
+        project_repo=repo,
+        calculator_classes=[ProjectWeightedSkills],
+    )
+
+    group_skills = project.get_value(
+        ProjectStatCollection.GROUP_PROJECT_SKILLS_DEMONSTRATED.value)
+
+    # The noreply commit is treated as a different author, so Data Analytics IS in group stats
+    assert isinstance(group_skills, list)
+    assert any(ws.skill_name == "Data Analytics" for ws in group_skills)

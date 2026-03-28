@@ -136,10 +136,10 @@ def _analyze_project_files(
     user_config: UserConfig,
 ) -> tuple[ProjectReport, bool]:
     """
-    Takes a defined ProjectLayout and returns a
-    full ProjectReport. Note, if a ProjectReport
-    has no FileReports, that PR is still returned,
-    just as an empty ProjectReport.
+    Takes a defined `ProjectLayout` and returns a
+    full `ProjectReport`. Note, if a `ProjectReport`
+    has no `FileReports`, that PR is still returned,
+    just as an empty `ProjectReport`.
 
     :param project_layout: The layout of the project to be analyzed.
     :type project_files: ProjectLayout
@@ -216,7 +216,7 @@ def _analyze_project_files(
 
 
 def _save_project_report_to_db(
-    project_reports: list[tuple[ProjectReport, bool]], 
+    project_reports: list[tuple[ProjectReport, bool]],
     user_config_id: Optional[int]
 ) -> None:
     """
@@ -234,7 +234,8 @@ def _save_project_report_to_db(
 
     with Session(engine) as session:
         for pr, needs_recomputation in project_reports:
-            save_project_report(session, pr, user_config_id, needs_recomputation)
+            save_project_report(session, pr, user_config_id,
+                                needs_recomputation)
             session.commit()
 
 
@@ -248,14 +249,14 @@ def start_miner_service(
     for the Artifact Miner. This function receives the bytes and file
     format of the zipped file (.zip, .7z, etc). Discovered projects are
     analyzed individually, and errors are caught per-project to allow
-    processing to continue. ProjectReports and their corrsponding FileReports
+    processing to continue. `ProjectReports` and their corrsponding `FileReports`
     are written to the local database.
 
-    Per-project errors are NOT raised but collected in MinerResults.project_errors:
-        - NO_RELEVANT_FILES: Project has no analyzable files
-        - NO_DISCOVERED_PROJECTS: No projects found in discovery (caught per-project)
-        - ANALYSIS_FAILED: Analysis operation failed
-        - UNKNOWN_ERROR: Unexpected exception during analysis
+    Per-project errors are NOT raised but collected in `MinerResults.project_errors`:
+        - `NO_RELEVANT_FILES`: Project has no analyzable files
+        - `NO_DISCOVERED_PROJECTS`: No projects found in discovery (caught per-project)
+        - `ANALYSIS_FAILED`: Analysis operation failed
+        - `UNKNOWN_ERROR`: Unexpected exception during analysis
 
     :param zipped_bytes: The bytes of a zipped file.
     :type zipped_bytes: bytes
@@ -269,7 +270,6 @@ def start_miner_service(
 
     :raises MissingStartMinerConsent: If user consent is not provided
     :raises NoDiscoveredProjects: If no projects are found in the zipped file
-
     """
 
     logger.info("Starting analysis for the zipped file")
@@ -292,7 +292,8 @@ def start_miner_service(
 
     for layout in projects_discovered:
         try:
-            report, needs_recomputation = _analyze_project_files(layout, user_config)
+            report, needs_recomputation = _analyze_project_files(
+                layout, user_config)
             project_reports.append((report, needs_recomputation))
         # we want to add a project error if no files are contributed to
             if report.contributed_to is False:

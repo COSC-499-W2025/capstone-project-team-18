@@ -251,7 +251,7 @@ def test_github_account_commit(tmp_path: Path, get_ready_specific_analyzer):
         # Bob changes another line but acting instead under his GitHub username
         with repo.config_writer() as cfg:
             cfg.set_value("user", "name", "Bob")
-            cfg.set_value("user", "email", "12345bobby@noreply.github.com")
+            cfg.set_value("user", "email", "12345+bobby@users.noreply.github.com")
         # Modify lines
         file_path.write_text(
             "line1\nbob_line2\nbob_line3\nbob_line4\nbobby_line5")
