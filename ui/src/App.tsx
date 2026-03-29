@@ -1,18 +1,16 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { api, getLatestResumeId } from "./api/apiClient";
-import SettingsModal from "./components/update/Modal/SettingsModal";
 import HomePage from "./pages/HomePage";
 import JobReadinessPage from "./pages/JobReadinessPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
 import PortfoliosPage from "./pages/PortfoliosPage";
+import ProfilePage from "@/pages/ProfilePage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
 import SkillsPage from "./pages/SkillsPage";
-import ProfilePage from "@/pages/ProfilePage";
-
 
 function ResumeRedirect() {
   const latestResumeId = getLatestResumeId();
@@ -37,7 +35,6 @@ function navLinkStyle(isActive: boolean) {
 }
 
 export default function App() {
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [backendDown, setBackendDown] = useState(false);
 
   useEffect(() => {
@@ -154,32 +151,7 @@ export default function App() {
             Resumes
           </NavLink>
 
-          <button
-            onClick={() => setShowSettingsModal(true)}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 12,
-              border: "none",
-              background: "transparent",
-              color: "#ccc",
-              cursor: "pointer",
-            }}
-          >
-            Settings
-          </button>
-
-          <NavLink
-            to="/profile"
-            style={({ isActive }) => ({
-              padding: "8px 14px",
-              borderRadius: 12,
-              textDecoration: "none",
-              color: isActive ? "#fff" : "#ccc",
-              background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-              transition: "all 0.2s ease",
-              display: "inline-block",
-            })}
-          >
+          <NavLink to="/profile" style={({ isActive }) => navLinkStyle(isActive)}>
             Profile
           </NavLink>
         </nav>
@@ -199,8 +171,6 @@ export default function App() {
         <Route path="/portfolios/:id" element={<PortfolioEditPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>
-
-      <SettingsModal open={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
     </div>
   );
 }
