@@ -140,3 +140,35 @@ it("calls /resume/generate with correct URL and payload", async () => {
     })
   );
 });
+
+it("calls /job-readiness/analyze with correct URL and payload", async () => {
+  fetchMock.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      fit_score: 84,
+      summary: "Strong match",
+      strengths: [],
+      weaknesses: [],
+      suggestions: [],
+    }),
+  });
+
+  await api.analyzeJobReadiness({
+    job_description: "Backend engineer role",
+    resume_id: 7,
+    project_names: ["Artifact Miner"],
+  });
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/job-readiness/analyze",
+    expect.objectContaining({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_description: "Backend engineer role",
+        resume_id: 7,
+        project_names: ["Artifact Miner"],
+      }),
+    })
+  );
+});

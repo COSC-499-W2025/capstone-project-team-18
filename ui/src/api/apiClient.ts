@@ -262,6 +262,36 @@ export type ResumeListResponse = {
   count: number;
 };
 
+export type JobReadinessRequest = {
+  job_description: string;
+  resume_id?: number | null;
+  project_names?: string[];
+};
+
+export type RankedFinding = {
+  item: string;
+  reason: string;
+  rank: number;
+};
+
+export type PrioritizedSuggestion = {
+  item: string;
+  reason: string;
+  priority: number;
+  action_type: string;
+  resource_name: string;
+  resource_type: string;
+  resource_hint: string;
+};
+
+export type JobReadinessResponse = {
+  fit_score: number;
+  summary: string;
+  strengths: RankedFinding[];
+  weaknesses: RankedFinding[];
+  suggestions: PrioritizedSuggestion[];
+};
+
 export type GenerateResumePayload = {
   project_names: string[];
   user_config_id?: number | null;
@@ -476,6 +506,9 @@ export const api = {
 
     return res;
   },
+
+  analyzeJobReadiness: (payload: JobReadinessRequest) =>
+    postJson<JobReadinessResponse>("/job-readiness/analyze", payload),
 
   // Portfolio endpoints
   getPortfolios: () => getJson<any>("/portfolio"),

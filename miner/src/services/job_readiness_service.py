@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -17,6 +18,9 @@ from src.core.ML.models.job_readiness_constants import (
 from src.database.api.CRUD.projects import get_project_report_models_by_names
 from src.database.api.CRUD.resume import get_resume_model_by_id
 from src.database.api.models import ProjectReportModel, ResumeModel
+from src.infrastructure.log.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class RankedFinding(BaseModel):
@@ -59,6 +63,12 @@ class JobReadinessUserProfileInput(BaseModel):
     repository_history_summary: list[str] = Field(default_factory=list)
     repository_file_evidence: list[dict[str, Any]] = Field(default_factory=list)
     collaboration_signals: list[str] = Field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class JobReadinessAnalysisOutcome:
+    result: JobReadinessResult | None
+    error_message: str | None = None
 
 
 def render_job_readiness_user_prompt(job_description: str, user_profile: dict[str, Any]) -> str:
@@ -481,16 +491,108 @@ def _deployment_name() -> str | None:
     return (os.environ.get("AZURE_OPENAI_JOB_READINESS_DEPLOYMENT") or "").strip() or None
 
 
-def _parse_job_readiness_payload(payload: dict[str, Any] | None) -> JobReadinessResult | None:
+def _configured_deployment_name() -> str | None:
+    return _deployment_name() or (os.environ.get("AZURE_OPENAI_DEPLOYMENT") or "").strip() or None
+
+
+def _missing_azure_configuration_message() -> str:
+    missing = [
+        env_name
+        for env_name in (
+            "AZURE_OPENAI_ENDPOINT",
+            "AZURE_OPENAI_API_KEY",
+            "AZURE_OPENAI_API_VERSION",
+        )
+        if not (os.environ.get(env_name) or "").strip()
+    ]
+    if _configured_deployment_name() is None:
+        missing.append("AZURE_OPENAI_JOB_READINESS_DEPLOYMENT or AZURE_OPENAI_DEPLOYMENT")
+    return (
+        "Job readiness analysis is unavailable because Azure OpenAI is not fully configured. "
+        f"Missing: {', '.join(missing)}."
+    )
+
+
+def _parse_job_readiness_payload(
+    payload: dict[str, Any] | None,
+) -> tuple[JobReadinessResult | None, str | None]:
     if payload is None:
-        return None
+        return None, (
+            "Azure OpenAI did not return a structured response for job readiness analysis. "
+            "Check backend logs for HTTP, timeout, quota, or parsing errors."
+        )
     try:
         result = JobReadinessResult.model_validate(payload)
-        if not _suggestions_are_actionable(result):
-            return None
-        return result
     except ValidationError:
-        return None
+        return None, (
+            "Azure OpenAI returned a structured response, but it did not match the expected "
+            "job readiness schema."
+        )
+
+    if not _suggestions_are_actionable(result):
+        return None, (
+            "Azure OpenAI returned job readiness suggestions, but they did not pass the backend "
+            "actionability checks."
+        )
+    return result, None
+
+
+def analyze_job_readiness_with_diagnostics(
+    *,
+    job_description: str,
+    user_profile: dict[str, Any],
+    max_attempts: int = 2,
+) -> JobReadinessAnalysisOutcome:
+    if not azure_openai_enabled():
+        return JobReadinessAnalysisOutcome(
+            result=None,
+            error_message=(
+                "Job readiness analysis is unavailable because Azure OpenAI is disabled. "
+                "Set ARTIFACT_MINER_ML_PROVIDER=azure_openai."
+            ),
+        )
+
+    user_prompt = render_job_readiness_user_prompt(job_description, user_profile)
+    last_error = None
+    active_deployment = _configured_deployment_name()
+    for attempt in range(max_attempts):
+        payload = azure_chat_json(
+            system_prompt=JOB_READINESS_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            response_schema=JOB_READINESS_RESPONSE_SCHEMA,
+            schema_name=DEFAULT_JOB_READINESS_SCHEMA_NAME,
+            max_tokens=420,
+            temperature=0.0,
+            deployment=_deployment_name(),
+        )
+        result, error_message = _parse_job_readiness_payload(payload)
+        if result is not None:
+            return JobReadinessAnalysisOutcome(result=result)
+
+        if payload is None and last_error is None and any(
+            not (os.environ.get(env_name) or "").strip()
+            for env_name in (
+                "AZURE_OPENAI_ENDPOINT",
+                "AZURE_OPENAI_API_KEY",
+                "AZURE_OPENAI_API_VERSION",
+            )
+        ):
+            error_message = _missing_azure_configuration_message()
+
+        last_error = error_message
+        logger.warning(
+            "Job readiness analysis attempt %s/%s failed using deployment=%s: %s",
+            attempt + 1,
+            max_attempts,
+            active_deployment,
+            error_message,
+        )
+
+    return JobReadinessAnalysisOutcome(
+        result=None,
+        error_message=last_error
+        or "Job readiness analysis failed after repeated Azure OpenAI attempts.",
+    )
 
 
 def run_job_readiness_analysis(
@@ -499,21 +601,8 @@ def run_job_readiness_analysis(
     user_profile: dict[str, Any],
     max_attempts: int = 2,
 ) -> JobReadinessResult | None:
-    if not azure_openai_enabled():
-        return None
-
-    user_prompt = render_job_readiness_user_prompt(job_description, user_profile)
-    for attempt in range(max_attempts):
-        payload = azure_chat_json(
-            system_prompt=JOB_READINESS_SYSTEM_PROMPT,
-            user_prompt=user_prompt,
-            response_schema=JOB_READINESS_RESPONSE_SCHEMA,
-            schema_name=DEFAULT_JOB_READINESS_SCHEMA_NAME,
-            max_tokens=700,
-            temperature=0.0,
-            deployment=_deployment_name(),
-        )
-        result = _parse_job_readiness_payload(payload)
-        if result is not None:
-            return result
-    return None
+    return analyze_job_readiness_with_diagnostics(
+        job_description=job_description,
+        user_profile=user_profile,
+        max_attempts=max_attempts,
+    ).result
