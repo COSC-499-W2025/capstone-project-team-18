@@ -120,7 +120,7 @@ export default function JobReadinessPage() {
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Analysis Input</div>
               <div style={{ color: "#8e8e8e", lineHeight: 1.5 }}>
-                Pick the evidence you want the backend to use, then run the readiness analysis.
+                Pick the evidence you want the analyzer to use, then run the readiness assessment.
               </div>
             </div>
 
@@ -312,8 +312,19 @@ export default function JobReadinessPage() {
               padding: 20,
               background: "radial-gradient(circle at top left, rgba(67, 103, 203, 0.18), transparent 32%), #121212",
               minHeight: 520,
+              maxHeight: "min(820px, calc(100vh - 140px))",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
             }}
           >
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                paddingRight: 6,
+              }}
+            >
             {!result ? (
               <div
                 style={{
@@ -500,6 +511,7 @@ export default function JobReadinessPage() {
                 </div>
               </div>
             )}
+            </div>
           </section>
         </div>
       </div>
