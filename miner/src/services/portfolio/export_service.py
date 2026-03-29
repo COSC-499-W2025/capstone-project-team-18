@@ -206,8 +206,9 @@ header h1 {
 /* Card internals */
 .card-image {
   width: 100%;
-  height: 140px;
-  object-fit: cover;
+  height: auto;
+  max-height: 200px;
+  object-fit: contain;
   border-radius: 6px;
   margin-bottom: 0.75rem;
 }
@@ -276,6 +277,14 @@ _FILTER_JS = """\
     });
   }
 
+  function getImageSrc(b64) {
+    if (b64.startsWith('/9j/')) return 'data:image/jpeg;base64,' + b64;
+    if (b64.startsWith('iVBOR')) return 'data:image/png;base64,' + b64;
+    if (b64.startsWith('R0lG')) return 'data:image/gif;base64,' + b64;
+    if (b64.startsWith('UklG')) return 'data:image/webp;base64,' + b64;
+    return 'data:image/jpeg;base64,' + b64;
+  }
+
   function buildCardEl(card) {
     var el = document.createElement('div');
     el.className = 'project-card' + (card.is_showcase ? ' showcase' : '');
@@ -290,7 +299,7 @@ _FILTER_JS = """\
 
     // Image
     if (card.image_data) {
-      html += '<img class="card-image" src="data:image/png;base64,' + card.image_data + '" alt="' + esc(card.project_name) + '" />';
+      html += '<img class="card-image" src="' + getImageSrc(card.image_data) + '" alt="' + esc(card.project_name) + '" />';
     }
 
     // Name
