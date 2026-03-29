@@ -967,7 +967,7 @@ _FILTER_JS = """\
     var topSkills = Object.keys(totalBySkill)
       .map(function (skill) {
         var series = skillSeries[skill] || [];
-        var total = series.reduce(function (sum, v) { return sum + v; }, 0);
+        var total = Number(totalBySkill[skill] || 0);
         return { skill: skill, timelineTotal: total, series: series };
       })
       .filter(function (entry) { return entry.timelineTotal > 0; })
