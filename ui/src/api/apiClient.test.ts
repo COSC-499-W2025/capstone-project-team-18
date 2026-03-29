@@ -82,7 +82,10 @@ it("ping calls /ping", async () => {
   const ok = await api.ping();
 
   expect(ok).toBe(true);
-  expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/ping");
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/ping",
+    expect.objectContaining({ signal: expect.any(AbortSignal) })
+  );
 });
 
 it("includes status and URL in error message", async () => {

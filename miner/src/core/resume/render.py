@@ -38,7 +38,6 @@ class TextResumeRenderer(ResumeRender):
                 to_return += f"   - {aw}\n"
             to_return += "\n"
 
-
         for item in resume.items:
             to_return += f"{item.title} : {item.start_date.strftime('%B, %Y')} - {item.end_date.strftime('%B, %Y')}\n"
 

@@ -13,8 +13,8 @@ from typing import Any, List, Protocol
 
 from src.core.statistic import (CodingLanguage, FileDomain,
                                 ProjectStatCollection, StatisticTemplate)
-from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 from src.utils.data_processing import float_to_percent
+from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
 
 
 class ProjectReport(Protocol):
@@ -35,14 +35,14 @@ class BulletPoint(ABC):
 
 class FallBackRule(BulletPoint):
     def generate(self, report: ProjectReport) -> List[str]:
-        return [f"I contributued and worked on the project {report.project_name}"]
+        return [f"Contributed to and developed the project {report.project_name}"]
 
 
 class ActivityTypeContributionBulletPoint(BulletPoint):
     def generate(self, report: ProjectReport) -> List[str]:
         """
         This function will log the activity type contribution
-        project statistic on the project. If a filedomian contribtion
+        project statistic on the project. If a filedomain contribution
         was under 5 percent, it will not show. If the bullet point would
         only list one file domain (like code), it will not show
 
@@ -69,7 +69,7 @@ class ActivityTypeContributionBulletPoint(BulletPoint):
         if len(fd_str) <= 1:
             return []
 
-        return [f"During the project, I split my contributions between following acitivity types: {', '.join(fd_str)}"]
+        return [f"Directed contributions across {', '.join(fd_str)}"]
 
 
 class WeightedSkillsBulletPoint(BulletPoint):
@@ -97,7 +97,7 @@ class WeightedSkillsBulletPoint(BulletPoint):
 
         top = sorted_skills[:3]
 
-        return [f"Utilized skills: {', '.join([s.skill_name for s in top])}"]
+        return [f"Applied {', '.join([s.skill_name for s in top])} to deliver project outcomes"]
 
 
 class CodingLanguageBulletPoint(BulletPoint):
@@ -132,7 +132,7 @@ class CodingLanguageBulletPoint(BulletPoint):
         if len(lang_ratio) == 1:
             for lang in lang_ratio.keys():
                 name = lang.value
-                return [f"Project was coded using the {name} language"]
+                return [f"Built the project utilizing {name}"]
 
         # Multiple languages, get top and others
         top_lang = max(lang_ratio.items(), key=lambda kv: kv[1])[0]
@@ -168,12 +168,15 @@ class GroupProjectBulletPoint(BulletPoint):
                 ProjectStatCollection.TOTAL_AUTHORS.value)
 
             if total_authors:
-                return [f"Collaborated in a team of {total_authors - 1} contributors"]
+                if total_authors < 3:
+                    return [f"Co-engineered project solutions alongside a peer developer"]
+                else:
+                    return [f"Collaborated within a team of {total_authors - 1} other contributors to deliver shared project milestones"]
 
-            return ["Collaborated with multiple contributors"]
+            return ["Contributed as a key member of a multi-developer team"]
 
         elif is_group is False:
-            return ["I individually designed, developed, and led the project"]
+            return ["Independently designed and developed the project end-to-end"]
 
         return []
 
@@ -190,22 +193,41 @@ class GitCommitPercentageBulletPoint(BulletPoint):
         total_contrib_pct = report.get_value(
             ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value)
 
-        to_return = []
+        if is_group is False:
+            # If not in a group, you built the entire thing, don't mention
+            # contribution percent.
+            return []
 
-        if user_commit_pct is not None:
-            to_return.append(f"Authored {user_commit_pct}% of commits")
+        # Pick whichever percentage is higher; emit only one bullet
+        commit_val = user_commit_pct if user_commit_pct is not None else -1
+        contrib_val = total_contrib_pct if total_contrib_pct is not None else -1
 
-        if total_contrib_pct is not None:
-            if is_group is False:
-                total_contrib_pct = 100.0
-            to_return.append(
-                f"Accounted for {total_contrib_pct}% of total contribution in the final deliverable")
+        if commit_val == -1 and contrib_val == -1:
+            return []
 
-        return to_return
+        if contrib_val >= commit_val:
+            return [f"Delivered {total_contrib_pct}% of the total project contribution"]
+
+        return [f"Drove {user_commit_pct}% of all commits throughout the project lifecycle"]
 
 
 class ContributionPatternBulletPoint(BulletPoint):
     """Create bullets from contribution-pattern statistics."""
+
+    _WORK_PATTERN_PHRASES: dict[str, str] = {
+        "consistent": "Maintained a consistent and reliable contribution cadence",
+        "sprint_based": "Delivered work in focused sprints with concentrated commit bursts",
+        "burst": "Contributed in concentrated bursts of high productivity",
+        "sporadic": "Made targeted contributions across key project milestones",
+    }
+
+    _COMMIT_TYPE_PHRASES: dict[str, str] = {
+        "feat": "Spearheaded feature development",
+        "fix": "Resolved bugs and technical issues",
+        "refactor": "Improved code quality through refactoring",
+        "docs": "Maintained comprehensive documentation",
+        "chore": "Managed project maintenance",
+    }
 
     def generate(self, report: ProjectReport) -> List[str]:
         if not ml_extraction_allowed():
@@ -213,10 +235,13 @@ class ContributionPatternBulletPoint(BulletPoint):
 
         bullets: List[str] = []
 
-        role_desc = report.get_value(
-            ProjectStatCollection.ROLE_DESCRIPTION.value)
-        if role_desc:
-            bullets.append(role_desc)
+        collab_role = report.get_value(
+            ProjectStatCollection.COLLABORATION_ROLE.value)
+        if collab_role:
+            role_bullet = self._role_to_bullet(
+                str(getattr(collab_role, "value", collab_role)))
+            if role_bullet:
+                bullets.append(role_bullet)
 
         work_pattern = report.get_value(
             ProjectStatCollection.WORK_PATTERN.value)
@@ -228,24 +253,65 @@ class ContributionPatternBulletPoint(BulletPoint):
                 f"Maintained a {str(work_pattern).replace('_', ' ')} cadence with {commits_per_week:.1f} commits/week"
             )
         elif work_pattern:
-            bullets.append(
-                f"Work pattern: {str(work_pattern).replace('_', ' ')}")
+            key = str(work_pattern).replace(" ", "_").lower()
+            phrase = self._WORK_PATTERN_PHRASES.get(
+                key,
+                f"Maintained a {str(work_pattern).replace('_', ' ')} contribution cadence"
+            )
+            bullets.append(phrase)
 
         commit_dist = report.get_value(
             ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value)
         if commit_dist:
-            top = sorted(commit_dist.items(),
-                         key=lambda kv: kv[1], reverse=True)
+            filtered = {k: v for k, v in commit_dist.items()
+                        if k.lower() != "unknown" and v > 0}
+            top = sorted(filtered.items(), key=lambda kv: kv[1], reverse=True)
             if top:
-                primary = f"{top[0][0]} ({top[0][1]:.0f}%)"
+                primary_phrase = self._COMMIT_TYPE_PHRASES.get(
+                    top[0][0].lower(), f"Contributed through {top[0][0]}")
                 if len(top) > 1 and top[1][1] > 0:
-                    secondary = f"{top[1][0]} ({top[1][1]:.0f}%)"
+                    secondary_phrase = self._COMMIT_TYPE_PHRASES.get(
+                        top[1][0].lower(), f"contributed {top[1][0]}")
                     bullets.append(
-                        f"Primary contribution focus: {primary}; Secondary: {secondary}")
+                        f"{primary_phrase} ({top[0][1]:.0f}% of commits), "
+                        f"with secondary focus on {secondary_phrase.lower()} ({top[1][1]:.0f}%)"
+                    )
                 else:
-                    bullets.append(f"Primary contribution focus: {primary}")
+                    bullets.append(
+                        f"{primary_phrase} ({top[0][1]:.0f}% of commits)")
 
         return bullets
+
+    def _role_to_bullet(self, role: str) -> str | None:
+        """Map a COLLABORATION_ROLE string to a concise resume bullet using keyword matching."""
+        r = role.lower()
+        if "leader" in r or "lead" in r:
+            return "Led the team as primary contributor and integration manager"
+        if "core" in r or "maintainer" in r:
+            return "Served as a core contributor, managing key features and stability"
+        if "specialist" in r or "expert" in r:
+            return "Applied specialized expertise across critical project components"
+        return None  # occasional, solo, unknown → skip
+
+
+class ProjectThemesBulletPoint(BulletPoint):
+    """Creates a bullet from ML-extracted project themes."""
+
+    def generate(self, report: ProjectReport) -> List[str]:
+        if not ml_extraction_allowed():
+            return []
+
+        themes = report.get_value(ProjectStatCollection.PROJECT_THEMES.value)
+        if not themes:
+            return []
+
+        # cap at 2 to avoid overly long bullet
+        theme_list = [str(t) for t in themes[:2]]
+
+        if len(theme_list) == 1:
+            return [f"Developed solutions in {theme_list[0]}"]
+
+        return [f"Developed solutions spanning {theme_list[0]} and {theme_list[1]}"]
 
 
 class BulletPointBuilder:
@@ -257,6 +323,7 @@ class BulletPointBuilder:
             GitCommitPercentageBulletPoint(),
             ActivityTypeContributionBulletPoint(),
             ContributionPatternBulletPoint(),
+            ProjectThemesBulletPoint(),
         ]
 
         self.fallback: BulletPoint = FallBackRule()
