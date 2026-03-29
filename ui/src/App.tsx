@@ -11,10 +11,6 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
 import SkillsPage from "./pages/SkillsPage";
-import { useEffect, useState } from "react";
-import ProfilePage from "@/pages/ProfilePage";
-import { getLatestResumeId, api } from "./api/apiClient";
-
 function ResumeRedirect() {
   const latestResumeId = getLatestResumeId();
 
