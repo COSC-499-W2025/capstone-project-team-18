@@ -132,15 +132,21 @@ export default function ContributionMap({
     if (userCount === 0) return "";
 
     const dateObj = new Date(date);
-    const dayName = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+    const displayDate = Number.isNaN(dateObj.getTime())
+      ? date
+      : dateObj.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
 
     if (viewMode === "personal") {
-      return `${date}: ${userCount} commit${userCount !== 1 ? "s" : ""}`;
+      return `${displayDate}: ${userCount} commit${userCount !== 1 ? "s" : ""}`;
     } else {
       const percentage = totalCount > 0
         ? ((userCount / totalCount) * 100).toFixed(1)
         : "0";
-      return `${date}: ${userCount}/${totalCount} commits (${percentage}% of team activity)`;
+      return `${displayDate}: ${userCount}/${totalCount} commits (${percentage}% of team activity)`;
     }
   };
 

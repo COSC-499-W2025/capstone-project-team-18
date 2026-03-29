@@ -681,11 +681,19 @@ _FILTER_JS = """\
       var p = Number(personal[date] || 0);
       var t = Number(total[date] || 0);
       if (p <= 0) return '';
+      var parsedDate = new Date(date);
+      var displayDate = isNaN(parsedDate.getTime())
+        ? date
+        : parsedDate.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          });
       if (state.mode === 'personal') {
-        return date + ': ' + p + ' commit' + (p === 1 ? '' : 's');
+        return displayDate + ': ' + p + ' commit' + (p === 1 ? '' : 's');
       }
       var pct = t > 0 ? ((p / t) * 100).toFixed(1) : '0.0';
-      return date + ': ' + p + '/' + t + ' commits (' + pct + '% of team activity)';
+      return displayDate + ': ' + p + '/' + t + ' commits (' + pct + '% of team activity)';
     }
 
     function groupedWeeks(dateRange) {
@@ -825,15 +833,77 @@ _FILTER_JS = """\
     if (!root) return;
 
     var data = figures.skill_timeline || {};
+    var range = figures.skill_timeline_range || {};
     var skills = Object.keys(data);
     if (!skills.length) {
       root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
       return;
     }
 
-    var skillYearSeries = {};
+    function parseDateValue(value) {
+      if (typeof value !== 'string') return null;
+      var parsed = new Date(value);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    function monthStart(dt) {
+      return new Date(dt.getFullYear(), dt.getMonth(), 1);
+    }
+
+    function monthKey(dt) {
+      var month = String(dt.getMonth() + 1);
+      if (month.length < 2) month = '0' + month;
+      return dt.getFullYear() + '-' + month;
+    }
+
+    function buildTimelineBuckets(startDate, endDate) {
+      var buckets = [];
+      var start = monthStart(startDate);
+      var end = monthStart(endDate);
+      if (end < start) {
+        return [{
+          key: monthKey(start),
+          shortLabel: start.toLocaleString(undefined, { month: 'short', year: '2-digit' }),
+          fullLabel: start.toLocaleString(undefined, { month: 'short', year: 'numeric' })
+        }];
+      }
+
+      var cursor = new Date(start);
+      while (cursor <= end) {
+        buckets.push({
+          key: monthKey(cursor),
+          shortLabel: cursor.toLocaleString(undefined, { month: 'short', year: '2-digit' }),
+          fullLabel: cursor.toLocaleString(undefined, { month: 'short', year: 'numeric' })
+        });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+
+      return buckets;
+    }
+
+    function buildTickIndexes(length) {
+      if (length <= 1) return [0];
+      if (length <= 6) {
+        var all = [];
+        for (var idx = 0; idx < length; idx += 1) all.push(idx);
+        return all;
+      }
+
+      var desired = 6;
+      var step = (length - 1) / (desired - 1);
+      var ticks = [0, length - 1];
+      for (var i = 1; i < desired - 1; i += 1) {
+        var candidate = Math.round(step * i);
+        if (ticks.indexOf(candidate) === -1) ticks.push(candidate);
+      }
+      ticks.sort(function (a, b) { return a - b; });
+      return ticks;
+    }
+
+    var skillMonthCounts = {};
     var totalBySkill = {};
-    var yearSet = {};
+    var minActivityDate = null;
+    var maxActivityDate = null;
     var globalMaxMonthly = 1;
 
     skills.forEach(function (skill) {
@@ -841,170 +911,166 @@ _FILTER_JS = """\
       Object.keys(byDate).forEach(function (dateStr) {
         var count = Number(byDate[dateStr] || 0);
         if (!isFinite(count) || count <= 0) return;
-        var dt = new Date(dateStr);
-        if (isNaN(dt.getTime())) return;
-        var y = dt.getFullYear();
-        var m = dt.getMonth();
-        yearSet[y] = true;
+        var dt = parseDateValue(dateStr);
+        if (!dt) return;
 
-        if (!skillYearSeries[skill]) skillYearSeries[skill] = {};
-        if (!skillYearSeries[skill][y]) skillYearSeries[skill][y] = [0,0,0,0,0,0,0,0,0,0,0,0];
-        skillYearSeries[skill][y][m] += count;
+        if (!minActivityDate || dt < minActivityDate) minActivityDate = dt;
+        if (!maxActivityDate || dt > maxActivityDate) maxActivityDate = dt;
+
+        if (!skillMonthCounts[skill]) skillMonthCounts[skill] = {};
+        var key = monthKey(dt);
+        skillMonthCounts[skill][key] = Number(skillMonthCounts[skill][key] || 0) + count;
         totalBySkill[skill] = Number(totalBySkill[skill] || 0) + count;
       });
     });
 
-    Object.keys(skillYearSeries).forEach(function (skill) {
-      var byYear = skillYearSeries[skill] || {};
-      Object.keys(byYear).forEach(function (year) {
-        byYear[year].forEach(function (value) {
-          if (value > globalMaxMonthly) globalMaxMonthly = value;
-        });
-      });
-    });
-
-    var years = Object.keys(yearSet).map(Number).sort(function (a, b) { return a - b; });
-    if (!years.length) {
+    var rangeStart = parseDateValue(range.start_date) || minActivityDate;
+    var rangeEnd = parseDateValue(range.end_date) || maxActivityDate;
+    if (!rangeStart || !rangeEnd) {
       root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
       return;
     }
 
-    var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A'];
-    var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    var state = { yearIndex: years.length - 1 };
+    var buckets = buildTimelineBuckets(rangeStart, rangeEnd);
+    var monthKeys = buckets.map(function (bucket) { return bucket.key; });
+    var skillSeries = {};
 
-    function draw() {
-      root.innerHTML = '';
-      var year = years[state.yearIndex];
-
-      var header = mk('div', 'figure-header');
-      var title = mk('div', 'figure-title');
-      title.textContent = 'Most Utilized Skills';
-
-      var controls = mk('div', 'figure-controls');
-      var prevBtn = mk('button', 'figure-btn');
-      prevBtn.textContent = '←';
-      prevBtn.disabled = state.yearIndex <= 0;
-      prevBtn.onclick = function () { state.yearIndex -= 1; draw(); };
-
-      var yearLabel = mk('span', null);
-      yearLabel.style.minWidth = '54px';
-      yearLabel.style.textAlign = 'center';
-      yearLabel.style.color = '#e63946';
-      yearLabel.style.fontSize = '0.78rem';
-      yearLabel.style.fontWeight = '600';
-      yearLabel.textContent = String(year);
-
-      var nextBtn = mk('button', 'figure-btn');
-      nextBtn.textContent = '→';
-      nextBtn.disabled = state.yearIndex >= years.length - 1;
-      nextBtn.onclick = function () { state.yearIndex += 1; draw(); };
-
-      controls.appendChild(prevBtn);
-      controls.appendChild(yearLabel);
-      controls.appendChild(nextBtn);
-      header.appendChild(title);
-      header.appendChild(controls);
-      root.appendChild(header);
-
-      var topSkills = Object.keys(totalBySkill)
-        .map(function (skill) {
-          var series = (skillYearSeries[skill] && skillYearSeries[skill][year]) || [0,0,0,0,0,0,0,0,0,0,0,0];
-          var yearlyTotal = series.reduce(function (sum, v) { return sum + v; }, 0);
-          return { skill: skill, yearlyTotal: yearlyTotal, series: series };
-        })
-        .filter(function (entry) { return entry.yearlyTotal > 0; })
-        .sort(function (a, b) { return b.yearlyTotal - a.yearlyTotal; })
-        .slice(0, 5);
-
-      if (!topSkills.length) {
-        var empty = mk('div', 'figure-empty');
-        empty.textContent = 'No skill timeline data available for selected year.';
-        root.appendChild(empty);
-        return;
-      }
-
-      var grid = mk('div', 'skill-grid');
-
-      topSkills.forEach(function (entry, index) {
-        var card = mk('div', 'skill-card');
-        var name = mk('div', 'skill-name');
-        name.textContent = entry.skill;
-        var total = mk('div', 'skill-total');
-        total.textContent = entry.yearlyTotal + ' occurrence' + (entry.yearlyTotal === 1 ? '' : 's');
-
-        var svgNS = 'http://www.w3.org/2000/svg';
-        var svg = document.createElementNS(svgNS, 'svg');
-        svg.setAttribute('viewBox', '0 0 360 120');
-        svg.setAttribute('class', 'skill-chart');
-        svg.setAttribute('role', 'img');
-        svg.setAttribute('aria-label', entry.skill + ' monthly activity');
-
-        var left = 18;
-        var top = 10;
-        var width = 326;
-        var height = 86;
-
-        [0.25, 0.5, 0.75, 1].forEach(function (r) {
-          var y = top + height * (1 - r);
-          var line = document.createElementNS(svgNS, 'line');
-          line.setAttribute('x1', String(left));
-          line.setAttribute('x2', String(left + width));
-          line.setAttribute('y1', String(y));
-          line.setAttribute('y2', String(y));
-          line.setAttribute('stroke', '#1f1f2f');
-          line.setAttribute('stroke-width', '1');
-          svg.appendChild(line);
-        });
-
-        var color = colors[index % colors.length];
-        var path = '';
-        var area = '';
-        entry.series.forEach(function (value, month) {
-          var x = left + (month / 11) * width;
-          var y = top + (1 - (value / globalMaxMonthly)) * height;
-          path += (month === 0 ? 'M ' : ' L ') + x + ' ' + y;
-        });
-        area = path + ' L ' + (left + width) + ' ' + (top + height) + ' L ' + left + ' ' + (top + height) + ' Z';
-
-        var areaPath = document.createElementNS(svgNS, 'path');
-        areaPath.setAttribute('d', area);
-        areaPath.setAttribute('fill', color);
-        areaPath.setAttribute('fill-opacity', '0.2');
-        svg.appendChild(areaPath);
-
-        var linePath = document.createElementNS(svgNS, 'path');
-        linePath.setAttribute('d', path);
-        linePath.setAttribute('fill', 'none');
-        linePath.setAttribute('stroke', color);
-        linePath.setAttribute('stroke-width', '2');
-        svg.appendChild(linePath);
-
-        entry.series.forEach(function (value, month) {
-          var x = left + (month / 11) * width;
-          var y = top + (1 - (value / globalMaxMonthly)) * height;
-          var dot = document.createElementNS(svgNS, 'circle');
-          dot.setAttribute('cx', String(x));
-          dot.setAttribute('cy', String(y));
-          dot.setAttribute('r', '2.4');
-          dot.setAttribute('fill', color);
-          dot.setAttribute('stroke', '#0f0f13');
-          dot.setAttribute('stroke-width', '1');
-          dot.setAttribute('opacity', value > 0 ? '1' : '0.5');
-          dot.appendChild(document.createElementNS(svgNS, 'title')).textContent = monthLabels[month] + ': ' + value;
-          svg.appendChild(dot);
-        });
-
-        card.appendChild(name);
-        card.appendChild(total);
-        card.appendChild(svg);
-        grid.appendChild(card);
+    Object.keys(totalBySkill).forEach(function (skill) {
+      var series = monthKeys.map(function (key) {
+        return Number((skillMonthCounts[skill] || {})[key] || 0);
       });
+      skillSeries[skill] = series;
+      series.forEach(function (value) {
+        if (value > globalMaxMonthly) globalMaxMonthly = value;
+      });
+    });
 
-      root.appendChild(grid);
+    var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A'];
+    var tickIndexes = buildTickIndexes(monthKeys.length);
+
+    root.innerHTML = '';
+
+    var header = mk('div', 'figure-header');
+    var title = mk('div', 'figure-title');
+    title.textContent = 'Most Utilized Skills';
+    header.appendChild(title);
+    root.appendChild(header);
+
+    var subtitle = mk('div', 'figure-subtitle');
+    subtitle.textContent = 'Daily activity is grouped into monthly trend charts from the earliest project start date through the latest project end date.';
+    subtitle.style.marginBottom = '10px';
+    subtitle.style.fontSize = '0.78rem';
+    subtitle.style.color = '#6f6f78';
+    root.appendChild(subtitle);
+
+    var topSkills = Object.keys(totalBySkill)
+      .map(function (skill) {
+        var series = skillSeries[skill] || [];
+        var total = series.reduce(function (sum, v) { return sum + v; }, 0);
+        return { skill: skill, timelineTotal: total, series: series };
+      })
+      .filter(function (entry) { return entry.timelineTotal > 0; })
+      .sort(function (a, b) { return b.timelineTotal - a.timelineTotal; })
+      .slice(0, 5);
+
+    if (!topSkills.length) {
+      var empty = mk('div', 'figure-empty');
+      empty.textContent = 'No skill timeline data available.';
+      root.appendChild(empty);
+      return;
     }
 
-    draw();
+    var grid = mk('div', 'skill-grid');
+
+    topSkills.forEach(function (entry, index) {
+      var card = mk('div', 'skill-card');
+      var name = mk('div', 'skill-name');
+      name.textContent = entry.skill;
+      var total = mk('div', 'skill-total');
+      total.textContent = entry.timelineTotal + ' occurrence' + (entry.timelineTotal === 1 ? '' : 's');
+
+      var svgNS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 360 120');
+      svg.setAttribute('class', 'skill-chart');
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', entry.skill + ' monthly activity');
+
+      var left = 18;
+      var top = 10;
+      var width = 326;
+      var height = 82;
+
+      [0.25, 0.5, 0.75, 1].forEach(function (r) {
+        var y = top + height * (1 - r);
+        var line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', String(left));
+        line.setAttribute('x2', String(left + width));
+        line.setAttribute('y1', String(y));
+        line.setAttribute('y2', String(y));
+        line.setAttribute('stroke', '#1f1f2f');
+        line.setAttribute('stroke-width', '1');
+        svg.appendChild(line);
+      });
+
+      var color = colors[index % colors.length];
+      var path = '';
+      var area = '';
+      var denominator = Math.max(1, entry.series.length - 1);
+      entry.series.forEach(function (value, monthIndex) {
+        var x = left + (monthIndex / denominator) * width;
+        var y = top + (1 - (value / globalMaxMonthly)) * height;
+        path += (monthIndex === 0 ? 'M ' : ' L ') + x + ' ' + y;
+      });
+      area = path + ' L ' + (left + width) + ' ' + (top + height) + ' L ' + left + ' ' + (top + height) + ' Z';
+
+      var areaPath = document.createElementNS(svgNS, 'path');
+      areaPath.setAttribute('d', area);
+      areaPath.setAttribute('fill', color);
+      areaPath.setAttribute('fill-opacity', '0.2');
+      svg.appendChild(areaPath);
+
+      var linePath = document.createElementNS(svgNS, 'path');
+      linePath.setAttribute('d', path);
+      linePath.setAttribute('fill', 'none');
+      linePath.setAttribute('stroke', color);
+      linePath.setAttribute('stroke-width', '2');
+      svg.appendChild(linePath);
+
+      entry.series.forEach(function (value, monthIndex) {
+        var x = left + (monthIndex / denominator) * width;
+        var y = top + (1 - (value / globalMaxMonthly)) * height;
+        var dot = document.createElementNS(svgNS, 'circle');
+        dot.setAttribute('cx', String(x));
+        dot.setAttribute('cy', String(y));
+        dot.setAttribute('r', '2.4');
+        dot.setAttribute('fill', color);
+        dot.setAttribute('stroke', '#0f0f13');
+        dot.setAttribute('stroke-width', '1');
+        dot.setAttribute('opacity', value > 0 ? '1' : '0.5');
+        dot.appendChild(document.createElementNS(svgNS, 'title')).textContent = (buckets[monthIndex] ? buckets[monthIndex].fullLabel : '') + ': ' + value;
+        svg.appendChild(dot);
+      });
+
+      tickIndexes.forEach(function (monthIndex) {
+        var x = left + (monthIndex / denominator) * width;
+        var label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', String(x));
+        label.setAttribute('y', '112');
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('fill', '#7f7f7f');
+        label.setAttribute('font-size', '8.5');
+        label.textContent = buckets[monthIndex] ? buckets[monthIndex].shortLabel : '';
+        svg.appendChild(label);
+      });
+
+      card.appendChild(name);
+      card.appendChild(total);
+      card.appendChild(svg);
+      grid.appendChild(card);
+    });
+
+    root.appendChild(grid);
   }
 }());
 """
@@ -1046,11 +1112,30 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     personal_timeline: dict[str, int] = {}
     total_timeline: dict[str, int] = {}
     skill_timeline: dict[str, dict[str, int]] = {}
+    earliest_project_start: date | None = None
+    latest_project_end: date | None = None
+
+    def _parse_stat_date(value: Any) -> date | None:
+      if isinstance(value, date):
+        return value
+      if not isinstance(value, str):
+        return None
+      try:
+        return date.fromisoformat(value[:10])
+      except ValueError:
+        return None
 
     for c in card_models:
         project = get_project_report_model_by_name(session, c.project_name)
         statistic = project.statistic if project and isinstance(
             project.statistic, dict) else {}
+
+        stat_start = _parse_stat_date(statistic.get("PROJECT_START_DATE"))
+        if stat_start and (earliest_project_start is None or stat_start < earliest_project_start):
+          earliest_project_start = stat_start
+        stat_end = _parse_stat_date(statistic.get("PROJECT_END_DATE"))
+        if stat_end and (latest_project_end is None or stat_end > latest_project_end):
+          latest_project_end = stat_end
 
         # Aggregate contribution timelines across all included projects.
         personal = statistic.get("COMMIT_ACTIVITY_TIMELINE", {})
@@ -1116,6 +1201,10 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
                 "total_timeline": total_timeline,
             },
             "skill_timeline": skill_timeline,
+          "skill_timeline_range": {
+            "start_date": earliest_project_start.isoformat() if earliest_project_start else None,
+            "end_date": latest_project_end.isoformat() if latest_project_end else None,
+          },
         },
     }
     portfolio_data_js = "var PORTFOLIO_DATA = " + json.dumps(

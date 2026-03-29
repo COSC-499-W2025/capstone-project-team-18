@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 type SkillTimelineCounts = Record<string, Record<string, number>>;
 
 type SkillTimelineGraphProps = {
   data: SkillTimelineCounts;
+  range?: {
+    startDate: string | null;
+    endDate: string | null;
+  };
 };
 
-const ACCENT_COLOR = "#E63946";
 const TOP_SKILLS_LIMIT = 5;
 const SKILL_COLORS = [
   "#E63946", // Ruby red
@@ -16,21 +19,80 @@ const SKILL_COLORS = [
   "#8B6B7A", // Muted mauve
 ];
 
-function buildMonthLabel(index: number) {
-  return new Date(2024, index, 1).toLocaleString(undefined, { month: "short" });
+type TimelineBucket = {
+  key: string;
+  shortLabel: string;
+  fullLabel: string;
+};
+
+function parseDateValue(value: string | null | undefined) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function toMonthStart(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function toMonthKey(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
+}
+
+function buildTimelineBuckets(startDate: Date, endDate: Date): TimelineBucket[] {
+  const buckets: TimelineBucket[] = [];
+  const start = toMonthStart(startDate);
+  const end = toMonthStart(endDate);
+
+  if (end < start) {
+    return [
+      {
+        key: toMonthKey(start),
+        shortLabel: start.toLocaleString(undefined, { month: "short", year: "2-digit" }),
+        fullLabel: start.toLocaleString(undefined, { month: "short", year: "numeric" }),
+      },
+    ];
+  }
+
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    buckets.push({
+      key: toMonthKey(cursor),
+      shortLabel: cursor.toLocaleString(undefined, { month: "short", year: "2-digit" }),
+      fullLabel: cursor.toLocaleString(undefined, { month: "short", year: "numeric" }),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return buckets;
+}
+
+function buildTickIndexes(length: number) {
+  if (length <= 1) return [0];
+  if (length <= 6) return Array.from({ length }, (_, index) => index);
+
+  const desiredTicks = 6;
+  const step = (length - 1) / (desiredTicks - 1);
+  const indexes = new Set<number>([0, length - 1]);
+
+  for (let tick = 1; tick < desiredTicks - 1; tick += 1) {
+    indexes.add(Math.round(step * tick));
+  }
+
+  return Array.from(indexes).sort((a, b) => a - b);
 }
 
 function formatCountLabel(count: number) {
   return `${count} occurrence${count === 1 ? "" : "s"}`;
 }
 
-export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-
+export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphProps) {
   const model = useMemo(() => {
-    const monthlyBySkillYear: Record<string, Record<number, number[]>> = {};
+    const monthlyCountsBySkill: Record<string, Record<string, number>> = {};
     const totalBySkill: Record<string, number> = {};
-    const years = new Set<number>();
+    let minActivityDate: Date | null = null;
+    let maxActivityDate: Date | null = null;
 
     for (const [skill, byDate] of Object.entries(data)) {
       for (const [dateStr, rawCount] of Object.entries(byDate ?? {})) {
@@ -40,19 +102,16 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
         const parsed = new Date(dateStr);
         if (Number.isNaN(parsed.getTime())) continue;
 
-        const year = parsed.getFullYear();
-        const month = parsed.getMonth();
+        if (!minActivityDate || parsed < minActivityDate) minActivityDate = parsed;
+        if (!maxActivityDate || parsed > maxActivityDate) maxActivityDate = parsed;
 
-        years.add(year);
-
-        if (!monthlyBySkillYear[skill]) {
-          monthlyBySkillYear[skill] = {};
-        }
-        if (!monthlyBySkillYear[skill][year]) {
-          monthlyBySkillYear[skill][year] = new Array(12).fill(0);
+        if (!monthlyCountsBySkill[skill]) {
+          monthlyCountsBySkill[skill] = {};
         }
 
-        monthlyBySkillYear[skill][year][month] += count;
+        const monthKey = toMonthKey(parsed);
+        monthlyCountsBySkill[skill][monthKey] =
+          (monthlyCountsBySkill[skill][monthKey] ?? 0) + count;
         totalBySkill[skill] = (totalBySkill[skill] ?? 0) + count;
       }
     }
@@ -63,40 +122,40 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
 
     if (sortedSkills.length === 0) return null;
 
+    const providedStart = parseDateValue(range?.startDate);
+    const providedEnd = parseDateValue(range?.endDate);
+    const rangeStart = providedStart ?? minActivityDate;
+    const rangeEnd = providedEnd ?? maxActivityDate;
+
+    if (!rangeStart || !rangeEnd) return null;
+
+    const timelineBuckets = buildTimelineBuckets(rangeStart, rangeEnd);
+    const monthKeys = timelineBuckets.map((bucket) => bucket.key);
+    const monthlyBySkillRange: Record<string, number[]> = {};
+
     let globalMaxMonthly = 1;
-    for (const byYear of Object.values(monthlyBySkillYear)) {
-      for (const monthlySeries of Object.values(byYear)) {
-        for (const value of monthlySeries) {
-          if (value > globalMaxMonthly) {
-            globalMaxMonthly = value;
-          }
+    for (const skill of sortedSkills) {
+      const monthlySeries = monthKeys.map(
+        (monthKey) => monthlyCountsBySkill[skill]?.[monthKey] ?? 0
+      );
+      monthlyBySkillRange[skill] = monthlySeries;
+
+      for (const value of monthlySeries) {
+        if (value > globalMaxMonthly) {
+          globalMaxMonthly = value;
         }
       }
     }
 
     return {
       sortedSkills,
-      totalBySkill,
-      monthlyBySkillYear,
-      years: Array.from(years).sort((a, b) => a - b),
+      monthlyBySkillRange,
+      timelineBuckets,
       globalMaxMonthly,
     };
-  }, [data]);
+  }, [data, range?.endDate, range?.startDate]);
 
-  useEffect(() => {
-    if (!model || model.years.length === 0) {
-      setSelectedYear(null);
-      return;
-    }
-
-    setSelectedYear((prev) =>
-      prev && model.years.includes(prev)
-        ? prev
-        : model.years[model.years.length - 1]
-    );
-  }, [model]);
-
-  if (!model || !selectedYear) {
+  if (!model) {
     return (
       <div
         style={{
@@ -113,30 +172,16 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
     );
   }
 
-  const selectedYearIndex = model.years.indexOf(selectedYear);
-  const canGoPreviousYear = selectedYearIndex > 0;
-  const canGoNextYear = selectedYearIndex !== -1 && selectedYearIndex < model.years.length - 1;
-
   const visibleSkills = model.sortedSkills
     .map((skill) => {
-      const monthlySeries = model.monthlyBySkillYear[skill]?.[selectedYear] ?? new Array(12).fill(0);
-      const yearlyTotal = monthlySeries.reduce((sum, value) => sum + value, 0);
-      return { skill, yearlyTotal };
+      const monthlySeries = model.monthlyBySkillRange[skill] ?? [];
+      const timelineTotal = monthlySeries.reduce((sum, value) => sum + value, 0);
+      return { skill, timelineTotal };
     })
-    .filter((entry) => entry.yearlyTotal > 0)
-    .sort((a, b) => b.yearlyTotal - a.yearlyTotal)
+    .filter((entry) => entry.timelineTotal > 0)
+    .sort((a, b) => b.timelineTotal - a.timelineTotal)
     .slice(0, TOP_SKILLS_LIMIT)
     .map((entry) => entry.skill);
-
-  const goToPreviousYear = () => {
-    if (!canGoPreviousYear) return;
-    setSelectedYear(model.years[selectedYearIndex - 1]);
-  };
-
-  const goToNextYear = () => {
-    if (!canGoNextYear) return;
-    setSelectedYear(model.years[selectedYearIndex + 1]);
-  };
 
   return (
     <div
@@ -163,68 +208,8 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
       </div>
 
       <p style={{ margin: "0 0 14px 0", fontSize: 12, color: "#999" }}>
-        Daily activity is grouped into monthly trend charts for the selected year.
+        Daily activity is grouped into monthly trend charts from the earliest project start date through the latest project end date.
       </p>
-
-      <div
-        style={{
-          marginBottom: 14,
-          padding: "10px 0 0 0",
-          borderTop: "1px solid #2a2a2a",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 6,
-        }}
-      >
-        <button
-          onClick={goToPreviousYear}
-          disabled={!canGoPreviousYear}
-          style={{
-            padding: "6px 10px",
-            background: "transparent",
-            border: `1px solid ${canGoPreviousYear ? ACCENT_COLOR : "#444"}`,
-            borderRadius: 8,
-            color: canGoPreviousYear ? ACCENT_COLOR : "#666",
-            cursor: canGoPreviousYear ? "pointer" : "not-allowed",
-            fontSize: 11,
-            fontWeight: 600,
-          }}
-          title="Previous year"
-        >
-          ←
-        </button>
-
-        <div
-          style={{
-            minWidth: 70,
-            textAlign: "center",
-            fontSize: 11,
-            fontWeight: 600,
-            color: ACCENT_COLOR,
-          }}
-        >
-          {selectedYear}
-        </div>
-
-        <button
-          onClick={goToNextYear}
-          disabled={!canGoNextYear}
-          style={{
-            padding: "6px 10px",
-            background: "transparent",
-            border: `1px solid ${canGoNextYear ? ACCENT_COLOR : "#444"}`,
-            borderRadius: 8,
-            color: canGoNextYear ? ACCENT_COLOR : "#666",
-            cursor: canGoNextYear ? "pointer" : "not-allowed",
-            fontSize: 11,
-            fontWeight: 600,
-          }}
-          title="Next year"
-        >
-          →
-        </button>
-      </div>
 
       <div
         style={{
@@ -237,8 +222,8 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
         }}
       >
         {visibleSkills.map((skill, index) => {
-          const monthlySeries = model.monthlyBySkillYear[skill]?.[selectedYear] ?? new Array(12).fill(0);
-          const yearlyTotal = monthlySeries.reduce((sum, value) => sum + value, 0);
+          const monthlySeries = model.monthlyBySkillRange[skill] ?? [];
+          const timelineTotal = monthlySeries.reduce((sum, value) => sum + value, 0);
           const maxValue = model.globalMaxMonthly;
           const color = SKILL_COLORS[index % SKILL_COLORS.length];
 
@@ -250,9 +235,10 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
           const bottomPad = 22;
           const chartWidth = width - leftPad - rightPad;
           const chartHeight = height - topPad - bottomPad;
+          const tickIndexes = buildTickIndexes(monthlySeries.length);
 
           const xForIndex = (monthIndex: number) =>
-            leftPad + (monthIndex / (monthlySeries.length - 1)) * chartWidth;
+            leftPad + (monthIndex / Math.max(1, monthlySeries.length - 1)) * chartWidth;
           const yForValue = (value: number) =>
             topPad + (1 - value / maxValue) * chartHeight;
 
@@ -302,7 +288,7 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
                   {skill}
                 </div>
                 <div style={{ color: "#989898", fontSize: 11 }}>
-                  {formatCountLabel(yearlyTotal)}
+                  {formatCountLabel(timelineTotal)}
                 </div>
               </div>
 
@@ -342,11 +328,11 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
                     stroke="#121212"
                     strokeWidth="0.6"
                   >
-                    <title>{`${buildMonthLabel(monthIndex)} ${selectedYear}: ${formatCountLabel(value)}`}</title>
+                    <title>{`${model.timelineBuckets[monthIndex]?.fullLabel ?? ""}: ${formatCountLabel(value)}`}</title>
                   </circle>
                 ))}
 
-                {[0, 3, 6, 9, 11].map((monthIndex) => (
+                {tickIndexes.map((monthIndex) => (
                   <text
                     key={`month-${skill}-${monthIndex}`}
                     x={xForIndex(monthIndex)}
@@ -355,7 +341,7 @@ export default function SkillTimelineGraph({ data }: SkillTimelineGraphProps) {
                     fill="#7f7f7f"
                     fontSize="9"
                   >
-                    {buildMonthLabel(monthIndex)}
+                    {model.timelineBuckets[monthIndex]?.shortLabel ?? ""}
                   </text>
                 ))}
               </svg>
