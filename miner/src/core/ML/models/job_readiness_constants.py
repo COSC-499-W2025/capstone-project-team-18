@@ -50,6 +50,8 @@ strengths must be ranked from strongest and most role relevant to less strong.
 weaknesses must be ranked from biggest role relevant gap to smaller gap.
 suggestions must be ranked by which improvement would most increase readiness.
 Suggestions must be specific and actionable.
+Return at most 3 strengths, 3 weaknesses, and 3 suggestions.
+Keep each reason short, ideally one sentence.
 For each suggestion, include:
 item
 reason
@@ -80,6 +82,8 @@ Containerize an existing service and document the deployment steps
 Add a resume bullet that describes a debugging fix with measurable impact
 Complete an official tutorial and apply it by shipping a small demo
 Keep the analysis evidence based and conservative.
+Keep string values short and avoid long clauses, markdown, or extra quotation marks inside values.
+Return compact JSON only.
 Return JSON only."""
 
 

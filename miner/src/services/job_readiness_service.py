@@ -561,7 +561,7 @@ def analyze_job_readiness_with_diagnostics(
             user_prompt=user_prompt,
             response_schema=JOB_READINESS_RESPONSE_SCHEMA,
             schema_name=DEFAULT_JOB_READINESS_SCHEMA_NAME,
-            max_tokens=700,
+            max_tokens=420,
             temperature=0.0,
             deployment=_deployment_name(),
         )
