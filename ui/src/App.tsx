@@ -7,7 +7,7 @@ import ResumesPage from "./pages/ResumesPage";
 import PortfoliosPage from "./pages/PortfoliosPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
 import SkillsPage from "./pages/SkillsPage";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import ProfilePage from "@/pages/ProfilePage";
 import { getLatestResumeId, api } from "./api/apiClient";
 
