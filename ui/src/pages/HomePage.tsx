@@ -185,7 +185,7 @@ async function handleUploadSuccess() {
         <div>
           <h1 style={{ margin: 0 }}>Dashboard</h1>
           <p style={{ marginTop: 8, color: "#666" }}>
-            Manage projects, resumes, portfolios, and settings.
+            Manage projects, resumes, portfolios, and your profile.
           </p>
         </div>
 

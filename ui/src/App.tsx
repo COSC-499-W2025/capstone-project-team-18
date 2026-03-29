@@ -11,6 +11,8 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
 import SkillsPage from "./pages/SkillsPage";
+import ProfilePage from "@/pages/ProfilePage";
+
 
 function ResumeRedirect() {
   const latestResumeId = getLatestResumeId();
@@ -165,6 +167,21 @@ export default function App() {
           >
             Settings
           </button>
+
+          <NavLink
+            to="/profile"
+            style={({ isActive }) => ({
+              padding: "8px 14px",
+              borderRadius: 12,
+              textDecoration: "none",
+              color: isActive ? "#fff" : "#ccc",
+              background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+              transition: "all 0.2s ease",
+              display: "inline-block",
+            })}
+          >
+            Profile
+          </NavLink>
         </nav>
       </header>
 
@@ -180,6 +197,7 @@ export default function App() {
         <Route path="/resume/:id" element={<ResumePage />} />
         <Route path="/portfolios" element={<PortfoliosPage />} />
         <Route path="/portfolios/:id" element={<PortfolioEditPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
 
       <SettingsModal open={showSettingsModal} onClose={() => setShowSettingsModal(false)} />

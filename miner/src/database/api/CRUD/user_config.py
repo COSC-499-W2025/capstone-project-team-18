@@ -1,8 +1,7 @@
 from sqlmodel import Session, select, desc
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 from src.database.api.models import UserConfigModel, ResumeConfigModel
-from datetime import datetime
 
 
 def get_most_recent_user_config(session: Session) -> UserConfigModel:
@@ -23,6 +22,7 @@ def get_most_recent_user_config(session: Session) -> UserConfigModel:
         user_config = UserConfigModel(
             id=None,
             ml_consent=False,
+            name=None,
             user_email=None,
             github=None
         )
@@ -48,6 +48,7 @@ def get_most_recent_user_config(session: Session) -> UserConfigModel:
 class UserConfigUpdate(BaseModel):
     consent: Optional[bool] = None
     ml_consent: Optional[bool] = None
+    name: Optional[str] = None
     user_email: Optional[str] = None
     github: Optional[str] = None
 
