@@ -287,7 +287,7 @@ def edit_resume_skills(
         # Update flat skills list
         resume_model.skills = request.expert + request.intermediate + request.exposure
 
-        resume_model.last_updated = datetime.datetime.now()
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(resume_model)
         session.commit()
@@ -421,7 +421,7 @@ def edit_resume_metadata(
         if request.github_username is not None:
             resume_model.github = request.github_username
 
-        resume_model.last_updated = datetime.datetime.now()
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(resume_model)
         session.commit()
@@ -497,8 +497,8 @@ def edit_resume_item_bullet_point(
     try:
         # Apply changes
         resume_item.bullet_points = updated_bullets
-        resume_item.last_updated = datetime.datetime.now()
-        resume_model.last_updated = datetime.datetime.now()
+        resume_item.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(resume_item)
         session.add(resume_model)
@@ -563,8 +563,8 @@ def edit_resume_item(
         if resume_item:
             resume_item.end_date = request.end_date
 
-        resume_item.last_updated = datetime.datetime.now()
-        resume_model.last_updated = datetime.datetime.now()
+        resume_item.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(resume_item)
         session.add(resume_model)
@@ -634,7 +634,7 @@ def refresh_resume(
 
         updated_model = save_resume(session, new_resume_domain)
         updated_model.id = resume_id
-        updated_model.last_updated = datetime.datetime.now()
+        updated_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.commit()
 
@@ -691,8 +691,8 @@ def delete_resume_item_bullet_point(
     try:
         updated_bullets.pop(request.bullet_point_index)
         resume_item.bullet_points = updated_bullets
-        resume_item.last_updated = datetime.datetime.now()
-        resume_model.last_updated = datetime.datetime.now()
+        resume_item.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(resume_item)
         session.add(resume_model)
@@ -745,8 +745,8 @@ def edit_resume_item_frameworks(
 
     try:
         resume_item.frameworks = list(request.frameworks)
-        resume_item.last_updated = datetime.datetime.now()
-        resume_model.last_updated = datetime.datetime.now()
+        resume_item.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(resume_item)
         session.add(resume_model)

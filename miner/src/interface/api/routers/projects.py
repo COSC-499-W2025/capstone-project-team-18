@@ -1,6 +1,6 @@
 import base64
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
 
@@ -666,8 +666,8 @@ def save_project_showcase_customization(
         if request.bullet_points is not None:
             project_model.showcase_bullet_points = list(request.bullet_points)
 
-        project_model.showcase_last_user_edit_at = datetime.now()
-        project_model.last_updated = datetime.now()
+        project_model.showcase_last_user_edit_at = datetime.now(timezone.utc)
+        project_model.last_updated = datetime.now(timezone.utc)
 
         session.add(project_model)
         session.commit()
@@ -708,7 +708,7 @@ def clear_project_showcase_customization(project_name: str, session=Depends(get_
         project_model.showcase_frameworks = []
         project_model.showcase_bullet_points = []
         project_model.showcase_last_user_edit_at = None
-        project_model.last_updated = datetime.now()
+        project_model.last_updated = datetime.now(timezone.utc)
 
         session.add(project_model)
         session.commit()
@@ -817,7 +817,7 @@ def upload_project_image(
         image_bytes = file.file.read()
 
         project_model.image_data = image_bytes
-        project_model.last_updated = datetime.now()
+        project_model.last_updated = datetime.now(timezone.utc)
 
         session.add(project_model)
         session.commit()
@@ -856,7 +856,7 @@ def delete_project_image(
 
     try:
         project_model.image_data = None
-        project_model.last_updated = datetime.now()
+        project_model.last_updated = datetime.now(timezone.utc)
 
         session.add(project_model)
         session.commit()
@@ -966,7 +966,7 @@ def update_project_representation(
         if request.highlight_skills is not None:
             model.highlight_skills = list(request.highlight_skills)
 
-        model.last_updated = datetime.now()
+        model.last_updated = datetime.now(timezone.utc)
         session.add(model)
         session.commit()
         return {"ok": True}

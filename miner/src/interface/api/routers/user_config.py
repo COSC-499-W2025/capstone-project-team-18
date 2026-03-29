@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import Session, SQLModel
 
@@ -174,7 +174,7 @@ def update_user_config(request: UserConfigRequest, session=Depends(get_session))
                     config.resume_config.awards = request.resume_config.awards
                 if request.resume_config.skills is not None:
                     config.resume_config.skills = request.resume_config.skills
-                config.resume_config.last_updated = datetime.now()
+                config.resume_config.last_updated = datetime.now(timezone.utc)
 
         # Persist changes
 

@@ -11,7 +11,7 @@ import PillField from "../components/PillField";
 
 function toMonthInput(dateStr?: string | null): string {
   if (!dateStr) return "";
-  return String(dateStr).slice(0, 7); // "YYYY-MM-DD" → "YYYY-MM"
+  return String(dateStr).slice(0, 7); // "YYYY-MM-DD" becomes "YYYY-MM"
 }
 
 function fromMonthInput(monthStr: string, fallback?: string | null): string {
@@ -360,7 +360,8 @@ function ItemCard({
   const [insightsLoaded, setInsightsLoaded] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
-  const [insights, setInsights] = useState<string[]>([]);
+  const [visibleInsights, setVisibleInsights] = useState<string[]>([]);
+  const [insightsCache, setInsightsCache] = useState<string[]>([]);
 
   // Sync state when item prop updates from parent
   useEffect(() => {
@@ -506,7 +507,9 @@ function ItemCard({
       setInsightsLoading(true);
       setInsightsError(null);
       const res = await api.getProjectInsights(item.project_name);
-      setInsights(res.insights.map((i) => i.message));
+      const all = res.insights.map((i) => i.message);
+      setVisibleInsights(all.slice(0, 3));
+      setInsightsCache(all.slice(3));
       setInsightsLoaded(true);
     } catch (e: any) {
       setInsightsError(e?.message ?? "Failed to load writing prompts.");
@@ -515,8 +518,17 @@ function ItemCard({
     }
   }
 
-  async function handleDismissInsight(message: string) {
-    setInsights((prev) => prev.filter((m) => m !== message));
+  async function handleDismissInsight(message: string, idx: number) {
+    setVisibleInsights((prev) => {
+      const updated = [...prev];
+      if (insightsCache.length > 0) {
+        updated[idx] = insightsCache[0];
+      } else {
+        updated.splice(idx, 1);
+      }
+      return updated;
+    });
+    setInsightsCache((prev) => prev.slice(1));
     if (!item.project_name) return;
     try {
       await api.dismissInsight(item.project_name, message);
@@ -964,17 +976,17 @@ function ItemCard({
             >
               {insightsError ? (
                 <div style={{ color: "#ff8a8a", fontSize: 14 }}>{insightsError}</div>
-              ) : insights.length === 0 ? (
+              ) : visibleInsights.length === 0 ? (
                 <div style={{ color: "#555", fontSize: 14 }}>
                   No writing prompts available for this project.
                 </div>
               ) : (
                 <>
                   <div style={{ fontSize: 14, color: "#888", marginBottom: 10, lineHeight: 1.5 }}>
-                    These prompts are based on your project data. Use them to spark ideas for bullet points, pick one, answer it in a sentence or two, and turn that into a bullet.
+                    These prompts are based on your project's data. They are intended to help guide you to create or modify the project's bullet points.
                   </div>
                   <div style={{ display: "grid", gap: 7 }}>
-                    {insights.map((message, idx) => (
+                    {visibleInsights.map((message, idx) => (
                       <div
                         key={idx}
                         style={{
@@ -990,7 +1002,7 @@ function ItemCard({
                         <span style={{ color: "#a08cff", flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>✦</span>
                         <span style={{ flex: 1, fontSize: 14, color: "#ccc", lineHeight: 1.6 }}>{message}</span>
                         <button
-                          onClick={() => handleDismissInsight(message)}
+                          onClick={() => handleDismissInsight(message, idx)}
                           title="Dismiss this prompt"
                           style={{
                             padding: "1px 6px",
