@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../api/apiClient";
-import InfoIcon from '@mui/icons-material/Info';
+
 
 
 type UploadProjectModalProps = {
@@ -342,7 +342,7 @@ export default function UploadProjectModal({
             color: "#bdbdbd",
           }}
         >
-          <InfoIcon style={{ fontSize: 16, flexShrink: 0, color: "#7a9cc9" }} />
+          <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, flexShrink: 0, fill: "#7a9cc9" }} aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
           <div style={{ fontSize: 14, lineHeight: 1.5 }}>
             {isLoadingConfig
               ? "Loading saved settings..."
