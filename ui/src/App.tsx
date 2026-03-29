@@ -52,8 +52,6 @@ export default function App() {
     location.pathname.startsWith("/projects/");
 
   const isJobReadinessRoute = location.pathname === "/job-readiness";
-  const dragRegionStyle: CSSProperties = { WebkitAppRegion: "drag" };
-  const noDragStyle: CSSProperties = { WebkitAppRegion: "no-drag" };
 
   return (
     <div style={{ fontFamily: "system-ui" }}>
@@ -112,21 +110,25 @@ export default function App() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 24px",
+          padding: "8px 24px 8px 80px",
           borderBottom: "1px solid #eee",
-          background: "#141414",
-          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.18)",
-          ...dragRegionStyle,
-        }}
+          backgroundColor: "#242424",
+          WebkitAppRegion: "drag",
+        } as CSSProperties}
       >
         <NavLink
           to="/"
-          style={{ fontWeight: 700, color: "inherit", textDecoration: "none", ...noDragStyle }}
+          style={{
+            fontWeight: 700,
+            color: "inherit",
+            textDecoration: "none",
+            WebkitAppRegion: "no-drag",
+          } as CSSProperties}
         >
           Digital Artifact Miner
         </NavLink>
 
-        <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", ...noDragStyle }}>
+        <nav style={{ display: "flex", gap: 8, WebkitAppRegion: "no-drag" } as CSSProperties}>
           <NavLink to="/" end style={({ isActive }) => navLinkStyle(isActive)}>
             Dashboard
           </NavLink>
