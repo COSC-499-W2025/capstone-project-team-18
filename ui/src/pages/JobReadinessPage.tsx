@@ -1,0 +1,520 @@
+import { useEffect, useState } from "react";
+import {
+  api,
+  getLatestResumeId,
+  type JobReadinessResponse,
+  type ProjectListItem,
+  type ResumeListItem,
+  type ResumeListResponse,
+  type ListProjectsResponse,
+} from "../api/apiClient";
+
+function scoreTone(score: number) {
+  if (score >= 80) return { label: "Strong fit", color: "#52c26d" };
+  if (score >= 60) return { label: "Promising fit", color: "#f2b84b" };
+  return { label: "Needs work", color: "#ff8a8a" };
+}
+
+export default function JobReadinessPage() {
+  const [loadingEvidence, setLoadingEvidence] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [jobDescription, setJobDescription] = useState("");
+  const [resumes, setResumes] = useState<ResumeListItem[]>([]);
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<string>("");
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [result, setResult] = useState<JobReadinessResponse | null>(null);
+
+  useEffect(() => {
+    async function loadEvidence() {
+      try {
+        setLoadingEvidence(true);
+        setLoadError(null);
+
+        const [resumeRes, projectRes] = await Promise.all([
+          api.getResumes() as Promise<ResumeListResponse>,
+          api.getProjects() as Promise<ListProjectsResponse>,
+        ]);
+
+        const nextResumes = Array.isArray(resumeRes?.resumes) ? resumeRes.resumes : [];
+        const nextProjects = Array.isArray(projectRes?.projects) ? projectRes.projects : [];
+        const latestResumeId = getLatestResumeId();
+        const preferredResume =
+          nextResumes.find((resume) => resume.id === latestResumeId) ?? nextResumes[0];
+
+        setResumes(nextResumes);
+        setProjects(nextProjects);
+        setSelectedResumeId(preferredResume ? String(preferredResume.id) : "");
+      } catch (error: any) {
+        setLoadError(error?.message ?? "Failed to load evidence");
+        setResumes([]);
+        setProjects([]);
+      } finally {
+        setLoadingEvidence(false);
+      }
+    }
+
+    loadEvidence();
+  }, []);
+
+  function toggleProject(projectName: string) {
+    setSelectedProjects((current) =>
+      current.includes(projectName)
+        ? current.filter((name) => name !== projectName)
+        : [...current, projectName]
+    );
+  }
+
+  async function handleAnalyze() {
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
+
+      const response = await api.analyzeJobReadiness({
+        job_description: jobDescription,
+        resume_id: selectedResumeId ? Number(selectedResumeId) : null,
+        project_names: selectedProjects,
+      });
+
+      setResult(response);
+    } catch (error: any) {
+      setSubmitError(error?.message ?? "Failed to analyze job readiness");
+      setResult(null);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const selectedResume = resumes.find((resume) => String(resume.id) === selectedResumeId);
+  const scoreInfo = result ? scoreTone(result.fit_score) : null;
+
+  return (
+    <div style={{ padding: 24, paddingTop: 40 }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ margin: 0, fontSize: 30 }}>Job Readiness</h1>
+          <p style={{ margin: "10px 0 0", color: "#9aa0a6", maxWidth: 760, lineHeight: 1.6 }}>
+            Compare a target job description against your current resume and project evidence,
+            then review strengths, gaps, and the highest-priority actions to improve your fit.
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 24,
+            alignItems: "start",
+          }}
+        >
+          <section
+            style={{
+              border: "1px solid #2a2a2a",
+              borderRadius: 20,
+              padding: 20,
+              background: "linear-gradient(180deg, #171717 0%, #111111 100%)",
+            }}
+          >
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Analysis Input</div>
+              <div style={{ color: "#8e8e8e", lineHeight: 1.5 }}>
+                Pick the evidence you want the analyzer to use, then run the readiness assessment.
+              </div>
+            </div>
+
+            {loadingEvidence && (
+              <div
+                style={{
+                  border: "1px solid #2a2a2a",
+                  borderRadius: 14,
+                  padding: 16,
+                  background: "#141414",
+                  color: "#8e8e8e",
+                }}
+              >
+                Loading resumes and projects...
+              </div>
+            )}
+
+            {!loadingEvidence && loadError && (
+              <div
+                style={{
+                  border: "1px solid #503030",
+                  borderRadius: 14,
+                  padding: 16,
+                  background: "#1d1212",
+                  color: "#ff9b9b",
+                  marginBottom: 16,
+                }}
+              >
+                <strong>Error:</strong> {loadError}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gap: 18 }}>
+              <label style={{ display: "grid", gap: 8 }}>
+                <span style={{ fontWeight: 600 }}>Job Description</span>
+                <textarea
+                  value={jobDescription}
+                  onChange={(event) => setJobDescription(event.target.value)}
+                  placeholder="Paste the job posting here"
+                  rows={12}
+                  style={{
+                    width: "100%",
+                    resize: "vertical",
+                    borderRadius: 14,
+                    border: "1px solid #343434",
+                    background: "#0f0f0f",
+                    color: "#f5f5f5",
+                    padding: 14,
+                    lineHeight: 1.5,
+                    font: "inherit",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 8 }}>
+                <span style={{ fontWeight: 600 }}>Resume Evidence</span>
+                <select
+                  value={selectedResumeId}
+                  onChange={(event) => setSelectedResumeId(event.target.value)}
+                  style={{
+                    borderRadius: 12,
+                    border: "1px solid #343434",
+                    background: "#0f0f0f",
+                    color: "#f5f5f5",
+                    padding: "12px 14px",
+                    font: "inherit",
+                  }}
+                >
+                  <option value="">No resume selected</option>
+                  {resumes.map((resume) => (
+                    <option key={resume.id} value={resume.id}>
+                      {resume.title || `Resume #${resume.id}`}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ color: "#7d7d7d", fontSize: 13 }}>
+                  {selectedResume
+                    ? `Selected: ${selectedResume.title || `Resume #${selectedResume.id}`}`
+                    : "You can submit without a resume if project evidence is enough."}
+                </div>
+              </label>
+
+              <div style={{ display: "grid", gap: 10 }}>
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>Project Evidence</div>
+                  <div style={{ color: "#7d7d7d", fontSize: 13 }}>
+                    Select the projects that best demonstrate the skills needed for this role.
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid #2a2a2a",
+                    borderRadius: 14,
+                    background: "#101010",
+                    padding: 12,
+                    maxHeight: 280,
+                    overflowY: "auto",
+                  }}
+                >
+                  {projects.length === 0 ? (
+                    <div style={{ color: "#7d7d7d", padding: 8 }}>No projects available.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {projects.map((project) => {
+                        const checked = selectedProjects.includes(project.project_name);
+                        return (
+                          <label
+                            key={project.project_name}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 10,
+                              padding: 10,
+                              borderRadius: 12,
+                              background: checked ? "#1a2338" : "#151515",
+                              border: checked ? "1px solid #4c78ff" : "1px solid #222",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleProject(project.project_name)}
+                              style={{ marginTop: 3 }}
+                            />
+                            <span style={{ lineHeight: 1.4 }}>{project.project_name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  color: "#8e8e8e",
+                  fontSize: 13,
+                }}
+              >
+                <span>
+                  {selectedResumeId ? "1 resume selected" : "No resume selected"} • {selectedProjects.length} project{selectedProjects.length === 1 ? "" : "s"} selected
+                </span>
+                <button
+                  onClick={handleAnalyze}
+                  disabled={submitting || loadingEvidence || !jobDescription.trim()}
+                  style={{
+                    padding: "12px 18px",
+                    borderRadius: 12,
+                    border: "1px solid #3658c7",
+                    background: submitting ? "#22366f" : "#2c4fbf",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: submitting ? "progress" : "pointer",
+                  }}
+                >
+                  {submitting ? "Analyzing..." : "Analyze Readiness"}
+                </button>
+              </div>
+
+              {submitError && (
+                <div
+                  style={{
+                    border: "1px solid #503030",
+                    borderRadius: 14,
+                    padding: 16,
+                    background: "#1d1212",
+                    color: "#ff9b9b",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <strong>Analysis failed:</strong> {submitError}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section
+            style={{
+              border: "1px solid #2a2a2a",
+              borderRadius: 20,
+              padding: 20,
+              background: "radial-gradient(circle at top left, rgba(67, 103, 203, 0.18), transparent 32%), #121212",
+              minHeight: 520,
+              maxHeight: "min(820px, calc(100vh - 140px))",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                paddingRight: 6,
+              }}
+            >
+            {!result ? (
+              <div
+                style={{
+                  height: "100%",
+                  minHeight: 480,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  color: "#8e8e8e",
+                  padding: 24,
+                }}
+              >
+                Run an analysis to see your fit score, evidence-backed strengths, gaps, and prioritized next steps.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 20 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-end",
+                    gap: 16,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div>
+                    <div style={{ color: "#8e8e8e", marginBottom: 6 }}>Overall Fit</div>
+                    <div style={{ fontSize: 52, fontWeight: 800, lineHeight: 1 }}>
+                      {result.fit_score}
+                      <span style={{ fontSize: 20, color: "#8e8e8e", marginLeft: 6 }}>/100</span>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 999,
+                      border: `1px solid ${scoreInfo?.color}`,
+                      color: scoreInfo?.color,
+                      background: "rgba(255,255,255,0.02)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {scoreInfo?.label}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid #272727",
+                    borderRadius: 16,
+                    padding: 18,
+                    background: "#151515",
+                    lineHeight: 1.6,
+                    color: "#dfdfdf",
+                  }}
+                >
+                  {result.summary}
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                    gap: 16,
+                  }}
+                >
+                  <div style={{ border: "1px solid #23462c", borderRadius: 16, padding: 16, background: "#111712" }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, color: "#7fe18f" }}>Strengths</div>
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {result.strengths.map((strength) => (
+                        <article key={`${strength.rank}-${strength.item}`}>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                            {strength.rank}. {strength.item}
+                          </div>
+                          <div style={{ color: "#a7b3ab", lineHeight: 1.5 }}>{strength.reason}</div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ border: "1px solid #4b3323", borderRadius: 16, padding: 16, background: "#171210" }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, color: "#f2b84b" }}>Weaknesses</div>
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {result.weaknesses.map((weakness) => (
+                        <article key={`${weakness.rank}-${weakness.item}`}>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                            {weakness.rank}. {weakness.item}
+                          </div>
+                          <div style={{ color: "#c3b2a6", lineHeight: 1.5 }}>{weakness.reason}</div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 12 }}>Recommended Next Steps</div>
+                  <div style={{ display: "grid", gap: 14 }}>
+                    {result.suggestions.map((suggestion) => (
+                      <article
+                        key={`${suggestion.priority}-${suggestion.item}`}
+                        style={{
+                          border: "1px solid #2a2a2a",
+                          borderRadius: 18,
+                          padding: 18,
+                          background: "linear-gradient(180deg, #171717 0%, #131313 100%)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginBottom: 12,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 999,
+                              background: "#24345f",
+                              color: "#cdd9ff",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              letterSpacing: 0.3,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            Priority {suggestion.priority}
+                          </span>
+                          <span
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 999,
+                              border: "1px solid #343434",
+                              color: "#9fa6ad",
+                              fontSize: 12,
+                              textTransform: "capitalize",
+                            }}
+                          >
+                            {suggestion.resource_type || "Resource"}
+                          </span>
+                        </div>
+
+                        <div style={{ fontWeight: 700, fontSize: 21, lineHeight: 1.35, marginBottom: 12 }}>
+                          {suggestion.item}
+                        </div>
+
+                        <div style={{ color: "#d8d8d8", lineHeight: 1.7, marginBottom: 18 }}>
+                          {suggestion.reason}
+                        </div>
+
+                        <div style={{ display: "grid", gap: 14 }}>
+                          <div>
+                            <div style={{ color: "#8e8e8e", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                              Start with
+                            </div>
+                            <div style={{ color: "#f1f1f1", lineHeight: 1.5 }}>
+                              {suggestion.resource_name || "Not specified"}
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              border: "1px solid #2c2c2c",
+                              borderRadius: 14,
+                              padding: 14,
+                              background: "#101010",
+                            }}
+                          >
+                            <div style={{ color: "#8e8e8e", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                              Suggested approach
+                            </div>
+                            <div style={{ color: "#cfcfcf", lineHeight: 1.6 }}>
+                              {suggestion.resource_hint || "Use this action to create stronger evidence for your resume, portfolio, or selected projects."}
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
