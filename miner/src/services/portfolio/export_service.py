@@ -261,6 +261,106 @@ header h1 {
   border-radius: 2px;
 }
 
+.skill-view-toggle {
+  display: flex;
+  gap: 0;
+}
+.skill-toggle-btn {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  border: 1px solid #333;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  font-weight: 400;
+}
+.skill-toggle-btn:first-child { border-radius: 6px 0 0 6px; }
+.skill-toggle-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+.skill-toggle-btn.active {
+  background: #2a2a2a;
+  color: #e8e8e8;
+  font-weight: 600;
+}
+
+.skill-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.skill-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: #ccc;
+}
+.skill-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.skill-stacked-wrap {
+  border-radius: 8px;
+  border: 1px solid #222;
+  background: #121212;
+  padding: 10px 4px 4px;
+  position: relative;
+}
+.skill-stacked-svg {
+  display: block;
+  width: 100%;
+  height: 380px;
+}
+.skill-tooltip {
+  position: absolute;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 12px;
+  pointer-events: none;
+  z-index: 20;
+  width: 170px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  display: none;
+}
+.skill-tooltip-label {
+  font-size: 0.69rem;
+  color: #888;
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #2a2a2a;
+  white-space: nowrap;
+}
+.skill-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 3px;
+}
+.skill-tooltip-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.skill-tooltip-name {
+  font-size: 0.69rem;
+  color: #bbb;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skill-tooltip-count {
+  font-size: 0.69rem;
+  color: #e8e8e8;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
 .skill-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -867,7 +967,6 @@ _FILTER_JS = """\
           fullLabel: start.toLocaleString(undefined, { month: 'short', year: 'numeric' })
         }];
       }
-
       var cursor = new Date(start);
       while (cursor <= end) {
         buckets.push({
@@ -877,7 +976,6 @@ _FILTER_JS = """\
         });
         cursor.setMonth(cursor.getMonth() + 1);
       }
-
       return buckets;
     }
 
@@ -888,7 +986,6 @@ _FILTER_JS = """\
         for (var idx = 0; idx < length; idx += 1) all.push(idx);
         return all;
       }
-
       var desired = 6;
       var step = (length - 1) / (desired - 1);
       var ticks = [0, length - 1];
@@ -904,7 +1001,7 @@ _FILTER_JS = """\
     var totalBySkill = {};
     var minActivityDate = null;
     var maxActivityDate = null;
-    var globalMaxMonthly = 1;
+    var globalMaxCumulative = 1;
 
     skills.forEach(function (skill) {
       var byDate = data[skill] || {};
@@ -913,10 +1010,8 @@ _FILTER_JS = """\
         if (!isFinite(count) || count <= 0) return;
         var dt = parseDateValue(dateStr);
         if (!dt) return;
-
         if (!minActivityDate || dt < minActivityDate) minActivityDate = dt;
         if (!maxActivityDate || dt > maxActivityDate) maxActivityDate = dt;
-
         if (!skillMonthCounts[skill]) skillMonthCounts[skill] = {};
         var key = monthKey(dt);
         skillMonthCounts[skill][key] = Number(skillMonthCounts[skill][key] || 0) + count;
@@ -932,149 +1027,389 @@ _FILTER_JS = """\
     }
 
     var buckets = buildTimelineBuckets(rangeStart, rangeEnd);
-    var monthKeys = buckets.map(function (bucket) { return bucket.key; });
+    var mKeys = buckets.map(function (b) { return b.key; });
     var skillSeries = {};
 
     Object.keys(totalBySkill).forEach(function (skill) {
       var runningTotal = 0;
-      var series = monthKeys.map(function (key) {
+      var series = mKeys.map(function (key) {
         runningTotal += Number((skillMonthCounts[skill] || {})[key] || 0);
         return runningTotal;
       });
       skillSeries[skill] = series;
       var lastValue = series.length ? series[series.length - 1] : 0;
-      if (lastValue > globalMaxMonthly) globalMaxMonthly = lastValue;
+      if (lastValue > globalMaxCumulative) globalMaxCumulative = lastValue;
     });
 
-    var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A'];
-    var tickIndexes = buildTickIndexes(monthKeys.length);
+    var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A',
+                  '#5B8C85', '#9B6B5B', '#6B7B9B', '#8C7B5B', '#7B5B9B'];
+    var tickIndexes = buildTickIndexes(mKeys.length);
+    var n = mKeys.length;
+
+    // All skills with >= 10 occurrences (for stacked view)
+    var stackedSkills = Object.keys(totalBySkill)
+      .filter(function (s) { return Number(totalBySkill[s] || 0) >= 10; })
+      .sort(function (a, b) { return Number(totalBySkill[b] || 0) - Number(totalBySkill[a] || 0); });
+
+    // Top 5 with any occurrences (for small-multiples view)
+    var smallSkills = Object.keys(totalBySkill)
+      .filter(function (s) { return Number(totalBySkill[s] || 0) > 0; })
+      .sort(function (a, b) { return Number(totalBySkill[b] || 0) - Number(totalBySkill[a] || 0); })
+      .slice(0, 5);
+
+    if (!stackedSkills.length && !smallSkills.length) {
+      root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
+      return;
+    }
 
     root.innerHTML = '';
 
+    // ---- Header ----
     var header = mk('div', 'figure-header');
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    header.style.flexWrap = 'wrap';
+    header.style.gap = '12px';
+    header.style.marginBottom = '12px';
+
     var title = mk('div', 'figure-title');
     title.textContent = 'Most Utilized Skills';
+    title.style.margin = '0';
     header.appendChild(title);
+
+    var toggle = mk('div', 'skill-view-toggle');
+    var btnStacked = mk('button', 'skill-toggle-btn active');
+    btnStacked.textContent = 'Stacked';
+    btnStacked.setAttribute('type', 'button');
+    var btnIndiv = mk('button', 'skill-toggle-btn');
+    btnIndiv.textContent = 'Individual';
+    btnIndiv.setAttribute('type', 'button');
+    toggle.appendChild(btnStacked);
+    toggle.appendChild(btnIndiv);
+    header.appendChild(toggle);
     root.appendChild(header);
 
     var subtitle = mk('div', 'figure-subtitle');
     subtitle.textContent = 'Cumulative running total of skill occurrences across all projects, plotted continuously from the earliest to latest project date.';
-    subtitle.style.marginBottom = '10px';
-    subtitle.style.fontSize = '0.78rem';
+    subtitle.style.marginBottom = '12px';
+    subtitle.style.fontSize = '0.75rem';
     subtitle.style.color = '#6f6f78';
     root.appendChild(subtitle);
 
-    var topSkills = Object.keys(totalBySkill)
-      .map(function (skill) {
-        var series = skillSeries[skill] || [];
-        var total = Number(totalBySkill[skill] || 0);
-        return { skill: skill, timelineTotal: total, series: series };
-      })
-      .filter(function (entry) { return entry.timelineTotal > 0; })
-      .sort(function (a, b) { return b.timelineTotal - a.timelineTotal; })
-      .slice(0, 5);
+    // ---- Stacked view ----
+    var stackedView = mk('div', '');
 
-    if (!topSkills.length) {
-      var empty = mk('div', 'figure-empty');
-      empty.textContent = 'No skill timeline data available.';
-      root.appendChild(empty);
-      return;
+    // Legend
+    var legend = mk('div', 'skill-legend');
+    stackedSkills.forEach(function (skill, k) {
+      var item = mk('div', 'skill-legend-item');
+      var swatch = mk('div', 'skill-legend-swatch');
+      swatch.style.background = colors[k % colors.length];
+      var label = document.createElement('span');
+      label.textContent = skill;
+      var count = document.createElement('span');
+      count.textContent = '(' + (totalBySkill[skill] || 0) + ')';
+      count.style.color = '#666';
+      count.style.fontSize = '0.69rem';
+      item.appendChild(swatch);
+      item.appendChild(label);
+      item.appendChild(count);
+      legend.appendChild(item);
+    });
+    stackedView.appendChild(legend);
+
+    // Build log-stacked series
+    var globalMaxIndividual = 1;
+    stackedSkills.forEach(function (skill) {
+      var last = (skillSeries[skill] || []).length ? skillSeries[skill][skillSeries[skill].length - 1] : 0;
+      if (last > globalMaxIndividual) globalMaxIndividual = last;
+    });
+
+    function indivLogNorm(v) {
+      return Math.log(1 + v) / Math.log(1 + globalMaxIndividual);
     }
+
+    var logStackedSeries = [];
+    stackedSkills.forEach(function (skill, k) {
+      var logSeries = (skillSeries[skill] || []).map(indivLogNorm);
+      if (k === 0) {
+        logStackedSeries.push(logSeries.slice());
+      } else {
+        var prev = logStackedSeries[k - 1];
+        logStackedSeries.push(logSeries.map(function (v, i) { return v + (prev[i] || 0); }));
+      }
+    });
+
+    var totalLogHeight = 1;
+    if (logStackedSeries.length) {
+      var lastSeries = logStackedSeries[logStackedSeries.length - 1];
+      var lastVal = lastSeries.length ? lastSeries[lastSeries.length - 1] : 1;
+      if (lastVal > totalLogHeight) totalLogHeight = lastVal;
+    }
+
+    var SVG_W = 760, SVG_H = 380;
+    var L = 8, R = 8, T = 12, B = 30;
+    var CW = SVG_W - L - R, CH = SVG_H - T - B;
+
+    function xAt(i) { return L + (i / Math.max(1, n - 1)) * CW; }
+    function yAt(logV) { return T + (1 - logV / totalLogHeight) * CH; }
+
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var chartWrap = mk('div', 'skill-stacked-wrap');
+
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + SVG_W + ' ' + SVG_H);
+    svg.setAttribute('class', 'skill-stacked-svg');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Stacked cumulative skill activity');
+
+    // Grid lines
+    [0.25, 0.5, 0.75, 1].forEach(function (ratio) {
+      var gline = document.createElementNS(svgNS, 'line');
+      gline.setAttribute('x1', String(L));
+      gline.setAttribute('x2', String(SVG_W - R));
+      gline.setAttribute('y1', String(T + CH * (1 - ratio)));
+      gline.setAttribute('y2', String(T + CH * (1 - ratio)));
+      gline.setAttribute('stroke', '#1e1e1e');
+      gline.setAttribute('stroke-width', '1');
+      svg.appendChild(gline);
+    });
+
+    // Stacked bands
+    stackedSkills.forEach(function (skill, k) {
+      var topSeries = logStackedSeries[k] || [];
+      var botSeries = k === 0 ? new Array(n).fill(0) : (logStackedSeries[k - 1] || []);
+      var color = colors[k % colors.length];
+
+      var topPts = topSeries.map(function (v, i) {
+        return (i === 0 ? 'M' : 'L') + ' ' + xAt(i) + ' ' + yAt(v);
+      });
+      var botPts = botSeries.slice().reverse().map(function (v, ri) {
+        return 'L ' + xAt(n - 1 - ri) + ' ' + yAt(v);
+      });
+      var areaD = topPts.join(' ') + ' ' + botPts.join(' ') + ' Z';
+      var lineD = topSeries.map(function (v, i) {
+        return (i === 0 ? 'M' : 'L') + ' ' + xAt(i) + ' ' + yAt(v);
+      }).join(' ');
+
+      var areaEl = document.createElementNS(svgNS, 'path');
+      areaEl.setAttribute('d', areaD);
+      areaEl.setAttribute('fill', color);
+      areaEl.setAttribute('fill-opacity', '0.75');
+      svg.appendChild(areaEl);
+
+      var lineEl = document.createElementNS(svgNS, 'path');
+      lineEl.setAttribute('d', lineD);
+      lineEl.setAttribute('fill', 'none');
+      lineEl.setAttribute('stroke', color);
+      lineEl.setAttribute('stroke-width', '1.2');
+      lineEl.setAttribute('stroke-opacity', '0.9');
+      svg.appendChild(lineEl);
+    });
+
+    // Crosshair
+    var crosshair = document.createElementNS(svgNS, 'line');
+    crosshair.setAttribute('x1', '0');
+    crosshair.setAttribute('y1', String(T));
+    crosshair.setAttribute('x2', '0');
+    crosshair.setAttribute('y2', String(T + CH));
+    crosshair.setAttribute('stroke', '#ffffff');
+    crosshair.setAttribute('stroke-width', '1');
+    crosshair.setAttribute('stroke-opacity', '0.2');
+    crosshair.setAttribute('stroke-dasharray', '3 3');
+    crosshair.style.display = 'none';
+    svg.appendChild(crosshair);
+
+    // X-axis ticks
+    tickIndexes.forEach(function (mi) {
+      var lbl = document.createElementNS(svgNS, 'text');
+      lbl.setAttribute('x', String(xAt(mi)));
+      lbl.setAttribute('y', String(SVG_H - 6));
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.setAttribute('fill', '#7f7f7f');
+      lbl.setAttribute('font-size', '9');
+      lbl.textContent = buckets[mi] ? buckets[mi].shortLabel : '';
+      svg.appendChild(lbl);
+    });
+
+    chartWrap.appendChild(svg);
+
+    // Tooltip
+    var tooltip = mk('div', 'skill-tooltip');
+    var tooltipLabel = mk('div', 'skill-tooltip-label');
+    tooltip.appendChild(tooltipLabel);
+    var tooltipRows = stackedSkills.map(function (skill, k) {
+      var row = mk('div', 'skill-tooltip-row');
+      var swatch = mk('div', 'skill-tooltip-swatch');
+      swatch.style.background = colors[k % colors.length];
+      var name = mk('span', 'skill-tooltip-name');
+      name.textContent = skill;
+      var cnt = mk('span', 'skill-tooltip-count');
+      row.appendChild(swatch);
+      row.appendChild(name);
+      row.appendChild(cnt);
+      tooltip.appendChild(row);
+      return { row: row, cnt: cnt };
+    });
+    chartWrap.appendChild(tooltip);
+
+    svg.addEventListener('mousemove', function (e) {
+      var ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      var svgX = (e.clientX - ctm.e) / ctm.a;
+      var frac = Math.max(0, Math.min(1, (svgX - L) / CW));
+      var mi = Math.round(frac * Math.max(0, n - 1));
+
+      crosshair.setAttribute('x1', String(xAt(mi)));
+      crosshair.setAttribute('x2', String(xAt(mi)));
+      crosshair.style.display = '';
+
+      tooltipLabel.textContent = buckets[mi] ? buckets[mi].fullLabel : '';
+      stackedSkills.forEach(function (skill, k) {
+        var count = (skillSeries[skill] || [])[mi] || 0;
+        tooltipRows[k].row.style.display = count > 0 ? 'flex' : 'none';
+        tooltipRows[k].cnt.textContent = String(count);
+      });
+
+      var wrapRect = chartWrap.getBoundingClientRect();
+      var tipX = e.clientX - wrapRect.left;
+      var tipY = e.clientY - wrapRect.top;
+      var tipLeft = tipX + 16;
+      if (tipLeft + 170 > wrapRect.width) tipLeft = tipX - 178;
+      tooltip.style.left = tipLeft + 'px';
+      tooltip.style.top = Math.max(8, tipY - 16) + 'px';
+      tooltip.style.display = 'block';
+    });
+    svg.addEventListener('mouseleave', function () {
+      crosshair.style.display = 'none';
+      tooltip.style.display = 'none';
+    });
+
+    stackedView.appendChild(chartWrap);
+
+    // ---- Small-multiples view ----
+    var smallView = mk('div', '');
+    smallView.style.display = 'none';
 
     var grid = mk('div', 'skill-grid');
 
-    topSkills.forEach(function (entry, index) {
+    smallSkills.forEach(function (skill, index) {
+      var series = skillSeries[skill] || [];
+      var timelineTotal = Number(totalBySkill[skill] || 0);
+      var color = colors[index % colors.length];
+      var denominator = Math.max(1, series.length - 1);
+
       var card = mk('div', 'skill-card');
-      var name = mk('div', 'skill-name');
-      name.textContent = entry.skill;
-      var total = mk('div', 'skill-total');
-      total.textContent = entry.timelineTotal + ' occurrence' + (entry.timelineTotal === 1 ? '' : 's');
+      card.style.borderTop = '3px solid ' + color;
 
-      var svgNS = 'http://www.w3.org/2000/svg';
-      var svg = document.createElementNS(svgNS, 'svg');
-      svg.setAttribute('viewBox', '0 0 360 120');
-      svg.setAttribute('class', 'skill-chart');
-      svg.setAttribute('role', 'img');
-      svg.setAttribute('aria-label', entry.skill + ' cumulative activity');
+      var nameEl = mk('div', 'skill-name');
+      nameEl.textContent = skill;
+      var totalEl = mk('div', 'skill-total');
+      totalEl.textContent = timelineTotal + ' occurrence' + (timelineTotal === 1 ? '' : 's');
 
-      var left = 18;
-      var top = 10;
-      var width = 326;
-      var height = 82;
+      var svgEl = document.createElementNS(svgNS, 'svg');
+      svgEl.setAttribute('viewBox', '0 0 360 120');
+      svgEl.setAttribute('class', 'skill-chart');
+      svgEl.setAttribute('role', 'img');
+      svgEl.setAttribute('aria-label', skill + ' cumulative activity');
+
+      var sleft = 10, stop = 12, swidth = 340, sheight = 78;
+
+      function logScaleSmall(value) {
+        return globalMaxCumulative <= 1
+          ? value / globalMaxCumulative
+          : Math.log(1 + value) / Math.log(1 + globalMaxCumulative);
+      }
 
       [0.25, 0.5, 0.75, 1].forEach(function (r) {
-        var y = top + height * (1 - r);
-        var line = document.createElementNS(svgNS, 'line');
-        line.setAttribute('x1', String(left));
-        line.setAttribute('x2', String(left + width));
-        line.setAttribute('y1', String(y));
-        line.setAttribute('y2', String(y));
-        line.setAttribute('stroke', '#1f1f2f');
-        line.setAttribute('stroke-width', '1');
-        svg.appendChild(line);
+        var gy = stop + sheight * (1 - r);
+        var gline = document.createElementNS(svgNS, 'line');
+        gline.setAttribute('x1', String(sleft));
+        gline.setAttribute('x2', String(sleft + swidth));
+        gline.setAttribute('y1', String(gy));
+        gline.setAttribute('y2', String(gy));
+        gline.setAttribute('stroke', '#1f1f1f');
+        gline.setAttribute('stroke-width', '1');
+        svgEl.appendChild(gline);
       });
 
-      var color = colors[index % colors.length];
-      var path = '';
-      var area = '';
-      var denominator = Math.max(1, entry.series.length - 1);
-      function logScale(value) {
-        return globalMaxMonthly <= 1 ? value / globalMaxMonthly : Math.log(1 + value) / Math.log(1 + globalMaxMonthly);
-      }
-      entry.series.forEach(function (value, monthIndex) {
-        var x = left + (monthIndex / denominator) * width;
-        var y = top + (1 - logScale(value)) * height;
-        path += (monthIndex === 0 ? 'M ' : ' L ') + x + ' ' + y;
+      var linePts = '', areaPts = '';
+      series.forEach(function (value, mi) {
+        var sx = sleft + (mi / denominator) * swidth;
+        var sy = stop + (1 - logScaleSmall(value)) * sheight;
+        linePts += (mi === 0 ? 'M ' : ' L ') + sx + ' ' + sy;
       });
-      area = path + ' L ' + (left + width) + ' ' + (top + height) + ' L ' + left + ' ' + (top + height) + ' Z';
+      areaPts = linePts
+        + ' L ' + (sleft + swidth) + ' ' + (stop + sheight)
+        + ' L ' + sleft + ' ' + (stop + sheight) + ' Z';
 
-      var areaPath = document.createElementNS(svgNS, 'path');
-      areaPath.setAttribute('d', area);
-      areaPath.setAttribute('fill', color);
-      areaPath.setAttribute('fill-opacity', '0.2');
-      svg.appendChild(areaPath);
+      var areaEl2 = document.createElementNS(svgNS, 'path');
+      areaEl2.setAttribute('d', areaPts);
+      areaEl2.setAttribute('fill', color);
+      areaEl2.setAttribute('fill-opacity', '0.2');
+      svgEl.appendChild(areaEl2);
 
-      var linePath = document.createElementNS(svgNS, 'path');
-      linePath.setAttribute('d', path);
-      linePath.setAttribute('fill', 'none');
-      linePath.setAttribute('stroke', color);
-      linePath.setAttribute('stroke-width', '2');
-      svg.appendChild(linePath);
+      var lineEl2 = document.createElementNS(svgNS, 'path');
+      lineEl2.setAttribute('d', linePts);
+      lineEl2.setAttribute('fill', 'none');
+      lineEl2.setAttribute('stroke', color);
+      lineEl2.setAttribute('stroke-width', '2');
+      svgEl.appendChild(lineEl2);
 
-      entry.series.forEach(function (value, monthIndex) {
-        var x = left + (monthIndex / denominator) * width;
-        var y = top + (1 - logScale(value)) * height;
+      series.forEach(function (value, mi) {
+        var sx = sleft + (mi / denominator) * swidth;
+        var sy = stop + (1 - logScaleSmall(value)) * sheight;
         var dot = document.createElementNS(svgNS, 'circle');
-        dot.setAttribute('cx', String(x));
-        dot.setAttribute('cy', String(y));
+        dot.setAttribute('cx', String(sx));
+        dot.setAttribute('cy', String(sy));
         dot.setAttribute('r', '2.4');
         dot.setAttribute('fill', color);
-        dot.setAttribute('stroke', '#0f0f13');
-        dot.setAttribute('stroke-width', '1');
-        dot.setAttribute('opacity', value > 0 ? '1' : '0.5');
-        dot.appendChild(document.createElementNS(svgNS, 'title')).textContent = (buckets[monthIndex] ? buckets[monthIndex].fullLabel : '') + ': ' + value + ' cumulative';
-        svg.appendChild(dot);
+        dot.setAttribute('stroke', '#121212');
+        dot.setAttribute('stroke-width', '0.6');
+        var dotTitle = document.createElementNS(svgNS, 'title');
+        dotTitle.textContent = (buckets[mi] ? buckets[mi].fullLabel : '') + ': ' + value + ' cumulative';
+        dot.appendChild(dotTitle);
+        svgEl.appendChild(dot);
       });
 
-      tickIndexes.forEach(function (monthIndex) {
-        var x = left + (monthIndex / denominator) * width;
-        var label = document.createElementNS(svgNS, 'text');
-        label.setAttribute('x', String(x));
-        label.setAttribute('y', '112');
-        label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('fill', '#7f7f7f');
-        label.setAttribute('font-size', '8.5');
-        label.textContent = buckets[monthIndex] ? buckets[monthIndex].shortLabel : '';
-        svg.appendChild(label);
+      var smallTicks = buildTickIndexes(series.length);
+      smallTicks.forEach(function (mi) {
+        var sx = sleft + (mi / denominator) * swidth;
+        var lbl = document.createElementNS(svgNS, 'text');
+        lbl.setAttribute('x', String(sx));
+        lbl.setAttribute('y', '112');
+        lbl.setAttribute('text-anchor', 'middle');
+        lbl.setAttribute('fill', '#7f7f7f');
+        lbl.setAttribute('font-size', '8.5');
+        lbl.textContent = buckets[mi] ? buckets[mi].shortLabel : '';
+        svgEl.appendChild(lbl);
       });
 
-      card.appendChild(name);
-      card.appendChild(total);
-      card.appendChild(svg);
+      card.appendChild(nameEl);
+      card.appendChild(totalEl);
+      card.appendChild(svgEl);
       grid.appendChild(card);
     });
 
-    root.appendChild(grid);
+    smallView.appendChild(grid);
+
+    root.appendChild(stackedView);
+    root.appendChild(smallView);
+
+    // ---- Toggle behaviour ----
+    btnStacked.addEventListener('click', function () {
+      btnStacked.classList.add('active');
+      btnIndiv.classList.remove('active');
+      stackedView.style.display = '';
+      smallView.style.display = 'none';
+    });
+    btnIndiv.addEventListener('click', function () {
+      btnIndiv.classList.add('active');
+      btnStacked.classList.remove('active');
+      smallView.style.display = '';
+      stackedView.style.display = 'none';
+    });
   }
 }());
 """
