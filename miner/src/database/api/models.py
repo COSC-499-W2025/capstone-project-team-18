@@ -15,6 +15,7 @@ class UserConfigModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     consent: bool = Field(default=False)
     ml_consent: bool = Field(default=False)
+    name: Optional[str] = None
     user_email: Optional[str] = None
     github: Optional[str] = None
     access_token: Optional[str] = None
@@ -29,9 +30,9 @@ class UserConfigModel(SQLModel, table=True):
     resume_config: Optional["ResumeConfigModel"] = Relationship(
         back_populates="user_config",
         sa_relationship_kwargs={
-            "uselist": False, # Enforces 1-to-1
+            "uselist": False,  # Enforces 1-to-1
             "cascade": "all, delete-orphan"
-            }
+        }
     )
 
 
@@ -157,7 +158,9 @@ class ResumeConfigModel(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    user_config: Optional["UserConfigModel"] = Relationship(back_populates="resume_config")
+    user_config: Optional["UserConfigModel"] = Relationship(
+        back_populates="resume_config")
+
 
 class ResumeModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -301,7 +304,8 @@ class PortfolioProjectCardModel(SQLModel, table=True):
     work_pattern: str = Field(default="")
     commit_type_distribution: dict = Field(
         sa_column=Column(JSON), default_factory=dict)
-    activity_metrics: dict = Field(sa_column=Column(JSON), default_factory=dict)
+    activity_metrics: dict = Field(
+        sa_column=Column(JSON), default_factory=dict)
 
     # Part B showcase flag — user-controlled, never overwritten by system on refresh
     is_showcase: bool = Field(default=False)

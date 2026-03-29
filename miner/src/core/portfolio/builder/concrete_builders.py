@@ -17,6 +17,12 @@ from src.infrastructure.log.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _summary_diagnostics_enabled() -> bool:
+    """Enable detailed per-project summary diagnostics."""
+    raw = os.environ.get("ARTIFACT_MINER_SUMMARY_DIAGNOSTICS", "0")
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
 class UserDateSectionBuilder(PortfolioSectionBuilder):
     """
     Builds a PortfolioSection

@@ -2,10 +2,11 @@
 This document logs all the different PROJECT statistics that can be collected.
 """
 
-from enum import Enum
 from datetime import date
-from .statistic_models import WeightedSkills, CodingLanguage, FileDomain
+from enum import Enum
+
 from .base_classes import StatisticTemplate
+from .statistic_models import CodingLanguage, FileDomain, WeightedSkills
 
 
 class ProjectStatisticTemplate(StatisticTemplate):

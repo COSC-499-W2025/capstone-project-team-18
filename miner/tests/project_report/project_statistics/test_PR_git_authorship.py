@@ -747,3 +747,128 @@ def test_total_contribution_percentage_three_way_split(tmp_path: Path):
         ProjectStatCollection.TOTAL_CONTRIBUTION_PERCENTAGE.value), 0.1) == 33.33
 
     shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_noreply_only_user_counted_in_distinct_authors(tmp_path: Path):
+    """User whose commits all use a GitHub noreply address must still appear in
+    distinct_authors so that is_group_project and total_authors are correct."""
+    project_dir = tmp_path / "NoReplyProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # Alice commits only via the new-format noreply address
+    noreply = "12345+alice@users.noreply.github.com"
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Alice")
+        config.set_value("user", "email", noreply)
+    (project_dir / "work.py").write_text("# work")
+    repo.index.add(["work.py"])
+    repo.index.commit("Alice's noreply commit")
+
+    report = ProjectReport(
+        project_path=str(project_dir),
+        project_name="NoReplyProject",
+        project_repo=Repo(str(project_dir)),
+        user_email="alice@example.com",
+        user_github="alice",
+        calculator_classes=[ProjectAnalyzeGitAuthorship],
+    )
+
+    assert report.get_value(ProjectStatCollection.IS_GROUP_PROJECT.value) is False
+    assert report.get_value(ProjectStatCollection.TOTAL_AUTHORS.value) == 1
+
+
+def test_none_email_is_skipped(tmp_path: Path):
+    """Commits where author.email is None must be silently ignored, not crash."""
+    from unittest.mock import MagicMock
+
+    stat = ProjectAnalyzeGitAuthorship()
+
+    # Build a mock repo with one commit that has email=None
+    null_commit = MagicMock()
+    null_commit.author.email = None
+    mock_repo = MagicMock()
+    mock_repo.iter_commits.return_value = [null_commit]
+
+    result = stat._get_commits_by_author(mock_repo, "user@example.com", "user")
+    assert result == {}
+
+
+def test_noreply_substring_does_not_match_unrelated_email(tmp_path: Path):
+    """A github username like 'paul' must NOT match 'notpaul@company.com'.
+
+    Previously f"paul@" in "notpaul@company.com" was True, so notpaul's commit
+    was falsely attributed to paul, hiding him as a distinct second author.
+    After the fix the two contributors must be counted separately.
+    """
+    project_dir = tmp_path / "SubstringProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # Paul commits under his real email
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Paul")
+        config.set_value("user", "email", "paul@example.com")
+    (project_dir / "paul.py").write_text("# paul's work")
+    repo.index.add(["paul.py"])
+    repo.index.commit("Paul's commit")
+
+    # NotPaul commits under an address that contains "paul@" as a substring
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "NotPaul")
+        config.set_value("user", "email", "notpaul@company.com")
+    (project_dir / "notpaul.py").write_text("# notpaul's work")
+    repo.index.add(["notpaul.py"])
+    repo.index.commit("NotPaul's commit")
+
+    report = ProjectReport(
+        project_path=str(project_dir),
+        project_name="SubstringProject",
+        project_repo=Repo(str(project_dir)),
+        user_email="paul@example.com",
+        user_github="paul",
+        calculator_classes=[ProjectAnalyzeGitAuthorship],
+    )
+
+    # notpaul@company.com is a distinct second author — the project is a group project
+    assert report.get_value(ProjectStatCollection.IS_GROUP_PROJECT.value) is True
+    assert report.get_value(ProjectStatCollection.TOTAL_AUTHORS.value) == 2
+
+
+def test_new_format_noreply_normalised_in_group_contributions(tmp_path: Path):
+    """Commits from the new-format noreply address must be normalised to the
+    user's primary email in group_contributions."""
+    project_dir = tmp_path / "NormProject"
+    project_dir.mkdir()
+    repo = Repo.init(project_dir)
+
+    # Alice commits via noreply; Bob commits normally
+    noreply = "99+alice@users.noreply.github.com"
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Alice")
+        config.set_value("user", "email", noreply)
+    (project_dir / "alice.py").write_text("# alice")
+    repo.index.add(["alice.py"])
+    repo.index.commit("Alice via noreply")
+
+    with repo.config_writer() as config:
+        config.set_value("user", "name", "Bob")
+        config.set_value("user", "email", "bob@example.com")
+    (project_dir / "bob.py").write_text("# bob")
+    repo.index.add(["bob.py"])
+    repo.index.commit("Bob's commit")
+
+    report = ProjectReport(
+        project_path=str(project_dir),
+        project_name="NormProject",
+        project_repo=Repo(str(project_dir)),
+        user_email="alice@example.com",
+        user_github="alice",
+        calculator_classes=[ProjectAnalyzeGitAuthorship],
+    )
+
+    group_contributions = report.get_value(ProjectStatCollection.GROUP_CONTRIBUTION.value)
+    # Alice's noreply commit must appear under her primary email, not the noreply address
+    assert group_contributions.get("alice@example.com") == 1
+    assert group_contributions.get(noreply) is None
+    assert group_contributions.get("bob@example.com") == 1
