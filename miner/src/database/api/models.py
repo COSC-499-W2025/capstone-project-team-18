@@ -4,9 +4,8 @@ returnable types for FastAPI
 """
 
 import base64
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Any
-from datetime import datetime
 from pydantic import field_serializer
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, JSON, LargeBinary
@@ -21,7 +20,7 @@ class UserConfigModel(SQLModel, table=True):
     github: Optional[str] = None
     access_token: Optional[str] = None
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now())
+        default_factory=lambda: datetime.now(timezone.utc))
 
     # One-to-many relationship with ProjectReport
     project_reports: List["ProjectReportModel"] = Relationship(
@@ -46,8 +45,8 @@ class ProjectReportModel(SQLModel, table=True):
     )  # This stores your image bytes
     statistic: dict = Field(sa_column=Column(JSON, nullable=False))
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now())
-    last_updated: datetime = Field(default_factory=lambda: datetime.now())
+        default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     analyzed_count: int = Field(default=1, nullable=False)
     parent: Optional[str] = None
 
@@ -91,11 +90,21 @@ class ProjectInsightsModel(SQLModel, table=True):
         ondelete="CASCADE"
     )
     insights: List[str] = Field(sa_column=Column(JSON, nullable=False))
-    generated_at: datetime = Field(default_factory=lambda: datetime.now())
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Relationship
     project: Optional["ProjectReportModel"] = Relationship(
         back_populates="project_insights")
+
+
+class DismissedInsightModel(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_name: str = Field(
+        foreign_key="projectreportmodel.project_name",
+        index=True,
+    )
+    message: str
+    dismissed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class FileReportModel(SQLModel, table=True):
@@ -106,7 +115,7 @@ class FileReportModel(SQLModel, table=True):
     file_hash: Optional[bytes] = None
     statistic: dict = Field(sa_column=Column(JSON, nullable=False))
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now())
+        default_factory=lambda: datetime.now(timezone.utc))
 
     # Relationship
     project: Optional[ProjectReportModel] = Relationship(
@@ -146,8 +155,8 @@ class ResumeConfigModel(SQLModel, table=True):
         default_factory=list
     )
 
-    created_at: datetime = Field(default_factory=lambda: datetime.now())
-    last_updated: datetime = Field(default_factory=lambda: datetime.now())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     user_config: Optional["UserConfigModel"] = Relationship(
         back_populates="resume_config")
@@ -175,9 +184,9 @@ class ResumeModel(SQLModel, table=True):
     )
 
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now())
+        default_factory=lambda: datetime.now(timezone.utc))
     last_updated: datetime = Field(
-        default_factory=lambda: datetime.now())
+        default_factory=lambda: datetime.now(timezone.utc))
 
     # Relationship
     items: List["ResumeItemModel"] = Relationship(back_populates="resume")
@@ -202,9 +211,9 @@ class ResumeItemModel(SQLModel, table=True):
     end_date: date
 
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now())
+        default_factory=lambda: datetime.now(timezone.utc))
     last_updated: datetime = Field(
-        default_factory=lambda: datetime.now())
+        default_factory=lambda: datetime.now(timezone.utc))
 
     # Relationship
     resume: Optional[ResumeModel] = Relationship(back_populates="items")

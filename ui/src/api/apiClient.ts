@@ -388,6 +388,12 @@ export const api = {
       `/projects/${encodeURIComponent(String(name))}/insights`
     ),
 
+  dismissInsight: (name: string | number, message: string) =>
+    postJson<{ dismissed: boolean }>(
+      `/projects/${encodeURIComponent(String(name))}/insights/dismiss`,
+      { message }
+    ),
+
   getUserConfig: () => getJson<UserConfigResponse>("/user-config"),
 
   updateUserConfig: (payload: UpdateUserConfigPayload) =>

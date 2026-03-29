@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import selectinload
@@ -118,7 +118,7 @@ def save_project_report(
     if not needs_recomputation and existing is not None:
         existing.user_config_used = user_config_id
         existing.statistic = incoming_model.statistic
-        existing.last_updated = datetime.now()
+        existing.last_updated = datetime.now(timezone.utc)
 
         # Delete stale file reports and insights, then add new ones
         session.exec(
@@ -151,8 +151,8 @@ def save_project_report(
     incoming_model.project_name = versioned_name
     incoming_model.analyzed_count = next_count
     incoming_model.parent = parent_name
-    incoming_model.created_at = datetime.now()
-    incoming_model.last_updated = datetime.now()
+    incoming_model.created_at = datetime.now(timezone.utc)
+    incoming_model.last_updated = datetime.now(timezone.utc)
 
     for file_model in incoming_files:
         file_model.project_name = versioned_name

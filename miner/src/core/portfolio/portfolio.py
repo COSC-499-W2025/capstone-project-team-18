@@ -1,7 +1,7 @@
 """
 Defines the Portfolio object.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 from src.core.portfolio.sections.portfolio_section import PortfolioSection, merge_section
 
@@ -20,8 +20,8 @@ class PortfolioMetadata:
                  last_updated_at: Optional[datetime] = None,
                  ):
 
-        self.creation_time = creation_date or datetime.now()
-        self.last_updated_at = last_updated_at or datetime.now()
+        self.creation_time = creation_date or datetime.now(timezone.utc)
+        self.last_updated_at = last_updated_at or datetime.now(timezone.utc)
         self.project_ids_include = list(project_ids)
 
 
@@ -88,6 +88,6 @@ def merge_portfolios(existing: Portfolio, generated: Portfolio) -> Portfolio:
             merged_sections.append(sec)
 
     existing.sections = merged_sections
-    existing.metadata.last_updated_at = datetime.now()
+    existing.metadata.last_updated_at = datetime.now(timezone.utc)
 
     return existing

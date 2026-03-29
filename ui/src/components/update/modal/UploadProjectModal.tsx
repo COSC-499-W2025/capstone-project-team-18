@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../api/apiClient";
+import InfoIcon from '@mui/icons-material/Info';
+
 
 type UploadProjectModalProps = {
   open: boolean;
@@ -330,17 +332,17 @@ export default function UploadProjectModal({
         <div
           style={{
             display: "flex",
-            gap: 10,
-            alignItems: "flex-start",
+            gap: 8,
+            alignItems: "center",
             background: "#141414",
             border: "1px solid #2a2a2a",
             borderRadius: 12,
-            padding: 14,
+            padding: "12px 14px",
             marginBottom: 16,
             color: "#bdbdbd",
           }}
         >
-          <span style={{ fontSize: 18 }}>ℹ️</span>
+          <InfoIcon style={{ fontSize: 16, flexShrink: 0, color: "#7a9cc9" }} />
           <div style={{ fontSize: 14, lineHeight: 1.5 }}>
             {isLoadingConfig
               ? "Loading saved settings..."

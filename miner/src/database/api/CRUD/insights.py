@@ -2,7 +2,7 @@ from typing import Optional
 from sqlmodel import Session, select
 from datetime import datetime
 
-from src.database.api.models import ProjectInsightsModel
+from src.database.api.models import DismissedInsightModel, ProjectInsightsModel
 
 
 def get_project_insights(
@@ -43,3 +43,42 @@ def save_project_insights(
         session.add(pi)
 
     return pi
+
+
+def get_dismissed_insight_messages(
+    session: Session,
+    project_name: str,
+) -> set[str]:
+    """Return the set of dismissed insight messages for a project."""
+    rows = session.exec(
+        select(DismissedInsightModel).where(
+            DismissedInsightModel.project_name == project_name
+        )
+    ).all()
+    return {row.message for row in rows}
+
+
+def dismiss_project_insight(
+    session: Session,
+    project_name: str,
+    message: str,
+) -> DismissedInsightModel:
+    """
+    Record that the user dismissed an insight message for a project.
+
+    If the same message has already been dismissed, returns the existing row
+    without creating a duplicate.
+    """
+    existing = session.exec(
+        select(DismissedInsightModel).where(
+            DismissedInsightModel.project_name == project_name,
+            DismissedInsightModel.message == message,
+        )
+    ).first()
+
+    if existing is not None:
+        return existing
+
+    row = DismissedInsightModel(project_name=project_name, message=message)
+    session.add(row)
+    return row

@@ -22,7 +22,12 @@ from src.core.insight.insight_generator import (
     SkillsInsightCalculator,
 )
 from src.core.ML.models.readme_analysis.permissions import ml_extraction_allowed
-from src.database.api.CRUD.insights import get_project_insights, save_project_insights
+from src.database.api.CRUD.insights import (
+    dismiss_project_insight,
+    get_dismissed_insight_messages,
+    get_project_insights,
+    save_project_insights,
+)
 from src.database.api.CRUD.projects import get_project_report_by_name
 from src.infrastructure.log.logging import get_logger
 from src.interface.api.routers.util import get_session
@@ -50,6 +55,10 @@ class InsightResponse(BaseModel):
 class ProjectInsightsResponse(BaseModel):
     project_name: str
     insights: list[InsightResponse]
+
+
+class DismissInsightRequest(BaseModel):
+    message: str
 
 
 @router.get("/{project_name}/insights", response_model=ProjectInsightsResponse)
@@ -80,11 +89,14 @@ def get_project_insights_endpoint(
     # Cached insight rows do not track whether messages were ML-derived.
     # When ML is currently disallowed, bypass cache and regenerate only the
     # non-ML subset so previously cached ML-derived prompts are not returned.
+    dismissed = get_dismissed_insight_messages(session, decoded_name)
+
     cached = get_project_insights(session, decoded_name)
     if cached is not None and ml_allowed:
+        active = [m for m in cached.insights if m not in dismissed]
         return ProjectInsightsResponse(
             project_name=decoded_name,
-            insights=[InsightResponse(message=m) for m in cached.insights],
+            insights=[InsightResponse(message=m) for m in active],
         )
 
     report = get_project_report_by_name(session, decoded_name)
@@ -112,7 +124,41 @@ def get_project_insights_endpoint(
         save_project_insights(session, decoded_name, messages)
         session.commit()
 
+    active_messages = [m for m in messages if m not in dismissed]
     return ProjectInsightsResponse(
         project_name=decoded_name,
-        insights=[InsightResponse(message=m) for m in messages],
+        insights=[InsightResponse(message=m) for m in active_messages],
     )
+
+
+@router.post("/{project_name}/insights/dismiss")
+def dismiss_project_insight_endpoint(
+    project_name: str,
+    request: DismissInsightRequest,
+    session: Session = Depends(get_session),
+):
+    """
+    Dismiss an insight message for a project so it is never returned again.
+
+    Path parameters:
+    - `project_name`: The URL-encoded name of the project.
+
+    Body:
+    - `message`: The exact insight message text to dismiss.
+
+    Returns:
+    - 200: `{"dismissed": true}`
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project report exists with the given name.
+    """
+    decoded_name = unquote(project_name)
+
+    report = get_project_report_by_name(session, decoded_name)
+    if report is None:
+        raise ProjectNotFoundError(f"Project '{decoded_name}' not found.")
+
+    dismiss_project_insight(session, decoded_name, request.message)
+    session.commit()
+
+    return {"dismissed": True}

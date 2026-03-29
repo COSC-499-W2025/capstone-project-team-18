@@ -11,7 +11,6 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
 import SkillsPage from "./pages/SkillsPage";
-
 function ResumeRedirect() {
   const latestResumeId = getLatestResumeId();
 
