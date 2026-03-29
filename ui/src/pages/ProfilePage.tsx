@@ -25,7 +25,6 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [github, setGithub] = useState("");
   const [email, setEmail] = useState("");
-  const [consent, setConsent] = useState(false);
   const [mlConsent, setMlConsent] = useState(false);
 
   const [education, setEducation] = useState<string[]>([]);
@@ -88,7 +87,6 @@ export default function ProfilePage() {
         setName(res?.name ?? "");
         setGithub(res?.github ?? "");
         setEmail(res?.user_email ?? "");
-        setConsent(Boolean(res?.consent));
         setEducation(res?.resume_config?.education ?? []);
         setAwards(res?.resume_config?.awards ?? []);
         setSkills(
@@ -108,7 +106,6 @@ export default function ProfilePage() {
         setName("");
         setGithub("");
         setEmail("");
-        setConsent(false);
         setEducation([]);
         setAwards([]);
         setSkills([]);
@@ -129,14 +126,7 @@ export default function ProfilePage() {
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const githubIsValid = /^(?!-)[A-Za-z0-9-]{1,39}(?<!-)$/.test(github.trim());
   const githubOk = github.trim() === "" || githubIsValid;
-  const isValid = githubOk && emailIsValid && consent;
-
-  function handleConsentChange(checked: boolean) {
-    setConsent(checked);
-    if (!checked) {
-      setMlConsent(false);
-    }
-  }
+  const isValid = githubOk && emailIsValid;
 
   async function handleSave() {
     setError(null);
@@ -151,8 +141,8 @@ export default function ProfilePage() {
       setIsSaving(true);
 
       await api.updateUserConfig({
-        consent,
-        ml_consent: consent && mlConsent,
+        consent: true,
+        ml_consent: mlConsent,
         name: name.trim() || null,
         user_email: email.trim(),
         github: github.trim(),
@@ -163,9 +153,9 @@ export default function ProfilePage() {
         },
       });
 
-      setSuccess("Settings saved successfully.");
+      setSuccess("Changes saved successfully.");
     } catch (e: any) {
-      setError(e?.message ?? "Failed to save settings.");
+      setError(e?.message ?? "Failed to save changes.");
     } finally {
       setIsSaving(false);
     }
@@ -220,9 +210,6 @@ export default function ProfilePage() {
     <div style={{ padding: 24, paddingTop: 40, maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0 }}>Profile</h1>
-        <p style={{ marginTop: 8, color: "#aaa" }}>
-          Manage your display name, education, awards, skills, GitHub access, and consent settings.
-        </p>
       </div>
 
       <div
@@ -232,11 +219,7 @@ export default function ProfilePage() {
           gap: 20,
         }}
       >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSave();
-          }}
+        <div
           style={{
             background: "#1b1b1b",
             borderRadius: 16,
@@ -244,10 +227,13 @@ export default function ProfilePage() {
             border: "1px solid #2a2a2a",
           }}
         >
-          <h2 style={{ marginTop: 0, marginBottom: 16 }}>User Information</h2>
+          <h2 style={{ marginTop: 0, marginBottom: 4 }}>User Information</h2>
+          <p style={{ marginTop: 0, marginBottom: 16, color: "#aaa", fontSize: 14 }}>
+            Manage your resume's display name, education, awards, and skills.
+          </p>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Name (optional)</label>
+            <label style={{ fontSize: 14, color: "#aaa" }}>Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -266,7 +252,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Education (optional)</label>
+            <label style={{ fontSize: 14, color: "#aaa" }}>Education</label>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <input
                 value={educationInput}
@@ -345,7 +331,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Awards (optional)</label>
+            <label style={{ fontSize: 14, color: "#aaa" }}>Awards</label>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <input
                 value={awardInput}
@@ -424,7 +410,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: 0 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Skills (optional)</label>
+            <label style={{ fontSize: 14, color: "#aaa" }}>Skills</label>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <input
                 value={skillInput}
@@ -532,32 +518,8 @@ export default function ProfilePage() {
                 </span>
               ))}
             </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: 16,
-                paddingTop: 12,
-                borderTop: "1px solid #2a2a2a",
-              }}
-            >
-              <button
-                type="submit"
-                disabled={!isValid || isSaving || isLoadingConfig}
-                style={{
-                  padding: "10px 16px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: isValid ? "#2b2b2b" : "#202020",
-                  color: "#fff",
-                  opacity: isValid ? 1 : 0.6,
-                }}
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </button>
-            </div>
           </div>
-        </form>
+        </div>
 
         <form
           onSubmit={(e) => {
@@ -571,10 +533,12 @@ export default function ProfilePage() {
             border: "1px solid #2a2a2a",
           }}
         >
-          <h2 style={{ marginTop: 0, marginBottom: 16 }}>Settings</h2>
+          <h2 style={{ marginTop: 0, marginBottom: 4 }}>Settings</h2>
+          <p style={{ marginTop: 0, marginBottom: 16, color: "#aaa", fontSize: 14 }}>
+            GitHub access, Git-related analysis, and AI consent.
+          </p>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>GitHub Access</label>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
               {githubConnected ? (
                 <button
@@ -627,7 +591,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Email *</label>
+            <label style={{ fontSize: 14, color: "#aaa" }}>Email*</label>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -651,7 +615,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>GitHub Username (optional)</label>
+            <label style={{ fontSize: 14, color: "#aaa" }}>GitHub Username</label>
             <input
               value={github}
               onChange={(e) => setGithub(e.target.value)}
@@ -689,60 +653,23 @@ export default function ProfilePage() {
                 alignItems: "flex-start",
                 gap: 10,
                 fontSize: 14,
-                marginBottom: 10,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={consent}
-                disabled={isSaving || isLoadingConfig}
-                onChange={(e) => handleConsentChange(e.target.checked)}
-              />
-              <span>
-                <strong style={{ display: "block", color: "#f1f1f1" }}>
-                  I consent to project data processing for mining *
-                </strong>
-                <span style={{ color: "#aaa", lineHeight: 1.5 }}>
-                  This allows the app to analyze your project files and Git data to generate reports and portfolio content.
-                </span>
-              </span>
-            </label>
-
-            <label
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                fontSize: 14,
-                opacity: consent ? 1 : 0.6,
               }}
             >
               <input
                 type="checkbox"
                 checked={mlConsent}
-                disabled={!consent || isSaving || isLoadingConfig}
+                disabled={isSaving || isLoadingConfig}
                 onChange={(e) => setMlConsent(e.target.checked)}
               />
               <span>
-                <strong style={{ display: "block", color: consent ? "#f1f1f1" : "#888" }}>
-                  I also consent to ML-assisted analysis
+                <strong style={{ display: "block", color: "#f1f1f1" }}>
+                  I consent to AI-assisted analysis and features.
                 </strong>
                 <span style={{ color: "#aaa", lineHeight: 1.5 }}>
-                  Optional. This lets the app use ML for deeper analysis on top of the base project mining above.
+                  Enable the use of AI for more in-depth project analysis and features such as an AI-generated portfolio summary.
                 </span>
-                {!consent && (
-                  <span style={{ display: "block", color: "#888", marginTop: 4 }}>
-                    Enable project data processing first to choose ML-assisted analysis.
-                  </span>
-                )}
               </span>
             </label>
-
-            {email.trim() !== "" && !consent && (
-              <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
-                Please provide consent to enable saving
-              </div>
-            )}
           </div>
 
           {error && <div style={{ color: "#ff8a8a", marginBottom: 12 }}>{error}</div>}
