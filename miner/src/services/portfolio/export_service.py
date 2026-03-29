@@ -22,6 +22,7 @@ from typing import Any
 from sqlmodel import Session
 
 from src.database.api.CRUD.portfolio import load_portfolio, get_project_cards_for_portfolio
+from src.database.api.CRUD.projects import get_project_report_model_by_name
 from src.utils.errors import KeyNotFoundError
 
 
@@ -50,6 +51,13 @@ _HTML_TEMPLATE = """\
   <!-- Part A: Narrative sections -->
   <section id="narrative">
 {sections_html}
+  </section>
+
+  <!-- Figures: Contribution map + skill timeline -->
+  <section id="figures">
+    <h2>Figures</h2>
+    <div id="contribution-map" class="figure-card"></div>
+    <div id="skill-timeline" class="figure-card"></div>
   </section>
 
   <!-- Part B + C: Project gallery (showcase cards float to top, highlighted) -->
@@ -118,6 +126,271 @@ header h1 {
   white-space: pre-wrap;
   font-size: 0.95rem;
   color: #cbd5e0;
+}
+
+/* ===== Figures ===== */
+#figures {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+#figures h2 {
+  font-size: 1.5rem;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.figure-card {
+  background: #1a1a2e;
+  border: 1px solid #2a2a3a;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.figure-empty {
+  color: #a0aec0;
+  font-size: 0.9rem;
+}
+
+.figure-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.figure-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.figure-controls {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.figure-btn {
+  background: transparent;
+  border: 1px solid #e63946;
+  color: #e63946;
+  padding: 0.3rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.figure-btn.active {
+  background: #e63946;
+  color: #ffffff;
+}
+
+.figure-btn:disabled {
+  border-color: #40445a;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.contrib-grid {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.contrib-week {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contrib-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.contrib-cell.has-activity {
+  cursor: pointer;
+}
+
+.contrib-cell.has-activity:hover {
+  transform: scale(1.15);
+  border-color: #e63946;
+}
+
+.contrib-cell.active {
+  border-color: #e63946;
+}
+
+.contrib-hover-info {
+  margin-top: 0.75rem;
+  border-left: 3px solid #e63946;
+  background: #111826;
+  color: #d5d9e4;
+  font-size: 0.78rem;
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+}
+
+.contrib-legend {
+  margin-top: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #a0aec0;
+  font-size: 0.75rem;
+}
+
+.legend-scale {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.legend-cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.skill-view-toggle {
+  display: flex;
+  gap: 0;
+}
+.skill-toggle-btn {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  border: 1px solid #333;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  font-weight: 400;
+}
+.skill-toggle-btn:first-child { border-radius: 6px 0 0 6px; }
+.skill-toggle-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+.skill-toggle-btn.active {
+  background: #2a2a2a;
+  color: #e8e8e8;
+  font-weight: 600;
+}
+
+.skill-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.skill-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: #ccc;
+}
+.skill-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.skill-stacked-wrap {
+  border-radius: 8px;
+  border: 1px solid #222;
+  background: #121212;
+  padding: 10px 4px 4px;
+  position: relative;
+}
+.skill-stacked-svg {
+  display: block;
+  width: 100%;
+  height: 380px;
+}
+.skill-tooltip {
+  position: absolute;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 12px;
+  pointer-events: none;
+  z-index: 20;
+  width: 170px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  display: none;
+}
+.skill-tooltip-label {
+  font-size: 0.69rem;
+  color: #888;
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #2a2a2a;
+  white-space: nowrap;
+}
+.skill-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 3px;
+}
+.skill-tooltip-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.skill-tooltip-name {
+  font-size: 0.69rem;
+  color: #bbb;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skill-tooltip-count {
+  font-size: 0.69rem;
+  color: #e8e8e8;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.skill-card {
+  border: 1px solid #2a2a3a;
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: #121220;
+}
+
+.skill-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 0.35rem;
+}
+
+.skill-total {
+  font-size: 0.72rem;
+  color: #a0aec0;
+  margin-bottom: 0.5rem;
+}
+
+.skill-chart {
+  width: 100%;
+  height: 120px;
+  display: block;
 }
 
 /* ===== Part B + C: Gallery ===== */
@@ -268,6 +541,12 @@ _FILTER_JS = """\
   'use strict';
 
   var container = document.getElementById('cards-container');
+
+  function mk(tag, className) {
+    var el = document.createElement(tag);
+    if (className) el.className = className;
+    return el;
+  }
 
   // ---- Render all cards on load ----
   function renderCards(cards) {
@@ -438,6 +717,708 @@ _FILTER_JS = """\
   // ---- Initial render ----
   if (typeof PORTFOLIO_DATA !== 'undefined') {
     renderCards(PORTFOLIO_DATA.project_cards || []);
+    renderContributionFigure(PORTFOLIO_DATA.figures || {});
+    renderSkillTimelineFigure(PORTFOLIO_DATA.figures || {});
+  }
+
+  function renderContributionFigure(figures) {
+    var root = document.getElementById('contribution-map');
+    if (!root) return;
+
+    var contribution = figures.contribution || {};
+    var personal = contribution.personal_timeline || {};
+    var total = contribution.total_timeline || {};
+
+    var keys = Object.keys(personal).concat(Object.keys(total));
+    if (!keys.length) {
+      root.innerHTML = '<div class="figure-empty">No contribution data available.</div>';
+      return;
+    }
+
+    var yearSet = {};
+    keys.forEach(function (d) {
+      var y = Number(String(d).slice(0, 4));
+      if (!isNaN(y)) yearSet[y] = true;
+    });
+    var years = Object.keys(yearSet).map(Number).sort(function (a, b) { return a - b; });
+    var state = {
+      yearIndex: years.length - 1,
+      mode: 'personal',
+    };
+
+    function maxPersonal() {
+      var vals = Object.keys(personal).map(function (k) { return Number(personal[k] || 0); });
+      return vals.length ? Math.max.apply(null, vals.concat([1])) : 1;
+    }
+
+    function datesForYear(y) {
+      var start = new Date(y, 0, 1);
+      var end = new Date(y, 11, 31);
+      var dates = [];
+      var cur = new Date(start);
+      while (cur <= end) {
+        var mm = String(cur.getMonth() + 1).padStart(2, '0');
+        var dd = String(cur.getDate()).padStart(2, '0');
+        dates.push(cur.getFullYear() + '-' + mm + '-' + dd);
+        cur.setDate(cur.getDate() + 1);
+      }
+      return dates;
+    }
+
+    function opacityFor(date, dateRange, maxP) {
+      var p = Number(personal[date] || 0);
+      var t = Number(total[date] || 0);
+      if (state.mode === 'personal') {
+        if (p <= 0) return 0;
+        return Math.max(0.1, p / maxP);
+      }
+
+      if (p <= 0 || t <= 0) return 0;
+      var ratio = p / t;
+      var maxRatio = 0.1;
+      dateRange.forEach(function (d) {
+        var pd = Number(personal[d] || 0);
+        var td = Number(total[d] || 0);
+        if (td > 0) {
+          maxRatio = Math.max(maxRatio, pd / td);
+        }
+      });
+      return Math.max(0.1, ratio / maxRatio);
+    }
+
+    function tooltipFor(date) {
+      var p = Number(personal[date] || 0);
+      var t = Number(total[date] || 0);
+      if (p <= 0) return '';
+      var parsedDate = new Date(date);
+      var displayDate = isNaN(parsedDate.getTime())
+        ? date
+        : parsedDate.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          });
+      if (state.mode === 'personal') {
+        return displayDate + ': ' + p + ' commit' + (p === 1 ? '' : 's');
+      }
+      var pct = t > 0 ? ((p / t) * 100).toFixed(1) : '0.0';
+      return displayDate + ': ' + p + '/' + t + ' commits (' + pct + '% of team activity)';
+    }
+
+    function groupedWeeks(dateRange) {
+      var weeks = [];
+      var current = [];
+      dateRange.forEach(function (date) {
+        var day = new Date(date).getDay();
+        if (day === 0 && current.length) {
+          weeks.push(current);
+          current = [];
+        }
+        current.push(date);
+      });
+      if (current.length) weeks.push(current);
+      return weeks;
+    }
+
+    var activeCell = null;
+    var hoverInfo = null;
+
+    function draw() {
+      root.innerHTML = '';
+      var year = years[state.yearIndex];
+      var dateRange = datesForYear(year);
+      var weeks = groupedWeeks(dateRange);
+      var maxP = maxPersonal();
+
+      var header = mk('div', 'figure-header');
+      var title = mk('div', 'figure-title');
+      title.textContent = 'Contribution Map';
+
+      var controls = mk('div', 'figure-controls');
+
+      var personalBtn = mk('button', 'figure-btn' + (state.mode === 'personal' ? ' active' : ''));
+      personalBtn.textContent = 'Personal';
+      personalBtn.onclick = function () { state.mode = 'personal'; draw(); };
+
+      var ratioBtn = mk('button', 'figure-btn' + (state.mode === 'ratio' ? ' active' : ''));
+      ratioBtn.textContent = 'Ratio';
+      ratioBtn.onclick = function () { state.mode = 'ratio'; draw(); };
+
+      var prevBtn = mk('button', 'figure-btn');
+      prevBtn.textContent = '←';
+      prevBtn.disabled = state.yearIndex <= 0;
+      prevBtn.onclick = function () { state.yearIndex -= 1; draw(); };
+
+      var yearLabel = mk('span', null);
+      yearLabel.style.minWidth = '54px';
+      yearLabel.style.textAlign = 'center';
+      yearLabel.style.color = '#e63946';
+      yearLabel.style.fontSize = '0.78rem';
+      yearLabel.style.fontWeight = '600';
+      yearLabel.textContent = String(year);
+
+      var nextBtn = mk('button', 'figure-btn');
+      nextBtn.textContent = '→';
+      nextBtn.disabled = state.yearIndex >= years.length - 1;
+      nextBtn.onclick = function () { state.yearIndex += 1; draw(); };
+
+      controls.appendChild(personalBtn);
+      controls.appendChild(ratioBtn);
+      controls.appendChild(prevBtn);
+      controls.appendChild(yearLabel);
+      controls.appendChild(nextBtn);
+
+      header.appendChild(title);
+      header.appendChild(controls);
+      root.appendChild(header);
+
+      var grid = mk('div', 'contrib-grid');
+      weeks.forEach(function (week) {
+        var weekEl = mk('div', 'contrib-week');
+        week.forEach(function (date) {
+          var cell = mk('div', 'contrib-cell');
+          var opacity = opacityFor(date, dateRange, maxP);
+          cell.style.background = opacity === 0 ? '#2a2a3a' : 'rgba(230, 57, 70, ' + opacity + ')';
+          var tip = tooltipFor(date);
+          if (tip) {
+            cell.title = tip;
+            cell.classList.add('has-activity');
+            cell.onmouseenter = function () {
+              if (activeCell) activeCell.classList.remove('active');
+              activeCell = cell;
+              activeCell.classList.add('active');
+              if (hoverInfo) hoverInfo.textContent = tip;
+            };
+            cell.onmouseleave = function () {
+              cell.classList.remove('active');
+              if (hoverInfo) {
+                hoverInfo.textContent = state.mode === 'personal'
+                  ? 'Hover over a highlighted day to see commit details.'
+                  : 'Hover over a highlighted day to see your commit ratio details.';
+              }
+            };
+          }
+          weekEl.appendChild(cell);
+        });
+        grid.appendChild(weekEl);
+      });
+      root.appendChild(grid);
+
+      hoverInfo = mk('div', 'contrib-hover-info');
+      hoverInfo.textContent = state.mode === 'personal'
+        ? 'Hover over a highlighted day to see commit details.'
+        : 'Hover over a highlighted day to see your commit ratio details.';
+      root.appendChild(hoverInfo);
+
+      var legend = mk('div', 'contrib-legend');
+      var left = mk('span', null);
+      left.textContent = state.mode === 'personal'
+        ? 'Intensity based on personal commit count'
+        : 'Intensity based on personal/team ratio';
+
+      var right = mk('div', 'legend-scale');
+      var less = mk('span', null);
+      less.textContent = 'Less';
+      right.appendChild(less);
+      [0, 0.25, 0.5, 0.75, 1].forEach(function (o) {
+        var l = mk('span', 'legend-cell');
+        l.style.background = o === 0 ? '#2a2a3a' : 'rgba(230, 57, 70, ' + o + ')';
+        right.appendChild(l);
+      });
+      var more = mk('span', null);
+      more.textContent = 'More';
+      right.appendChild(more);
+
+      legend.appendChild(left);
+      legend.appendChild(right);
+      root.appendChild(legend);
+    }
+
+    draw();
+  }
+
+  function renderSkillTimelineFigure(figures) {
+    var root = document.getElementById('skill-timeline');
+    if (!root) return;
+
+    var data = figures.skill_timeline || {};
+    var range = figures.skill_timeline_range || {};
+    var skills = Object.keys(data);
+    if (!skills.length) {
+      root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
+      return;
+    }
+
+    function parseDateValue(value) {
+      if (typeof value !== 'string') return null;
+      var parsed = new Date(value);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    function monthStart(dt) {
+      return new Date(dt.getFullYear(), dt.getMonth(), 1);
+    }
+
+    function monthKey(dt) {
+      var month = String(dt.getMonth() + 1);
+      if (month.length < 2) month = '0' + month;
+      return dt.getFullYear() + '-' + month;
+    }
+
+    function buildTimelineBuckets(startDate, endDate) {
+      var buckets = [];
+      var start = monthStart(startDate);
+      var end = monthStart(endDate);
+      if (end < start) {
+        return [{
+          key: monthKey(start),
+          shortLabel: start.toLocaleString(undefined, { month: 'short', year: '2-digit' }),
+          fullLabel: start.toLocaleString(undefined, { month: 'short', year: 'numeric' })
+        }];
+      }
+      var cursor = new Date(start);
+      while (cursor <= end) {
+        buckets.push({
+          key: monthKey(cursor),
+          shortLabel: cursor.toLocaleString(undefined, { month: 'short', year: '2-digit' }),
+          fullLabel: cursor.toLocaleString(undefined, { month: 'short', year: 'numeric' })
+        });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+      return buckets;
+    }
+
+    function buildTickIndexes(length) {
+      if (length <= 1) return [0];
+      if (length <= 6) {
+        var all = [];
+        for (var idx = 0; idx < length; idx += 1) all.push(idx);
+        return all;
+      }
+      var desired = 6;
+      var step = (length - 1) / (desired - 1);
+      var ticks = [0, length - 1];
+      for (var i = 1; i < desired - 1; i += 1) {
+        var candidate = Math.round(step * i);
+        if (ticks.indexOf(candidate) === -1) ticks.push(candidate);
+      }
+      ticks.sort(function (a, b) { return a - b; });
+      return ticks;
+    }
+
+    var skillMonthCounts = {};
+    var totalBySkill = {};
+    var minActivityDate = null;
+    var maxActivityDate = null;
+    var globalMaxCumulative = 1;
+
+    skills.forEach(function (skill) {
+      var byDate = data[skill] || {};
+      Object.keys(byDate).forEach(function (dateStr) {
+        var count = Number(byDate[dateStr] || 0);
+        if (!isFinite(count) || count <= 0) return;
+        var dt = parseDateValue(dateStr);
+        if (!dt) return;
+        if (!minActivityDate || dt < minActivityDate) minActivityDate = dt;
+        if (!maxActivityDate || dt > maxActivityDate) maxActivityDate = dt;
+        if (!skillMonthCounts[skill]) skillMonthCounts[skill] = {};
+        var key = monthKey(dt);
+        skillMonthCounts[skill][key] = Number(skillMonthCounts[skill][key] || 0) + count;
+        totalBySkill[skill] = Number(totalBySkill[skill] || 0) + count;
+      });
+    });
+
+    var rangeStart = parseDateValue(range.start_date) || minActivityDate;
+    var rangeEnd = parseDateValue(range.end_date) || maxActivityDate;
+    if (!rangeStart || !rangeEnd) {
+      root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
+      return;
+    }
+
+    var buckets = buildTimelineBuckets(rangeStart, rangeEnd);
+    var mKeys = buckets.map(function (b) { return b.key; });
+    var skillSeries = {};
+
+    Object.keys(totalBySkill).forEach(function (skill) {
+      var runningTotal = 0;
+      var series = mKeys.map(function (key) {
+        runningTotal += Number((skillMonthCounts[skill] || {})[key] || 0);
+        return runningTotal;
+      });
+      skillSeries[skill] = series;
+      var lastValue = series.length ? series[series.length - 1] : 0;
+      if (lastValue > globalMaxCumulative) globalMaxCumulative = lastValue;
+    });
+
+    var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A',
+                  '#5B8C85', '#9B6B5B', '#6B7B9B', '#8C7B5B', '#7B5B9B'];
+    var tickIndexes = buildTickIndexes(mKeys.length);
+    var n = mKeys.length;
+
+    // All skills with >= 10 occurrences (for stacked view)
+    var stackedSkills = Object.keys(totalBySkill)
+      .filter(function (s) { return Number(totalBySkill[s] || 0) >= 10; })
+      .sort(function (a, b) { return Number(totalBySkill[b] || 0) - Number(totalBySkill[a] || 0); });
+
+    // Top 5 with any occurrences (for small-multiples view)
+    var smallSkills = Object.keys(totalBySkill)
+      .filter(function (s) { return Number(totalBySkill[s] || 0) > 0; })
+      .sort(function (a, b) { return Number(totalBySkill[b] || 0) - Number(totalBySkill[a] || 0); })
+      .slice(0, 5);
+
+    if (!stackedSkills.length && !smallSkills.length) {
+      root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
+      return;
+    }
+
+    root.innerHTML = '';
+
+    // ---- Header ----
+    var header = mk('div', 'figure-header');
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    header.style.flexWrap = 'wrap';
+    header.style.gap = '12px';
+    header.style.marginBottom = '12px';
+
+    var title = mk('div', 'figure-title');
+    title.textContent = 'Most Utilized Skills';
+    title.style.margin = '0';
+    header.appendChild(title);
+
+    var toggle = mk('div', 'skill-view-toggle');
+    var btnStacked = mk('button', 'skill-toggle-btn active');
+    btnStacked.textContent = 'Stacked';
+    btnStacked.setAttribute('type', 'button');
+    var btnIndiv = mk('button', 'skill-toggle-btn');
+    btnIndiv.textContent = 'Individual';
+    btnIndiv.setAttribute('type', 'button');
+    toggle.appendChild(btnStacked);
+    toggle.appendChild(btnIndiv);
+    header.appendChild(toggle);
+    root.appendChild(header);
+
+    var subtitle = mk('div', 'figure-subtitle');
+    subtitle.textContent = 'Cumulative running total of skill occurrences across all projects, plotted continuously from the earliest to latest project date.';
+    subtitle.style.marginBottom = '12px';
+    subtitle.style.fontSize = '0.75rem';
+    subtitle.style.color = '#6f6f78';
+    root.appendChild(subtitle);
+
+    // ---- Stacked view ----
+    var stackedView = mk('div', '');
+
+    // Legend
+    var legend = mk('div', 'skill-legend');
+    stackedSkills.forEach(function (skill, k) {
+      var item = mk('div', 'skill-legend-item');
+      var swatch = mk('div', 'skill-legend-swatch');
+      swatch.style.background = colors[k % colors.length];
+      var label = document.createElement('span');
+      label.textContent = skill;
+      var count = document.createElement('span');
+      count.textContent = '(' + (totalBySkill[skill] || 0) + ')';
+      count.style.color = '#666';
+      count.style.fontSize = '0.69rem';
+      item.appendChild(swatch);
+      item.appendChild(label);
+      item.appendChild(count);
+      legend.appendChild(item);
+    });
+    stackedView.appendChild(legend);
+
+    // Build log-stacked series
+    var globalMaxIndividual = 1;
+    stackedSkills.forEach(function (skill) {
+      var last = (skillSeries[skill] || []).length ? skillSeries[skill][skillSeries[skill].length - 1] : 0;
+      if (last > globalMaxIndividual) globalMaxIndividual = last;
+    });
+
+    function indivLogNorm(v) {
+      return Math.log(1 + v) / Math.log(1 + globalMaxIndividual);
+    }
+
+    var logStackedSeries = [];
+    stackedSkills.forEach(function (skill, k) {
+      var logSeries = (skillSeries[skill] || []).map(indivLogNorm);
+      if (k === 0) {
+        logStackedSeries.push(logSeries.slice());
+      } else {
+        var prev = logStackedSeries[k - 1];
+        logStackedSeries.push(logSeries.map(function (v, i) { return v + (prev[i] || 0); }));
+      }
+    });
+
+    var totalLogHeight = 1;
+    if (logStackedSeries.length) {
+      var lastSeries = logStackedSeries[logStackedSeries.length - 1];
+      var lastVal = lastSeries.length ? lastSeries[lastSeries.length - 1] : 1;
+      if (lastVal > totalLogHeight) totalLogHeight = lastVal;
+    }
+
+    var SVG_W = 760, SVG_H = 380;
+    var L = 8, R = 8, T = 12, B = 30;
+    var CW = SVG_W - L - R, CH = SVG_H - T - B;
+
+    function xAt(i) { return L + (i / Math.max(1, n - 1)) * CW; }
+    function yAt(logV) { return T + (1 - logV / totalLogHeight) * CH; }
+
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var chartWrap = mk('div', 'skill-stacked-wrap');
+
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + SVG_W + ' ' + SVG_H);
+    svg.setAttribute('class', 'skill-stacked-svg');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Stacked cumulative skill activity');
+
+    // Grid lines
+    [0.25, 0.5, 0.75, 1].forEach(function (ratio) {
+      var gline = document.createElementNS(svgNS, 'line');
+      gline.setAttribute('x1', String(L));
+      gline.setAttribute('x2', String(SVG_W - R));
+      gline.setAttribute('y1', String(T + CH * (1 - ratio)));
+      gline.setAttribute('y2', String(T + CH * (1 - ratio)));
+      gline.setAttribute('stroke', '#1e1e1e');
+      gline.setAttribute('stroke-width', '1');
+      svg.appendChild(gline);
+    });
+
+    // Stacked bands
+    stackedSkills.forEach(function (skill, k) {
+      var topSeries = logStackedSeries[k] || [];
+      var botSeries = k === 0 ? new Array(n).fill(0) : (logStackedSeries[k - 1] || []);
+      var color = colors[k % colors.length];
+
+      var topPts = topSeries.map(function (v, i) {
+        return (i === 0 ? 'M' : 'L') + ' ' + xAt(i) + ' ' + yAt(v);
+      });
+      var botPts = botSeries.slice().reverse().map(function (v, ri) {
+        return 'L ' + xAt(n - 1 - ri) + ' ' + yAt(v);
+      });
+      var areaD = topPts.join(' ') + ' ' + botPts.join(' ') + ' Z';
+      var lineD = topSeries.map(function (v, i) {
+        return (i === 0 ? 'M' : 'L') + ' ' + xAt(i) + ' ' + yAt(v);
+      }).join(' ');
+
+      var areaEl = document.createElementNS(svgNS, 'path');
+      areaEl.setAttribute('d', areaD);
+      areaEl.setAttribute('fill', color);
+      areaEl.setAttribute('fill-opacity', '0.75');
+      svg.appendChild(areaEl);
+
+      var lineEl = document.createElementNS(svgNS, 'path');
+      lineEl.setAttribute('d', lineD);
+      lineEl.setAttribute('fill', 'none');
+      lineEl.setAttribute('stroke', color);
+      lineEl.setAttribute('stroke-width', '1.2');
+      lineEl.setAttribute('stroke-opacity', '0.9');
+      svg.appendChild(lineEl);
+    });
+
+    // Crosshair
+    var crosshair = document.createElementNS(svgNS, 'line');
+    crosshair.setAttribute('x1', '0');
+    crosshair.setAttribute('y1', String(T));
+    crosshair.setAttribute('x2', '0');
+    crosshair.setAttribute('y2', String(T + CH));
+    crosshair.setAttribute('stroke', '#ffffff');
+    crosshair.setAttribute('stroke-width', '1');
+    crosshair.setAttribute('stroke-opacity', '0.2');
+    crosshair.setAttribute('stroke-dasharray', '3 3');
+    crosshair.style.display = 'none';
+    svg.appendChild(crosshair);
+
+    // X-axis ticks
+    tickIndexes.forEach(function (mi) {
+      var lbl = document.createElementNS(svgNS, 'text');
+      lbl.setAttribute('x', String(xAt(mi)));
+      lbl.setAttribute('y', String(SVG_H - 6));
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.setAttribute('fill', '#7f7f7f');
+      lbl.setAttribute('font-size', '9');
+      lbl.textContent = buckets[mi] ? buckets[mi].shortLabel : '';
+      svg.appendChild(lbl);
+    });
+
+    chartWrap.appendChild(svg);
+
+    // Tooltip
+    var tooltip = mk('div', 'skill-tooltip');
+    var tooltipLabel = mk('div', 'skill-tooltip-label');
+    tooltip.appendChild(tooltipLabel);
+    var tooltipRows = stackedSkills.map(function (skill, k) {
+      var row = mk('div', 'skill-tooltip-row');
+      var swatch = mk('div', 'skill-tooltip-swatch');
+      swatch.style.background = colors[k % colors.length];
+      var name = mk('span', 'skill-tooltip-name');
+      name.textContent = skill;
+      var cnt = mk('span', 'skill-tooltip-count');
+      row.appendChild(swatch);
+      row.appendChild(name);
+      row.appendChild(cnt);
+      tooltip.appendChild(row);
+      return { row: row, cnt: cnt };
+    });
+    chartWrap.appendChild(tooltip);
+
+    svg.addEventListener('mousemove', function (e) {
+      var ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      var svgX = (e.clientX - ctm.e) / ctm.a;
+      var frac = Math.max(0, Math.min(1, (svgX - L) / CW));
+      var mi = Math.round(frac * Math.max(0, n - 1));
+
+      crosshair.setAttribute('x1', String(xAt(mi)));
+      crosshair.setAttribute('x2', String(xAt(mi)));
+      crosshair.style.display = '';
+
+      tooltipLabel.textContent = buckets[mi] ? buckets[mi].fullLabel : '';
+      stackedSkills.forEach(function (skill, k) {
+        var count = (skillSeries[skill] || [])[mi] || 0;
+        tooltipRows[k].row.style.display = count > 0 ? 'flex' : 'none';
+        tooltipRows[k].cnt.textContent = String(count);
+      });
+
+      var wrapRect = chartWrap.getBoundingClientRect();
+      var tipX = e.clientX - wrapRect.left;
+      var tipY = e.clientY - wrapRect.top;
+      var tipLeft = tipX + 16;
+      if (tipLeft + 170 > wrapRect.width) tipLeft = tipX - 178;
+      tooltip.style.left = tipLeft + 'px';
+      tooltip.style.top = Math.max(8, tipY - 16) + 'px';
+      tooltip.style.display = 'block';
+    });
+    svg.addEventListener('mouseleave', function () {
+      crosshair.style.display = 'none';
+      tooltip.style.display = 'none';
+    });
+
+    stackedView.appendChild(chartWrap);
+
+    // ---- Small-multiples view ----
+    var smallView = mk('div', '');
+    smallView.style.display = 'none';
+
+    var grid = mk('div', 'skill-grid');
+
+    smallSkills.forEach(function (skill, index) {
+      var series = skillSeries[skill] || [];
+      var timelineTotal = Number(totalBySkill[skill] || 0);
+      var color = colors[index % colors.length];
+      var denominator = Math.max(1, series.length - 1);
+
+      var card = mk('div', 'skill-card');
+      card.style.borderTop = '3px solid ' + color;
+
+      var nameEl = mk('div', 'skill-name');
+      nameEl.textContent = skill;
+      var totalEl = mk('div', 'skill-total');
+      totalEl.textContent = timelineTotal + ' occurrence' + (timelineTotal === 1 ? '' : 's');
+
+      var svgEl = document.createElementNS(svgNS, 'svg');
+      svgEl.setAttribute('viewBox', '0 0 360 120');
+      svgEl.setAttribute('class', 'skill-chart');
+      svgEl.setAttribute('role', 'img');
+      svgEl.setAttribute('aria-label', skill + ' cumulative activity');
+
+      var sleft = 10, stop = 12, swidth = 340, sheight = 78;
+
+      function logScaleSmall(value) {
+        return globalMaxCumulative <= 1
+          ? value / globalMaxCumulative
+          : Math.log(1 + value) / Math.log(1 + globalMaxCumulative);
+      }
+
+      [0.25, 0.5, 0.75, 1].forEach(function (r) {
+        var gy = stop + sheight * (1 - r);
+        var gline = document.createElementNS(svgNS, 'line');
+        gline.setAttribute('x1', String(sleft));
+        gline.setAttribute('x2', String(sleft + swidth));
+        gline.setAttribute('y1', String(gy));
+        gline.setAttribute('y2', String(gy));
+        gline.setAttribute('stroke', '#1f1f1f');
+        gline.setAttribute('stroke-width', '1');
+        svgEl.appendChild(gline);
+      });
+
+      var linePts = '', areaPts = '';
+      series.forEach(function (value, mi) {
+        var sx = sleft + (mi / denominator) * swidth;
+        var sy = stop + (1 - logScaleSmall(value)) * sheight;
+        linePts += (mi === 0 ? 'M ' : ' L ') + sx + ' ' + sy;
+      });
+      areaPts = linePts
+        + ' L ' + (sleft + swidth) + ' ' + (stop + sheight)
+        + ' L ' + sleft + ' ' + (stop + sheight) + ' Z';
+
+      var areaEl2 = document.createElementNS(svgNS, 'path');
+      areaEl2.setAttribute('d', areaPts);
+      areaEl2.setAttribute('fill', color);
+      areaEl2.setAttribute('fill-opacity', '0.2');
+      svgEl.appendChild(areaEl2);
+
+      var lineEl2 = document.createElementNS(svgNS, 'path');
+      lineEl2.setAttribute('d', linePts);
+      lineEl2.setAttribute('fill', 'none');
+      lineEl2.setAttribute('stroke', color);
+      lineEl2.setAttribute('stroke-width', '2');
+      svgEl.appendChild(lineEl2);
+
+      series.forEach(function (value, mi) {
+        var sx = sleft + (mi / denominator) * swidth;
+        var sy = stop + (1 - logScaleSmall(value)) * sheight;
+        var dot = document.createElementNS(svgNS, 'circle');
+        dot.setAttribute('cx', String(sx));
+        dot.setAttribute('cy', String(sy));
+        dot.setAttribute('r', '2.4');
+        dot.setAttribute('fill', color);
+        dot.setAttribute('stroke', '#121212');
+        dot.setAttribute('stroke-width', '0.6');
+        var dotTitle = document.createElementNS(svgNS, 'title');
+        dotTitle.textContent = (buckets[mi] ? buckets[mi].fullLabel : '') + ': ' + value + ' cumulative';
+        dot.appendChild(dotTitle);
+        svgEl.appendChild(dot);
+      });
+
+      var smallTicks = buildTickIndexes(series.length);
+      smallTicks.forEach(function (mi) {
+        var sx = sleft + (mi / denominator) * swidth;
+        var lbl = document.createElementNS(svgNS, 'text');
+        lbl.setAttribute('x', String(sx));
+        lbl.setAttribute('y', '112');
+        lbl.setAttribute('text-anchor', 'middle');
+        lbl.setAttribute('fill', '#7f7f7f');
+        lbl.setAttribute('font-size', '8.5');
+        lbl.textContent = buckets[mi] ? buckets[mi].shortLabel : '';
+        svgEl.appendChild(lbl);
+      });
+
+      card.appendChild(nameEl);
+      card.appendChild(totalEl);
+      card.appendChild(svgEl);
+      grid.appendChild(card);
+    });
+
+    smallView.appendChild(grid);
+
+    root.appendChild(stackedView);
+    root.appendChild(smallView);
+
+    // ---- Toggle behaviour ----
+    btnStacked.addEventListener('click', function () {
+      btnStacked.classList.add('active');
+      btnIndiv.classList.remove('active');
+      stackedView.style.display = '';
+      smallView.style.display = 'none';
+    });
+    btnIndiv.addEventListener('click', function () {
+      btnIndiv.classList.add('active');
+      btnStacked.classList.remove('active');
+      smallView.style.display = '';
+      stackedView.style.display = 'none';
+    });
   }
 }());
 """
@@ -476,7 +1457,65 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     # Fetch cards ordered: showcase first, then alphabetically
     card_models = get_project_cards_for_portfolio(session, portfolio_id)
     cards_data = []
+    personal_timeline: dict[str, int] = {}
+    total_timeline: dict[str, int] = {}
+    skill_timeline: dict[str, dict[str, int]] = {}
+    earliest_project_start: date | None = None
+    latest_project_end: date | None = None
+
+    def _parse_stat_date(value: Any) -> date | None:
+      if isinstance(value, date):
+        return value
+      if not isinstance(value, str):
+        return None
+      try:
+        return date.fromisoformat(value[:10])
+      except ValueError:
+        return None
+
     for c in card_models:
+        project = get_project_report_model_by_name(session, c.project_name)
+        statistic = project.statistic if project and isinstance(
+            project.statistic, dict) else {}
+
+        stat_start = _parse_stat_date(statistic.get("PROJECT_START_DATE"))
+        if stat_start and (earliest_project_start is None or stat_start < earliest_project_start):
+          earliest_project_start = stat_start
+        stat_end = _parse_stat_date(statistic.get("PROJECT_END_DATE"))
+        if stat_end and (latest_project_end is None or stat_end > latest_project_end):
+          latest_project_end = stat_end
+
+        # Aggregate contribution timelines across all included projects.
+        personal = statistic.get("COMMIT_ACTIVITY_TIMELINE", {})
+        total = statistic.get("TOTAL_COMMIT_ACTIVITY_TIMELINE", {})
+        for key, value in personal.items() if isinstance(personal, dict) else []:
+            try:
+                count = int(value)
+            except (TypeError, ValueError):
+                continue
+            personal_timeline[str(key)] = personal_timeline.get(
+                str(key), 0) + count
+        for key, value in total.items() if isinstance(total, dict) else []:
+            try:
+                count = int(value)
+            except (TypeError, ValueError):
+                continue
+            total_timeline[str(key)] = total_timeline.get(str(key), 0) + count
+
+        # Aggregate per-skill activity as {skill: {YYYY-MM-DD: count}}.
+        skill_activity = statistic.get("PROJECT_SKILL_ACTIVITY", {})
+        if isinstance(skill_activity, dict):
+            for skill, dates in skill_activity.items():
+                if not isinstance(dates, list):
+                    continue
+                if skill not in skill_timeline:
+                    skill_timeline[skill] = {}
+                for date_value in dates:
+                    if not isinstance(date_value, str):
+                        continue
+                    skill_timeline[skill][date_value] = skill_timeline[skill].get(
+                        date_value, 0) + 1
+
         cards_data.append({
             "project_name": c.project_name,
             "title_override": c.title_override,
@@ -504,6 +1543,17 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
         "portfolio_id": portfolio_id,
         "title": portfolio.title,
         "project_cards": cards_data,
+        "figures": {
+            "contribution": {
+                "personal_timeline": personal_timeline,
+                "total_timeline": total_timeline,
+            },
+            "skill_timeline": skill_timeline,
+          "skill_timeline_range": {
+            "start_date": earliest_project_start.isoformat() if earliest_project_start else None,
+            "end_date": latest_project_end.isoformat() if latest_project_end else None,
+          },
+        },
     }
     portfolio_data_js = "var PORTFOLIO_DATA = " + json.dumps(
         portfolio_data, default=_json_default, indent=2
