@@ -936,13 +936,14 @@ _FILTER_JS = """\
     var skillSeries = {};
 
     Object.keys(totalBySkill).forEach(function (skill) {
+      var runningTotal = 0;
       var series = monthKeys.map(function (key) {
-        return Number((skillMonthCounts[skill] || {})[key] || 0);
+        runningTotal += Number((skillMonthCounts[skill] || {})[key] || 0);
+        return runningTotal;
       });
       skillSeries[skill] = series;
-      series.forEach(function (value) {
-        if (value > globalMaxMonthly) globalMaxMonthly = value;
-      });
+      var lastValue = series.length ? series[series.length - 1] : 0;
+      if (lastValue > globalMaxMonthly) globalMaxMonthly = lastValue;
     });
 
     var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A'];
@@ -957,7 +958,7 @@ _FILTER_JS = """\
     root.appendChild(header);
 
     var subtitle = mk('div', 'figure-subtitle');
-    subtitle.textContent = 'Daily activity is grouped into monthly trend charts from the earliest project start date through the latest project end date.';
+    subtitle.textContent = 'Cumulative running total of skill occurrences across all projects, plotted continuously from the earliest to latest project date.';
     subtitle.style.marginBottom = '10px';
     subtitle.style.fontSize = '0.78rem';
     subtitle.style.color = '#6f6f78';
@@ -994,7 +995,7 @@ _FILTER_JS = """\
       svg.setAttribute('viewBox', '0 0 360 120');
       svg.setAttribute('class', 'skill-chart');
       svg.setAttribute('role', 'img');
-      svg.setAttribute('aria-label', entry.skill + ' monthly activity');
+      svg.setAttribute('aria-label', entry.skill + ' cumulative activity');
 
       var left = 18;
       var top = 10;
@@ -1017,9 +1018,12 @@ _FILTER_JS = """\
       var path = '';
       var area = '';
       var denominator = Math.max(1, entry.series.length - 1);
+      function logScale(value) {
+        return globalMaxMonthly <= 1 ? value / globalMaxMonthly : Math.log(1 + value) / Math.log(1 + globalMaxMonthly);
+      }
       entry.series.forEach(function (value, monthIndex) {
         var x = left + (monthIndex / denominator) * width;
-        var y = top + (1 - (value / globalMaxMonthly)) * height;
+        var y = top + (1 - logScale(value)) * height;
         path += (monthIndex === 0 ? 'M ' : ' L ') + x + ' ' + y;
       });
       area = path + ' L ' + (left + width) + ' ' + (top + height) + ' L ' + left + ' ' + (top + height) + ' Z';
@@ -1039,7 +1043,7 @@ _FILTER_JS = """\
 
       entry.series.forEach(function (value, monthIndex) {
         var x = left + (monthIndex / denominator) * width;
-        var y = top + (1 - (value / globalMaxMonthly)) * height;
+        var y = top + (1 - logScale(value)) * height;
         var dot = document.createElementNS(svgNS, 'circle');
         dot.setAttribute('cx', String(x));
         dot.setAttribute('cy', String(y));
@@ -1048,7 +1052,7 @@ _FILTER_JS = """\
         dot.setAttribute('stroke', '#0f0f13');
         dot.setAttribute('stroke-width', '1');
         dot.setAttribute('opacity', value > 0 ? '1' : '0.5');
-        dot.appendChild(document.createElementNS(svgNS, 'title')).textContent = (buckets[monthIndex] ? buckets[monthIndex].fullLabel : '') + ': ' + value;
+        dot.appendChild(document.createElementNS(svgNS, 'title')).textContent = (buckets[monthIndex] ? buckets[monthIndex].fullLabel : '') + ': ' + value + ' cumulative';
         svg.appendChild(dot);
       });
 

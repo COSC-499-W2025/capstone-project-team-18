@@ -131,27 +131,26 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
 
     const timelineBuckets = buildTimelineBuckets(rangeStart, rangeEnd);
     const monthKeys = timelineBuckets.map((bucket) => bucket.key);
-    const monthlyBySkillRange: Record<string, number[]> = {};
+    const cumulativeBySkill: Record<string, number[]> = {};
 
-    let globalMaxMonthly = 1;
+    let globalMaxCumulative = 1;
     for (const skill of sortedSkills) {
-      const monthlySeries = monthKeys.map(
-        (monthKey) => monthlyCountsBySkill[skill]?.[monthKey] ?? 0
-      );
-      monthlyBySkillRange[skill] = monthlySeries;
-
-      for (const value of monthlySeries) {
-        if (value > globalMaxMonthly) {
-          globalMaxMonthly = value;
-        }
-      }
+      let runningTotal = 0;
+      const cumulativeSeries = monthKeys.map((key) => {
+        runningTotal += monthlyCountsBySkill[skill]?.[key] ?? 0;
+        return runningTotal;
+      });
+      cumulativeBySkill[skill] = cumulativeSeries;
+      const lastValue = cumulativeSeries[cumulativeSeries.length - 1] ?? 0;
+      if (lastValue > globalMaxCumulative) globalMaxCumulative = lastValue;
     }
 
     return {
       sortedSkills,
-      monthlyBySkillRange,
+      totalBySkill,
+      cumulativeBySkill,
       timelineBuckets,
-      globalMaxMonthly,
+      globalMaxCumulative,
     };
   }, [data, range?.endDate, range?.startDate]);
 
@@ -173,15 +172,8 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
   }
 
   const visibleSkills = model.sortedSkills
-    .map((skill) => {
-      const monthlySeries = model.monthlyBySkillRange[skill] ?? [];
-      const timelineTotal = monthlySeries.reduce((sum, value) => sum + value, 0);
-      return { skill, timelineTotal };
-    })
-    .filter((entry) => entry.timelineTotal > 0)
-    .sort((a, b) => b.timelineTotal - a.timelineTotal)
-    .slice(0, TOP_SKILLS_LIMIT)
-    .map((entry) => entry.skill);
+    .filter((skill) => (model.totalBySkill[skill] ?? 0) > 0)
+    .slice(0, TOP_SKILLS_LIMIT);
 
   return (
     <div
@@ -208,7 +200,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
       </div>
 
       <p style={{ margin: "0 0 14px 0", fontSize: 12, color: "#999" }}>
-        Daily activity is grouped into monthly trend charts from the earliest project start date through the latest project end date.
+        Cumulative running total of skill occurrences across all projects, plotted continuously from the earliest to latest project date.
       </p>
 
       <div
@@ -222,9 +214,9 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
         }}
       >
         {visibleSkills.map((skill, index) => {
-          const monthlySeries = model.monthlyBySkillRange[skill] ?? [];
-          const timelineTotal = monthlySeries.reduce((sum, value) => sum + value, 0);
-          const maxValue = model.globalMaxMonthly;
+          const cumulativeSeries = model.cumulativeBySkill[skill] ?? [];
+          const timelineTotal = model.totalBySkill[skill] ?? 0;
+          const maxValue = model.globalMaxCumulative;
           const color = SKILL_COLORS[index % SKILL_COLORS.length];
 
           const width = 400;
@@ -235,14 +227,16 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
           const bottomPad = 22;
           const chartWidth = width - leftPad - rightPad;
           const chartHeight = height - topPad - bottomPad;
-          const tickIndexes = buildTickIndexes(monthlySeries.length);
+          const tickIndexes = buildTickIndexes(cumulativeSeries.length);
 
           const xForIndex = (monthIndex: number) =>
-            leftPad + (monthIndex / Math.max(1, monthlySeries.length - 1)) * chartWidth;
+            leftPad + (monthIndex / Math.max(1, cumulativeSeries.length - 1)) * chartWidth;
+          const logScale = (value: number) =>
+            maxValue <= 1 ? value / maxValue : Math.log(1 + value) / Math.log(1 + maxValue);
           const yForValue = (value: number) =>
-            topPad + (1 - value / maxValue) * chartHeight;
+            topPad + (1 - logScale(value)) * chartHeight;
 
-          const linePath = monthlySeries
+          const linePath = cumulativeSeries
             .map((value, monthIndex) => {
               const x = xForIndex(monthIndex);
               const y = yForValue(value);
@@ -250,7 +244,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
             })
             .join(" ");
 
-          const areaPath = `${linePath} L ${xForIndex(monthlySeries.length - 1)} ${topPad + chartHeight} L ${xForIndex(0)} ${topPad + chartHeight} Z`;
+          const areaPath = `${linePath} L ${xForIndex(cumulativeSeries.length - 1)} ${topPad + chartHeight} L ${xForIndex(0)} ${topPad + chartHeight} Z`;
 
           return (
             <div
@@ -297,7 +291,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                 height={height}
                 viewBox={`0 0 ${width} ${height}`}
                 role="img"
-                aria-label={`${skill} monthly activity`}
+                aria-label={`${skill} cumulative activity`}
                 style={{ display: "block" }}
               >
                 {[0.25, 0.5, 0.75, 1].map((ratio) => {
@@ -318,7 +312,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                 <path d={areaPath} fill={color} fillOpacity="0.2" />
                 <path d={linePath} fill="none" stroke={color} strokeWidth="2" />
 
-                {monthlySeries.map((value, monthIndex) => (
+                {cumulativeSeries.map((value, monthIndex) => (
                   <circle
                     key={`dot-${skill}-${monthIndex}`}
                     cx={xForIndex(monthIndex)}
@@ -328,7 +322,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                     stroke="#121212"
                     strokeWidth="0.6"
                   >
-                    <title>{`${model.timelineBuckets[monthIndex]?.fullLabel ?? ""}: ${formatCountLabel(value)}`}</title>
+                    <title>{`${model.timelineBuckets[monthIndex]?.fullLabel ?? ""}: ${formatCountLabel(value)} cumulative`}</title>
                   </circle>
                 ))}
 
