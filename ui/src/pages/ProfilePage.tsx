@@ -25,6 +25,7 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [github, setGithub] = useState("");
   const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
   const [mlConsent, setMlConsent] = useState(false);
 
   const [education, setEducation] = useState<string[]>([]);
@@ -87,6 +88,7 @@ export default function ProfilePage() {
         setName(res?.name ?? "");
         setGithub(res?.github ?? "");
         setEmail(res?.user_email ?? "");
+        setConsent(Boolean(res?.consent));
         setEducation(res?.resume_config?.education ?? []);
         setAwards(res?.resume_config?.awards ?? []);
         setSkills(
@@ -106,6 +108,7 @@ export default function ProfilePage() {
         setName("");
         setGithub("");
         setEmail("");
+        setConsent(false);
         setEducation([]);
         setAwards([]);
         setSkills([]);
@@ -126,7 +129,12 @@ export default function ProfilePage() {
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const githubIsValid = /^(?!-)[A-Za-z0-9-]{1,39}(?<!-)$/.test(github.trim());
   const githubOk = github.trim() === "" || githubIsValid;
-  const isValid = githubOk && emailIsValid;
+  const isValid = githubOk && emailIsValid && consent;
+
+  function handleConsentChange(checked: boolean) {
+    setConsent(checked);
+    if (!checked) setMlConsent(false);
+  }
 
   async function handleSave() {
     setError(null);
@@ -141,8 +149,8 @@ export default function ProfilePage() {
       setIsSaving(true);
 
       await api.updateUserConfig({
-        consent: true,
-        ml_consent: mlConsent,
+        consent,
+        ml_consent: consent && mlConsent,
         name: name.trim() || null,
         user_email: email.trim(),
         github: github.trim(),
@@ -653,23 +661,60 @@ export default function ProfilePage() {
                 alignItems: "flex-start",
                 gap: 10,
                 fontSize: 14,
+                marginBottom: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={consent}
+                disabled={isSaving || isLoadingConfig}
+                onChange={(e) => handleConsentChange(e.target.checked)}
+              />
+              <span>
+                <strong style={{ display: "block", color: "#f1f1f1" }}>
+                  I consent to project data processing for mining *
+                </strong>
+                <span style={{ color: "#aaa", lineHeight: 1.5 }}>
+                  Allow the app to analyze your project files and Git data to generate resume and portfolio content.
+                </span>
+              </span>
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                fontSize: 14,
+                opacity: consent ? 1 : 0.6,
               }}
             >
               <input
                 type="checkbox"
                 checked={mlConsent}
-                disabled={isSaving || isLoadingConfig}
+                disabled={!consent || isSaving || isLoadingConfig}
                 onChange={(e) => setMlConsent(e.target.checked)}
               />
               <span>
-                <strong style={{ display: "block", color: "#f1f1f1" }}>
+                <strong style={{ display: "block", color: consent ? "#f1f1f1" : "#888" }}>
                   I consent to AI-assisted analysis and features.
                 </strong>
                 <span style={{ color: "#aaa", lineHeight: 1.5 }}>
                   Enable the use of AI for more in-depth project analysis and features such as an AI-generated portfolio summary.
                 </span>
+                {!consent && (
+                  <span style={{ display: "block", color: "#888", marginTop: 4 }}>
+                    Enable project data processing first to choose AI-assisted analysis.
+                  </span>
+                )}
               </span>
             </label>
+
+            {email.trim() !== "" && !consent && (
+              <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
+                Please provide consent to enable saving
+              </div>
+            )}
           </div>
 
           {error && <div style={{ color: "#ff8a8a", marginBottom: 12 }}>{error}</div>}
