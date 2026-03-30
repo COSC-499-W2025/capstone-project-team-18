@@ -36,8 +36,11 @@ class GenerateResumeRequest(SQLModel):
 class EditResumeMetadataRequest(SQLModel):
     """Request model for editing a resume"""
     title: Optional[str] = None
+    name: Optional[str] = None
+    location: Optional[str] = None
     email: Optional[str] = None
     github_username: Optional[str] = None
+    linkedin: Optional[str] = None
 
 
 class EditBulletPointRequest(SQLModel):
@@ -84,8 +87,11 @@ class ResumeResponse(SQLModel):
     """Response model for a resume with items"""
     id: Optional[int] = None
     title: Optional[str] = None
+    name: Optional[str] = None
+    location: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
+    linkedin: Optional[str] = None
     skills: List[str]
     skills_by_expertise: Optional[SkillsByExpertiseResponse] = None
     education: List[str] = []
@@ -174,8 +180,11 @@ def _build_resume_response(resume_model, session) -> ResumeResponse:
     return ResumeResponse(
         id=resume_model.id,
         title=resume_model.title,
+        name=resume_model.name,
+        location=resume_model.location,
         email=resume_model.email,
         github=resume_model.github,
+        linkedin=resume_model.linkedin,
         skills=resume_model.skills,
         skills_by_expertise=skills_by_expertise,
         education=education,
@@ -415,11 +424,20 @@ def edit_resume_metadata(
         if request.title is not None:
             resume_model.title = request.title.strip() or None
 
+        if request.name is not None:
+            resume_model.name = request.name.strip() or None
+
+        if request.location is not None:
+            resume_model.location = request.location.strip() or None
+
         if request.email is not None:
             resume_model.email = request.email
 
         if request.github_username is not None:
             resume_model.github = request.github_username
+
+        if request.linkedin is not None:
+            resume_model.linkedn = request.linkedin.strip() or None
 
         resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
