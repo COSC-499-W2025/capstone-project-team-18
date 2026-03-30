@@ -459,6 +459,24 @@ export const api = {
   getResume: (resumeId: string | number) =>
     getJson<ResumeResponse>(`/resume/${encodeURIComponent(String(resumeId))}`),
 
+  exportResumeDocx: async (resumeId: number, filename?: string): Promise<void> => {
+    const url = buildUrl(`/resume/${encodeURIComponent(String(resumeId))}/export/docx`);
+    const res = await fetch(url);
+    if (!res.ok) {
+      const msg = await readApiError(res);
+      throw new Error(msg || `Export failed (${res.status})`);
+    }
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename || `resume_${resumeId}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+  },
+
   exportResumePdf: async (resumeId: number, filename?: string): Promise<void> => {
     const url = buildUrl(`/resume/${encodeURIComponent(String(resumeId))}/export/pdf`);
     const res = await fetch(url);

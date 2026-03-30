@@ -277,3 +277,177 @@ class ResumeLatexRenderer(ResumeRender):
         tex.append(r"\end{document}")
 
         return "\n".join(tex)
+
+
+class DocxResumeRenderer(ResumeRender):
+    """
+    Generates a .docx resume using python-docx.
+    Mirrors the section structure of the LaTeX renderer:
+    Header → Education → Awards → Projects → Technical Skills
+    """
+
+    def render(self, resume: Resume) -> bytes:
+        from docx import Document
+        from docx.shared import Pt, RGBColor, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+        import io
+
+        doc = Document()
+
+        # ── Narrow margins ──────────────────────────────────────────────────
+        for section in doc.sections:
+            section.top_margin = Inches(0.7)
+            section.bottom_margin = Inches(0.7)
+            section.left_margin = Inches(0.7)
+            section.right_margin = Inches(0.7)
+
+        # ── Default style ────────────────────────────────────────────────────
+        style = doc.styles["Normal"]
+        style.font.name = "Calibri"
+        style.font.size = Pt(11)
+
+        def _add_section_heading(text: str):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(6)
+            p.paragraph_format.space_after = Pt(2)
+            run = p.add_run(text.upper())
+            run.bold = True
+            run.font.size = Pt(11)
+            # Bottom border to mimic \titlerule
+            pPr = p._p.get_or_add_pPr()
+            pBdr = OxmlElement("w:pBdr")
+            bottom = OxmlElement("w:bottom")
+            bottom.set(qn("w:val"), "single")
+            bottom.set(qn("w:sz"), "6")
+            bottom.set(qn("w:space"), "1")
+            bottom.set(qn("w:color"), "000000")
+            pBdr.append(bottom)
+            pPr.append(pBdr)
+            return p
+
+        def _add_dated_row(title: str, date_str: str):
+            """One paragraph: bold title on left, italic date on right via tab stop."""
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(2)
+            p.paragraph_format.space_after = Pt(0)
+            # Right tab stop at page width minus margins
+            from docx.oxml import OxmlElement as _OX
+            from docx.oxml.ns import qn as _qn
+            from docx.shared import Twips
+            pPr = p._p.get_or_add_pPr()
+            tabs = _OX("w:tabs")
+            tab = _OX("w:tab")
+            tab.set(_qn("w:val"), "right")
+            tab.set(_qn("w:pos"), str(int(Twips(9360))))  # ~6.5 in
+            tabs.append(tab)
+            pPr.append(tabs)
+            run_title = p.add_run(title)
+            run_title.bold = True
+            p.add_run("\t")
+            run_date = p.add_run(date_str)
+            run_date.italic = True
+            run_date.font.size = Pt(10)
+            return p
+
+        def _add_bullet(text: str):
+            p = doc.add_paragraph(style="List Bullet")
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after = Pt(0)
+            p.paragraph_format.left_indent = Inches(0.25)
+            run = p.add_run(text)
+            run.font.size = Pt(10)
+            return p
+
+        # ── Header ───────────────────────────────────────────────────────────
+        name = resume.name or "Your Name"
+        p_name = doc.add_paragraph()
+        p_name.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_name.paragraph_format.space_after = Pt(2)
+        run_name = p_name.add_run(name)
+        run_name.bold = True
+        run_name.font.size = Pt(18)
+
+        contact_parts = []
+        if resume.location:
+            contact_parts.append(resume.location)
+        if resume.email:
+            contact_parts.append(resume.email)
+        if resume.linkedin:
+            contact_parts.append(resume.linkedin)
+        if resume.github:
+            contact_parts.append(f"github.com/{resume.github}")
+
+        if contact_parts:
+            p_contact = doc.add_paragraph(" | ".join(contact_parts))
+            p_contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_contact.paragraph_format.space_before = Pt(0)
+            p_contact.paragraph_format.space_after = Pt(4)
+            for run in p_contact.runs:
+                run.font.size = Pt(10)
+
+        # ── Education ────────────────────────────────────────────────────────
+        if resume.education:
+            _add_section_heading("Education")
+            for ed in resume.education:
+                if isinstance(ed, dict):
+                    title = ed.get("title", "")
+                    start = ed.get("start") or ""
+                    end = ed.get("end") or ""
+                    date_str = f"{start} \u2013 {end}" if start and end else (start or end)
+                    if date_str:
+                        _add_dated_row(title, date_str)
+                    else:
+                        p = doc.add_paragraph()
+                        p.add_run(title)
+                else:
+                    p = doc.add_paragraph()
+                    p.add_run(str(ed))
+
+        # ── Awards ───────────────────────────────────────────────────────────
+        if resume.awards:
+            _add_section_heading("Awards")
+            for aw in resume.awards:
+                if isinstance(aw, dict):
+                    title = aw.get("title", "")
+                    start = aw.get("start") or ""
+                    end = aw.get("end") or ""
+                    date_str = f"{start} \u2013 {end}" if start and end else (start or end)
+                    if date_str:
+                        _add_dated_row(title, date_str)
+                    else:
+                        p = doc.add_paragraph()
+                        p.add_run(title)
+                else:
+                    p = doc.add_paragraph()
+                    p.add_run(str(aw))
+
+        # ── Projects ─────────────────────────────────────────────────────────
+        if resume.items:
+            _add_section_heading("Projects")
+            for item in resume.items:
+                start = item.start_date.strftime("%B %Y") if item.start_date else ""
+                end = item.end_date.strftime("%B %Y") if item.end_date else ""
+                date_str = f"{start} \u2013 {end}" if start and end else (start or end)
+
+                if item.frameworks:
+                    fw_str = ", ".join(f.skill_name for f in item.frameworks)
+                    title_str = f"{item.title} | {fw_str}"
+                else:
+                    title_str = item.title
+
+                _add_dated_row(title_str, date_str)
+                for bullet in item.bullet_points:
+                    _add_bullet(bullet)
+
+        # ── Technical Skills ─────────────────────────────────────────────────
+        if resume.skills:
+            _add_section_heading("Technical Skills")
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(2)
+            p.add_run(", ".join(resume.skills)).font.size = Pt(10)
+
+        buf = io.BytesIO()
+        doc.save(buf)
+        return buf.getvalue()

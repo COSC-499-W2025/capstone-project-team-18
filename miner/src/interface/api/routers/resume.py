@@ -942,6 +942,30 @@ def export_resume_pdf(resume_id: int, session=Depends(get_session)):
     )
 
 
+@router.get("/{resume_id}/export/docx")
+def export_resume_docx(resume_id: int, session=Depends(get_session)):
+    """Export a resume as a Word (.docx) file."""
+    from src.core.resume.render import DocxResumeRenderer
+
+    resume = load_resume(session, resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail=f"No resume found with id {resume_id}")
+
+    try:
+        docx_bytes = DocxResumeRenderer().render(resume)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Word export error: {str(e)}")
+
+    filename = f"{resume.title or f'resume_{resume_id}'}.docx"
+    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip() or f"resume_{resume_id}.docx"
+
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.delete("/{resume_id}", status_code=200)
 def delete_resume_endpoint(
     resume_id: int,

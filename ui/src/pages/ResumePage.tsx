@@ -1453,6 +1453,7 @@ export default function ResumePage() {
 
   // Export
   const [exporting, setExporting] = useState(false);
+  const [exportingDocx, setExportingDocx] = useState(false);
 
   // Delete
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1721,6 +1722,35 @@ export default function ResumePage() {
             }}
           >
             {exporting ? "Exporting..." : "Export PDF"}
+          </button>
+
+          <button
+            onClick={async () => {
+              setExportingDocx(true);
+              try {
+                await api.exportResumeDocx(
+                  Number(resumeId),
+                  `${resume.title || `resume_${resume.id}`}.docx`
+                );
+              } catch (e: any) {
+                setError(e?.message ?? "Export failed.");
+              } finally {
+                setExportingDocx(false);
+              }
+            }}
+            disabled={exportingDocx}
+            style={{
+              padding: "10px 14px",
+              background: "transparent",
+              border: "1px solid #2a2a2a",
+              borderRadius: 10,
+              color: exportingDocx ? "#555" : "#ddd",
+              cursor: exportingDocx ? "not-allowed" : "pointer",
+              fontSize: 14,
+              opacity: exportingDocx ? 0.5 : 1,
+            }}
+          >
+            {exportingDocx ? "Exporting..." : "Export Word"}
           </button>
 
           <button
