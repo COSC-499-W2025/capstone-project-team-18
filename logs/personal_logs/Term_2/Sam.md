@@ -1,14 +1,62 @@
 # Sam Sikora Personal Logs Term 2
 
-## **[This Week](#week-2-0112---0118)**
+## **[This Week](#week-11--12-316---330)**
 
 ## Table of Contents
+- **[Week 11 & 12, 3/16 - 3/30](#week-11--12-316---330)**
+- **[Week 10, 3/9 - 3/15](#week-10-39---315)**
 - **[Week 9, 3/2 - 3/8](#week-9-32---38)**
 - **[Week 8, 2/23 - 3/1](#week-8223---31)**
 - **[Week 4-5 01/26 - 02/08](#week-4-5-0126---0208)**
 - **[Week 3 01/19 - 01/25](#week-3-0119-0125)**
 - **[Week 2, 01/12 - 01/18](#week-2-0112---0118)**
 - **[Week 1, 01/05 - 01/11](#week-1-0105---0111--winter-break)**
+
+---
+
+## Week 11 & 12 (3/16 - 3/30)
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/sam/sam_week11_log.png)
+
+### Coding Tasks
+
+Over the past two weeks, I focused mainly on the Portfolio and a new unquie feature of project insights.
+
+For the portoflio, I created the web download and the portoflio edit page including support project cards and project showcase. The portfolio on the frontend is highly editable including adding and removing editable tags. I also created support for the project thumbnail in the portoflio.
+
+I refactor and overhauled the project view page. Instead of showing raw JSON, I presented facts and figures to the user about their projects/
+
+I also created a new unquie feature of project insights. I built the backend class structure, endpoint, and database management, then followed it up with the full frontend. I also refactored the resume bullet points to use action verb + subject + outcome phrasing, and updated the skill count figures to be cumulative and log-scaled.
+
+- [PR #482 Created Project Insights Class Structure, Endpoint, Database Management, and Tests](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/482)
+- [PR #496 Consistent Error Handling and Documentation in the API](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/496)
+- [PR #497 Small bug fix](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/497)
+- [PR #499 Portfolio Structural Changes for Sorting and Web Download](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/499)
+- [PR #500 Front End Portfolio Changes](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/500)
+- [PR #531 Support for Front End Project Thumbnails](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/531)
+- [PR #533 Front-End Portfolio Edit Page](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/533)
+- [PR #545 Resume Bullet Point Refactor](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/545)
+- [PR #550 Project View Page Refactor](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/550)
+- [PR #552 Project Insights Frontend](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/552)
+- [PR #555 Figures are Log Scaled with Cumulative Totals](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/555)
+
+### Testing Tasks
+
+Each PR included pytest and vitest tests. The Project Insights backend included both endpoint tests and unit tests for the new calculator/generator pattern and vitest passed for each PR.
+
+### Review Tasks
+
+I reviewed the following PRs:
+
+- [PR #523 Electron Skeleton UI & Loading Loop](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/523)
+- [PR #526 GitHub Pages Deployment](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/526)
+- [PR #529 Figures, Plots & Timelines (frontend)](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/529)
+- [PR #534 Resume Front End Suite](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/534)
+- [PR #544 Added new Skill Timeline, Adjusted Contribution Map, and ensured exporting of all figures](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/544)
+- [PR #549 Frontend for Job Readiness Feature](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/549)
+- [PR #557 Small changes to Profile page](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/557)
+- [PR #558 Changing to light mode](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/558)
+
 
 ---
 
