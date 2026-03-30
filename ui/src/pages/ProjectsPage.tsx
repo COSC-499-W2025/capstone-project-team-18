@@ -61,7 +61,7 @@ export default function ProjectsPage() {
       >
         <div>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Projects</h1>
-          <p style={{ marginTop: 6, color: "#666", margin: "6px 0 0" }}>
+          <p style={{ marginTop: 6, color: "var(--text-secondary)", margin: "6px 0 0" }}>
             Browse uploaded projects and open a project to view details.
           </p>
         </div>
@@ -71,11 +71,11 @@ export default function ProjectsPage() {
           style={{
             padding: "10px 18px",
             borderRadius: 10,
-            border: "1px solid #3a3a3a",
-            background: "#1f1f1f",
+            border: "none",
+            background: "var(--btn-primary)",
             color: "#fff",
             fontSize: 14,
-            fontWeight: 500,
+            fontWeight: 600,
             cursor: "pointer",
             whiteSpace: "nowrap",
           }}
@@ -87,13 +87,13 @@ export default function ProjectsPage() {
       {loading && (
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
           }}
         >
-          <div style={{ color: "#666", fontSize: 14, marginBottom: 16 }}>
+          <div style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 16 }}>
             Loading projects...
           </div>
           <ProjectSkeleton count={6} />
@@ -103,11 +103,11 @@ export default function ProjectsPage() {
       {!loading && error && (
         <div
           style={{
-            border: "1px solid #3a1f1f",
+            border: "1px solid var(--danger-bg-strong)",
             borderRadius: 14,
             padding: 20,
-            background: "#1a1111",
-            color: "#ff8a8a",
+            background: "var(--danger-bg)",
+            color: "var(--danger-text)",
           }}
         >
           <strong>Error:</strong> {error}
@@ -117,11 +117,11 @@ export default function ProjectsPage() {
       {!loading && !error && projects.length === 0 && (
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 20,
-            background: "#161616",
-            color: "#999",
+            background: "var(--bg-surface)",
+            color: "var(--text-muted)",
           }}
         >
           No projects yet. Click "Upload Project" to get started.
@@ -139,19 +139,19 @@ export default function ProjectsPage() {
                 display: "block",
                 textDecoration: "none",
                 color: "inherit",
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 14,
                 padding: "18px 20px",
-                background: "#161616",
+                background: "var(--bg-surface)",
                 transition: "border-color 0.15s ease, background 0.15s ease",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "#3a3a3a";
-                (e.currentTarget as HTMLElement).style.background = "#1a1a1a";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--hover-border)";
+                (e.currentTarget as HTMLElement).style.background = "var(--hover-bg)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
-                (e.currentTarget as HTMLElement).style.background = "#161616";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                (e.currentTarget as HTMLElement).style.background = "var(--bg-surface)";
               }}
             >
               <div
@@ -167,7 +167,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {p.image_data ? (
-                  <div style={{ width: 120, height: 80, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: "#0d0d0d" }}>
+                  <div style={{ width: 120, height: 80, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: "#f0f0f0" }}>
                     <img
                       src={getImageSrc(p.image_data)}
                       alt={`${p.project_name} thumbnail`}

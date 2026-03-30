@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/apiClient";
-import CreatePortfolioModal from "../components/update/modal/CreatePortfolioModal";
+import CreatePortfolioModal from "../components/update/Modal/CreatePortfolioModal";
 
 type PortfolioListItem = {
   id: number;
@@ -81,7 +81,7 @@ export default function PortfoliosPage() {
       >
         <div>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Portfolios</h1>
-          <p style={{ marginTop: 6, color: "#666", margin: "6px 0 0" }}>
+          <p style={{ marginTop: 6, color: "var(--text-secondary)", margin: "6px 0 0" }}>
             Create and manage your portfolio showcases.
           </p>
         </div>
@@ -91,11 +91,11 @@ export default function PortfoliosPage() {
           style={{
             padding: "10px 18px",
             borderRadius: 10,
-            border: "1px solid #3a3a3a",
-            background: "#1f1f1f",
+            border: "none",
+            background: "var(--btn-primary)",
             color: "#fff",
             fontSize: 14,
-            fontWeight: 500,
+            fontWeight: 600,
             cursor: "pointer",
             whiteSpace: "nowrap",
           }}
@@ -113,11 +113,11 @@ export default function PortfoliosPage() {
       {loading && (
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 20,
-            background: "#161616",
-            color: "#666",
+            background: "var(--bg-surface)",
+            color: "var(--text-secondary)",
             fontSize: 14,
           }}
         >
@@ -128,11 +128,11 @@ export default function PortfoliosPage() {
       {!loading && error && (
         <div
           style={{
-            border: "1px solid #3a1f1f",
+            border: "1px solid var(--danger-bg-strong)",
             borderRadius: 14,
             padding: 20,
-            background: "#1a1111",
-            color: "#ff8a8a",
+            background: "var(--danger-bg)",
+            color: "var(--danger-text)",
           }}
         >
           <strong>Error:</strong> {error}
@@ -142,14 +142,14 @@ export default function PortfoliosPage() {
       {!loading && !error && portfolios.length === 0 && (
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 20,
-            background: "#161616",
-            color: "#999",
+            background: "var(--bg-surface)",
+            color: "var(--text-muted)",
           }}
         >
-          No portfolios yet. Click "+ Create Portfolio" to get started.
+          No portfolios yet. Click "Create Portfolio" to get started.
         </div>
       )}
 
@@ -164,19 +164,19 @@ export default function PortfoliosPage() {
                 display: "block",
                 textDecoration: "none",
                 color: "inherit",
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 14,
                 padding: "18px 20px",
-                background: "#161616",
+                background: "var(--bg-surface)",
                 transition: "border-color 0.15s ease, background 0.15s ease",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "#3a3a3a";
-                (e.currentTarget as HTMLElement).style.background = "#1a1a1a";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--hover-border)";
+                (e.currentTarget as HTMLElement).style.background = "var(--hover-bg)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
-                (e.currentTarget as HTMLElement).style.background = "#161616";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                (e.currentTarget as HTMLElement).style.background = "var(--bg-surface)";
               }}
             >
               <div
@@ -202,10 +202,11 @@ export default function PortfoliosPage() {
                           style={{
                             padding: "3px 10px",
                             borderRadius: 999,
-                            border: "1px solid #333",
-                            background: "#1e1e1e",
+                            border: "1px solid #93c5fd",
+                            background: "#dbeafe",
                             fontSize: 12,
-                            color: "#aaa",
+                            color: "#0055B7",
+                            fontWeight: 500,
                           }}
                         >
                           {name}
@@ -213,13 +214,13 @@ export default function PortfoliosPage() {
                       ))}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 10 }}>
                       No projects
                     </div>
                   )}
 
                   {/* Last updated */}
-                  <div style={{ fontSize: 12, color: "#555" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     Updated {formatRelativeDate(p.last_updated_at)}
                   </div>
                 </div>

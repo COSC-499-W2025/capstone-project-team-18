@@ -123,8 +123,8 @@ export default function CreatePortfolioModal({
         style={{
           width: "100%",
           maxWidth: 560,
-          background: "#1b1b1b",
-          border: "1px solid #2a2a2a",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border)",
           borderRadius: 18,
           padding: 24,
           boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
@@ -146,7 +146,7 @@ export default function CreatePortfolioModal({
             style={{
               border: "none",
               background: "transparent",
-              color: isSubmitting ? "#666" : "#ccc",
+              color: isSubmitting ? "#777" : "#444",
               fontSize: 20,
               cursor: isSubmitting ? "not-allowed" : "pointer",
             }}
@@ -158,7 +158,7 @@ export default function CreatePortfolioModal({
 
         {/* Title input */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 14, color: "#aaa", display: "block", marginBottom: 6 }}>
+          <label style={{ fontSize: 14, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
             Portfolio Title *
           </label>
           <input
@@ -170,9 +170,9 @@ export default function CreatePortfolioModal({
               width: "100%",
               padding: 10,
               borderRadius: 10,
-              border: "1px solid #2a2a2a",
-              background: "#111",
-              color: "#fff",
+              border: "1px solid var(--border)",
+              background: "var(--bg-input)",
+              color: "var(--text-primary)",
               fontSize: 14,
               boxSizing: "border-box",
               opacity: isSubmitting ? 0.6 : 1,
@@ -182,18 +182,18 @@ export default function CreatePortfolioModal({
 
         {/* Project selection */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 14, color: "#aaa", display: "block", marginBottom: 6 }}>
+          <label style={{ fontSize: 14, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
             Select Projects *
           </label>
 
           {projectsLoading && (
             <div
               style={{
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
                 padding: 16,
-                background: "#151515",
-                color: "#999",
+                background: "var(--bg-surface)",
+                color: "var(--text-muted)",
                 fontSize: 14,
               }}
             >
@@ -204,11 +204,11 @@ export default function CreatePortfolioModal({
           {!projectsLoading && projectsError && (
             <div
               style={{
-                border: "1px solid #3a1f1f",
+                border: "1px solid var(--danger-bg-strong)",
                 borderRadius: 12,
                 padding: 16,
-                background: "#1a1111",
-                color: "#ff8a8a",
+                background: "var(--danger-bg)",
+                color: "var(--danger-text)",
                 fontSize: 14,
                 display: "flex",
                 justifyContent: "space-between",
@@ -221,9 +221,9 @@ export default function CreatePortfolioModal({
                 style={{
                   padding: "6px 10px",
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#ddd",
+                  color: "#333",
                   cursor: "pointer",
                   fontSize: 13,
                 }}
@@ -236,11 +236,11 @@ export default function CreatePortfolioModal({
           {!projectsLoading && !projectsError && projects.length === 0 && (
             <div
               style={{
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
                 padding: 16,
-                background: "#151515",
-                color: "#999",
+                background: "var(--bg-surface)",
+                color: "var(--text-muted)",
                 fontSize: 14,
               }}
             >
@@ -272,10 +272,10 @@ export default function CreatePortfolioModal({
                       padding: 12,
                       borderRadius: 10,
                       border: selected
-                        ? "1px solid #6f7cff"
-                        : "1px solid #2a2a2a",
-                      background: selected ? "#141e3b" : "#151515",
-                      color: "#fff",
+                        ? "1px solid var(--btn-primary)"
+                        : "1px solid var(--border)",
+                      background: selected ? "var(--accent-subtle)" : "var(--bg-surface)",
+                      color: selected ? "var(--text-primary)" : "var(--text-secondary)",
                       cursor: isSubmitting ? "not-allowed" : "pointer",
                       textAlign: "left",
                       fontSize: 14,
@@ -288,8 +288,8 @@ export default function CreatePortfolioModal({
                         width: 16,
                         height: 16,
                         borderRadius: 4,
-                        border: selected ? "2px solid #6f7cff" : "2px solid #555",
-                        background: selected ? "#6f7cff" : "transparent",
+                        border: selected ? "2px solid var(--btn-primary)" : "2px solid var(--border-strong)",
+                        background: selected ? "var(--btn-primary)" : "transparent",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -308,7 +308,7 @@ export default function CreatePortfolioModal({
           )}
 
           {selectedProjects.size > 0 && (
-            <div style={{ fontSize: 12, color: "#6f7cff", marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8 }}>
               {selectedProjects.size} project{selectedProjects.size !== 1 ? "s" : ""} selected
             </div>
           )}
@@ -316,7 +316,7 @@ export default function CreatePortfolioModal({
 
         {/* Error */}
         {submitError && (
-          <div style={{ color: "#ff8a8a", fontSize: 14, marginBottom: 12 }}>
+          <div style={{ color: "var(--danger-text)", fontSize: 14, marginBottom: 12 }}>
             {submitError}
           </div>
         )}
@@ -330,7 +330,7 @@ export default function CreatePortfolioModal({
             gap: 12,
           }}
         >
-          <div style={{ color: "#999", fontSize: 13 }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
             {isSubmitting
               ? "Creating portfolio... this may take a moment."
               : "Fill title and select at least one project."}
@@ -343,9 +343,9 @@ export default function CreatePortfolioModal({
               style={{
                 padding: "10px 14px",
                 background: "transparent",
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 10,
-                color: isSubmitting ? "#666" : "#ddd",
+                color: isSubmitting ? "#777" : "#444",
                 cursor: isSubmitting ? "not-allowed" : "pointer",
               }}
             >
@@ -359,8 +359,9 @@ export default function CreatePortfolioModal({
                 padding: "10px 16px",
                 borderRadius: 10,
                 border: "none",
-                background: canSubmit ? "#2b2b2b" : "#202020",
-                color: "#fff",
+                background: canSubmit ? "var(--btn-primary)" : "var(--bg-surface-deep)",
+                color: canSubmit ? "#fff" : "var(--text-muted)",
+                fontWeight: 600,
                 opacity: canSubmit ? 1 : 0.6,
                 cursor: canSubmit ? "pointer" : "not-allowed",
               }}
