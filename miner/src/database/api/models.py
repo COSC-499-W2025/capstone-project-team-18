@@ -153,8 +153,11 @@ class ResumeConfigModel(SQLModel, table=True):
 class ResumeModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: Optional[str] = None
+    name: Optional[str] = None
+    location: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
+    linkedin: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
 
     # Store categorized skills as snapshot at gen/edit time

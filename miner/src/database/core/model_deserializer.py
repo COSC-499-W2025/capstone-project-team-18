@@ -107,7 +107,10 @@ def deserialize_resume(model: ResumeModel) -> Resume:
     resume = Resume(
         email=model.email,
         github=model.github,
-        weight_skills=None
+        weight_skills=None,
+        name=model.name,
+        location=model.location,
+        linkedin=model.linkedin,
     )
 
     # Restore skills list directly
