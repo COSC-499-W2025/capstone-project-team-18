@@ -4,7 +4,6 @@ from sqlmodel import SQLModel
 from typing import List, Optional
 import datetime
 
-from src.core.statistic.user_stat_collection import UserStatCollection
 from src.interface.api.routers.util import get_session
 from src.interface.api.routers.user_config import get_user_config_safe
 from src.database import (
@@ -140,58 +139,18 @@ class ResumeListResponse(SQLModel):
     count: int
 
 # Helper function.
-def _build_resume_response(resume_model, session) -> ResumeResponse:
+def _build_resume_response(resume_model) -> ResumeResponse:
     """
     Build a ResumeResponse using per-resume education/awards snapshots.
     """
     education = [EducationEntry(**_normalize_entry(e)) for e in (resume_model.education or [])]
     awards = [AwardEntry(**_normalize_entry(a)) for a in (resume_model.awards or [])]
 
-    skills_by_expertise = None
-
-    has_stored_skills = bool(
-        resume_model.skills_expert or
-        resume_model.skills_intermediate or
-        resume_model.skills_exposure
+    skills_by_expertise = SkillsByExpertiseResponse(
+        expert=resume_model.skills_expert or [],
+        intermediate=resume_model.skills_intermediate or [],
+        exposure=resume_model.skills_exposure or [],
     )
-
-    if has_stored_skills:
-        skills_by_expertise = SkillsByExpertiseResponse(
-            expert=resume_model.skills_expert or [],
-            intermediate=resume_model.skills_intermediate or [],
-            exposure=resume_model.skills_exposure or []
-        )
-    else:
-        if user_config:
-            project_reports = user_config.project_reports
-            if project_reports:
-                from src.core.report.user.user_report import UserReport
-
-                domain_reports = [get_project_report_by_name(session, pr.project_name)
-                                for pr in project_reports if pr.project_name]
-                domain_reports = [r for r in domain_reports if r is not None]
-
-                if domain_reports:
-                    user_report = UserReport(project_reports=domain_reports)
-                    weighted_skills = user_report.statistics.get_value(
-                        UserStatCollection.USER_SKILLS.value
-                    )
-
-                    if weighted_skills:
-                        expert, intermediate, exposure = [], [], []
-                        for ws in weighted_skills:
-                            if ws.weight >= 0.7:
-                                expert.append(ws.skill_name)
-                            elif ws.weight >= 0.4:
-                                intermediate.append(ws.skill_name)
-                            else:
-                                exposure.append(ws.skill_name)
-
-                        skills_by_expertise = SkillsByExpertiseResponse(
-                            expert=expert,
-                            intermediate=intermediate,
-                            exposure=exposure
-                        )
 
     return ResumeResponse(
         id=resume_model.id,
@@ -296,7 +255,7 @@ def get_resume(resume_id: int, session=Depends(get_session)):
     if not result:
         raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
-    return _build_resume_response(result, session)
+    return _build_resume_response(result)
 
 @router.post("/{resume_id}/edit/skills", response_model=ResumeResponse)
 def edit_resume_skills(
@@ -314,13 +273,20 @@ def edit_resume_skills(
         )
 
     try:
+        from sqlalchemy.orm.attributes import flag_modified
+
         # Update categorized skills
-        resume_model.skills_expert = request.expert
-        resume_model.skills_intermediate = request.intermediate
-        resume_model.skills_exposure = request.exposure
+        resume_model.skills_expert = list(request.expert)
+        resume_model.skills_intermediate = list(request.intermediate)
+        resume_model.skills_exposure = list(request.exposure)
 
         # Update flat skills list
-        resume_model.skills = request.expert + request.intermediate + request.exposure
+        resume_model.skills = list(request.expert) + list(request.intermediate) + list(request.exposure)
+
+        flag_modified(resume_model, "skills_expert")
+        flag_modified(resume_model, "skills_intermediate")
+        flag_modified(resume_model, "skills_exposure")
+        flag_modified(resume_model, "skills")
 
         resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
@@ -328,7 +294,7 @@ def edit_resume_skills(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -360,7 +326,7 @@ def edit_resume_education(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -393,7 +359,7 @@ def edit_resume_awards(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -476,7 +442,7 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
             resume_model.title = request.title.strip() or None
         session.commit()
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -539,7 +505,7 @@ def edit_resume_metadata(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -617,7 +583,7 @@ def edit_resume_item_bullet_point(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -683,7 +649,7 @@ def edit_resume_item(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -750,7 +716,7 @@ def refresh_resume(
 
         session.commit()
 
-        return _build_resume_response(updated_model, session)
+        return _build_resume_response(updated_model)
 
     except Exception as e:
         session.rollback()
@@ -811,7 +777,7 @@ def delete_resume_item_bullet_point(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -865,7 +831,7 @@ def edit_resume_item_frameworks(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
