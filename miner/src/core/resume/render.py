@@ -173,63 +173,84 @@ class ResumeLatexRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         tex = [self.prefix, r"\begin{document}"]
 
-        # Header
-        tex.extend([
-            r"\begin{center}",
-            rf"\textbf{{\Huge \scshape Your Name}}\\[2pt]",
-        ])
+        # --- Header ---
+        tex.append(r"\begin{center}")
 
+        name = latex_escape(resume.name) if resume.name else "Your Name"
+        tex.append(rf"\textbf{{\Huge \scshape {name}}} \\ \vspace{{1pt}}")
+
+        contact_parts = []
+        if resume.location:
+            contact_parts.append(rf"\small {latex_escape(resume.location)}")
         if resume.email:
             email = latex_escape(resume.email)
-            tex.append(
-                rf"\href{{mailto:{email}}}{{\raisebox{{-0.2\height}}\faEnvelope\ \underline{email}}}}} ~")
+            contact_parts.append(
+                rf"\href{{mailto:{email}}}{{\underline{{{email}}}}}")
+        if resume.linkedin:
+            linkedin = resume.linkedin
+            href = linkedin if linkedin.startswith("http") else f"https://{linkedin}"
+            contact_parts.append(
+                rf"\href{{{latex_escape(href)}}}{{\underline{{{latex_escape(linkedin)}}}}}")
         if resume.github:
             github = latex_escape(resume.github)
-            tex.append(
-                rf"\href{{{{https://github.com/{github}}}}}{{\raisebox{{-0.2\height}}\faGithub\ \underline{{github.com/{github}}}}}")
+            contact_parts.append(
+                rf"\href{{https://github.com/{github}}}{{\underline{{github.com/{github}}}}}")
 
-        tex.extend([
-            r"\vspace{-8pt}"
-            r"\end{center}",
-            "",
-        ])
+        if contact_parts:
+            tex.append(" $|$ ".join(contact_parts) + r" \\")
 
-        # Projects
-        tex.append(r"\section{Projects}")
-        tex.append(r"\resumeSubHeadingListStart")
-
-        for item in resume.items:
-            title = latex_escape(item.title)
-            date = f"{item.start_date.strftime('%B, %Y')} -- {item.end_date.strftime('%B, %Y')}"
-
-            # Only include frameworks if there is at least one
-            if len(item.frameworks) > 0:
-                frameworks = ", ".join(
-                    [latex_escape(f.skill_name) for f in item.frameworks])
-                title_tex = rf"\textbf{{{title}}} $|$ \emph{{{frameworks}}}"
-            else:
-                title_tex = rf"\textbf{{{title}}}"
-
-            tex.append(
-                rf"\resumeProjectHeading"
-                rf"{{{title_tex}}}"
-                rf"{{{date}}}"
-            )
-
-            tex.append(r"\resumeItemListStart")
-            for b in item.bullet_points:
-                tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
-            tex.append(r"\resumeItemListEnd")
-
-        tex.append(r"\resumeSubHeadingListEnd")
+        tex.append(r"\end{center}")
         tex.append("")
 
-        # Skills
+        # --- Education ---
+        if resume.education:
+            tex.append(r"\section{Education}")
+            tex.append(r"\resumeSubHeadingListStart")
+            for ed in resume.education:
+                tex.append(rf"  \item \small{{{latex_escape(ed)}}}")
+            tex.append(r"\resumeSubHeadingListEnd")
+            tex.append("")
+
+        # --- Awards ---
+        if resume.awards:
+            tex.append(r"\section{Awards}")
+            tex.append(r"\resumeSubHeadingListStart")
+            for aw in resume.awards:
+                tex.append(rf"  \item \small{{{latex_escape(aw)}}}")
+            tex.append(r"\resumeSubHeadingListEnd")
+            tex.append("")
+
+        # --- Projects ---
+        if resume.items:
+            tex.append(r"\section{Projects}")
+            tex.append(r"\resumeSubHeadingListStart")
+
+            for item in resume.items:
+                title = latex_escape(item.title)
+                date = f"{item.start_date.strftime('%B %Y')} -- {item.end_date.strftime('%B %Y')}"
+
+                if item.frameworks:
+                    frameworks = ", ".join(
+                        latex_escape(f.skill_name) for f in item.frameworks)
+                    title_tex = rf"\textbf{{{title}}} $|$ \emph{{{frameworks}}}"
+                else:
+                    title_tex = rf"\textbf{{{title}}}"
+
+                tex.append(rf"\resumeProjectHeading{{{title_tex}}}{{{date}}}")
+                tex.append(r"\resumeItemListStart")
+                for b in item.bullet_points:
+                    tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                tex.append(r"\resumeItemListEnd")
+
+            tex.append(r"\resumeSubHeadingListEnd")
+            tex.append("")
+
+        # --- Technical Skills ---
         if resume.skills:
             skills = ", ".join(latex_escape(s) for s in resume.skills)
             tex.append(r"\section{Technical Skills}")
             tex.append(r"\begin{itemize}[leftmargin=0.15in, label={}]")
-            tex.append(rf"  \item {{{skills}}}")
+            tex.append(rf"  \item \small{{{skills}}}")
             tex.append(r"\end{itemize}")
 
         tex.append(r"\end{document}")
