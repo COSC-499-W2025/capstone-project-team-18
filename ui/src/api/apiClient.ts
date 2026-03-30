@@ -227,8 +227,11 @@ export type ResumeItemResponse = {
 export type ResumeResponse = {
   id?: number | null;
   title?: string | null;
+  name?: string | null;
+  location?: string | null;
   email?: string | null;
   github?: string | null;
+  linkedin?: string | null;
   skills: string[];
   skills_by_expertise?: SkillsByExpertise | null;
   education?: string[];
@@ -268,6 +271,15 @@ export type GenerateResumePayload = {
 
 export type EditResumeTitlePayload = {
   title: string | null;
+};
+
+export type EditResumeHeaderPayload = {
+  title?: string | null;
+  name?: string | null;
+  location?: string | null;
+  email?: string | null;
+  github_username?: string | null;
+  linkedin?: string | null;
 };
 
 export type EditResumeBulletPointPayload = {
@@ -444,6 +456,12 @@ export const api = {
   },
 
   editResumeTitle: (resumeId: number, payload: EditResumeTitlePayload) =>
+    postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/metadata`,
+      payload
+    ),
+
+  editResumeHeader: (resumeId: number, payload: EditResumeHeaderPayload) =>
     postJson<ResumeResponse>(
       `/resume/${encodeURIComponent(String(resumeId))}/edit/metadata`,
       payload

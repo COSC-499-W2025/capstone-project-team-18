@@ -880,6 +880,219 @@ function ItemCard({
   );
 }
 
+// ─── Header Section ───────────────────────────────────────────────────────────
+
+type HeaderDraft = {
+  name: string;
+  location: string;
+  email: string;
+  github: string;
+  linkedin: string;
+};
+
+function HeaderSection({
+  resumeId,
+  resume,
+  onUpdated,
+  onError,
+}: {
+  resumeId: number;
+  resume: import("../api/apiClient").ResumeResponse;
+  onUpdated: (res: import("../api/apiClient").ResumeResponse) => void;
+  onError: (msg: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<HeaderDraft>({
+    name: resume.name ?? "",
+    location: resume.location ?? "",
+    email: resume.email ?? "",
+    github: resume.github ?? "",
+    linkedin: resume.linkedin ?? "",
+  });
+
+  function startEditing() {
+    setDraft({
+      name: resume.name ?? "",
+      location: resume.location ?? "",
+      email: resume.email ?? "",
+      github: resume.github ?? "",
+      linkedin: resume.linkedin ?? "",
+    });
+    setEditing(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await api.editResumeHeader(resumeId, {
+        name: draft.name.trim() || null,
+        location: draft.location.trim() || null,
+        email: draft.email.trim() || null,
+        github_username: draft.github.trim() || null,
+        linkedin: draft.linkedin.trim() || null,
+      });
+      onUpdated(res);
+      setEditing(false);
+    } catch (e: any) {
+      onError(e?.message ?? "Failed to save header.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "7px 10px",
+    borderRadius: 8,
+    border: "1px solid #2a2a2a",
+    background: "#111",
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "inherit",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const rowStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: 600,
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+  };
+
+  return (
+    <div
+      style={{
+        border: "1px solid #2a2a2a",
+        borderRadius: 14,
+        padding: "16px 20px",
+        background: "#161616",
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <span style={SECTION_LABEL}>Header</span>
+        {!editing && (
+          <button
+            onClick={startEditing}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 7,
+              border: "1px solid #2a2a2a",
+              background: "transparent",
+              color: "#999",
+              cursor: "pointer",
+              fontSize: 12,
+            }}
+          >
+            Edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Full Name</span>
+            <input
+              style={inputStyle}
+              value={draft.name}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+              placeholder="e.g. Tawana Ndlovu"
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Location</span>
+            <input
+              style={inputStyle}
+              value={draft.location}
+              onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))}
+              placeholder="e.g. Vancouver, BC"
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Email</span>
+            <input
+              style={inputStyle}
+              value={draft.email}
+              onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
+              placeholder="e.g. you@email.com"
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>LinkedIn</span>
+            <input
+              style={inputStyle}
+              value={draft.linkedin}
+              onChange={(e) => setDraft((d) => ({ ...d, linkedin: e.target.value }))}
+              placeholder="e.g. linkedin.com/in/yourname"
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>GitHub</span>
+            <input
+              style={inputStyle}
+              value={draft.github}
+              onChange={(e) => setDraft((d) => ({ ...d, github: e.target.value }))}
+              placeholder="e.g. yourusername"
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "transparent",
+                color: "#888",
+                cursor: "pointer",
+                fontSize: 13,
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid #3a3a3a",
+                background: "#222",
+                color: saving ? "#666" : "#fff",
+                cursor: saving ? "not-allowed" : "pointer",
+                fontSize: 13,
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
+          <div><span style={{ color: "#555", marginRight: 8 }}>Name</span><span style={{ color: resume.name ? "#ddd" : "#444" }}>{resume.name || "—"}</span></div>
+          <div><span style={{ color: "#555", marginRight: 8 }}>Location</span><span style={{ color: resume.location ? "#ddd" : "#444" }}>{resume.location || "—"}</span></div>
+          <div><span style={{ color: "#555", marginRight: 8 }}>Email</span><span style={{ color: resume.email ? "#ddd" : "#444" }}>{resume.email || "—"}</span></div>
+          <div><span style={{ color: "#555", marginRight: 8 }}>LinkedIn</span><span style={{ color: resume.linkedin ? "#ddd" : "#444" }}>{resume.linkedin || "—"}</span></div>
+          <div><span style={{ color: "#555", marginRight: 8 }}>GitHub</span><span style={{ color: resume.github ? "#ddd" : "#444" }}>{resume.github || "—"}</span></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ResumePage() {
@@ -1177,6 +1390,17 @@ export default function ResumePage() {
 
       {error && <Toast message={error} type="error" />}
       {success && <Toast message={success} type="success" />}
+
+      {/* Header */}
+      <HeaderSection
+        resumeId={resume.id!}
+        resume={resume}
+        onUpdated={(res) => {
+          setResume(res);
+          showSuccess("Header saved.");
+        }}
+        onError={(msg) => setError(msg)}
+      />
 
       {/* Skills */}
       <SkillsSection
