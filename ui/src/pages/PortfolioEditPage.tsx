@@ -79,8 +79,8 @@ function formatDate(value?: string) {
 function pillStyle(color?: string) {
   return {
     fontSize: 11,
-    color: color ?? "#ddd",
-    border: `1px solid ${color ? color + "44" : "#2a2a2a"}`,
+    color: color ?? "var(--text-primary)",
+    border: `1px solid ${color ? color + "44" : "var(--border)"}`,
     borderRadius: 999,
     padding: "3px 8px",
     whiteSpace: "nowrap" as const,
@@ -104,8 +104,8 @@ const fieldInput: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
   borderRadius: 8,
-  border: "1px solid #2a2a2a",
-  background: "#111",
+  border: "1px solid var(--border)",
+  background: "var(--bg-input)",
   color: "#fff",
   fontSize: 13,
   boxSizing: "border-box",
@@ -179,11 +179,11 @@ function PillField({
             }
           }}
           placeholder={placeholder}
-          style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid #2a2a2a", background: "#111", color: "#fff", fontSize: 12, outline: "none" }}
+          style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "#fff", fontSize: 12, outline: "none" }}
         />
         <button
           onClick={() => onAdd(inputValue.trim())}
-          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #2a2a2a", background: "transparent", color: "#aaa", cursor: "pointer", fontSize: 12 }}
+          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "#aaa", cursor: "pointer", fontSize: 12 }}
         >
           + Add
         </button>
@@ -666,10 +666,10 @@ export default function PortfolioEditPage() {
       <div style={{ padding: 24, paddingTop: 40 }}>
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 16,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
           }}
         >
           Loading portfolio...
@@ -683,18 +683,18 @@ export default function PortfolioEditPage() {
       <div style={{ padding: 24, paddingTop: 40 }}>
         <Link
           to={backTo}
-          style={{ color: "#6f7cff", fontSize: 14, textDecoration: "none" }}
+          style={{ color: "var(--accent)", fontSize: 14, textDecoration: "none" }}
         >
           {backLabel}
         </Link>
         <div
           style={{
             marginTop: 16,
-            border: "1px solid #3a1f1f",
+            border: "1px solid var(--danger-bg-strong)",
             borderRadius: 16,
             padding: 20,
-            background: "#1a1111",
-            color: "#ff8a8a",
+            background: "var(--danger-bg)",
+            color: "var(--danger-text)",
           }}
         >
           <strong>Error:</strong> {error}
@@ -717,7 +717,7 @@ export default function PortfolioEditPage() {
       {/* Back */}
       <Link
         to={backTo}
-        style={{ color: "#6f7cff", fontSize: 14, textDecoration: "none" }}
+        style={{ color: "var(--accent)", fontSize: 14, textDecoration: "none" }}
       >
         {backLabel}
       </Link>
@@ -745,8 +745,8 @@ export default function PortfolioEditPage() {
                   fontWeight: 700,
                   padding: "6px 10px",
                   borderRadius: 10,
-                  border: "1px solid #2a2a2a",
-                  background: "#111",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-input)",
                   color: "#fff",
                   minWidth: 280,
                 }}
@@ -757,9 +757,9 @@ export default function PortfolioEditPage() {
                 style={{
                   padding: "6px 12px",
                   borderRadius: 10,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#ddd",
+                  color: "#333",
                   cursor: "pointer",
                 }}
               >
@@ -774,7 +774,7 @@ export default function PortfolioEditPage() {
                 style={{
                   padding: "4px 8px",
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
                   color: "#999",
                   cursor: "pointer",
@@ -811,9 +811,9 @@ export default function PortfolioEditPage() {
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               borderRadius: 10,
-              color: refreshing ? "#666" : "#ddd",
+              color: refreshing ? "#777" : "#444",
               cursor: refreshing ? "not-allowed" : "pointer",
               opacity: refreshing ? 0.6 : 1,
             }}
@@ -827,9 +827,9 @@ export default function PortfolioEditPage() {
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               borderRadius: 10,
-              color: deploying ? "#666" : "#ddd",
+              color: deploying ? "#777" : "#444",
               cursor: deploying ? "not-allowed" : "pointer",
               opacity: deploying ? 0.6 : 1,
             }}
@@ -844,7 +844,7 @@ export default function PortfolioEditPage() {
               background: "transparent",
               border: "1px solid #3a1111",
               borderRadius: 10,
-              color: "#ff8a8a",
+              color: "var(--danger-text)",
               cursor: "pointer",
             }}
           >
@@ -855,7 +855,7 @@ export default function PortfolioEditPage() {
 
       {/* Save error */}
       {saveError && (
-        <div style={{ color: "#ff8a8a", fontSize: 14, marginTop: 10 }}>
+        <div style={{ color: "var(--danger-text)", fontSize: 14, marginTop: 10 }}>
           {saveError}
         </div>
       )}
@@ -865,12 +865,12 @@ export default function PortfolioEditPage() {
         <div
           style={{
             marginTop: 16,
-            color: "#ff8a8a",
+            color: "var(--danger-text)",
             fontSize: 14,
-            border: "1px solid #3a1f1f",
+            border: "1px solid var(--danger-bg-strong)",
             borderRadius: 12,
             padding: 12,
-            background: "#1a1111",
+            background: "var(--danger-bg)",
           }}
         >
           {error}
@@ -895,7 +895,7 @@ export default function PortfolioEditPage() {
             border: "1px solid #1f3a1f",
             borderRadius: 12,
             padding: "14px 18px",
-            background: "#111a11",
+            background: "#f0faf0",
             color: "#8aff8a",
             boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
             maxWidth: 420,
@@ -923,10 +923,10 @@ export default function PortfolioEditPage() {
               <div
                 key={section.id}
                 style={{
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   borderRadius: 16,
                   padding: 20,
-                  background: "#161616",
+                  background: "var(--bg-surface)",
                 }}
               >
                 <h3 style={{ marginTop: 0, marginBottom: 16 }}>
@@ -952,7 +952,7 @@ export default function PortfolioEditPage() {
                         {block.metadata?.in_conflict && (
                           <div
                             style={{
-                              color: "#ff8a8a",
+                              color: "var(--danger-text)",
                               fontSize: 12,
                               marginBottom: 10,
                               padding: "6px 10px",
@@ -1004,8 +1004,8 @@ export default function PortfolioEditPage() {
                               margin: 0,
                               padding: "8px 10px",
                               borderRadius: 8,
-                              border: "1px solid #2a2a2a",
-                              background: "#0d0d0d",
+                              border: "1px solid var(--border)",
+                              background: "#f0f0f0",
                               color: "#999",
                               fontSize: 12,
                               overflowX: "auto",
@@ -1064,10 +1064,10 @@ export default function PortfolioEditPage() {
         {sortedCards.length === 0 && (
           <div
             style={{
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               borderRadius: 16,
               padding: 20,
-              background: "#161616",
+              background: "var(--bg-surface)",
               color: "#999",
             }}
           >
@@ -1084,9 +1084,9 @@ export default function PortfolioEditPage() {
               <div
                 key={card.project_name}
                 style={{
-                  border: card.is_showcase ? "1px solid #b8860b" : "1px solid #2a2a2a",
+                  border: card.is_showcase ? "1px solid #b8860b" : "1px solid var(--border)",
                   borderRadius: 14,
-                  background: "#161616",
+                  background: "var(--bg-surface)",
                   overflow: "hidden",
                 }}
               >
@@ -1155,8 +1155,8 @@ export default function PortfolioEditPage() {
                         width: "100%",
                         maxWidth: "min(720px, 95vw)",
                         maxHeight: "90vh",
-                        background: "#1b1b1b",
-                        border: "1px solid #2a2a2a",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border)",
                         borderRadius: 16,
                         boxShadow: "0 24px 64px rgba(0,0,0,0.55)",
                         display: "flex",
@@ -1165,7 +1165,7 @@ export default function PortfolioEditPage() {
                       }}
                     >
                       {/* Modal header */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #222", flexShrink: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
                         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
                           {edit.titleDraft || card.project_name}
                         </h2>
@@ -1205,8 +1205,8 @@ export default function PortfolioEditPage() {
                           label="Skills"
                           pills={edit.skillsDraft}
                           inputValue={edit.newSkillInput}
-                          pillColor="#ddd"
-                          borderColor="#2a2a2a"
+                          pillColor="#555"
+                          borderColor="var(--border)"
                           bgColor="transparent"
                           onRemove={(s) => updateCard(card.project_name, { skillsDraft: edit.skillsDraft.filter((x) => x !== s) })}
                           onInputChange={(v) => updateCard(card.project_name, { newSkillInput: v })}
@@ -1238,7 +1238,7 @@ export default function PortfolioEditPage() {
                           placeholder="Add a framework…"
                         />
 
-                        <div style={{ borderTop: "1px solid #222" }} />
+                        <div style={{ borderTop: "1px solid var(--border)" }} />
 
                         {/* Tone */}
                         <div>
@@ -1290,14 +1290,14 @@ export default function PortfolioEditPage() {
                         />
 
                         {edit.error && (
-                          <div style={{ color: "#ff8a8a", fontSize: 13, padding: "8px 12px", background: "#3a1111", borderRadius: 8 }}>
+                          <div style={{ color: "var(--danger-text)", fontSize: 13, padding: "8px 12px", background: "#3a1111", borderRadius: 8 }}>
                             {edit.error}
                           </div>
                         )}
                       </div>
 
                       {/* Modal footer */}
-                      <div style={{ padding: "16px 24px", borderTop: "1px solid #222", flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
+                      <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)", flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
                         <button
                           onClick={() => updateCard(card.project_name, { showConfirmModal: true })}
                           disabled={edit.saving}
@@ -1305,7 +1305,7 @@ export default function PortfolioEditPage() {
                             padding: "10px 20px",
                             borderRadius: 10,
                             border: "none",
-                            background: edit.saving ? "#1a2a1a" : "#1c3a1c",
+                            background: edit.saving ? "#d4edda" : "#c3e6cb",
                             color: edit.saving ? "#666" : "#8aff8a",
                             cursor: edit.saving ? "not-allowed" : "pointer",
                             fontSize: 14,
@@ -1328,10 +1328,10 @@ export default function PortfolioEditPage() {
                   >
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      style={{ width: "100%", maxWidth: 420, background: "#1b1b1b", border: "1px solid #2a2a2a", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.45)" }}
+                      style={{ width: "100%", maxWidth: 420, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.45)" }}
                     >
                       <h2 style={{ marginTop: 0, fontSize: 18 }}>Unsaved Changes</h2>
-                      <p style={{ color: "#ccc", lineHeight: 1.6, fontSize: 14 }}>
+                      <p style={{ color: "#444", lineHeight: 1.6, fontSize: 14 }}>
                         You have unsaved changes to{" "}
                         <strong>"{edit.titleDraft || card.project_name}"</strong>.
                         If you close now, your edits will be lost.
@@ -1339,13 +1339,13 @@ export default function PortfolioEditPage() {
                       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
                         <button
                           onClick={() => updateCard(card.project_name, { showUnsavedWarning: false })}
-                          style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "transparent", color: "#ddd", cursor: "pointer", fontSize: 13 }}
+                          style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "transparent", color: "#333", cursor: "pointer", fontSize: 13 }}
                         >
                           Keep Editing
                         </button>
                         <button
                           onClick={() => updateCard(card.project_name, { showUnsavedWarning: false, showEditModal: false })}
-                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#3a1111", color: "#ff8a8a", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#3a1111", color: "var(--danger-text)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
                         >
                           Discard Changes
                         </button>
@@ -1374,15 +1374,15 @@ export default function PortfolioEditPage() {
                       style={{
                         width: "100%",
                         maxWidth: 420,
-                        background: "#1b1b1b",
-                        border: "1px solid #2a2a2a",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border)",
                         borderRadius: 16,
                         padding: 24,
                         boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
                       }}
                     >
                       <h2 style={{ marginTop: 0, fontSize: 18 }}>Save Changes?</h2>
-                      <p style={{ color: "#ccc", lineHeight: 1.6, fontSize: 14 }}>
+                      <p style={{ color: "#444", lineHeight: 1.6, fontSize: 14 }}>
                         You are about to save your edits to{" "}
                         <strong>"{edit.titleDraft || card.project_name}"</strong>.
                         These changes are permanent and will replace the current card content.
@@ -1390,13 +1390,13 @@ export default function PortfolioEditPage() {
                       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
                         <button
                           onClick={() => updateCard(card.project_name, { showConfirmModal: false })}
-                          style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "transparent", color: "#ddd", cursor: "pointer", fontSize: 13 }}
+                          style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "transparent", color: "#333", cursor: "pointer", fontSize: 13 }}
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => handleSaveCard(card.project_name)}
-                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#1c3a1c", color: "#8aff8a", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#c3e6cb", color: "#155724", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
                         >
                           Save Changes
                         </button>
@@ -1432,15 +1432,15 @@ export default function PortfolioEditPage() {
             style={{
               width: "100%",
               maxWidth: 420,
-              background: "#1b1b1b",
-              border: "1px solid #2a2a2a",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
               borderRadius: 16,
               padding: 24,
               boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
             }}
           >
             <h2 style={{ marginTop: 0 }}>Deploy to GitHub Pages</h2>
-            <p style={{ color: "#ccc", lineHeight: 1.6 }}>
+            <p style={{ color: "#444", lineHeight: 1.6 }}>
               Are you sure you want to deploy a static website of your portfolio
               to a GitHub Pages site? This will create or update the{" "}
               <strong>portfolio</strong> repository on your GitHub account and
@@ -1448,7 +1448,7 @@ export default function PortfolioEditPage() {
               the site to update).
             </p>
 
-            <p style={{ color: "#ccc", lineHeight: 1.6 }}>
+            <p style={{ color: "#444", lineHeight: 1.6 }}>
               <strong>
                 WARNING: This action will wipe and replace any existing files in
                 the repository.
@@ -1462,9 +1462,9 @@ export default function PortfolioEditPage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 10,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
-                  color: deploying ? "#666" : "#ddd",
+                  color: deploying ? "#777" : "#444",
                   cursor: deploying ? "not-allowed" : "pointer",
                 }}
               >
@@ -1478,7 +1478,7 @@ export default function PortfolioEditPage() {
                   padding: "10px 16px",
                   borderRadius: 10,
                   border: "1px solid #1f3a1f",
-                  background: deploying ? "#202020" : "#1f3a1f",
+                  background: deploying ? "var(--bg-surface-deep)" : "#c3e6cb",
                   color: "#8aff8a",
                   cursor: deploying ? "not-allowed" : "pointer",
                   opacity: deploying ? 0.7 : 1,
@@ -1513,15 +1513,15 @@ export default function PortfolioEditPage() {
             style={{
               width: "100%",
               maxWidth: 400,
-              background: "#1b1b1b",
-              border: "1px solid #2a2a2a",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
               borderRadius: 16,
               padding: 24,
               boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
             }}
           >
             <h2 style={{ marginTop: 0 }}>Delete Portfolio</h2>
-            <p style={{ color: "#ccc", lineHeight: 1.6 }}>
+            <p style={{ color: "#444", lineHeight: 1.6 }}>
               Are you sure you want to delete{" "}
               <strong>"{portfolio.title}"</strong>? This will permanently remove
               the portfolio and all its content. This cannot be undone.
@@ -1530,7 +1530,7 @@ export default function PortfolioEditPage() {
             {deleteError && (
               <div
                 style={{
-                  color: "#ff8a8a",
+                  color: "var(--danger-text)",
                   fontSize: 14,
                   marginBottom: 16,
                   padding: "8px 12px",
@@ -1555,9 +1555,9 @@ export default function PortfolioEditPage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 10,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
-                  color: deleting ? "#666" : "#ddd",
+                  color: deleting ? "#777" : "#444",
                   cursor: deleting ? "not-allowed" : "pointer",
                 }}
               >
@@ -1572,7 +1572,7 @@ export default function PortfolioEditPage() {
                   borderRadius: 10,
                   border: "1px solid #3a1111",
                   background: deleting ? "#202020" : "#3a1111",
-                  color: "#ff8a8a",
+                  color: "var(--danger-text)",
                   cursor: deleting ? "not-allowed" : "pointer",
                   opacity: deleting ? 0.7 : 1,
                 }}

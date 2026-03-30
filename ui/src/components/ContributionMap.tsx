@@ -178,9 +178,9 @@ export default function ContributionMap({
       <div
         style={{
           padding: 20,
-          border: "1px solid #2a2a2a",
+          border: "1px solid var(--border)",
           borderRadius: 12,
-          background: "#161616",
+          background: "var(--bg-surface)",
           color: "#999",
           textAlign: "center",
         }}
@@ -194,9 +194,9 @@ export default function ContributionMap({
     <div
       style={{
         padding: 20,
-        border: "1px solid #2a2a2a",
+        border: "1px solid var(--border)",
         borderRadius: 12,
-        background: "#161616",
+        background: "var(--bg-surface)",
       }}
     >
       {/* Header */}
@@ -271,7 +271,7 @@ export default function ContributionMap({
               const opacity = getOpacity(date);
               const bgColor =
                 opacity === 0
-                  ? "#2a2a2a"
+                  ? "#e8e8e8"
                   : `rgba(230, 57, 70, ${opacity})`;
 
               return (
@@ -302,7 +302,7 @@ export default function ContributionMap({
         style={{
           marginTop: 16,
           paddingTop: 12,
-          borderTop: "1px solid #2a2a2a",
+          borderTop: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -321,7 +321,7 @@ export default function ContributionMap({
                   height: 10,
                   background:
                     opacity === 0
-                      ? "#2a2a2a"
+                      ? "#e8e8e8"
                       : `rgba(230, 57, 70, ${opacity})`,
                   borderRadius: 2,
                 }}
@@ -390,7 +390,7 @@ export default function ContributionMap({
           style={{
             marginTop: 12,
             padding: 8,
-            background: "#0a0a0a",
+            background: "var(--bg-surface-deep)",
             borderRadius: 6,
             fontSize: 12,
             color: ACCENT_COLOR,

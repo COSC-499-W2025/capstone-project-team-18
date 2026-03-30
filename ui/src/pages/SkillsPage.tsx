@@ -48,7 +48,21 @@ export default function SkillsPage() {
     <div style={{ padding: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <h1 style={{ marginTop: 0, marginBottom: 0 }}>Skills</h1>
-        <button onClick={load} disabled={loading} style={{ padding: "6px 10px" }}>
+        <button
+          onClick={load}
+          disabled={loading}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 10,
+            border: "none",
+            background: "var(--accent)",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: loading ? "not-allowed" : "pointer",
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
           Refresh
         </button>
       </div>
@@ -81,10 +95,10 @@ export default function SkillsPage() {
                     style={{
                       padding: "6px 12px",
                       borderRadius: 20,
-                      background: "#1a1a1a",
-                      border: "1px solid #2a2a2a",
+                      background: "var(--bg-surface-deep)",
+                      border: "1px solid var(--border)",
                       fontSize: 13,
-                      color: "#ddd",
+                      color: "#333",
                     }}
                   >
                     {skill}
@@ -114,10 +128,10 @@ export default function SkillsPage() {
                       style={{
                         padding: "6px 12px",
                         borderRadius: 20,
-                        background: "#1a1a1a",
-                        border: "1px solid #2a2a2a",
+                        background: "var(--bg-surface-deep)",
+                        border: "1px solid var(--border)",
                         fontSize: 13,
-                        color: "#ddd",
+                        color: "#333",
                       }}
                     >
                       {skill.name}

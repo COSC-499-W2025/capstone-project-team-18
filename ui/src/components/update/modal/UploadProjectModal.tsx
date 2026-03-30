@@ -197,8 +197,8 @@ export default function UploadProjectModal({
         style={{
           width: "100%",
           maxWidth: 760,
-          background: "#1b1b1b",
-          border: "1px solid #2a2a2a",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border)",
           borderRadius: 18,
           padding: 24,
           boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
@@ -220,7 +220,7 @@ export default function UploadProjectModal({
             style={{
               border: "none",
               background: "transparent",
-              color: isUploading || isLoadingConfig ? "#666" : "#ccc",
+              color: isUploading || isLoadingConfig ? "#777" : "#444",
               fontSize: 20,
               cursor:
                 isUploading || isLoadingConfig ? "not-allowed" : "pointer",
@@ -247,11 +247,11 @@ export default function UploadProjectModal({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           style={{
-            border: `2px dashed ${isDragging ? "#6b7280" : "#3a3a3a"}`,
+            border: `2px dashed ${isDragging ? "#6b7280" : "var(--border-strong)"}`,
             borderRadius: 16,
             padding: "48px 24px",
             textAlign: "center",
-            background: isDragging ? "#1d1d1d" : "#151515",
+            background: isDragging ? "#f0f4ff" : "var(--bg-surface)",
             marginBottom: 16,
             cursor: isUploading || isLoadingConfig ? "not-allowed" : "pointer",
             transition: "all 0.2s ease",
@@ -270,10 +270,10 @@ export default function UploadProjectModal({
         {selectedFile && (
           <div
             style={{
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               borderRadius: 12,
               padding: 14,
-              background: "#151515",
+              background: "var(--bg-surface)",
               marginBottom: 16,
               display: "flex",
               justifyContent: "space-between",
@@ -294,9 +294,9 @@ export default function UploadProjectModal({
               style={{
                 padding: "8px 12px",
                 borderRadius: 10,
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 background: "transparent",
-                color: isUploading || isLoadingConfig ? "#666" : "#ddd",
+                color: isUploading || isLoadingConfig ? "#777" : "#444",
                 cursor:
                   isUploading || isLoadingConfig ? "not-allowed" : "pointer",
               }}
@@ -312,7 +312,7 @@ export default function UploadProjectModal({
               display: "flex",
               gap: 10,
               alignItems: "flex-start",
-              background: "#1f1410",
+              background: "var(--danger-bg)",
               border: "1px solid #7a3a1a",
               borderRadius: 12,
               padding: 14,
@@ -334,8 +334,8 @@ export default function UploadProjectModal({
             display: "flex",
             gap: 8,
             alignItems: "center",
-            background: "#141414",
-            border: "1px solid #2a2a2a",
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border)",
             borderRadius: 12,
             padding: "12px 14px",
             marginBottom: 16,
@@ -356,7 +356,7 @@ export default function UploadProjectModal({
           <div
             style={{
               marginBottom: 12,
-              color: "#ff8a8a",
+              color: "var(--danger-text)",
               fontSize: 14,
             }}
           >
@@ -368,7 +368,7 @@ export default function UploadProjectModal({
           <div
             style={{
               marginBottom: 12,
-              color: "#ff8a8a",
+              color: "var(--danger-text)",
               fontSize: 14,
             }}
           >
@@ -380,7 +380,7 @@ export default function UploadProjectModal({
           <div
             style={{
               marginBottom: 12,
-              color: "#8ad6a2",
+              color: "#16a34a",
               fontSize: 14,
             }}
           >
@@ -420,9 +420,9 @@ export default function UploadProjectModal({
               style={{
                 padding: "10px 14px",
                 background: "transparent",
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 10,
-                color: isUploading || isLoadingConfig ? "#666" : "#ddd",
+                color: isUploading || isLoadingConfig ? "#777" : "#444",
                 cursor:
                   isUploading || isLoadingConfig ? "not-allowed" : "pointer",
               }}

@@ -49,7 +49,7 @@ function Toast({ message, type }: { message: string; type: "success" | "error" }
         border: `1px solid ${ok ? "#22462b" : "#3a1f1f"}`,
         borderRadius: 10,
         padding: "11px 16px",
-        background: ok ? "#0e1f14" : "#1a1111",
+        background: ok ? "#f0faf0" : "var(--danger-bg)",
         color: ok ? "#8ad6a2" : "#ff8a8a",
         fontSize: 15,
         marginBottom: 14,
@@ -83,7 +83,7 @@ const SKILL_CATS: {
     key: "expert",
     inputKey: "expertInput",
     label: "Expert",
-    color: "#6f7cff",
+    color: "var(--accent)",
     border: "#6f7cff55",
     bg: "#6f7cff11",
   },
@@ -166,10 +166,10 @@ function SkillsSection({
   return (
     <div
       style={{
-        border: "1px solid #2a2a2a",
+        border: "1px solid var(--border)",
         borderRadius: 14,
         padding: "16px 20px",
-        background: "#161616",
+        background: "var(--bg-surface)",
         marginBottom: 16,
       }}
     >
@@ -188,7 +188,7 @@ function SkillsSection({
             style={{
               padding: "4px 12px",
               borderRadius: 7,
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               background: "transparent",
               color: "#888",
               fontSize: 14,
@@ -205,7 +205,7 @@ function SkillsSection({
               style={{
                 padding: "4px 12px",
                 borderRadius: 7,
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 background: "transparent",
                 color: "#888",
                 fontSize: 14,
@@ -221,8 +221,8 @@ function SkillsSection({
               style={{
                 padding: "4px 14px",
                 borderRadius: 7,
-                border: "1px solid #3a3a3a",
-                background: "#222",
+                border: "1px solid var(--border-strong)",
+                background: "var(--bg-surface-deep)",
                 color: "#fff",
                 fontSize: 14,
                 cursor: saving ? "not-allowed" : "pointer",
@@ -539,7 +539,7 @@ function ItemCard({
 
   const btnBase = {
     borderRadius: 7,
-    border: "1px solid #2a2a2a",
+    border: "1px solid var(--border)",
     background: "transparent",
     cursor: "pointer",
     fontFamily: "inherit",
@@ -548,10 +548,10 @@ function ItemCard({
   return (
     <div
       style={{
-        border: "1px solid #222",
+        border: "1px solid var(--border)",
         borderRadius: 12,
         padding: "16px 18px",
-        background: "#101010",
+        background: "var(--bg-surface-deep)",
       }}
     >
       {/* ── TITLE ─────────────────────────────────────────────── */}
@@ -567,8 +567,8 @@ function ItemCard({
               boxSizing: "border-box",
               padding: "8px 11px",
               borderRadius: 8,
-              border: "1px solid #2a2a2a",
-              background: "#111",
+              border: "1px solid var(--border)",
+              background: "var(--bg-input)",
               color: "#fff",
               fontSize: 15,
               fontWeight: 600,
@@ -613,8 +613,8 @@ function ItemCard({
                 flex: 1,
                 padding: "7px 10px",
                 borderRadius: 8,
-                border: "1px solid #2a2a2a",
-                background: "#111",
+                border: "1px solid var(--border)",
+                background: "var(--bg-input)",
                 color: "#fff",
                 fontSize: 14,
                 outline: "none",
@@ -632,8 +632,8 @@ function ItemCard({
                 flex: 1,
                 padding: "7px 10px",
                 borderRadius: 8,
-                border: "1px solid #2a2a2a",
-                background: "#111",
+                border: "1px solid var(--border)",
+                background: "var(--bg-input)",
                 color: "#fff",
                 fontSize: 14,
                 outline: "none",
@@ -671,8 +671,8 @@ function ItemCard({
               style={{
                 ...btnBase,
                 padding: "6px 14px",
-                border: "1px solid #3a3a3a",
-                background: "#222",
+                border: "1px solid var(--border-strong)",
+                background: "var(--bg-surface-deep)",
                 color: "#fff",
                 fontSize: 14,
                 opacity: savingMeta ? 0.6 : 1,
@@ -684,7 +684,7 @@ function ItemCard({
         </>
       )}
 
-      <div style={{ borderTop: "1px solid #1a1a1a", marginBottom: 14 }} />
+      <div style={{ borderTop: "1px solid var(--border)", marginBottom: 14 }} />
 
       {/* ── FRAMEWORKS ────────────────────────────────────────── */}
       <div style={{ marginBottom: 14 }}>
@@ -713,8 +713,8 @@ function ItemCard({
               style={{
                 ...btnBase,
                 padding: "5px 14px",
-                border: "1px solid #3a3a3a",
-                background: "#222",
+                border: "1px solid var(--border-strong)",
+                background: "var(--bg-surface-deep)",
                 color: "#e08060",
                 fontSize: 14,
                 opacity: savingFw ? 0.6 : 1,
@@ -726,7 +726,7 @@ function ItemCard({
         )}
       </div>
 
-      <div style={{ borderTop: "1px solid #1a1a1a", marginBottom: 12 }} />
+      <div style={{ borderTop: "1px solid var(--border)", marginBottom: 12 }} />
 
       {/* ── BULLET POINTS ─────────────────────────────────────── */}
       <div>
@@ -740,9 +740,9 @@ function ItemCard({
               style={{
                 padding: "3px 10px",
                 borderRadius: 7,
-                border: `1px solid ${showInsights ? "#5a4a8a" : "#2a2a2a"}`,
-                background: showInsights ? "#1a1030" : "transparent",
-                color: insightsLoading ? "#555" : "#a08cff",
+                border: `1px solid ${showInsights ? "#9b8bc7" : "var(--border)"}`,
+                background: showInsights ? "#f0eeff" : "transparent",
+                color: insightsLoading ? "#555" : "#7c5cbf",
                 fontSize: 13,
                 cursor: insightsLoading ? "wait" : "pointer",
                 display: "flex",
@@ -773,12 +773,12 @@ function ItemCard({
                         alignItems: "flex-start",
                         padding: "9px 12px",
                         borderRadius: 9,
-                        border: isEditing ? "1px solid #3a3a5a" : "1px solid #1e1e1e",
-                        background: isEditing ? "#0f1220" : "#111",
+                        border: isEditing ? "1px solid var(--hover-border)" : "1px solid var(--border)",
+                        background: isEditing ? "var(--hover-bg)" : "var(--bg-input)",
                       }}
                     >
                       <div style={{ color: "#555", lineHeight: 1.6, flexShrink: 0 }}>•</div>
-                      <div style={{ flex: 1, color: "#ccc", lineHeight: 1.6, fontSize: 15 }}>
+                      <div style={{ flex: 1, color: "#444", lineHeight: 1.6, fontSize: 15 }}>
                         {bullet}
                       </div>
                       <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
@@ -796,7 +796,7 @@ function ItemCard({
                           style={{
                             ...btnBase,
                             padding: "3px 9px",
-                            background: isEditing ? "#1a1a2e" : "transparent",
+                            background: isEditing ? "var(--hover-bg)" : "transparent",
                             color: isEditing ? "#8888ff" : "#777",
                             fontSize: 13,
                             opacity: savingBullet ? 0.6 : 1,
@@ -825,8 +825,8 @@ function ItemCard({
                         style={{
                           padding: "10px 12px",
                           borderRadius: 9,
-                          border: "1px solid #2a2a2a",
-                          background: "#0d0d0d",
+                          border: "1px solid var(--border)",
+                          background: "#f0f0f0",
                           marginTop: 4,
                         }}
                       >
@@ -840,8 +840,8 @@ function ItemCard({
                             boxSizing: "border-box",
                             resize: "vertical",
                             borderRadius: 7,
-                            border: "1px solid #2a2a2a",
-                            background: "#161616",
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-surface)",
                             color: "#fff",
                             padding: "9px 11px",
                             fontFamily: "inherit",
@@ -867,8 +867,8 @@ function ItemCard({
                             style={{
                               ...btnBase,
                               padding: "5px 13px",
-                              border: "1px solid #3a3a3a",
-                              background: "#222",
+                              border: "1px solid var(--border-strong)",
+                              background: "var(--bg-surface-deep)",
                               color: bulletHasChanges ? "#fff" : "#555",
                               fontSize: 13,
                               opacity: savingBullet || !bulletHasChanges ? 0.6 : 1,
@@ -891,7 +891,7 @@ function ItemCard({
                 style={{
                   ...btnBase,
                   padding: "7px 14px",
-                  border: "1px dashed #2a2a2a",
+                  border: "1px dashed var(--border)",
                   color: "#555",
                   fontSize: 14,
                   width: "100%",
@@ -905,8 +905,8 @@ function ItemCard({
                 style={{
                   padding: "10px 12px",
                   borderRadius: 9,
-                  border: "1px solid #2a2a2a",
-                  background: "#0d0d0d",
+                  border: "1px solid var(--border)",
+                  background: "#f0f0f0",
                 }}
               >
                 <textarea
@@ -921,8 +921,8 @@ function ItemCard({
                     boxSizing: "border-box",
                     resize: "vertical",
                     borderRadius: 7,
-                    border: "1px solid #2a2a2a",
-                    background: "#161616",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-surface)",
                     color: "#fff",
                     padding: "9px 11px",
                     fontFamily: "inherit",
@@ -948,8 +948,8 @@ function ItemCard({
                     style={{
                       ...btnBase,
                       padding: "5px 13px",
-                      border: "1px solid #3a3a3a",
-                      background: "#222",
+                      border: "1px solid var(--border-strong)",
+                      background: "var(--bg-surface-deep)",
                       color: newBulletText.trim() ? "#fff" : "#555",
                       fontSize: 13,
                       opacity: savingBullet || !newBulletText.trim() ? 0.6 : 1,
@@ -970,12 +970,12 @@ function ItemCard({
                 flexShrink: 0,
                 borderRadius: 10,
                 border: "1px solid #2a1f3d",
-                background: "#0e0d18",
+                background: "var(--bg-surface-deep)",
                 padding: "12px 14px",
               }}
             >
               {insightsError ? (
-                <div style={{ color: "#ff8a8a", fontSize: 14 }}>{insightsError}</div>
+                <div style={{ color: "var(--danger-text)", fontSize: 14 }}>{insightsError}</div>
               ) : visibleInsights.length === 0 ? (
                 <div style={{ color: "#555", fontSize: 14 }}>
                   No writing prompts available for this project.
@@ -996,11 +996,11 @@ function ItemCard({
                           padding: "8px 10px",
                           borderRadius: 8,
                           border: "1px solid #2a1f3d",
-                          background: "#13102a",
+                          background: "var(--bg-surface-deep)",
                         }}
                       >
                         <span style={{ color: "#a08cff", flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>✦</span>
-                        <span style={{ flex: 1, fontSize: 14, color: "#ccc", lineHeight: 1.6 }}>{message}</span>
+                        <span style={{ flex: 1, fontSize: 14, color: "#444", lineHeight: 1.6 }}>{message}</span>
                         <button
                           onClick={() => handleDismissInsight(message, idx)}
                           title="Dismiss this prompt"
@@ -1127,10 +1127,10 @@ export default function ResumePage() {
       <div style={{ padding: 24, paddingTop: 40 }}>
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
             color: "#555",
             fontSize: 14,
           }}
@@ -1146,10 +1146,10 @@ export default function ResumePage() {
       <div style={{ padding: 24, paddingTop: 40 }}>
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 28,
-            background: "#161616",
+            background: "var(--bg-surface)",
           }}
         >
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No resume found</div>
@@ -1162,9 +1162,9 @@ export default function ResumePage() {
               display: "inline-block",
               padding: "9px 16px",
               borderRadius: 9,
-              border: "1px solid #2a2a2a",
-              background: "#1a1a1a",
-              color: "#ddd",
+              border: "1px solid var(--border)",
+              background: "var(--bg-surface-deep)",
+              color: "#333",
               textDecoration: "none",
               fontSize: 14,
             }}
@@ -1181,7 +1181,7 @@ export default function ResumePage() {
   return (
     <div style={{ padding: 24, paddingTop: 40 }}>
       {/* Back */}
-      <Link to={backTo} style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}>
+      <Link to={backTo} style={{ color: "var(--accent)", textDecoration: "none", fontSize: 14 }}>
         {backLabel}
       </Link>
 
@@ -1214,8 +1214,8 @@ export default function ResumePage() {
                   fontWeight: 700,
                   padding: "6px 10px",
                   borderRadius: 10,
-                  border: "1px solid #2a2a2a",
-                  background: "#111",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-input)",
                   color: "#fff",
                   minWidth: 280,
                   fontFamily: "inherit",
@@ -1228,9 +1228,9 @@ export default function ResumePage() {
                 style={{
                   padding: "6px 12px",
                   borderRadius: 10,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#ddd",
+                  color: "#333",
                   cursor: "pointer",
                   fontSize: 14,
                 }}
@@ -1243,9 +1243,9 @@ export default function ResumePage() {
                 style={{
                   padding: "6px 12px",
                   borderRadius: 10,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
-                  color: savingTitle ? "#666" : "#ddd",
+                  color: savingTitle ? "#777" : "#444",
                   cursor: savingTitle ? "not-allowed" : "pointer",
                   fontSize: 14,
                   opacity: savingTitle ? 0.6 : 1,
@@ -1262,7 +1262,7 @@ export default function ResumePage() {
                 style={{
                   padding: "4px 8px",
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
                   color: "#999",
                   cursor: "pointer",
@@ -1283,8 +1283,8 @@ export default function ResumePage() {
             style={{
               padding: "10px 14px",
               borderRadius: 10,
-              border: "1px solid #3a3a3a",
-              background: "#1f1f1f",
+              border: "1px solid var(--border-strong)",
+              background: "var(--bg-surface-deep)",
               color: "#fff",
               cursor: savingTitle ? "not-allowed" : "pointer",
               fontSize: 14,
@@ -1299,7 +1299,7 @@ export default function ResumePage() {
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               borderRadius: 10,
               color: "#555",
               cursor: "not-allowed",
@@ -1317,7 +1317,7 @@ export default function ResumePage() {
               background: "transparent",
               border: "1px solid #3a1111",
               borderRadius: 10,
-              color: "#ff8a8a",
+              color: "var(--danger-text)",
               cursor: "pointer",
               fontSize: 14,
             }}
@@ -1328,7 +1328,7 @@ export default function ResumePage() {
       </div>
 
       {saveError && (
-        <div style={{ color: "#ff8a8a", fontSize: 14, marginBottom: 14 }}>{saveError}</div>
+        <div style={{ color: "var(--danger-text)", fontSize: 14, marginBottom: 14 }}>{saveError}</div>
       )}
 
       {error && <Toast message={error} type="error" />}
@@ -1348,10 +1348,10 @@ export default function ResumePage() {
       {/* Projects */}
       <div
         style={{
-          border: "1px solid #2a2a2a",
+          border: "1px solid var(--border)",
           borderRadius: 14,
           padding: "16px 20px",
-          background: "#161616",
+          background: "var(--bg-surface)",
         }}
       >
         <span style={SECTION_LABEL}>Projects</span>
@@ -1394,15 +1394,15 @@ export default function ResumePage() {
             style={{
               width: "100%",
               maxWidth: 400,
-              background: "#1b1b1b",
-              border: "1px solid #2a2a2a",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
               borderRadius: 16,
               padding: 24,
               boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
             }}
           >
             <h2 style={{ marginTop: 0 }}>Delete Resume</h2>
-            <p style={{ color: "#ccc", lineHeight: 1.6 }}>
+            <p style={{ color: "#444", lineHeight: 1.6 }}>
               Are you sure you want to delete{" "}
               <strong>"{displayTitle}"</strong>? This will permanently remove
               the resume and all its content. This cannot be undone.
@@ -1411,7 +1411,7 @@ export default function ResumePage() {
             {deleteError && (
               <div
                 style={{
-                  color: "#ff8a8a",
+                  color: "var(--danger-text)",
                   fontSize: 14,
                   marginBottom: 16,
                   padding: "8px 12px",
@@ -1430,9 +1430,9 @@ export default function ResumePage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 10,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
-                  color: deleting ? "#666" : "#ddd",
+                  color: deleting ? "#777" : "#444",
                   cursor: deleting ? "not-allowed" : "pointer",
                 }}
               >
@@ -1447,7 +1447,7 @@ export default function ResumePage() {
                   borderRadius: 10,
                   border: "1px solid #3a1111",
                   background: deleting ? "#202020" : "#3a1111",
-                  color: "#ff8a8a",
+                  color: "var(--danger-text)",
                   cursor: deleting ? "not-allowed" : "pointer",
                   opacity: deleting ? 0.7 : 1,
                 }}

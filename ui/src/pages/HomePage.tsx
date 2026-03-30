@@ -43,8 +43,6 @@ export default function HomePage({ backendReady }: { backendReady: boolean }) {
   const [resumesError, setResumesError] = useState<string | null>(null);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
 
-  const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
-
   const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(false);
   const [projectCountBeforeUpload, setProjectCountBeforeUpload] = useState(0);
 
@@ -191,7 +189,17 @@ async function handleUploadSuccess() {
 
         <button
           onClick={() => setShowUploadModal(true)}
-          style={{ padding: "10px 14px" }}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 10,
+            border: "none",
+            background: "var(--accent)",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
         >
           Upload Project
         </button>
@@ -216,10 +224,10 @@ async function handleUploadSuccess() {
         {/* Projects */}
         <section
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 16,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
             minHeight: 220,
             display: "flex",
             flexDirection: "column",
@@ -253,34 +261,38 @@ async function handleUploadSuccess() {
                         key={project.project_name}
                         to={`/projects/${encodeURIComponent(project.project_name)}`}
                         state={{ from: "/" }}
-                        onMouseEnter={() => setHoveredProjectName(project.project_name)}
-                        onMouseLeave={() => setHoveredProjectName(null)}
+                        onMouseEnter={(e) => {
+                          const el = e.currentTarget as HTMLElement;
+                          el.style.borderColor = "var(--hover-border)";
+                          el.style.background = "var(--hover-bg)";
+                          el.style.transform = "translateY(-1px)";
+                        }}
+                        onMouseLeave={(e) => {
+                          const el = e.currentTarget as HTMLElement;
+                          el.style.borderColor = "var(--border)";
+                          el.style.background = "var(--bg-surface-deep)";
+                          el.style.transform = "translateY(0)";
+                        }}
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
                           textDecoration: "none",
                           color: "inherit",
-                          border: "1px solid #2a2a2a",
+                          border: "1px solid var(--border)",
                           borderRadius: 12,
                           padding: 14,
-                          background:
-                            hoveredProjectName === project.project_name
-                              ? "#151515"
-                              : "#101010",
+                          background: "var(--bg-surface-deep)",
                           gap: 12,
-                          transition: "background 0.2s ease, transform 0.2s ease",
-                          transform:
-                            hoveredProjectName === project.project_name
-                              ? "translateY(-1px)"
-                              : "translateY(0)",
+                          transition: "background 0.2s ease, transform 0.2s ease, border-color 0.15s ease",
+                          transform: "translateY(0)",
                         }}
                       >
-                        <div style={{ fontWeight: 600, color: "#ddd", flex: 1, wordBreak: "break-word" }}>
+                        <div style={{ fontWeight: 600, color: "#333", flex: 1, wordBreak: "break-word" }}>
                           {project.project_name}
                         </div>
                         {project.image_data && (
-                          <div style={{ width: 64, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0d0d0d" }}>
+                          <div style={{ width: 64, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#f0f0f0" }}>
                             <img
                               src={getImageSrc(project.image_data)}
                               alt=""
@@ -298,7 +310,7 @@ async function handleUploadSuccess() {
           </div>
 
           <div style={{ marginTop: 20 }}>
-            <Link to="/projects" style={{ color: "#6f7cff" }}>
+            <Link to="/projects" style={{ color: "var(--accent)" }}>
               View All
             </Link>
           </div>
@@ -314,10 +326,10 @@ async function handleUploadSuccess() {
           {/* Resumes */}
           <section
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 16,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
             minHeight: 220,
             display: "flex",
             flexDirection: "column",
@@ -329,7 +341,7 @@ async function handleUploadSuccess() {
 
                   {resumesLoading && <div>Loading resumes…</div>}
                   {!resumesLoading && resumesError && (
-                    <div style={{ color: "#ff8a8a", fontSize: 14 }}>
+                    <div style={{ color: "var(--danger-text)", fontSize: 14 }}>
                       Failed to load resumes.
                       </div>
                     )}
@@ -345,14 +357,25 @@ async function handleUploadSuccess() {
                             key={resume.id}
                             to={`/resume/${resume.id}`}
                             state={{ from: "/" }}
+                            onMouseEnter={(e) => {
+                              const el = e.currentTarget as HTMLElement;
+                              el.style.borderColor = "var(--hover-border)";
+                              el.style.background = "var(--hover-bg)";
+                            }}
+                            onMouseLeave={(e) => {
+                              const el = e.currentTarget as HTMLElement;
+                              el.style.borderColor = "var(--border)";
+                              el.style.background = "var(--bg-surface-deep)";
+                            }}
                             style={{
                               display: "block",
                               textDecoration: "none",
                               color: "inherit",
-                              border: "1px solid #2a2a2a",
+                              border: "1px solid var(--border)",
                               borderRadius: 12,
                               padding: 14,
-                              background: "#101010",
+                              background: "var(--bg-surface-deep)",
+                              transition: "border-color 0.15s ease, background 0.15s ease",
                             }}
                             >
                               <div style={{ fontWeight: 600 }}>
@@ -372,7 +395,7 @@ async function handleUploadSuccess() {
                           flexWrap: "wrap",
                         }}
                         >
-                          <Link to="/resumes" style={{ color: "#6f7cff" }}>
+                          <Link to="/resumes" style={{ color: "var(--accent)" }}>
                           View all
                           </Link>
                           </div>
@@ -381,10 +404,10 @@ async function handleUploadSuccess() {
         {/* Portfolios */}
         <section
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 16,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
             minHeight: 220,
             display: "flex",
             flexDirection: "column",
@@ -397,7 +420,7 @@ async function handleUploadSuccess() {
             {portfoliosLoading && <div>Loading portfolios…</div>}
 
             {!portfoliosLoading && portfoliosError && (
-              <div style={{ color: "#ff8a8a", fontSize: 14 }}>
+              <div style={{ color: "var(--danger-text)", fontSize: 14 }}>
                 Failed to load.
               </div>
             )}
@@ -417,19 +440,19 @@ async function handleUploadSuccess() {
                       display: "block",
                       textDecoration: "none",
                       color: "inherit",
-                      border: "1px solid #2a2a2a",
+                      border: "1px solid var(--border)",
                       borderRadius: 12,
                       padding: 14,
-                      background: "#101010",
+                      background: "var(--bg-surface-deep)",
                       transition: "border-color 0.15s, background 0.15s",
                     }}
                     onMouseEnter={e => {
-                      (e.currentTarget as HTMLElement).style.borderColor = "#6f7cff";
-                      (e.currentTarget as HTMLElement).style.background = "#1a1a2e";
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--hover-border)";
+                      (e.currentTarget as HTMLElement).style.background = "var(--hover-bg)";
                     }}
                     onMouseLeave={e => {
-                      (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
-                      (e.currentTarget as HTMLElement).style.background = "#101010";
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                      (e.currentTarget as HTMLElement).style.background = "var(--bg-surface-deep)";
                     }}
                   >
                     <div style={{ fontWeight: 600 }}>{p.title}</div>
@@ -440,7 +463,7 @@ async function handleUploadSuccess() {
           </div>
 
           <div style={{ marginTop: 20 }}>
-            <Link to="/portfolios" style={{ color: "#6f7cff" }}>
+            <Link to="/portfolios" style={{ color: "var(--accent)" }}>
               View all
             </Link>
           </div>
