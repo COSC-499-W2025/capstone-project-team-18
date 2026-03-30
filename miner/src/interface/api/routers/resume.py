@@ -49,7 +49,7 @@ class EditBulletPointRequest(SQLModel):
     append: bool
 
     # If not appending, need what index we are overwritting
-    bullet_point_index: Optional[int]
+    bullet_point_index: Optional[int] = None
 
 
 class EditResumeItemMetadataRequest(SQLModel):

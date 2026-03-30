@@ -576,19 +576,20 @@ header .portfolio-updated {
 }
 
 .badge {
+  background: #f0f0f0;
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: 0.15rem 0.6rem;
   font-size: 0.7rem;
-  border: 1px solid #d0d0d0;
-  color: #555;
-  background: transparent;
+  color: #333333;
+  border: 1px solid #e0e0e0;
+  word-break: break-all;
 }
 
-.badge.theme    { background: rgba(0, 33, 69, 0.08); color: #002145; border-color: rgba(0, 33, 69, 0.25); }
-.badge.tone     { background: transparent; color: #666; border-color: #d0d0d0; }
-.badge.tag      { background: rgba(22, 163, 74, 0.1); color: #15803d; border-color: rgba(22, 163, 74, 0.3); }
-.badge.skill    { background: transparent; color: #444; border-color: #d0d0d0; }
-.badge.framework { background: rgba(80, 144, 170, 0.1); color: #336680; border-color: rgba(80, 144, 170, 0.3); }
+.badge.theme  { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
+.badge.tone   { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+.badge.tag    { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.badge.skill  { background: #dbeafe; color: #0055B7; border: 1px solid #93c5fd; }
+.badge.framework { background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd; }
 
 .card-meta {
   font-size: 0.75rem;

@@ -72,7 +72,7 @@ export default function ProjectsPage() {
             padding: "10px 18px",
             borderRadius: 10,
             border: "none",
-            background: "var(--accent)",
+            background: "var(--btn-primary)",
             color: "#fff",
             fontSize: 14,
             fontWeight: 600,

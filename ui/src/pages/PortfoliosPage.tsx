@@ -92,7 +92,7 @@ export default function PortfoliosPage() {
             padding: "10px 18px",
             borderRadius: 10,
             border: "none",
-            background: "var(--accent)",
+            background: "var(--btn-primary)",
             color: "#fff",
             fontSize: 14,
             fontWeight: 600,
@@ -202,10 +202,11 @@ export default function PortfoliosPage() {
                           style={{
                             padding: "3px 10px",
                             borderRadius: 999,
-                            border: "1px solid var(--border)",
-                            background: "var(--bg-surface-deep)",
+                            border: "1px solid #93c5fd",
+                            background: "#dbeafe",
                             fontSize: 12,
-                            color: "var(--text-muted)",
+                            color: "#0055B7",
+                            fontWeight: 500,
                           }}
                         >
                           {name}

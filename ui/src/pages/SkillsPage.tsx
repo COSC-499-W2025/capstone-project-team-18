@@ -55,7 +55,7 @@ export default function SkillsPage() {
             padding: "8px 16px",
             borderRadius: 10,
             border: "none",
-            background: "var(--accent)",
+            background: "var(--btn-primary)",
             color: "#fff",
             fontSize: 14,
             fontWeight: 600,
@@ -79,7 +79,7 @@ export default function SkillsPage() {
         <>
           <section style={{ marginTop: 24 }}>
             <h2 style={{ marginBottom: 8, fontSize: 18 }}>Your Skills</h2>
-            <p style={{ color: "var(--text-secondary)", marginTop: 0, fontSize: 13 }}>
+            <p style={{ color: "var(--text-muted)", marginTop: 0, fontSize: 13 }}>
               Manually added via Profile. Used in resume generation.
             </p>
             {userSkills.length === 0 ? (
@@ -98,7 +98,7 @@ export default function SkillsPage() {
                       background: "var(--bg-surface-deep)",
                       border: "1px solid var(--border)",
                       fontSize: 13,
-                      color: "#333",
+                      color: "var(--text-secondary)",
                     }}
                   >
                     {skill}
@@ -110,7 +110,7 @@ export default function SkillsPage() {
 
           <section style={{ marginTop: 32 }}>
             <h2 style={{ marginBottom: 8, fontSize: 18 }}>Detected Skills</h2>
-            <p style={{ color: "var(--text-secondary)", marginTop: 0, fontSize: 13 }}>
+            <p style={{ color: "var(--text-muted)", marginTop: 0, fontSize: 13 }}>
               Auto-extracted from your mined projects.
             </p>
             {detectedSkills.length === 0 ? (
@@ -131,7 +131,7 @@ export default function SkillsPage() {
                         background: "var(--bg-surface-deep)",
                         border: "1px solid var(--border)",
                         fontSize: 13,
-                        color: "#333",
+                        color: "var(--text-secondary)",
                       }}
                     >
                       {skill.name}

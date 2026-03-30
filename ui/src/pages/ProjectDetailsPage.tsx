@@ -197,9 +197,18 @@ function expandHex(hex: string): string {
   return `#${expanded}`;
 }
 
-function TagChips({ items, color = "#6EC4E8" }: { items: string[]; color?: string }) {
-  if (!items.length) return <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>—</span>;
-  const base = expandHex(color);
+function TagChips({
+  items,
+  color = "#0055B7",
+  bg = "#dbeafe",
+  border = "#93c5fd",
+}: {
+  items: string[];
+  color?: string;
+  bg?: string;
+  border?: string;
+}) {
+  if (!items.length) return <span style={{ color: "#555", fontSize: 13 }}>—</span>;
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
       {items.map((tag) => (
@@ -208,12 +217,13 @@ function TagChips({ items, color = "#6EC4E8" }: { items: string[]; color?: strin
           style={{
             padding: "3px 10px",
             borderRadius: 999,
-            background: `${base}18`,
-            border: `1px solid ${base}55`,
+            background: bg,
+            border: `1px solid ${border}`,
             color,
             fontSize: 12,
             fontWeight: 600,
             lineHeight: 1.6,
+            fontWeight: 500,
           }}
         >
           {tag}
@@ -727,10 +737,10 @@ export default function ProjectDetailsPage() {
                     disabled={imageUploading || imageRemoving}
                     onClick={() => imageInputRef.current?.click()}
                     style={{
-                      border: "1px solid var(--border)",
+                      border: "1px solid #002145",
                       borderRadius: 7,
                       background: "transparent",
-                      color: "var(--accent)",
+                      color: "#002145",
                       padding: "5px 10px",
                       cursor: imageUploading || imageRemoving ? "not-allowed" : "pointer",
                       fontSize: 12,
@@ -744,10 +754,10 @@ export default function ProjectDetailsPage() {
                     disabled={imageUploading || imageRemoving}
                     onClick={handleImageRemove}
                     style={{
-                      border: "1px solid var(--danger-bg-strong)",
+                      border: "none",
                       borderRadius: 7,
-                      background: "transparent",
-                      color: "var(--danger-text)",
+                      background: "#dc2626",
+                      color: "#fff",
                       padding: "5px 10px",
                       cursor: imageUploading || imageRemoving ? "not-allowed" : "pointer",
                       fontSize: 12,
@@ -841,8 +851,8 @@ export default function ProjectDetailsPage() {
                           display: "inline-block",
                           padding: "3px 12px",
                           borderRadius: 999,
-                          background: "var(--accent-subtle)",
-                          border: "1px solid var(--hover-border)",
+                          background: "#00214511",
+                          border: "1px solid #00214544",
                           color: "var(--accent)",
                           fontSize: 13,
                           fontWeight: 600,
@@ -868,12 +878,12 @@ export default function ProjectDetailsPage() {
             <SectionCard title="Skills & Technologies">
               {skills.length > 0 && (
                 <LabelRow label="Skills">
-                  <TagChips items={skills} color="#1a4a7a" />
+                  <TagChips items={skills} color="#0055B7" bg="#dbeafe" border="#93c5fd" />
                 </LabelRow>
               )}
               {frameworks.length > 0 && (
                 <LabelRow label="Frameworks & Libraries">
-                  <TagChips items={frameworks} color="#7a3010" />
+                  <TagChips items={frameworks} color="#6d28d9" bg="#ede9fe" border="#c4b5fd" />
                 </LabelRow>
               )}
             </SectionCard>
@@ -889,9 +899,9 @@ export default function ProjectDetailsPage() {
                       display: "inline-block",
                       padding: "3px 12px",
                       borderRadius: 999,
-                      background: "#ffd06f22",
-                      border: "1px solid #b89030",
-                      color: "#7a5c00",
+                      background: "#f3f4f6",
+                      border: "1px solid #d1d5db",
+                      color: "#6b7280",
                       fontSize: 13,
                       fontWeight: 600,
                       textTransform: "capitalize",
@@ -903,12 +913,12 @@ export default function ProjectDetailsPage() {
               )}
               {projectThemes.length > 0 && (
                 <LabelRow label="Themes">
-                  <TagChips items={projectThemes} color="#0d4f7a" />
+                  <TagChips items={projectThemes} color="#0f766e" bg="#ccfbf1" border="#5eead4" />
                 </LabelRow>
               )}
               {projectTags.length > 0 && (
                 <LabelRow label="Tags">
-                  <TagChips items={projectTags} color="#0d5230" />
+                  <TagChips items={projectTags} color="#166534" bg="#dcfce7" border="#86efac" />
                 </LabelRow>
               )}
             </SectionCard>

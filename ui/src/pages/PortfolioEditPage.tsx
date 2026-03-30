@@ -106,7 +106,7 @@ const fieldInput: React.CSSProperties = {
   borderRadius: 8,
   border: "1px solid var(--border)",
   background: "var(--bg-input)",
-  color: "#fff",
+  color: "var(--text-primary)",
   fontSize: 13,
   boxSizing: "border-box",
   outline: "none",
@@ -747,7 +747,7 @@ export default function PortfolioEditPage() {
                   borderRadius: 10,
                   border: "1px solid var(--border)",
                   background: "var(--bg-input)",
-                  color: "#fff",
+                  color: "var(--text-primary)",
                   minWidth: 280,
                 }}
                 autoFocus
@@ -774,11 +774,12 @@ export default function PortfolioEditPage() {
                 style={{
                   padding: "4px 8px",
                   borderRadius: 8,
-                  border: "1px solid var(--border)",
+                  border: "1px solid var(--btn-primary)",
                   background: "transparent",
-                  color: "var(--text-muted)",
+                  color: "var(--btn-primary)",
                   cursor: "pointer",
                   fontSize: 12,
+                  fontWeight: 500,
                 }}
               >
                 Edit
@@ -800,7 +801,16 @@ export default function PortfolioEditPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{ padding: "10px 14px", opacity: saving ? 0.6 : 1 }}
+            style={{
+              padding: "10px 14px",
+              background: saving ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+              border: "none",
+              borderRadius: 10,
+              color: saving ? "var(--text-muted)" : "#fff",
+              fontWeight: 600,
+              cursor: saving ? "not-allowed" : "pointer",
+              opacity: saving ? 0.6 : 1,
+            }}
           >
             {saving ? "Saving..." : "Save"}
           </button>
@@ -811,9 +821,10 @@ export default function PortfolioEditPage() {
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--btn-primary)",
               borderRadius: 10,
-              color: refreshing ? "#777" : "#444",
+              color: refreshing ? "var(--text-muted)" : "var(--btn-primary)",
+              fontWeight: 500,
               cursor: refreshing ? "not-allowed" : "pointer",
               opacity: refreshing ? 0.6 : 1,
             }}
@@ -827,9 +838,10 @@ export default function PortfolioEditPage() {
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--btn-primary)",
               borderRadius: 10,
-              color: deploying ? "#777" : "#444",
+              color: deploying ? "var(--text-muted)" : "var(--btn-primary)",
+              fontWeight: 500,
               cursor: deploying ? "not-allowed" : "pointer",
               opacity: deploying ? 0.6 : 1,
             }}
@@ -841,10 +853,11 @@ export default function PortfolioEditPage() {
             onClick={() => setShowDeleteConfirm(true)}
             style={{
               padding: "10px 14px",
-              background: "transparent",
-              border: "1px solid #3a1111",
+              background: "#dc2626",
+              border: "none",
               borderRadius: 10,
-              color: "var(--danger-text)",
+              color: "#fff",
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >
@@ -892,12 +905,12 @@ export default function PortfolioEditPage() {
             right: 28,
             zIndex: 1100,
             fontSize: 14,
-            border: "1px solid #1f3a1f",
+            border: "1px solid #b2dfb2",
             borderRadius: 12,
             padding: "14px 18px",
             background: "#f0faf0",
-            color: "#8aff8a",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+            color: "#155724",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
             maxWidth: 420,
           }}
         >
@@ -906,7 +919,7 @@ export default function PortfolioEditPage() {
             href={exportedPagesUrl}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: "#8aff8a" }}
+            style={{ color: "#155724" }}
           >
             {exportedPagesUrl}
           </a>
@@ -956,7 +969,7 @@ export default function PortfolioEditPage() {
                               fontSize: 12,
                               marginBottom: 10,
                               padding: "6px 10px",
-                              background: "#3a1111",
+                              background: "var(--danger-bg)",
                               borderRadius: 8,
                             }}
                           >
@@ -1084,7 +1097,7 @@ export default function PortfolioEditPage() {
               <div
                 key={card.project_name}
                 style={{
-                  border: card.is_showcase ? "1px solid #b8860b" : "1px solid var(--border)",
+                  border: card.is_showcase ? "1px solid #b45309" : "1px solid var(--border)",
                   borderRadius: 14,
                   background: "var(--bg-surface)",
                   overflow: "hidden",
@@ -1117,11 +1130,12 @@ export default function PortfolioEditPage() {
                       style={{
                         padding: "4px 10px",
                         borderRadius: 999,
-                        border: `1px solid ${card.is_showcase ? "#b8860b" : "#333"}`,
-                        background: "transparent",
-                        color: card.is_showcase ? "#f5c518" : "#777",
+                        border: `1px solid ${card.is_showcase ? "#b45309" : "var(--border)"}`,
+                        background: card.is_showcase ? "#fef3c7" : "transparent",
+                        color: card.is_showcase ? "#92400e" : "var(--text-muted)",
                         cursor: "pointer",
                         fontSize: 12,
+                        fontWeight: card.is_showcase ? 600 : 400,
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -1205,9 +1219,9 @@ export default function PortfolioEditPage() {
                           label="Skills"
                           pills={edit.skillsDraft}
                           inputValue={edit.newSkillInput}
-                          pillColor="#555"
-                          borderColor="var(--border)"
-                          bgColor="transparent"
+                          pillColor="#0055B7"
+                          borderColor="#93c5fd"
+                          bgColor="#dbeafe"
                           onRemove={(s) => updateCard(card.project_name, { skillsDraft: edit.skillsDraft.filter((x) => x !== s) })}
                           onInputChange={(v) => updateCard(card.project_name, { newSkillInput: v })}
                           onAdd={(v) => {
@@ -1224,9 +1238,9 @@ export default function PortfolioEditPage() {
                           label="Frameworks"
                           pills={edit.frameworksDraft}
                           inputValue={edit.newFrameworkInput}
-                          pillColor="#e08060"
-                          borderColor="#e0806044"
-                          bgColor="#e0806011"
+                          pillColor="#6d28d9"
+                          borderColor="#c4b5fd"
+                          bgColor="#ede9fe"
                           onRemove={(f) => updateCard(card.project_name, { frameworksDraft: edit.frameworksDraft.filter((x) => x !== f) })}
                           onInputChange={(v) => updateCard(card.project_name, { newFrameworkInput: v })}
                           onAdd={(v) => {
@@ -1256,9 +1270,9 @@ export default function PortfolioEditPage() {
                           label="Themes"
                           pills={edit.themesDraft}
                           inputValue={edit.newThemeInput}
-                          pillColor="#6EC4E8"
-                          borderColor="#6EC4E844"
-                          bgColor="#6EC4E811"
+                          pillColor="#0f766e"
+                          borderColor="#5eead4"
+                          bgColor="#ccfbf1"
                           onRemove={(t) => updateCard(card.project_name, { themesDraft: edit.themesDraft.filter((x) => x !== t) })}
                           onInputChange={(v) => updateCard(card.project_name, { newThemeInput: v })}
                           onAdd={(v) => {
@@ -1275,9 +1289,9 @@ export default function PortfolioEditPage() {
                           label="Tags"
                           pills={edit.tagsDraft}
                           inputValue={edit.newTagInput}
-                          pillColor="#8ad6a2"
-                          borderColor="#8ad6a244"
-                          bgColor="#8ad6a211"
+                          pillColor="#166534"
+                          borderColor="#86efac"
+                          bgColor="#dcfce7"
                           onRemove={(t) => updateCard(card.project_name, { tagsDraft: edit.tagsDraft.filter((x) => x !== t) })}
                           onInputChange={(v) => updateCard(card.project_name, { newTagInput: v })}
                           onAdd={(v) => {
@@ -1290,7 +1304,7 @@ export default function PortfolioEditPage() {
                         />
 
                         {edit.error && (
-                          <div style={{ color: "var(--danger-text)", fontSize: 13, padding: "8px 12px", background: "#3a1111", borderRadius: 8 }}>
+                          <div style={{ color: "var(--danger-text)", fontSize: 13, padding: "8px 12px", background: "var(--danger-bg)", borderRadius: 8 }}>
                             {edit.error}
                           </div>
                         )}
@@ -1305,8 +1319,8 @@ export default function PortfolioEditPage() {
                             padding: "10px 20px",
                             borderRadius: 10,
                             border: "none",
-                            background: edit.saving ? "#d4edda" : "#c3e6cb",
-                            color: edit.saving ? "#666" : "#8aff8a",
+                            background: edit.saving ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                            color: edit.saving ? "var(--text-muted)" : "#fff",
                             cursor: edit.saving ? "not-allowed" : "pointer",
                             fontSize: 14,
                             fontWeight: 600,
@@ -1345,7 +1359,7 @@ export default function PortfolioEditPage() {
                         </button>
                         <button
                           onClick={() => updateCard(card.project_name, { showUnsavedWarning: false, showEditModal: false })}
-                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#3a1111", color: "var(--danger-text)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#dc2626", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
                         >
                           Discard Changes
                         </button>
@@ -1396,7 +1410,7 @@ export default function PortfolioEditPage() {
                         </button>
                         <button
                           onClick={() => handleSaveCard(card.project_name)}
-                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#c3e6cb", color: "#155724", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                          style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "var(--btn-primary)", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
                         >
                           Save Changes
                         </button>
@@ -1477,9 +1491,9 @@ export default function PortfolioEditPage() {
                 style={{
                   padding: "10px 16px",
                   borderRadius: 10,
-                  border: "1px solid #1f3a1f",
-                  background: deploying ? "var(--bg-surface-deep)" : "#c3e6cb",
-                  color: "#8aff8a",
+                  border: "none",
+                  background: deploying ? "var(--bg-surface-deep)" : "#002145",
+                  color: "#fff",
                   cursor: deploying ? "not-allowed" : "pointer",
                   opacity: deploying ? 0.7 : 1,
                 }}
@@ -1534,7 +1548,7 @@ export default function PortfolioEditPage() {
                   fontSize: 14,
                   marginBottom: 16,
                   padding: "8px 12px",
-                  background: "#3a1111",
+                  background: "var(--danger-bg)",
                   borderRadius: 8,
                 }}
               >
@@ -1570,9 +1584,9 @@ export default function PortfolioEditPage() {
                 style={{
                   padding: "10px 16px",
                   borderRadius: 10,
-                  border: "1px solid #3a1111",
-                  background: deleting ? "#202020" : "#3a1111",
-                  color: "var(--danger-text)",
+                  border: "none",
+                  background: deleting ? "#b91c1c" : "#dc2626",
+                  color: "#fff",
                   cursor: deleting ? "not-allowed" : "pointer",
                   opacity: deleting ? 0.7 : 1,
                 }}

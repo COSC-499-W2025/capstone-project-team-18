@@ -175,7 +175,7 @@ export default function CreateResumeModal({
               marginBottom: 6,
             }}
           >
-            Title <span style={{ color: "var(--text-secondary)" }}>(optional)</span>
+            Title <span style={{ color: "var(--text-muted)" }}>(optional)</span>
           </label>
           <input
             value={title}
@@ -188,7 +188,7 @@ export default function CreateResumeModal({
               padding: "9px 12px",
               borderRadius: 10,
               border: "1px solid var(--border)",
-              background: "var(--bg-surface)",
+              background: "var(--bg-input)",
               color: "var(--text-primary)",
               fontSize: 14,
               outline: "none",
@@ -296,9 +296,9 @@ export default function CreateResumeModal({
                       padding: 12,
                       borderRadius: 10,
                       border: selected
-                        ? "1px solid #6EC4E8"
+                        ? "1px solid var(--btn-primary)"
                         : "1px solid var(--border)",
-                      background: selected ? "var(--hover-bg)" : "var(--bg-surface)",
+                      background: selected ? "var(--accent-subtle)" : "var(--bg-surface)",
                       color: selected ? "var(--text-primary)" : "var(--text-secondary)",
                       cursor: isSubmitting ? "not-allowed" : "pointer",
                       textAlign: "left",
@@ -312,8 +312,8 @@ export default function CreateResumeModal({
                         width: 16,
                         height: 16,
                         borderRadius: 4,
-                        border: selected ? "2px solid #6EC4E8" : "2px solid #555",
-                        background: selected ? "#6EC4E8" : "transparent",
+                        border: selected ? "2px solid var(--btn-primary)" : "2px solid var(--border-strong)",
+                        background: selected ? "var(--btn-primary)" : "transparent",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -382,8 +382,9 @@ export default function CreateResumeModal({
                 padding: "10px 16px",
                 borderRadius: 10,
                 border: "none",
-                background: canSubmit ? "var(--accent)" : "var(--bg-surface-deep)",
+                background: canSubmit ? "var(--btn-primary)" : "var(--bg-surface-deep)",
                 color: canSubmit ? "#fff" : "var(--text-muted)",
+                fontWeight: 600,
                 opacity: canSubmit ? 1 : 0.6,
                 cursor: canSubmit ? "pointer" : "not-allowed",
               }}

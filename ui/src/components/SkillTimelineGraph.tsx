@@ -13,16 +13,16 @@ type SkillTimelineGraphProps = {
 
 const TOP_SKILLS_LIMIT = 5;
 const SKILL_COLORS = [
-  "#002145", // UBC Blue (primary)
-  "#1A6FA8", // Deep cerulean
-  "#8B6914", // Dark ochre
-  "#3D6B30", // Forest green
-  "#7A3060", // Deep mauve
-  "#1A6B62", // Deep teal
-  "#8B3A20", // Deep terracotta
-  "#2D4E80", // Navy slate
-  "#7A5418", // Dark amber
-  "#5A2A80", // Deep purple
+  "#0055B7", // Vivid blue
+  "#0891b2", // Vivid cyan
+  "#d97706", // Vivid amber
+  "#65a30d", // Vivid lime-green
+  "#be185d", // Vivid rose
+  "#0f766e", // Vivid teal
+  "#ea580c", // Vivid orange
+  "#4f46e5", // Vivid indigo
+  "#b45309", // Vivid amber-brown
+  "#7c3aed", // Vivid violet
 ];
 
 type TimelineBucket = {
@@ -305,7 +305,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
               borderRadius: "6px 0 0 6px",
               border: "1px solid var(--border)",
               background: viewMode === "stacked" ? "var(--accent)" : "transparent",
-                color: viewMode === "stacked" ? "#fff" : "var(--text-secondary)",
+              color: viewMode === "stacked" ? "#fff" : "var(--text-muted)",
               cursor: "pointer",
               fontWeight: viewMode === "stacked" ? 600 : 400,
             }}
@@ -321,7 +321,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
               border: "1px solid var(--border)",
               borderLeft: "none",
               background: viewMode === "small-multiples" ? "var(--accent)" : "transparent",
-                color: viewMode === "small-multiples" ? "#fff" : "var(--text-secondary)",
+              color: viewMode === "small-multiples" ? "#fff" : "var(--text-muted)",
               cursor: "pointer",
               fontWeight: viewMode === "small-multiples" ? 600 : 400,
             }}
@@ -440,7 +440,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                   x={xAt(mi)}
                   y={SVG_H - 6}
                   textAnchor="middle"
-                  fill="var(--text-muted)"
+                  fill="#6b7280"
                   fontSize="9"
                 >
                   {model.timelineBuckets[mi]?.shortLabel ?? ""}
@@ -503,7 +503,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                     <span
                       style={{
                         fontSize: 11,
-                        color: "var(--text-secondary)",
+                        color: "var(--text-muted)",
                         flex: 1,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -661,7 +661,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                       x={xForIndex(monthIndex)}
                       y={height - 6}
                       textAnchor="middle"
-                      fill="var(--text-muted)"
+                      fill="#6b7280"
                       fontSize="9"
                     >
                       {model.timelineBuckets[monthIndex]?.shortLabel ?? ""}

@@ -26,8 +26,8 @@ function navLinkStyle(isActive: boolean) {
     padding: "8px 14px",
     borderRadius: 12,
     textDecoration: "none",
-    color: isActive ? "#111" : "#555",
-    background: isActive ? "rgba(0, 0, 0, 0.08)" : "transparent",
+    color: isActive ? "#002145" : "var(--text-muted)",
+    background: isActive ? "#e6eaf0" : "transparent",
     transition: "all 0.2s ease",
     display: "inline-block",
     fontWeight: isActive ? 600 : 400,
@@ -81,7 +81,7 @@ export default function App() {
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--danger-text)" }}>
               Backend Unreachable
             </div>
-            <div style={{ color: "#555", marginBottom: 24, fontSize: 14 }}>
+            <div style={{ color: "var(--text-muted)", marginBottom: 24, fontSize: 14 }}>
               Cannot connect to the API server. Please ensure the backend is running and try again.
             </div>
             <button
@@ -90,7 +90,7 @@ export default function App() {
                 padding: "8px 24px",
                 borderRadius: 8,
                 border: "none",
-                backgroundColor: "var(--accent)",
+                backgroundColor: "#002145",
                 color: "#fff",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -123,7 +123,7 @@ export default function App() {
             color: "var(--accent)",
             textDecoration: "none",
             WebkitAppRegion: "no-drag",
-            fontSize: 15,
+            fontSize: 20,
           } as CSSProperties}
         >
           Digital Artifact Miner

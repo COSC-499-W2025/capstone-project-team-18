@@ -46,11 +46,11 @@ function Toast({ message, type }: { message: string; type: "success" | "error" }
   return (
     <div
       style={{
-        border: `1px solid ${ok ? "#bbf7d0" : "var(--danger-bg-strong)"}`,
+        border: `1px solid ${ok ? "#b2dfb2" : "var(--danger-bg-strong)"}`,
         borderRadius: 10,
         padding: "11px 16px",
         background: ok ? "#f0faf0" : "var(--danger-bg)",
-        color: ok ? "#166534" : "var(--danger-text)",
+        color: ok ? "#155724" : "var(--danger-text)",
         fontSize: 15,
         marginBottom: 14,
       }}
@@ -83,25 +83,25 @@ const SKILL_CATS: {
     key: "expert",
     inputKey: "expertInput",
     label: "Expert",
-    color: "var(--accent)",
-    border: "#6EC4E855",
-    bg: "#6EC4E811",
+    color: "#0055B7",
+    border: "#93c5fd",
+    bg: "#dbeafe",
   },
   {
     key: "intermediate",
     inputKey: "intermediateInput",
     label: "Intermediate",
-    color: "#5ba89e",
-    border: "#5ba89e55",
-    bg: "#5ba89e11",
+    color: "#0f766e",
+    border: "#5eead4",
+    bg: "#ccfbf1",
   },
   {
     key: "exposure",
     inputKey: "exposureInput",
     label: "Exposure",
-    color: "var(--text-muted)",
-    border: "var(--border-strong)",
-    bg: "transparent",
+    color: "#6b7280",
+    border: "#d1d5db",
+    bg: "#f3f4f6",
   },
 ];
 
@@ -188,10 +188,11 @@ function SkillsSection({
             style={{
               padding: "4px 12px",
               borderRadius: 7,
-              border: "1px solid var(--border)",
-              background: "transparent",
-              color: "var(--text-muted)",
+              border: "none",
+              background: "var(--btn-primary)",
+              color: "#fff",
               fontSize: 14,
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >
@@ -207,7 +208,7 @@ function SkillsSection({
                 borderRadius: 7,
                 border: "1px solid var(--border)",
                 background: "transparent",
-                color: "var(--text-muted)",
+                color: "var(--text-secondary)",
                 fontSize: 14,
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.6 : 1,
@@ -221,10 +222,11 @@ function SkillsSection({
               style={{
                 padding: "4px 14px",
                 borderRadius: 7,
-                border: "1px solid var(--border-strong)",
-                background: "var(--bg-surface-deep)",
-                color: "var(--text-primary)",
+                border: "none",
+                background: saving ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                color: saving ? "var(--text-muted)" : "#fff",
                 fontSize: 14,
+                fontWeight: 600,
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.6 : 1,
               }}
@@ -592,7 +594,7 @@ function ItemCard({
               setEditingMeta(true);
               setMetaError(null);
             }}
-            style={{ ...btnBase, padding: "3px 10px", color: "var(--text-secondary)", fontSize: 14, marginLeft: 10, flexShrink: 0 }}
+            style={{ ...btnBase, padding: "3px 10px", border: "1px solid var(--btn-primary)", color: "var(--btn-primary)", fontSize: 14, marginLeft: 10, flexShrink: 0, fontWeight: 500 }}
           >
             Edit
           </button>
@@ -618,7 +620,7 @@ function ItemCard({
                 color: "var(--text-primary)",
                 fontSize: 14,
                 outline: "none",
-                colorScheme: "dark",
+                colorScheme: "light",
                 fontFamily: "inherit",
               }}
             />
@@ -637,7 +639,7 @@ function ItemCard({
                 color: "var(--text-primary)",
                 fontSize: 14,
                 outline: "none",
-                colorScheme: "dark",
+                colorScheme: "light",
                 fontFamily: "inherit",
               }}
             />
@@ -671,10 +673,11 @@ function ItemCard({
               style={{
                 ...btnBase,
                 padding: "6px 14px",
-                border: "1px solid var(--border-strong)",
-                background: "var(--bg-surface-deep)",
-                color: "var(--text-primary)",
+                border: "none",
+                background: savingMeta ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                color: savingMeta ? "var(--text-muted)" : "#fff",
                 fontSize: 14,
+                fontWeight: 600,
                 opacity: savingMeta ? 0.6 : 1,
               }}
             >
@@ -693,9 +696,9 @@ function ItemCard({
           label="Frameworks & Technologies"
           pills={frameworksDraft}
           inputValue={newFwInput}
-          pillColor="#7a3010"
-          borderColor="#7a301055"
-          bgColor="#7a301011"
+          pillColor="#6d28d9"
+          borderColor="#c4b5fd"
+          bgColor="#ede9fe"
           placeholder="Add a framework or technology…"
           disabled={savingFw}
           onRemove={(v) => setFrameworksDraft((p) => p.filter((x) => x !== v))}
@@ -713,10 +716,11 @@ function ItemCard({
               style={{
                 ...btnBase,
                 padding: "5px 14px",
-                border: "1px solid var(--border-strong)",
-                background: "var(--bg-surface-deep)",
-                color: "#7a3010",
+                border: "none",
+                background: savingFw ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                color: savingFw ? "var(--text-muted)" : "#fff",
                 fontSize: 14,
+                fontWeight: 600,
                 opacity: savingFw ? 0.6 : 1,
               }}
             >
@@ -867,9 +871,10 @@ function ItemCard({
                             style={{
                               ...btnBase,
                               padding: "5px 13px",
-                              border: "1px solid var(--border-strong)",
-                              background: "var(--bg-surface-deep)",
-                              color: bulletHasChanges ? "#fff" : "var(--text-secondary)",
+                              border: "none",
+                              background: bulletHasChanges && !savingBullet ? "var(--btn-primary)" : "var(--bg-surface-deep)",
+                              color: bulletHasChanges && !savingBullet ? "#fff" : "var(--text-muted)",
+                              fontWeight: 600,
                               fontSize: 13,
                               opacity: savingBullet || !bulletHasChanges ? 0.6 : 1,
                             }}
@@ -891,9 +896,10 @@ function ItemCard({
                 style={{
                   ...btnBase,
                   padding: "7px 14px",
-                  border: "1px dashed var(--border)",
-                  color: "var(--text-secondary)",
+                  border: "1px dashed var(--btn-primary)",
+                  color: "var(--btn-primary)",
                   fontSize: 14,
+                  fontWeight: 500,
                   width: "100%",
                   textAlign: "left",
                 }}
@@ -948,9 +954,10 @@ function ItemCard({
                     style={{
                       ...btnBase,
                       padding: "5px 13px",
-                      border: "1px solid var(--border-strong)",
-                      background: "var(--bg-surface-deep)",
-                      color: newBulletText.trim() ? "#fff" : "var(--text-secondary)",
+                      border: "none",
+                      background: newBulletText.trim() && !savingBullet ? "var(--btn-primary)" : "var(--bg-surface-deep)",
+                      color: newBulletText.trim() && !savingBullet ? "#fff" : "var(--text-muted)",
+                      fontWeight: 600,
                       fontSize: 13,
                       opacity: savingBullet || !newBulletText.trim() ? 0.6 : 1,
                     }}
@@ -969,20 +976,20 @@ function ItemCard({
                 width: 320,
                 flexShrink: 0,
                 borderRadius: 10,
-                border: "1px solid var(--hover-border)",
-                background: "var(--accent-subtle)",
+                border: "1px solid #c4b5fd",
+                background: "#faf5ff",
                 padding: "12px 14px",
               }}
             >
               {insightsError ? (
                 <div style={{ color: "var(--danger-text)", fontSize: 14 }}>{insightsError}</div>
               ) : visibleInsights.length === 0 ? (
-                <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+                <div style={{ color: "#7c5cbf", fontSize: 14 }}>
                   No writing prompts available for this project.
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 10, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 14, color: "#7c5cbf", marginBottom: 10, lineHeight: 1.5 }}>
                     These prompts are based on your project's data. They are intended to help guide you to create or modify the project's bullet points.
                   </div>
                   <div style={{ display: "grid", gap: 7 }}>
@@ -995,19 +1002,19 @@ function ItemCard({
                           alignItems: "flex-start",
                           padding: "8px 10px",
                           borderRadius: 8,
-                          border: "1px solid var(--hover-border)",
-                          background: "#ffffff",
+                          border: "1px solid #ddd6fe",
+                          background: "#f0eeff",
                         }}
                       >
-                        <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>✦</span>
-                        <span style={{ flex: 1, fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6 }}>{message}</span>
+                        <span style={{ color: "#7c3aed", flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>✦</span>
+                        <span style={{ flex: 1, fontSize: 14, color: "#4c1d95", lineHeight: 1.6 }}>{message}</span>
                         <button
                           onClick={() => handleDismissInsight(message, idx)}
                           title="Dismiss this prompt"
                           style={{
                             padding: "1px 6px",
                             borderRadius: 5,
-                            border: "1px solid var(--border-strong)",
+                            border: "1px solid var(--border)",
                             background: "transparent",
                             color: "var(--text-muted)",
                             fontSize: 15,
@@ -1243,11 +1250,12 @@ export default function ResumePage() {
                 style={{
                   padding: "6px 12px",
                   borderRadius: 10,
-                  border: "1px solid var(--border)",
-                  background: "transparent",
-                  color: savingTitle ? "var(--text-muted)" : "var(--text-primary)",
+                  border: "none",
+                  background: savingTitle ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                  color: savingTitle ? "var(--text-muted)" : "#fff",
                   cursor: savingTitle ? "not-allowed" : "pointer",
                   fontSize: 14,
+                  fontWeight: 600,
                   opacity: savingTitle ? 0.6 : 1,
                 }}
               >
@@ -1262,11 +1270,12 @@ export default function ResumePage() {
                 style={{
                   padding: "4px 8px",
                   borderRadius: 8,
-                  border: "1px solid var(--border)",
+                  border: "1px solid var(--btn-primary)",
                   background: "transparent",
-                  color: "var(--text-muted)",
+                  color: "var(--btn-primary)",
                   cursor: "pointer",
                   fontSize: 14,
+                  fontWeight: 500,
                 }}
               >
                 Edit
@@ -1283,9 +1292,10 @@ export default function ResumePage() {
             style={{
               padding: "10px 14px",
               borderRadius: 10,
-              border: "1px solid var(--border-strong)",
-              background: "var(--bg-surface-deep)",
-              color: "var(--text-primary)",
+              border: "none",
+              background: savingTitle ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+              color: savingTitle ? "var(--text-muted)" : "#fff",
+              fontWeight: 600,
               cursor: savingTitle ? "not-allowed" : "pointer",
               fontSize: 14,
               opacity: savingTitle ? 0.6 : 1,
@@ -1301,7 +1311,7 @@ export default function ResumePage() {
               background: "transparent",
               border: "1px solid var(--border)",
               borderRadius: 10,
-              color: "var(--text-secondary)",
+              color: "var(--text-muted)",
               cursor: "not-allowed",
               fontSize: 14,
               opacity: 0.5,
@@ -1314,10 +1324,11 @@ export default function ResumePage() {
             onClick={() => setShowDeleteConfirm(true)}
             style={{
               padding: "10px 14px",
-              background: "transparent",
-              border: "1px solid var(--danger-bg-strong)",
+              background: "#dc2626",
+              border: "none",
               borderRadius: 10,
-              color: "var(--danger-text)",
+              color: "#fff",
+              fontWeight: 600,
               cursor: "pointer",
               fontSize: 14,
             }}
@@ -1445,9 +1456,9 @@ export default function ResumePage() {
                 style={{
                   padding: "10px 16px",
                   borderRadius: 10,
-                  border: "1px solid var(--danger-bg-strong)",
-                  background: deleting ? "var(--danger-bg)" : "var(--danger-bg-strong)",
-                  color: "var(--danger-text)",
+                  border: "none",
+                  background: deleting ? "#b91c1c" : "#dc2626",
+                  color: "#fff",
                   cursor: deleting ? "not-allowed" : "pointer",
                   opacity: deleting ? 0.7 : 1,
                 }}
