@@ -296,7 +296,7 @@ export default function CreateResumeModal({
                       padding: 12,
                       borderRadius: 10,
                       border: selected
-                        ? "1px solid #6f7cff"
+                        ? "1px solid #6EC4E8"
                         : "1px solid var(--border)",
                       background: selected ? "var(--hover-bg)" : "var(--bg-surface)",
                       color: selected ? "var(--text-primary)" : "var(--text-secondary)",
@@ -312,8 +312,8 @@ export default function CreateResumeModal({
                         width: 16,
                         height: 16,
                         borderRadius: 4,
-                        border: selected ? "2px solid #6f7cff" : "2px solid #555",
-                        background: selected ? "#6f7cff" : "transparent",
+                        border: selected ? "2px solid #6EC4E8" : "2px solid #555",
+                        background: selected ? "#6EC4E8" : "transparent",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",

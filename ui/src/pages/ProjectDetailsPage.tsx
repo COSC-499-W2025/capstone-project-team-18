@@ -118,13 +118,13 @@ const LANG_COLOR_MAP: Record<string, string> = {
   R:          "#198CE7",
 };
 const LANG_FALLBACK_COLORS = [
-  "#6f7cff", "#ff7c6f", "#7cff9a", "#ffd06f",
+  "#6EC4E8", "#ff7c6f", "#7cff9a", "#ffd06f",
   "#c06fff", "#6fecff", "#ff6fb8", "#a8ff6f",
 ];
 
 const COMMIT_COLORS: Record<string, string> = {
-  feature: "#6f7cff",
-  feat: "#6f7cff",
+  feature: "#6EC4E8",
+  feat: "#6EC4E8",
   fix: "#ff7c6f",
   bugfix: "#ff7c6f",
   refactor: "#ffd06f",
@@ -197,7 +197,7 @@ function expandHex(hex: string): string {
   return `#${expanded}`;
 }
 
-function TagChips({ items, color = "#6f7cff" }: { items: string[]; color?: string }) {
+function TagChips({ items, color = "#6EC4E8" }: { items: string[]; color?: string }) {
   if (!items.length) return <span style={{ color: "#555", fontSize: 13 }}>—</span>;
   const base = expandHex(color);
   return (
@@ -244,7 +244,7 @@ function LabelRow({ label, children }: { label: string; children: ReactNode }) {
 function ProgressBar({
   label,
   value,
-  color = "#6f7cff",
+  color = "#6EC4E8",
 }: {
   label: string;
   value: number;
@@ -819,7 +819,7 @@ export default function ProjectDetailsPage() {
               {showContributions && (
                 <SectionCard title="Your Contribution" mb={0}>
                   {userCommitPct !== undefined && (
-                    <ProgressBar label="Commit share" value={userCommitPct / 100} color="#6f7cff" />
+                    <ProgressBar label="Commit share" value={userCommitPct / 100} color="#6EC4E8" />
                   )}
                   {totalContribPct !== undefined && (
                     <ProgressBar
@@ -840,8 +840,8 @@ export default function ProjectDetailsPage() {
                           display: "inline-block",
                           padding: "3px 12px",
                           borderRadius: 999,
-                          background: "#6f7cff1a",
-                          border: "1px solid #6f7cff44",
+                          background: "#6EC4E81a",
+                          border: "1px solid #6EC4E844",
                           color: "var(--accent)",
                           fontSize: 13,
                           fontWeight: 600,
@@ -902,7 +902,7 @@ export default function ProjectDetailsPage() {
               )}
               {projectThemes.length > 0 && (
                 <LabelRow label="Themes">
-                  <TagChips items={projectThemes} color="#6f7cff" />
+                  <TagChips items={projectThemes} color="#6EC4E8" />
                 </LabelRow>
               )}
               {projectTags.length > 0 && (

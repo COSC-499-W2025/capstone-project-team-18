@@ -25,9 +25,12 @@
   --accent-hover:     #001530;
   --accent-subtle:    #dde8f4;
 
-  /* Hover effect — blue/indigo tint */
-  --hover-border:     #6f7cff;
-  --hover-bg:         #eef0ff;
+  /* Hover effect — UBC blue tint */
+  --hover-border:     #6EC4E8;
+  --hover-bg:         #eef6fc;
+
+  /* Focus ring */
+  --focus-ring:       #6EC4E8;
 
   /* Danger / error */
   --danger-bg:        #fee2e2;
@@ -88,7 +91,19 @@ button:hover {
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+  border-color: var(--focus-ring) !important;
 }
 
 code {
