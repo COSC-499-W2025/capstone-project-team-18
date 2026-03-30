@@ -26,10 +26,11 @@ function navLinkStyle(isActive: boolean) {
     padding: "8px 14px",
     borderRadius: 12,
     textDecoration: "none",
-    color: isActive ? "#fff" : "#ccc",
-    background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+    color: isActive ? "#111" : "#555",
+    background: isActive ? "rgba(0, 0, 0, 0.08)" : "transparent",
     transition: "all 0.2s ease",
     display: "inline-block",
+    fontWeight: isActive ? 600 : 400,
   };
 }
 
@@ -68,7 +69,7 @@ export default function App() {
         >
           <div
             style={{
-              backgroundColor: "#1a0a0a",
+              backgroundColor: "var(--danger-bg)",
               border: "1.5px solid #dc2626",
               borderRadius: 12,
               padding: "32px 40px",
@@ -77,10 +78,10 @@ export default function App() {
             }}
           >
             <div style={{ fontSize: 28, marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#f87171" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#dc2626" }}>
               Backend Unreachable
             </div>
-            <div style={{ color: "#fca5a5", marginBottom: 24, fontSize: 14 }}>
+            <div style={{ color: "#555", marginBottom: 24, fontSize: 14 }}>
               Cannot connect to the API server. Please ensure the backend is running and try again.
             </div>
             <button
@@ -109,9 +110,9 @@ export default function App() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "8px 24px 8px 80px",
-          borderBottom: "1px solid #eee",
-          backgroundColor: "#242424",
+          padding: "8px 24px 8px 120px",
+          borderBottom: "1px solid var(--border)",
+          backgroundColor: "var(--bg-surface)",
           WebkitAppRegion: "drag",
         } as CSSProperties}
       >
@@ -119,9 +120,10 @@ export default function App() {
           to="/"
           style={{
             fontWeight: 700,
-            color: "inherit",
+            color: "var(--accent)",
             textDecoration: "none",
             WebkitAppRegion: "no-drag",
+            fontSize: 15,
           } as CSSProperties}
         >
           Digital Artifact Miner

@@ -170,9 +170,9 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
       <div
         style={{
           padding: 20,
-          border: "1px solid #2a2a2a",
+          border: "1px solid var(--border)",
           borderRadius: 12,
-          background: "#161616",
+          background: "var(--bg-surface)",
           color: "#999",
           textAlign: "center",
         }}
@@ -199,9 +199,9 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
       <div
         style={{
           padding: 20,
-          border: "1px solid #2a2a2a",
+          border: "1px solid var(--border)",
           borderRadius: 12,
-          background: "#161616",
+          background: "var(--bg-surface)",
           color: "#999",
           textAlign: "center",
         }}
@@ -276,9 +276,9 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
       ref={containerRef}
       style={{
         padding: 28,
-        border: "1px solid #2a2a2a",
+        border: "1px solid var(--border)",
         borderRadius: 12,
-        background: "#161616",
+        background: "var(--bg-surface)",
         position: "relative",
       }}
     >
@@ -303,9 +303,9 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
               padding: "4px 12px",
               fontSize: 12,
               borderRadius: "6px 0 0 6px",
-              border: "1px solid #333",
-              background: viewMode === "stacked" ? "#2a2a2a" : "transparent",
-              color: viewMode === "stacked" ? "#e8e8e8" : "#888",
+              border: "1px solid var(--border)",
+              background: viewMode === "stacked" ? "var(--accent)" : "transparent",
+              color: viewMode === "stacked" ? "#fff" : "#888",
               cursor: "pointer",
               fontWeight: viewMode === "stacked" ? 600 : 400,
             }}
@@ -318,10 +318,10 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
               padding: "4px 12px",
               fontSize: 12,
               borderRadius: "0 6px 6px 0",
-              border: "1px solid #333",
+              border: "1px solid var(--border)",
               borderLeft: "none",
-              background: viewMode === "small-multiples" ? "#2a2a2a" : "transparent",
-              color: viewMode === "small-multiples" ? "#e8e8e8" : "#888",
+              background: viewMode === "small-multiples" ? "var(--accent)" : "transparent",
+              color: viewMode === "small-multiples" ? "#fff" : "#888",
               cursor: "pointer",
               fontWeight: viewMode === "small-multiples" ? 600 : 400,
             }}
@@ -351,7 +351,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                     flexShrink: 0,
                   }}
                 />
-                <span style={{ fontSize: 12, color: "#ccc" }}>{skill}</span>
+                <span style={{ fontSize: 12, color: "#444" }}>{skill}</span>
                 <span style={{ fontSize: 11, color: "#666" }}>
                   ({model.totalBySkill[skill] ?? 0})
                 </span>
@@ -363,8 +363,8 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
           <div
             style={{
               borderRadius: 8,
-              border: "1px solid #222",
-              background: "#121212",
+              border: "1px solid var(--border)",
+              background: "var(--bg-surface)",
               padding: "10px 4px 4px",
             }}
           >
@@ -385,7 +385,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                   x2={SVG_W - R}
                   y1={T + CH * (1 - ratio)}
                   y2={T + CH * (1 - ratio)}
-                  stroke="#1e1e1e"
+                  stroke="var(--border)"
                   strokeWidth="1"
                 />
               ))}
@@ -427,9 +427,9 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                   y1={T}
                   x2={xAt(hoveredMonth)}
                   y2={T + CH}
-                  stroke="#ffffff"
+                  stroke="var(--border-strong)"
                   strokeWidth="1"
-                  strokeOpacity="0.2"
+                  strokeOpacity="0.6"
                   strokeDasharray="3 3"
                 />
               )}
@@ -456,14 +456,14 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                 position: "absolute",
                 left: tipLeft,
                 top: Math.max(8, tooltipPos.y - 16),
-                background: "#1a1a1a",
-                border: "1px solid #333",
+                background: "var(--bg-surface-deep)",
+                border: "1px solid var(--border)",
                 borderRadius: 8,
                 padding: "8px 12px",
                 pointerEvents: "none",
                 zIndex: 20,
                 width: tooltipWidth,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.6)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
               }}
             >
               <div
@@ -472,7 +472,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                   color: "#888",
                   marginBottom: 6,
                   paddingBottom: 5,
-                  borderBottom: "1px solid #2a2a2a",
+                  borderBottom: "1px solid var(--border)",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -503,7 +503,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                     <span
                       style={{
                         fontSize: 11,
-                        color: "#bbb",
+                        color: "#555",
                         flex: 1,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -515,7 +515,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                     <span
                       style={{
                         fontSize: 11,
-                        color: "#e8e8e8",
+                        color: "var(--text-primary)",
                         fontVariantNumeric: "tabular-nums",
                         flexShrink: 0,
                       }}
@@ -579,9 +579,9 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
               <div
                 key={`small-multiple-${skill}`}
                 style={{
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   borderRadius: 10,
-                  background: "#121212",
+                  background: "var(--bg-surface)",
                   padding: 18,
                   borderTop: `3px solid ${color}`,
                   width: "400px",
@@ -599,7 +599,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                 >
                   <div
                     style={{
-                      color: "#e8e8e8",
+                      color: "var(--text-primary)",
                       fontSize: 13,
                       fontWeight: 700,
                       overflow: "hidden",
@@ -632,7 +632,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                         x2={width - rightPad}
                         y1={y}
                         y2={y}
-                        stroke="#1f1f1f"
+                        stroke="var(--border)"
                         strokeWidth="1"
                       />
                     );
@@ -648,7 +648,7 @@ export default function SkillTimelineGraph({ data, range }: SkillTimelineGraphPr
                       cy={yForValue(value)}
                       r={2.4}
                       fill={color}
-                      stroke="#121212"
+                      stroke="var(--bg-surface)"
                       strokeWidth="0.6"
                     >
                       <title>{`${model.timelineBuckets[monthIndex]?.fullLabel ?? ""}: ${formatCountLabel(value)} cumulative`}</title>

@@ -144,14 +144,14 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   return (
     <div
       style={{
-        border: "1px solid #2a2a2a",
+        border: "1px solid var(--border)",
         borderRadius: 14,
         padding: "14px 18px",
-        background: "#161616",
+        background: "var(--bg-surface)",
       }}
     >
       <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#eee" }}>{value}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{sub}</div>}
     </div>
   );
@@ -171,16 +171,16 @@ function SectionCard({
   return (
     <section
       style={{
-        border: "1px solid #2a2a2a",
+        border: "1px solid var(--border)",
         borderRadius: 16,
         padding: 20,
-        background: "#161616",
+        background: "var(--bg-surface)",
         marginBottom: mb,
         display: "flex",
         flexDirection: "column",
       }}
     >
-      <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 15, color: "#ccc", fontWeight: 600 }}>
+      <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 15, color: "#444", fontWeight: 600 }}>
         {title}
       </h3>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: centerContent ? "center" : "flex-start" }}>
@@ -231,7 +231,7 @@ function LabelRow({ label, children }: { label: string; children: ReactNode }) {
         gap: 12,
         alignItems: "start",
         paddingBottom: 14,
-        borderBottom: "1px solid #1e1e1e",
+        borderBottom: "1px solid var(--border)",
         marginBottom: 14,
       }}
     >
@@ -257,9 +257,9 @@ function ProgressBar({
         style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}
       >
         <span style={{ color: "#999" }}>{label}</span>
-        <span style={{ color: "#eee", fontWeight: 600 }}>{pct}%</span>
+        <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{pct}%</span>
       </div>
-      <div style={{ height: 8, background: "#222", borderRadius: 4, overflow: "hidden" }}>
+      <div style={{ height: 8, background: "var(--bg-surface-deep)", borderRadius: 4, overflow: "hidden" }}>
         <div
           style={{
             height: "100%",
@@ -312,7 +312,7 @@ function LanguageDonut({ langs }: { langs: Array<{ lang: string; ratio: number }
             width: 72,
             height: 72,
             borderRadius: "50%",
-            background: "#161616",
+            background: "var(--bg-surface)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -336,7 +336,7 @@ function LanguageDonut({ langs }: { langs: Array<{ lang: string; ratio: number }
                 flexShrink: 0,
               }}
             />
-            <span style={{ color: "#ccc", minWidth: 80 }}>{s.lang}</span>
+            <span style={{ color: "#444", minWidth: 80 }}>{s.lang}</span>
             <span style={{ color: "#777" }}>{s.pct.toFixed(1)}%</span>
           </div>
         ))}
@@ -360,10 +360,10 @@ function CommitTypeChart({ items }: { items: Array<{ type: string; pct: number }
                 marginBottom: 5,
               }}
             >
-              <span style={{ color: "#bbb", textTransform: "capitalize" }}>{type}</span>
+              <span style={{ color: "#555", textTransform: "capitalize" }}>{type}</span>
               <span style={{ color: "#777" }}>{pct}%</span>
             </div>
-            <div style={{ height: 6, background: "#1e1e1e", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ height: 6, background: "var(--bg-surface-deep)", borderRadius: 3, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 3 }} />
             </div>
           </div>
@@ -579,7 +579,7 @@ export default function ProjectDetailsPage() {
             background: "transparent",
             border: "none",
             padding: 0,
-            color: "#6f7cff",
+            color: "var(--accent)",
             cursor: "pointer",
             fontSize: 16,
           }}
@@ -591,10 +591,10 @@ export default function ProjectDetailsPage() {
       {loading && (
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 16,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
           }}
         >
           Loading project details...
@@ -604,11 +604,11 @@ export default function ProjectDetailsPage() {
       {!loading && error && (
         <div
           style={{
-            border: "1px solid #3a1f1f",
+            border: "1px solid var(--danger-bg-strong)",
             borderRadius: 16,
             padding: 20,
-            background: "#1a1111",
-            color: "#ff8a8a",
+            background: "var(--danger-bg)",
+            color: "var(--danger-text)",
           }}
         >
           {isNotFoundError(error) ? (
@@ -679,8 +679,8 @@ export default function ProjectDetailsPage() {
                     flex: 1,
                     overflow: "hidden",
                     borderRadius: 14,
-                    border: "1px solid #2a2a2a",
-                    background: "#0d0d0d",
+                    border: "1px solid var(--border)",
+                    background: "#f0f0f0",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -702,7 +702,7 @@ export default function ProjectDetailsPage() {
                     flex: 1,
                     border: "1px dashed #3a3a3a",
                     borderRadius: 14,
-                    background: "#111",
+                    background: "var(--bg-input)",
                     cursor: imageUploading ? "not-allowed" : "pointer",
                     display: "flex",
                     flexDirection: "column",
@@ -726,10 +726,10 @@ export default function ProjectDetailsPage() {
                     disabled={imageUploading || imageRemoving}
                     onClick={() => imageInputRef.current?.click()}
                     style={{
-                      border: "1px solid #2a2a2a",
+                      border: "1px solid var(--border)",
                       borderRadius: 7,
                       background: "transparent",
-                      color: "#6f7cff",
+                      color: "var(--accent)",
                       padding: "5px 10px",
                       cursor: imageUploading || imageRemoving ? "not-allowed" : "pointer",
                       fontSize: 12,
@@ -746,7 +746,7 @@ export default function ProjectDetailsPage() {
                       border: "1px solid #4a2020",
                       borderRadius: 7,
                       background: "transparent",
-                      color: "#ff8a8a",
+                      color: "var(--danger-text)",
                       padding: "5px 10px",
                       cursor: imageUploading || imageRemoving ? "not-allowed" : "pointer",
                       fontSize: 12,
@@ -759,7 +759,7 @@ export default function ProjectDetailsPage() {
               )}
 
               {imageUploadError && (
-                <div style={{ color: "#ff8a8a", fontSize: 11, marginTop: 6, maxWidth: 200, textAlign: "center" }}>
+                <div style={{ color: "var(--danger-text)", fontSize: 11, marginTop: 6, maxWidth: 200, textAlign: "center" }}>
                   {imageUploadError}
                 </div>
               )}
@@ -842,7 +842,7 @@ export default function ProjectDetailsPage() {
                           borderRadius: 999,
                           background: "#6f7cff1a",
                           border: "1px solid #6f7cff44",
-                          color: "#6f7cff",
+                          color: "var(--accent)",
                           fontSize: 13,
                           fontWeight: 600,
                           textTransform: "capitalize",
@@ -853,7 +853,7 @@ export default function ProjectDetailsPage() {
                     </div>
                   )}
                   {roleDescription && (
-                    <p style={{ margin: 0, color: "#bbb", fontSize: 14, lineHeight: 1.7 }}>
+                    <p style={{ margin: 0, color: "#555", fontSize: 14, lineHeight: 1.7 }}>
                       {roleDescription}
                     </p>
                   )}

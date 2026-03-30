@@ -85,11 +85,11 @@ export default function ResumesPage() {
           style={{
             padding: "10px 18px",
             borderRadius: 10,
-            border: "1px solid #3a3a3a",
-            background: "#1f1f1f",
+            border: "none",
+            background: "var(--accent)",
             color: "#fff",
             fontSize: 14,
-            fontWeight: 500,
+            fontWeight: 600,
             cursor: "pointer",
             whiteSpace: "nowrap",
           }}
@@ -107,10 +107,10 @@ export default function ResumesPage() {
       {loading && (
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
             color: "#666",
             fontSize: 14,
           }}
@@ -122,11 +122,11 @@ export default function ResumesPage() {
       {!loading && error && (
         <div
           style={{
-            border: "1px solid #3a1f1f",
+            border: "1px solid var(--danger-bg-strong)",
             borderRadius: 14,
             padding: 20,
-            background: "#1a1111",
-            color: "#ff8a8a",
+            background: "var(--danger-bg)",
+            color: "var(--danger-text)",
           }}
         >
           <strong>Error:</strong> {error}
@@ -136,10 +136,10 @@ export default function ResumesPage() {
       {!loading && !error && resumes.length === 0 && (
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
             color: "#999",
           }}
         >
@@ -158,19 +158,19 @@ export default function ResumesPage() {
                 display: "block",
                 textDecoration: "none",
                 color: "inherit",
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 14,
                 padding: "18px 20px",
-                background: "#161616",
+                background: "var(--bg-surface)",
                 transition: "border-color 0.15s ease, background 0.15s ease",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "#3a3a3a";
-                (e.currentTarget as HTMLElement).style.background = "#1a1a1a";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--hover-border)";
+                (e.currentTarget as HTMLElement).style.background = "var(--hover-bg)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "#2a2a2a";
-                (e.currentTarget as HTMLElement).style.background = "#161616";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                (e.currentTarget as HTMLElement).style.background = "var(--bg-surface)";
               }}
             >
               <div
@@ -196,8 +196,8 @@ export default function ResumesPage() {
                           style={{
                             padding: "3px 10px",
                             borderRadius: 999,
-                            border: "1px solid #333",
-                            background: "#1e1e1e",
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-surface-deep)",
                             fontSize: 12,
                             color: "#aaa",
                           }}

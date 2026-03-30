@@ -12,7 +12,7 @@ import {
 function scoreTone(score: number) {
   if (score >= 80) return { label: "Strong fit", color: "#52c26d" };
   if (score >= 60) return { label: "Promising fit", color: "#f2b84b" };
-  return { label: "Needs work", color: "#ff8a8a" };
+  return { label: "Needs work", color: "var(--danger-text)" };
 }
 
 export default function JobReadinessPage() {
@@ -95,7 +95,7 @@ export default function JobReadinessPage() {
       <div style={{ maxWidth: 1240, margin: "0 auto" }}>
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ margin: 0, fontSize: 30 }}>Job Readiness</h1>
-          <p style={{ margin: "10px 0 0", color: "#9aa0a6", maxWidth: 760, lineHeight: 1.6 }}>
+          <p style={{ margin: "10px 0 0", color: "var(--text-muted)", maxWidth: 760, lineHeight: 1.6 }}>
             Compare a target job description against your current resume and project evidence,
             then review strengths, gaps, and the highest-priority actions to improve your fit.
           </p>
@@ -111,10 +111,10 @@ export default function JobReadinessPage() {
         >
           <section
             style={{
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               borderRadius: 20,
               padding: 20,
-              background: "linear-gradient(180deg, #171717 0%, #111111 100%)",
+              background: "var(--bg-surface)",
             }}
           >
             <div style={{ marginBottom: 20 }}>
@@ -127,10 +127,10 @@ export default function JobReadinessPage() {
             {loadingEvidence && (
               <div
                 style={{
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   borderRadius: 14,
                   padding: 16,
-                  background: "#141414",
+                  background: "var(--bg-surface-deep)",
                   color: "#8e8e8e",
                 }}
               >
@@ -141,11 +141,11 @@ export default function JobReadinessPage() {
             {!loadingEvidence && loadError && (
               <div
                 style={{
-                  border: "1px solid #503030",
+                  border: "1px solid var(--danger-bg-strong)",
                   borderRadius: 14,
                   padding: 16,
-                  background: "#1d1212",
-                  color: "#ff9b9b",
+                  background: "var(--danger-bg)",
+                  color: "var(--danger-text)",
                   marginBottom: 16,
                 }}
               >
@@ -165,9 +165,9 @@ export default function JobReadinessPage() {
                     width: "100%",
                     resize: "vertical",
                     borderRadius: 14,
-                    border: "1px solid #343434",
-                    background: "#0f0f0f",
-                    color: "#f5f5f5",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-input)",
+                    color: "var(--text-primary)",
                     padding: 14,
                     lineHeight: 1.5,
                     font: "inherit",
@@ -183,9 +183,9 @@ export default function JobReadinessPage() {
                   onChange={(event) => setSelectedResumeId(event.target.value)}
                   style={{
                     borderRadius: 12,
-                    border: "1px solid #343434",
-                    background: "#0f0f0f",
-                    color: "#f5f5f5",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-input)",
+                    color: "var(--text-primary)",
                     padding: "12px 14px",
                     font: "inherit",
                   }}
@@ -214,9 +214,9 @@ export default function JobReadinessPage() {
 
                 <div
                   style={{
-                    border: "1px solid #2a2a2a",
+                    border: "1px solid var(--border)",
                     borderRadius: 14,
-                    background: "#101010",
+                    background: "var(--bg-surface-deep)",
                     padding: 12,
                     maxHeight: 280,
                     overflowY: "auto",
@@ -237,9 +237,10 @@ export default function JobReadinessPage() {
                               gap: 10,
                               padding: 10,
                               borderRadius: 12,
-                              background: checked ? "#1a2338" : "#151515",
-                              border: checked ? "1px solid #4c78ff" : "1px solid #222",
+                              background: checked ? "var(--hover-bg)" : "var(--bg-surface)",
+                              border: checked ? "1px solid var(--hover-border)" : "1px solid var(--border)",
                               cursor: "pointer",
+                              transition: "background 0.15s ease, border-color 0.15s ease",
                             }}
                           >
                             <input
@@ -277,7 +278,7 @@ export default function JobReadinessPage() {
                   style={{
                     padding: "12px 18px",
                     borderRadius: 12,
-                    border: "1px solid #3658c7",
+                    border: "1px solid var(--accent)",
                     background: submitting ? "#22366f" : "#2c4fbf",
                     color: "#fff",
                     fontWeight: 600,
@@ -291,11 +292,11 @@ export default function JobReadinessPage() {
               {submitError && (
                 <div
                   style={{
-                    border: "1px solid #503030",
+                    border: "1px solid var(--danger-bg-strong)",
                     borderRadius: 14,
                     padding: 16,
-                    background: "#1d1212",
-                    color: "#ff9b9b",
+                    background: "var(--danger-bg)",
+                    color: "var(--danger-text)",
                     lineHeight: 1.5,
                   }}
                 >
@@ -307,10 +308,10 @@ export default function JobReadinessPage() {
 
           <section
             style={{
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               borderRadius: 20,
               padding: 20,
-              background: "radial-gradient(circle at top left, rgba(67, 103, 203, 0.18), transparent 32%), #121212",
+              background: "var(--bg-surface)",
               minHeight: 520,
               maxHeight: "min(820px, calc(100vh - 140px))",
               display: "flex",
@@ -377,9 +378,9 @@ export default function JobReadinessPage() {
                     border: "1px solid #272727",
                     borderRadius: 16,
                     padding: 18,
-                    background: "#151515",
+                    background: "var(--bg-surface)",
                     lineHeight: 1.6,
-                    color: "#dfdfdf",
+                    color: "var(--text-primary)",
                   }}
                 >
                   {result.summary}
@@ -392,7 +393,7 @@ export default function JobReadinessPage() {
                     gap: 16,
                   }}
                 >
-                  <div style={{ border: "1px solid #23462c", borderRadius: 16, padding: 16, background: "#111712" }}>
+                  <div style={{ border: "1px solid #b2dfb2", borderRadius: 16, padding: 16, background: "#f0faf0" }}>
                     <div style={{ fontWeight: 700, marginBottom: 12, color: "#7fe18f" }}>Strengths</div>
                     <div style={{ display: "grid", gap: 12 }}>
                       {result.strengths.map((strength) => (
@@ -400,13 +401,13 @@ export default function JobReadinessPage() {
                           <div style={{ fontWeight: 600, marginBottom: 4 }}>
                             {strength.rank}. {strength.item}
                           </div>
-                          <div style={{ color: "#a7b3ab", lineHeight: 1.5 }}>{strength.reason}</div>
+                          <div style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{strength.reason}</div>
                         </article>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{ border: "1px solid #4b3323", borderRadius: 16, padding: 16, background: "#171210" }}>
+                  <div style={{ border: "1px solid #f5c07a", borderRadius: 16, padding: 16, background: "#fffbf0" }}>
                     <div style={{ fontWeight: 700, marginBottom: 12, color: "#f2b84b" }}>Weaknesses</div>
                     <div style={{ display: "grid", gap: 12 }}>
                       {result.weaknesses.map((weakness) => (
@@ -414,7 +415,7 @@ export default function JobReadinessPage() {
                           <div style={{ fontWeight: 600, marginBottom: 4 }}>
                             {weakness.rank}. {weakness.item}
                           </div>
-                          <div style={{ color: "#c3b2a6", lineHeight: 1.5 }}>{weakness.reason}</div>
+                          <div style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{weakness.reason}</div>
                         </article>
                       ))}
                     </div>
@@ -428,10 +429,10 @@ export default function JobReadinessPage() {
                       <article
                         key={`${suggestion.priority}-${suggestion.item}`}
                         style={{
-                          border: "1px solid #2a2a2a",
+                          border: "1px solid var(--border)",
                           borderRadius: 18,
                           padding: 18,
-                          background: "linear-gradient(180deg, #171717 0%, #131313 100%)",
+                          background: "var(--bg-surface)",
                         }}
                       >
                         <div
@@ -447,8 +448,8 @@ export default function JobReadinessPage() {
                             style={{
                               padding: "5px 10px",
                               borderRadius: 999,
-                              background: "#24345f",
-                              color: "#cdd9ff",
+                              background: "var(--hover-bg)",
+                              color: "var(--accent)",
                               fontSize: 12,
                               fontWeight: 700,
                               letterSpacing: 0.3,
@@ -461,8 +462,8 @@ export default function JobReadinessPage() {
                             style={{
                               padding: "5px 10px",
                               borderRadius: 999,
-                              border: "1px solid #343434",
-                              color: "#9fa6ad",
+                              border: "1px solid var(--border)",
+                              color: "var(--text-muted)",
                               fontSize: 12,
                               textTransform: "capitalize",
                             }}
@@ -475,7 +476,7 @@ export default function JobReadinessPage() {
                           {suggestion.item}
                         </div>
 
-                        <div style={{ color: "#d8d8d8", lineHeight: 1.7, marginBottom: 18 }}>
+                        <div style={{ color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 18 }}>
                           {suggestion.reason}
                         </div>
 
@@ -494,13 +495,13 @@ export default function JobReadinessPage() {
                               border: "1px solid #2c2c2c",
                               borderRadius: 14,
                               padding: 14,
-                              background: "#101010",
+                              background: "var(--bg-surface-deep)",
                             }}
                           >
                             <div style={{ color: "#8e8e8e", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
                               Suggested approach
                             </div>
-                            <div style={{ color: "#cfcfcf", lineHeight: 1.6 }}>
+                            <div style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
                               {suggestion.resource_hint || "Use this action to create stronger evidence for your resume, portfolio, or selected projects."}
                             </div>
                           </div>

@@ -23,9 +23,9 @@ export default function TextBlockEditor({
           width: "100%",
           padding: "8px 10px",
           borderRadius: 8,
-          border: "1px solid #2a2a2a",
-          background: "#0d0d0d",
-          color: "#ddd",
+          border: "1px solid var(--border)",
+          background: "#f0f0f0",
+          color: "#333",
           fontSize: 13,
           resize: "vertical",
           boxSizing: "border-box",
@@ -35,7 +35,7 @@ export default function TextBlockEditor({
       />
 
       {error && (
-        <div style={{ color: "#ff8a8a", fontSize: 12, marginTop: 6 }}>
+        <div style={{ color: "var(--danger-text)", fontSize: 12, marginTop: 6 }}>
           {error}
         </div>
       )}

@@ -229,19 +229,19 @@ export default function ProfilePage() {
       >
         <div
           style={{
-            background: "#1b1b1b",
+            background: "var(--bg-surface)",
             borderRadius: 16,
             padding: 24,
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
           }}
         >
           <h2 style={{ marginTop: 0, marginBottom: 4 }}>User Information</h2>
-          <p style={{ marginTop: 0, marginBottom: 16, color: "#aaa", fontSize: 14 }}>
+          <p style={{ marginTop: 0, marginBottom: 16, color: "var(--text-muted)", fontSize: 14 }}>
             Manage your resume's display name, education, awards, and skills.
           </p>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Name</label>
+            <label style={{ fontSize: 14, color: "var(--text-muted)" }}>Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -252,15 +252,15 @@ export default function ProfilePage() {
                 marginTop: 6,
                 padding: 10,
                 borderRadius: 8,
-                border: "1px solid #2a2a2a",
-                background: "#111",
-                color: "#fff",
+                border: "1px solid var(--border)",
+                background: "var(--bg-input)",
+                color: "var(--text-primary)",
               }}
             />
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Education</label>
+            <label style={{ fontSize: 14, color: "var(--text-muted)" }}>Education</label>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <input
                 value={educationInput}
@@ -277,9 +277,9 @@ export default function ProfilePage() {
                   flex: 1,
                   padding: 10,
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
-                  background: "#111",
-                  color: "#fff",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-input)",
+                  color: "var(--text-primary)",
                 }}
               />
               <button
@@ -294,8 +294,8 @@ export default function ProfilePage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
-                  background: "#2b2b2b",
+                  border: "1px solid var(--border)",
+                  background: "var(--accent)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -308,7 +308,7 @@ export default function ProfilePage() {
                 <span
                   key={i}
                   style={{
-                    background: "#2a2a2a",
+                    background: "var(--bg-surface-deep)",
                     borderRadius: 6,
                     padding: "4px 10px",
                     fontSize: 13,
@@ -325,7 +325,7 @@ export default function ProfilePage() {
                     style={{
                       background: "transparent",
                       border: "none",
-                      color: "#aaa",
+                      color: "var(--text-muted)",
                       cursor: "pointer",
                       padding: 0,
                       lineHeight: 1,
@@ -339,7 +339,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Awards</label>
+            <label style={{ fontSize: 14, color: "var(--text-muted)" }}>Awards</label>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <input
                 value={awardInput}
@@ -356,9 +356,9 @@ export default function ProfilePage() {
                   flex: 1,
                   padding: 10,
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
-                  background: "#111",
-                  color: "#fff",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-input)",
+                  color: "var(--text-primary)",
                 }}
               />
               <button
@@ -373,8 +373,8 @@ export default function ProfilePage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
-                  background: "#2b2b2b",
+                  border: "1px solid var(--border)",
+                  background: "var(--accent)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -387,7 +387,7 @@ export default function ProfilePage() {
                 <span
                   key={i}
                   style={{
-                    background: "#2a2a2a",
+                    background: "var(--bg-surface-deep)",
                     borderRadius: 6,
                     padding: "4px 10px",
                     fontSize: 13,
@@ -404,7 +404,7 @@ export default function ProfilePage() {
                     style={{
                       background: "transparent",
                       border: "none",
-                      color: "#aaa",
+                      color: "var(--text-muted)",
                       cursor: "pointer",
                       padding: 0,
                       lineHeight: 1,
@@ -418,7 +418,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: 0 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Skills</label>
+            <label style={{ fontSize: 14, color: "var(--text-muted)" }}>Skills</label>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <input
                 value={skillInput}
@@ -436,9 +436,9 @@ export default function ProfilePage() {
                   flex: 1,
                   padding: 10,
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
-                  background: "#111",
-                  color: "#fff",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-input)",
+                  color: "var(--text-primary)",
                 }}
               />
               <select
@@ -448,9 +448,9 @@ export default function ProfilePage() {
                 style={{
                   padding: 10,
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
-                  background: "#111",
-                  color: "#fff",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-input)",
+                  color: "var(--text-primary)",
                   fontSize: 13,
                 }}
               >
@@ -473,8 +473,8 @@ export default function ProfilePage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
-                  background: "#2b2b2b",
+                  border: "1px solid var(--border)",
+                  background: "var(--accent)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -487,7 +487,7 @@ export default function ProfilePage() {
                 <span
                   key={i}
                   style={{
-                    background: "#2a2a2a",
+                    background: "var(--bg-surface-deep)",
                     borderRadius: 6,
                     padding: "4px 10px",
                     fontSize: 13,
@@ -501,7 +501,7 @@ export default function ProfilePage() {
                     style={{
                       fontSize: 11,
                       color: "#888",
-                      background: "#1a1a1a",
+                      background: "var(--bg-surface-deep)",
                       borderRadius: 4,
                       padding: "1px 5px",
                     }}
@@ -515,7 +515,7 @@ export default function ProfilePage() {
                     style={{
                       background: "transparent",
                       border: "none",
-                      color: "#aaa",
+                      color: "var(--text-muted)",
                       cursor: "pointer",
                       padding: 0,
                       lineHeight: 1,
@@ -535,14 +535,14 @@ export default function ProfilePage() {
             void handleSave();
           }}
           style={{
-            background: "#1b1b1b",
+            background: "var(--bg-surface)",
             borderRadius: 16,
             padding: 24,
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
           }}
         >
           <h2 style={{ marginTop: 0, marginBottom: 4 }}>Settings</h2>
-          <p style={{ marginTop: 0, marginBottom: 16, color: "#aaa", fontSize: 14 }}>
+          <p style={{ marginTop: 0, marginBottom: 16, color: "var(--text-muted)", fontSize: 14 }}>
             GitHub access, Git-related analysis, and AI consent.
           </p>
 
@@ -558,7 +558,7 @@ export default function ProfilePage() {
                     borderRadius: 8,
                     border: "1px solid #444",
                     background: "transparent",
-                    color: "#ff8a8a",
+                    color: "var(--danger-text)",
                     cursor: "pointer",
                     fontSize: 13,
                   }}
@@ -584,7 +584,7 @@ export default function ProfilePage() {
                   {githubAuthStatus === "pending" ? "Waiting for GitHub..." : "Connect GitHub"}
                 </button>
               )}
-              <span style={{ fontSize: 13, color: githubConnected ? "#8ad6a2" : "#888" }}>
+              <span style={{ fontSize: 13, color: githubConnected ? "#16a34a" : "var(--text-muted)" }}>
                 {githubConnected
                   ? "Connected"
                   : githubAuthStatus === "pending"
@@ -599,7 +599,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>Email*</label>
+            <label style={{ fontSize: 14, color: "var(--text-muted)" }}>Email*</label>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -610,20 +610,20 @@ export default function ProfilePage() {
                 marginTop: 6,
                 padding: 10,
                 borderRadius: 8,
-                border: "1px solid #2a2a2a",
-                background: "#111",
-                color: "#fff",
+                border: "1px solid var(--border)",
+                background: "var(--bg-input)",
+                color: "var(--text-primary)",
               }}
             />
             {email && !emailIsValid && (
-              <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
-                Please enter a valid email (e.g. patreides@email.com)
+              <div style={{ color: "var(--danger-text)", fontSize: 13, marginTop: 6 }}>
+                Please enter a valid email (e.g. example@gmail.com)
               </div>
             )}
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 14, color: "#aaa" }}>GitHub Username</label>
+            <label style={{ fontSize: 14, color: "var(--text-muted)" }}>GitHub Username</label>
             <input
               value={github}
               onChange={(e) => setGithub(e.target.value)}
@@ -634,13 +634,13 @@ export default function ProfilePage() {
                 marginTop: 6,
                 padding: 10,
                 borderRadius: 8,
-                border: "1px solid #2a2a2a",
-                background: "#111",
-                color: "#fff",
+                border: "1px solid var(--border)",
+                background: "var(--bg-input)",
+                color: "var(--text-primary)",
               }}
             />
             {github && !githubIsValid && (
-              <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
+              <div style={{ color: "var(--danger-text)", fontSize: 13, marginTop: 6 }}>
                 Please enter a valid GitHub username (e.g. paulatreides)
               </div>
             )}
@@ -651,8 +651,8 @@ export default function ProfilePage() {
               marginBottom: 16,
               padding: 14,
               borderRadius: 12,
-              border: "1px solid #2a2a2a",
-              background: "#141414",
+              border: "1px solid var(--border)",
+              background: "var(--bg-surface-deep)",
             }}
           >
             <label
@@ -671,10 +671,10 @@ export default function ProfilePage() {
                 onChange={(e) => handleConsentChange(e.target.checked)}
               />
               <span>
-                <strong style={{ display: "block", color: "#f1f1f1" }}>
+                <strong style={{ display: "block", color: "var(--text-primary)" }}>
                   I consent to project data processing for mining *
                 </strong>
-                <span style={{ color: "#aaa", lineHeight: 1.5 }}>
+                <span style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
                   Allow the app to analyze your project files and Git data to generate resume and portfolio content.
                 </span>
               </span>
@@ -696,14 +696,14 @@ export default function ProfilePage() {
                 onChange={(e) => setMlConsent(e.target.checked)}
               />
               <span>
-                <strong style={{ display: "block", color: consent ? "#f1f1f1" : "#888" }}>
+                <strong style={{ display: "block", color: consent ? "var(--text-primary)" : "var(--text-muted)" }}>
                   I consent to AI-assisted analysis and features.
                 </strong>
-                <span style={{ color: "#aaa", lineHeight: 1.5 }}>
+                <span style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
                   Enable the use of AI for more in-depth project analysis and features such as an AI-generated portfolio summary.
                 </span>
                 {!consent && (
-                  <span style={{ display: "block", color: "#888", marginTop: 4 }}>
+                  <span style={{ display: "block", color: "var(--text-muted)", marginTop: 4 }}>
                     Enable project data processing first to choose AI-assisted analysis.
                   </span>
                 )}
@@ -711,14 +711,14 @@ export default function ProfilePage() {
             </label>
 
             {email.trim() !== "" && !consent && (
-              <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
+              <div style={{ color: "var(--danger-text)", fontSize: 13, marginTop: 6 }}>
                 Please provide consent to enable saving
               </div>
             )}
           </div>
 
-          {error && <div style={{ color: "#ff8a8a", marginBottom: 12 }}>{error}</div>}
-          {success && <div style={{ color: "#8ad6a2", marginBottom: 12 }}>{success}</div>}
+          {error && <div style={{ color: "var(--danger-text)", marginBottom: 12 }}>{error}</div>}
+          {success && <div style={{ color: "#16a34a", marginBottom: 12 }}>{success}</div>}
 
           <div
             style={{
@@ -727,7 +727,7 @@ export default function ProfilePage() {
               alignItems: "center",
             }}
           >
-            <div style={{ fontSize: 13, color: "#888" }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
               {isLoadingConfig
                 ? "Loading saved settings..."
                 : isSaving
@@ -742,8 +742,10 @@ export default function ProfilePage() {
                 padding: "10px 16px",
                 borderRadius: 10,
                 border: "none",
-                background: isValid ? "#2b2b2b" : "#202020",
-                color: "#fff",
+                background: isValid ? "var(--accent)" : "var(--bg-surface-deep)",
+                color: isValid ? "#fff" : "var(--text-muted)",
+                fontWeight: 600,
+                cursor: isValid ? "pointer" : "not-allowed",
                 opacity: isValid ? 1 : 0.6,
               }}
             >

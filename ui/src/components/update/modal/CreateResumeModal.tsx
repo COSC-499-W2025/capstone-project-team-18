@@ -134,8 +134,8 @@ export default function CreateResumeModal({
         style={{
           width: "100%",
           maxWidth: 560,
-          background: "#1b1b1b",
-          border: "1px solid #2a2a2a",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border)",
           borderRadius: 18,
           padding: 24,
           boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
@@ -156,7 +156,7 @@ export default function CreateResumeModal({
             style={{
               border: "none",
               background: "transparent",
-              color: isSubmitting ? "#666" : "#ccc",
+              color: isSubmitting ? "#777" : "#444",
               fontSize: 20,
               cursor: isSubmitting ? "not-allowed" : "pointer",
             }}
@@ -187,8 +187,8 @@ export default function CreateResumeModal({
               boxSizing: "border-box",
               padding: "9px 12px",
               borderRadius: 10,
-              border: "1px solid #2a2a2a",
-              background: "#151515",
+              border: "1px solid var(--border)",
+              background: "var(--bg-surface)",
               color: "#fff",
               fontSize: 14,
               outline: "none",
@@ -213,10 +213,10 @@ export default function CreateResumeModal({
           {projectsLoading && (
             <div
               style={{
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
                 padding: 16,
-                background: "#151515",
+                background: "var(--bg-surface)",
                 color: "#999",
                 fontSize: 14,
               }}
@@ -228,11 +228,11 @@ export default function CreateResumeModal({
           {!projectsLoading && projectsError && (
             <div
               style={{
-                border: "1px solid #3a1f1f",
+                border: "1px solid var(--danger-bg-strong)",
                 borderRadius: 12,
                 padding: 16,
-                background: "#1a1111",
-                color: "#ff8a8a",
+                background: "var(--danger-bg)",
+                color: "var(--danger-text)",
                 fontSize: 14,
                 display: "flex",
                 justifyContent: "space-between",
@@ -245,9 +245,9 @@ export default function CreateResumeModal({
                 style={{
                   padding: "6px 10px",
                   borderRadius: 8,
-                  border: "1px solid #2a2a2a",
+                  border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#ddd",
+                  color: "#333",
                   cursor: "pointer",
                   fontSize: 13,
                 }}
@@ -260,10 +260,10 @@ export default function CreateResumeModal({
           {!projectsLoading && !projectsError && projects.length === 0 && (
             <div
               style={{
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
                 padding: 16,
-                background: "#151515",
+                background: "var(--bg-surface)",
                 color: "#999",
                 fontSize: 14,
               }}
@@ -297,9 +297,9 @@ export default function CreateResumeModal({
                       borderRadius: 10,
                       border: selected
                         ? "1px solid #6f7cff"
-                        : "1px solid #2a2a2a",
-                      background: selected ? "#141e3b" : "#151515",
-                      color: "#fff",
+                        : "1px solid var(--border)",
+                      background: selected ? "var(--hover-bg)" : "var(--bg-surface)",
+                      color: selected ? "var(--text-primary)" : "var(--text-secondary)",
                       cursor: isSubmitting ? "not-allowed" : "pointer",
                       textAlign: "left",
                       fontSize: 14,
@@ -332,7 +332,7 @@ export default function CreateResumeModal({
           )}
 
           {selectedProjects.size > 0 && (
-            <div style={{ fontSize: 12, color: "#6f7cff", marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8 }}>
               {selectedProjects.size} project
               {selectedProjects.size !== 1 ? "s" : ""} selected
             </div>
@@ -340,7 +340,7 @@ export default function CreateResumeModal({
         </div>
 
         {submitError && (
-          <div style={{ color: "#ff8a8a", fontSize: 14, marginBottom: 12 }}>
+          <div style={{ color: "var(--danger-text)", fontSize: 14, marginBottom: 12 }}>
             {submitError}
           </div>
         )}
@@ -366,9 +366,9 @@ export default function CreateResumeModal({
               style={{
                 padding: "10px 14px",
                 background: "transparent",
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 borderRadius: 10,
-                color: isSubmitting ? "#666" : "#ddd",
+                color: isSubmitting ? "#777" : "#444",
                 cursor: isSubmitting ? "not-allowed" : "pointer",
               }}
             >
