@@ -16,7 +16,27 @@
 
 **[Week 10, 03/09 - 03/15](#week-10-0309---0315)**
 
+**[Week 12, 03/23 - 03/29](#week-12-0323---0329)**
+
 ---
+
+# Week 12 03/23 - 03/29
+[Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week12_log.png)
+This week, I focused on expanding the resume system into a more complete and customizable workflow, aligning it closely with the portfolio-style experience across the application. A major part of this work involved introducing multi-resume management, allowing users to view, navigate, and edit multiple generated resumes through a dedicated collection page. I implemented a new resume collection endpoint, built out the ResumesPage, and updated routing and navigation to follow a consistent collection/detail pattern similar to portfolios. I also cleaned up the ResumePage to be editor-only and removed the legacy generation flow. [PR `534` Resume Frontend Suite](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/534)
+
+In parallel, I enhanced resume customization by restructuring education and awards into structured objects across the full stack, including backend schema updates, normalization for legacy data, and redesigned frontend editing components. I improved export functionality by refining the LaTeX renderer and adding Word (.docx) export support, along with better formatting for links and layout consistency. Additionally, I introduced profile-based defaults for resume names, fixed a persistence issue with user-edited skills, and implemented a non-blocking warning system to notify users when their resume exceeds a single page. [PR `#563` Resume Frontend Suite 2.0](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/563)
+
+On the UI side, I enhanced the project upload experience by implementing a loading skeleton and improved feedback during project analysis. This included adding a polling mechanism to detect when analysis completes, refining rendering logic for different states, and improving the transition from upload to dashboard. Overall, these changes make the system more responsive, intuitive, and aligned with a production-ready workflow. [PR `#523` Electron Skeleton UI & Loading Loop](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/523)
+
+Additionally, I worked on refining the overall frontend UI/UX to improve consistency and usability across the dashboard, projects, and resume flows. This included redesigning the dashboard layout for better information hierarchy, aligning project and resume cards visually, and cleaning up project detail pages by removing unused or misleading elements. I also improved feedback mechanisms in the resume editing experience and standardized styling across components, ensuring the UI more accurately reflects backend data and provides a cleaner, more intuitive user experience. [PR `502` Peer testing Endpoint Connection](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/502)
+
+Additionally, I reviewed the following PRs:
+1. [PR `#564` Removed Extra Skills Levels](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/564)
+2. [PR `#557` Small changes to Profile page](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/557)
+3. [PR `526` GitHub pages deployment](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/526)
+4. [PR `517` User GitHub OAuth Flow](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/517)
+5. [PR `494` 494 add more project insights](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/518)
+
 # Week 10 03/09 - 03/15
 [Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week10_log.png)
 
