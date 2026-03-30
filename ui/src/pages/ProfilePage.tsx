@@ -241,7 +241,7 @@ export default function ProfilePage() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Paula Atreides"
+              placeholder="e.g. Paul Atreides"
               disabled={isSaving || isLoadingConfig}
               style={{
                 width: "100%",
@@ -597,7 +597,7 @@ export default function ProfilePage() {
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
+              placeholder="patreides@email.com"
               disabled={isSaving || isLoadingConfig}
               style={{
                 width: "100%",
