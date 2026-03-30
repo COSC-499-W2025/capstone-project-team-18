@@ -1350,7 +1350,7 @@ function HeaderSection({
               style={inputStyle}
               value={draft.name}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-              placeholder="e.g. Tawana Ndlovu"
+              placeholder="e.g. Paul Atreides"
             />
           </div>
           <div style={rowStyle}>
@@ -1368,7 +1368,7 @@ function HeaderSection({
               style={inputStyle}
               value={draft.email}
               onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
-              placeholder="e.g. you@email.com"
+              placeholder="e.g. paulatreides@email.com"
             />
           </div>
           <div style={rowStyle}>
@@ -1377,7 +1377,7 @@ function HeaderSection({
               style={inputStyle}
               value={draft.linkedin}
               onChange={(e) => setDraft((d) => ({ ...d, linkedin: e.target.value }))}
-              placeholder="e.g. linkedin.com/in/yourname"
+              placeholder="Your LinkedIn Username"
             />
           </div>
           <div style={rowStyle}>
@@ -1386,7 +1386,7 @@ function HeaderSection({
               style={inputStyle}
               value={draft.github}
               onChange={(e) => setDraft((d) => ({ ...d, github: e.target.value }))}
-              placeholder="e.g. yourusername"
+              placeholder="Your GitHub Username"
             />
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
