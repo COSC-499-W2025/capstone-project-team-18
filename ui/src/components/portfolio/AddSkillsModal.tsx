@@ -142,10 +142,10 @@ export default function AddSkillsModal({
                   gap: 4,
                   fontSize: 12,
                   color: "var(--accent)",
-                  border: "1px solid #6f7cff44",
+                  border: "1px solid #6EC4E844",
                   borderRadius: 999,
                   padding: "3px 10px",
-                  background: "#6f7cff11",
+                  background: "#6EC4E811",
                 }}
               >
                 {skill}
@@ -154,7 +154,7 @@ export default function AddSkillsModal({
                   style={{
                     background: "transparent",
                     border: "none",
-                    color: "#6f7cff99",
+                    color: "#6EC4E899",
                     cursor: "pointer",
                     fontSize: 15,
                     lineHeight: 1,

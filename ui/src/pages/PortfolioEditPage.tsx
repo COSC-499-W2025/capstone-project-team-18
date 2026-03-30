@@ -1256,9 +1256,9 @@ export default function PortfolioEditPage() {
                           label="Themes"
                           pills={edit.themesDraft}
                           inputValue={edit.newThemeInput}
-                          pillColor="#6f7cff"
-                          borderColor="#6f7cff44"
-                          bgColor="#6f7cff11"
+                          pillColor="#6EC4E8"
+                          borderColor="#6EC4E844"
+                          bgColor="#6EC4E811"
                           onRemove={(t) => updateCard(card.project_name, { themesDraft: edit.themesDraft.filter((x) => x !== t) })}
                           onInputChange={(v) => updateCard(card.project_name, { newThemeInput: v })}
                           onAdd={(v) => {

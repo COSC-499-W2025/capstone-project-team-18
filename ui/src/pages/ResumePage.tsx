@@ -84,8 +84,8 @@ const SKILL_CATS: {
     inputKey: "expertInput",
     label: "Expert",
     color: "var(--accent)",
-    border: "#6f7cff55",
-    bg: "#6f7cff11",
+    border: "#6EC4E855",
+    bg: "#6EC4E811",
   },
   {
     key: "intermediate",
