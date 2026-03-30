@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../api/apiClient";
 import InfoIcon from '@mui/icons-material/Info';
+import FolderIcon from '@mui/icons-material/Folder';
 
 
 type UploadProjectModalProps = {
@@ -247,7 +248,7 @@ export default function UploadProjectModal({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           style={{
-            border: `2px dashed ${isDragging ? "#6b7280" : "var(--border-strong)"}`,
+            border: `2px dashed ${isDragging ? "#6b7280" : "#0055B7"}`,
             borderRadius: 16,
             padding: "48px 24px",
             textAlign: "center",
@@ -258,7 +259,9 @@ export default function UploadProjectModal({
             opacity: isUploading || isLoadingConfig ? 0.7 : 1,
           }}
         >
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📁</div>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>
+            <FolderIcon style={{ fontSize: 32 }} />
+          </div>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>
             Upload or Drag and Drop
           </div>
@@ -450,7 +453,7 @@ export default function UploadProjectModal({
                   isLoadingConfig ||
                   hasConsent === false
                     ? "#202020"
-                    : "#2b2b2b",
+                    : "#0055B7",
                 color: "#fff",
                 opacity:
                   !selectedFile ||
