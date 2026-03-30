@@ -172,14 +172,14 @@ header .portfolio-updated {
 
 .block-text {
   font-size: 0.95rem;
-  color: #ccc;
+  color: #333333;
   margin-bottom: 0.75rem;
   line-height: 1.7;
 }
 
 .block-list {
   font-size: 0.95rem;
-  color: #ccc;
+  color: #333333;
   margin-bottom: 0.75rem;
   padding-left: 1.5rem;
   line-height: 1.8;
