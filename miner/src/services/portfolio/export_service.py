@@ -25,6 +25,7 @@ from sqlmodel import Session
 
 from src.database.api.CRUD.portfolio import load_portfolio, get_project_cards_for_portfolio
 from src.database import get_project_report_models_by_names, get_most_recent_user_config
+from src.database.api.CRUD.projects import get_project_report_model_by_name
 from src.utils.errors import KeyNotFoundError
 
 
