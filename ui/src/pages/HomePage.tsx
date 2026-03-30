@@ -182,8 +182,8 @@ async function handleUploadSuccess() {
       >
         <div>
           <h1 style={{ margin: 0 }}>Dashboard</h1>
-          <p style={{ marginTop: 8, color: "#666" }}>
-            View projects, resumes, and portfolios.
+          <p style={{ marginTop: 8, color: "var(--text-secondary)" }}>
+            Manage projects, resumes, portfolios, and your profile.
           </p>
         </div>
 
@@ -239,7 +239,7 @@ async function handleUploadSuccess() {
 
             {loading && projects.length === 0 ? (
               <>
-                <div style={{ color: "#999", marginBottom: 12 }}>
+                <div style={{ color: "var(--text-muted)", marginBottom: 12 }}>
                   Loading Projects...
                 </div>
                 <ProjectSkeleton count={3} />
@@ -247,8 +247,8 @@ async function handleUploadSuccess() {
             ) : (
               <>
                 {isProjectAnalysisInProgress && (
-                  <div style={{ color: "#999", marginBottom: 12 }}>
-                    Project Analysis in Progress...
+                  <div style={{ color: "var(--text-muted)", marginBottom: 12 }}>
+                    Project Analysis In Progress...
                   </div>
                 )}
                 {!error && projects.length === 0 && !isProjectAnalysisInProgress && (
@@ -347,7 +347,7 @@ async function handleUploadSuccess() {
                     )}
 
                     {!resumesLoading && !resumesError && resumes.length === 0 && (
-                      <div style={{ color: "#999" }}>No resumes yet.</div>
+                      <div style={{ color: "var(--text-muted)" }}>No resumes yet.</div>
                       )}
 
                       {!resumesLoading && !resumesError && resumes.length > 0 && (
@@ -426,7 +426,7 @@ async function handleUploadSuccess() {
             )}
 
             {!portfoliosLoading && !portfoliosError && portfolios.length === 0 && (
-              <div style={{ color: "#999" }}>No portfolios yet.</div>
+              <div style={{ color: "var(--text-muted)" }}>No portfolios yet.</div>
             )}
 
             {!portfoliosLoading && !portfoliosError && portfolios.length > 0 && (

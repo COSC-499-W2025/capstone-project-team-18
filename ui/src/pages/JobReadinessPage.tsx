@@ -119,7 +119,7 @@ export default function JobReadinessPage() {
           >
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Analysis Input</div>
-              <div style={{ color: "#8e8e8e", lineHeight: 1.5 }}>
+              <div style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
                 Pick the evidence you want the analyzer to use, then run the readiness assessment.
               </div>
             </div>
@@ -131,7 +131,7 @@ export default function JobReadinessPage() {
                   borderRadius: 14,
                   padding: 16,
                   background: "var(--bg-surface-deep)",
-                  color: "#8e8e8e",
+                  color: "var(--text-muted)",
                 }}
               >
                 Loading resumes and projects...
@@ -197,7 +197,7 @@ export default function JobReadinessPage() {
                     </option>
                   ))}
                 </select>
-                <div style={{ color: "#7d7d7d", fontSize: 13 }}>
+                <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
                   {selectedResume
                     ? `Selected: ${selectedResume.title || `Resume #${selectedResume.id}`}`
                     : "You can submit without a resume if project evidence is enough."}
@@ -207,7 +207,7 @@ export default function JobReadinessPage() {
               <div style={{ display: "grid", gap: 10 }}>
                 <div>
                   <div style={{ fontWeight: 600, marginBottom: 6 }}>Project Evidence</div>
-                  <div style={{ color: "#7d7d7d", fontSize: 13 }}>
+                  <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
                     Select the projects that best demonstrate the skills needed for this role.
                   </div>
                 </div>
@@ -223,7 +223,7 @@ export default function JobReadinessPage() {
                   }}
                 >
                   {projects.length === 0 ? (
-                    <div style={{ color: "#7d7d7d", padding: 8 }}>No projects available.</div>
+                    <div style={{ color: "var(--text-muted)", padding: 8 }}>No projects available.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 10 }}>
                       {projects.map((project) => {
@@ -265,7 +265,7 @@ export default function JobReadinessPage() {
                   alignItems: "center",
                   gap: 12,
                   flexWrap: "wrap",
-                  color: "#8e8e8e",
+                  color: "var(--text-muted)",
                   fontSize: 13,
                 }}
               >
@@ -336,7 +336,7 @@ export default function JobReadinessPage() {
                   alignItems: "center",
                   justifyContent: "center",
                   textAlign: "center",
-                  color: "#8e8e8e",
+                  color: "var(--text-muted)",
                   padding: 24,
                 }}
               >
@@ -354,10 +354,10 @@ export default function JobReadinessPage() {
                   }}
                 >
                   <div>
-                    <div style={{ color: "#8e8e8e", marginBottom: 6 }}>Overall Fit</div>
+                    <div style={{ color: "var(--text-muted)", marginBottom: 6 }}>Overall Fit</div>
                     <div style={{ fontSize: 52, fontWeight: 800, lineHeight: 1 }}>
                       {result.fit_score}
-                      <span style={{ fontSize: 20, color: "#8e8e8e", marginLeft: 6 }}>/100</span>
+                      <span style={{ fontSize: 20, color: "var(--text-muted)", marginLeft: 6 }}>/100</span>
                     </div>
                   </div>
                   <div
@@ -376,7 +376,7 @@ export default function JobReadinessPage() {
 
                 <div
                   style={{
-                    border: "1px solid #272727",
+                    border: "1px solid var(--border)",
                     borderRadius: 16,
                     padding: 18,
                     background: "var(--bg-surface)",
@@ -394,8 +394,8 @@ export default function JobReadinessPage() {
                     gap: 16,
                   }}
                 >
-                  <div style={{ border: "1px solid #b2dfb2", borderRadius: 16, padding: 16, background: "#f0faf0" }}>
-                    <div style={{ fontWeight: 700, marginBottom: 12, color: "#7fe18f" }}>Strengths</div>
+                  <div style={{ border: "1px solid #bbf7d0", borderRadius: 16, padding: 16, background: "#f0faf8" }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, color: "#166534" }}>Strengths</div>
                     <div style={{ display: "grid", gap: 12 }}>
                       {result.strengths.map((strength) => (
                         <article key={`${strength.rank}-${strength.item}`}>
@@ -408,8 +408,8 @@ export default function JobReadinessPage() {
                     </div>
                   </div>
 
-                  <div style={{ border: "1px solid #f5c07a", borderRadius: 16, padding: 16, background: "#fffbf0" }}>
-                    <div style={{ fontWeight: 700, marginBottom: 12, color: "#f2b84b" }}>Weaknesses</div>
+                  <div style={{ border: "1px solid #fde68a", borderRadius: 16, padding: 16, background: "#fffdf0" }}>
+                    <div style={{ fontWeight: 700, marginBottom: 12, color: "#92400e" }}>Weaknesses</div>
                     <div style={{ display: "grid", gap: 12 }}>
                       {result.weaknesses.map((weakness) => (
                         <article key={`${weakness.rank}-${weakness.item}`}>
@@ -483,23 +483,23 @@ export default function JobReadinessPage() {
 
                         <div style={{ display: "grid", gap: 14 }}>
                           <div>
-                            <div style={{ color: "#8e8e8e", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                            <div style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
                               Start with
                             </div>
-                            <div style={{ color: "#f1f1f1", lineHeight: 1.5 }}>
+                            <div style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
                               {suggestion.resource_name || "Not specified"}
                             </div>
                           </div>
 
                           <div
                             style={{
-                              border: "1px solid #2c2c2c",
+                              border: "1px solid var(--border-strong)",
                               borderRadius: 14,
                               padding: 14,
                               background: "var(--bg-surface-deep)",
                             }}
                           >
-                            <div style={{ color: "#8e8e8e", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                            <div style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
                               Suggested approach
                             </div>
                             <div style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>

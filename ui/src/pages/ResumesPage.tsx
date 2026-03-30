@@ -75,7 +75,7 @@ export default function ResumesPage() {
       >
         <div>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Resumes</h1>
-          <p style={{ marginTop: 6, color: "#666", margin: "6px 0 0" }}>
+          <p style={{ marginTop: 6, color: "var(--text-secondary)", margin: "6px 0 0" }}>
             Create and manage different resume versions tailored for each application.
           </p>
         </div>
@@ -111,7 +111,7 @@ export default function ResumesPage() {
             borderRadius: 14,
             padding: 20,
             background: "var(--bg-surface)",
-            color: "#666",
+            color: "var(--text-secondary)",
             fontSize: 14,
           }}
         >
@@ -140,7 +140,7 @@ export default function ResumesPage() {
             borderRadius: 14,
             padding: 20,
             background: "var(--bg-surface)",
-            color: "#999",
+            color: "var(--text-muted)",
           }}
         >
           No resumes yet. Click "Create Resume" to get started.
@@ -199,7 +199,7 @@ export default function ResumesPage() {
                             border: "1px solid var(--border)",
                             background: "var(--bg-surface-deep)",
                             fontSize: 12,
-                            color: "#aaa",
+                            color: "var(--text-muted)",
                           }}
                         >
                           {name}
@@ -207,13 +207,13 @@ export default function ResumesPage() {
                       ))}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 10 }}>
                       No projects
                     </div>
                   )}
 
                   {/* Last updated */}
-                  <div style={{ fontSize: 12, color: "#555" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     Updated {formatRelativeDate(resume.last_updated)}
                   </div>
                 </div>

@@ -262,7 +262,7 @@ export default function UploadProjectModal({
           <div style={{ fontWeight: 600, marginBottom: 8 }}>
             Upload or Drag and Drop
           </div>
-          <div style={{ color: "#999", fontSize: 14 }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>
             Supported formats: .zip, .gz, .7z, .tar.gz
           </div>
         </div>
@@ -283,7 +283,7 @@ export default function UploadProjectModal({
           >
             <div>
               <div style={{ fontWeight: 600 }}>{selectedFile.name}</div>
-              <div style={{ color: "#999", fontSize: 13, marginTop: 4 }}>
+              <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>
                 {formatFileSize(selectedFile.size)}
               </div>
             </div>
@@ -339,10 +339,7 @@ export default function UploadProjectModal({
             borderRadius: 12,
             padding: "12px 14px",
             marginBottom: 16,
-            color: "#bdbdbd",
-          }}
-        >
-          <InfoIcon style={{ fontSize: 16, flexShrink: 0, color: "#7a9cc9" }} />
+            color: "#bdbdbd", />
           <div style={{ fontSize: 14, lineHeight: 1.5 }}>
             {isLoadingConfig
               ? "Loading saved settings..."
@@ -397,7 +394,7 @@ export default function UploadProjectModal({
             marginTop: 8,
           }}
         >
-          <div style={{ color: "#999", fontSize: 13 }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
             {isLoadingConfig
               ? "Loading saved settings..."
               : isUploading

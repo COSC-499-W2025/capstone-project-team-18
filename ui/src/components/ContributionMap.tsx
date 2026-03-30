@@ -182,7 +182,7 @@ export default function ContributionMap({
           border: "1px solid var(--border)",
           borderRadius: 12,
           background: "var(--bg-surface)",
-          color: "#999",
+          color: "var(--text-muted)",
           textAlign: "center",
         }}
       >
@@ -251,7 +251,7 @@ export default function ContributionMap({
       </div>
 
       {/* View description */}
-      <p style={{ margin: "0 0 16px 0", fontSize: 12, color: "#888" }}>
+      <p style={{ margin: "0 0 16px 0", fontSize: 12, color: "var(--text-muted)" }}>
         {viewMode === "personal"
           ? "Contribution activity as a function of commits"
           : "Shows your activity as a percentage of total team contributions"}
@@ -308,7 +308,7 @@ export default function ContributionMap({
           alignItems: "center",
           justifyContent: "space-between",
           fontSize: 11,
-          color: "#888",
+          color: "var(--text-muted)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

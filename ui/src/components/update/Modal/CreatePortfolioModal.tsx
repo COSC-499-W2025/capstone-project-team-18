@@ -158,7 +158,7 @@ export default function CreatePortfolioModal({
 
         {/* Title input */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 14, color: "#aaa", display: "block", marginBottom: 6 }}>
+          <label style={{ fontSize: 14, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
             Portfolio Title *
           </label>
           <input
@@ -172,7 +172,7 @@ export default function CreatePortfolioModal({
               borderRadius: 10,
               border: "1px solid var(--border)",
               background: "var(--bg-input)",
-              color: "#fff",
+              color: "var(--text-primary)",
               fontSize: 14,
               boxSizing: "border-box",
               opacity: isSubmitting ? 0.6 : 1,
@@ -182,7 +182,7 @@ export default function CreatePortfolioModal({
 
         {/* Project selection */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 14, color: "#aaa", display: "block", marginBottom: 6 }}>
+          <label style={{ fontSize: 14, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
             Select Projects *
           </label>
 
@@ -193,7 +193,7 @@ export default function CreatePortfolioModal({
                 borderRadius: 12,
                 padding: 16,
                 background: "var(--bg-surface)",
-                color: "#999",
+                color: "var(--text-muted)",
                 fontSize: 14,
               }}
             >
@@ -240,7 +240,7 @@ export default function CreatePortfolioModal({
                 borderRadius: 12,
                 padding: 16,
                 background: "var(--bg-surface)",
-                color: "#999",
+                color: "var(--text-muted)",
                 fontSize: 14,
               }}
             >
@@ -330,7 +330,7 @@ export default function CreatePortfolioModal({
             gap: 12,
           }}
         >
-          <div style={{ color: "#999", fontSize: 13 }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
             {isSubmitting
               ? "Creating portfolio... this may take a moment."
               : "Fill title and select at least one project."}
@@ -359,8 +359,8 @@ export default function CreatePortfolioModal({
                 padding: "10px 16px",
                 borderRadius: 10,
                 border: "none",
-                background: canSubmit ? "#2b2b2b" : "#202020",
-                color: "#fff",
+                background: canSubmit ? "var(--accent)" : "var(--bg-surface-deep)",
+                color: canSubmit ? "#fff" : "var(--text-muted)",
                 opacity: canSubmit ? 1 : 0.6,
                 cursor: canSubmit ? "pointer" : "not-allowed",
               }}
