@@ -226,6 +226,18 @@ export type ResumeItemResponse = {
   end_date?: string | null;
 };
 
+export type EducationEntry = {
+  title: string;
+  start?: string | null;
+  end?: string | null;
+};
+
+export type AwardEntry = {
+  title: string;
+  start?: string | null;
+  end?: string | null;
+};
+
 export type ResumeResponse = {
   id?: number | null;
   title?: string | null;
@@ -236,8 +248,8 @@ export type ResumeResponse = {
   linkedin?: string | null;
   skills: string[];
   skills_by_expertise?: SkillsByExpertise | null;
-  education?: string[];
-  awards?: string[];
+  education?: EducationEntry[];
+  awards?: AwardEntry[];
   items: ResumeItemResponse[];
   created_at?: string | null;
   last_updated?: string | null;
@@ -347,11 +359,11 @@ export type EditResumeSkillsPayload = {
 };
 
 export type EditResumeEducationPayload = {
-  education: string[];
+  education: EducationEntry[];
 };
 
 export type EditResumeAwardsPayload = {
-  awards: string[];
+  awards: AwardEntry[];
 };
 
 export function getLatestResumeId(): number | null {

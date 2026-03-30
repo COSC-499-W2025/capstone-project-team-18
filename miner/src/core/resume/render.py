@@ -189,11 +189,11 @@ class ResumeLatexRenderer(ResumeRender):
             linkedin = resume.linkedin
             href = linkedin if linkedin.startswith("http") else f"https://{linkedin}"
             contact_parts.append(
-                rf"\href{{{latex_escape(href)}}}{{\underline{{{latex_escape(linkedin)}}}}}")
+                rf"\href{{{latex_escape(href)}}}{{\underline{{LinkedIn}}}}")
         if resume.github:
             github = latex_escape(resume.github)
             contact_parts.append(
-                rf"\href{{https://github.com/{github}}}{{\underline{{github.com/{github}}}}}")
+                rf"\href{{https://github.com/{github}}}{{\underline{{GitHub}}}}")
 
         if contact_parts:
             tex.append(" $|$ ".join(contact_parts) + r" \\")
@@ -206,7 +206,17 @@ class ResumeLatexRenderer(ResumeRender):
             tex.append(r"\section{Education}")
             tex.append(r"\resumeSubHeadingListStart")
             for ed in resume.education:
-                tex.append(rf"  \item \small{{{latex_escape(ed)}}}")
+                if isinstance(ed, dict):
+                    title = latex_escape(ed.get("title", ""))
+                    start = ed.get("start") or ""
+                    end = ed.get("end") or ""
+                    date_str = f"{start} -- {end}" if start and end else (start or end)
+                    if date_str:
+                        tex.append(rf"\resumeProjectHeading{{\textbf{{{title}}}}}{{{latex_escape(date_str)}}}")
+                    else:
+                        tex.append(rf"  \item \small{{{title}}}")
+                else:
+                    tex.append(rf"  \item \small{{{latex_escape(str(ed))}}}")
             tex.append(r"\resumeSubHeadingListEnd")
             tex.append("")
 
@@ -215,7 +225,17 @@ class ResumeLatexRenderer(ResumeRender):
             tex.append(r"\section{Awards}")
             tex.append(r"\resumeSubHeadingListStart")
             for aw in resume.awards:
-                tex.append(rf"  \item \small{{{latex_escape(aw)}}}")
+                if isinstance(aw, dict):
+                    title = latex_escape(aw.get("title", ""))
+                    start = aw.get("start") or ""
+                    end = aw.get("end") or ""
+                    date_str = f"{start} -- {end}" if start and end else (start or end)
+                    if date_str:
+                        tex.append(rf"\resumeProjectHeading{{\textbf{{{title}}}}}{{{latex_escape(date_str)}}}")
+                    else:
+                        tex.append(rf"  \item \small{{{title}}}")
+                else:
+                    tex.append(rf"  \item \small{{{latex_escape(str(aw))}}}")
             tex.append(r"\resumeSubHeadingListEnd")
             tex.append("")
 
@@ -226,7 +246,9 @@ class ResumeLatexRenderer(ResumeRender):
 
             for item in resume.items:
                 title = latex_escape(item.title)
-                date = f"{item.start_date.strftime('%B %Y')} -- {item.end_date.strftime('%B %Y')}"
+                start = item.start_date.strftime('%B %Y') if item.start_date else ""
+                end = item.end_date.strftime('%B %Y') if item.end_date else ""
+                date = f"{start} -- {end}" if start or end else ""
 
                 if item.frameworks:
                     frameworks = ", ".join(

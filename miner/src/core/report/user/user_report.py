@@ -72,7 +72,8 @@ class UserReport(BaseReport):
         email: Optional[str],
         github: Optional[str],
         education: Optional[list[str]] = None,
-        awards: Optional[list[str]] = None
+        awards: Optional[list[str]] = None,
+        name: Optional[str] = None,
     ) -> Resume:
         """
         Generates a Resume object based on the ResumeItem
@@ -88,7 +89,8 @@ class UserReport(BaseReport):
             github,
             weighted_skills,
             education=education,
-            awards=awards
+            awards=awards,
+            name=name,
             )
 
         for item in self.resume_items:
