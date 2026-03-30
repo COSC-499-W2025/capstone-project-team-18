@@ -2,6 +2,8 @@
 
 ## Table of Contents
 
+**[T2 Week 11-12, Mar 16 - Mar 29](#t2-week-11-mar-16--mar-29)**
+
 **[T2 Week 10, Mar 9 - Mar 15](#t2-week-10-mar-9--mar-15)**
 
 **[T2 Week 9, Mar 2 - Mar 8](#t2-week-9-mar-2--mar-8)**
@@ -18,11 +20,59 @@
 
 ---
 
+
+## T2 Week 11-12, Mar 16 - Mar 29
+
+### Peer Eval
+
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/Erem/erem_t2_week12_log.png)
+
+### Recap
+
+These two weeks covered the tail end of Milestone 3 feature development, the Milestone 3 presentation, and a large light mode UI overhaul.
+
+#### Coding Tasks
+
+I implemented and merged [PR #507 - Resume: add skills categorized by expertise level](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/507), closing [Issue #481](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/481). This extends the resume skills system so skills are organized into three expertise tiers:
+
+1) Expert, 2) Intermediate, and 3) Exposure
+
+both in the backend response model and in the frontend display. The backend surfaces the categorized structure through the existing resume endpoints, and the frontend renders each tier with distinct visual treatment so the reader can immediately gauge skill depth.
+
+I also implemented and merged [PR #522 - Frontend for skills, education, and awards](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/522). This PR closes out the frontend integration for the education and awards fields introduced in the earlier user config work, alongside the skills-by-expertise UI from PR #507. The resume edit page now lets users view and manage all three sections in a unified interface, with inline editing, add/remove interactions, and save handling wired up to the existing API endpoints.
+
+I opened [PR #558 - Changing to light mode](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/558), currently under review. This overhauls the entire application UI from dark mode to a light mode design. The work involved establishing a CSS variable system for the full design token set (backgrounds, surfaces, text levels, borders, accents), replacing all hardcoded dark-mode color values across every page and component, implementing a Blue (`#002145`) accent palette, adding a global focus ring using an accessible sky blue (`#6EC4E8`), and carefully fixing contrast and readability issues across the skills timeline graph, portfolio editor, resume editor, job readiness page, project details page, and exported portfolio HTML.
+
+The team also delivered the **Milestone 3 presentation** this period, demoing the full feature set to the course.
+
+#### Reviewing Tasks
+
+I reviewed [PR #552 - Project Insights Frontend](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/552) by Sam, which adds the writing prompts and AI-generated project insight panel to the frontend, surfacing backend analysis results inline on the project details page.
+
+I reviewed [PR #550 - Project View Page Refactor](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/550) by Sam, which restructures the project details page layout for improved readability and consistency.
+
+I reviewed [PR #547 - App UI Cleanup](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/547) by Alex, which addresses a range of visual polish issues across the application.
+
+I reviewed [PR #543 - Fixed GitHub noreply emails counting separately from user contribution](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/543) by Alex, which fixes a bug where GitHub's anonymous noreply email addresses were being treated as a distinct contributor, inflating group size and skewing personal contribution percentages.
+
+I reviewed [PR #531 - Support for Frontend Project Thumbnails](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/531) by Sam, which adds the ability to upload, display, and remove a thumbnail image for a project from the frontend.
+
+I reviewed [PR #519 - [fix] Duplicate Project Analysis](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/519) by Jimi, which resolves an issue where re-uploading or re-analyzing a project could result in duplicate database entries.
+
+I reviewed [PR #516 - 493 add machine learning consent flag](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/516) by Priyansh, which gates ML-powered analysis features behind a user consent flag stored in the user config, ensuring AI features are only invoked when the user has explicitly opted in.
+
+I reviewed [PR #515 - Hotfix: add missing div tag to the homepage](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/515) by Alex, a quick structural fix to the homepage.
+
+I reviewed [PR #499 - Portfolio Structural Changes for Sorting and Web Download](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/499) by Sam, which adds project sorting options to the portfolio and enables downloading the portfolio as a standalone HTML file.
+
+
+
+
 ## T2 Week 10, Mar 9 - Mar 15
 
 ### Peer Eval
 
-![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/Erem/erem_t2_week15_log.png)
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/Erem/erem_t2_week10_log.png)
 
 ### Recap
 
@@ -37,8 +87,6 @@ With the PR now addressing all review feedback, the feature is just currently un
 #### Reviewing Tasks
 
 I reviewed [PR #485 - Get Group Based Statistics](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/485) by Jimi, which adds group contribution statistics to the project. The PR introduces `ACTIVITY_TYPE_RATIO`, `GROUP_CONTRIBUTION`, and `GROUP_SKILLS` statistics computed within the statistic classes, laying the groundwork for group-level API endpoints in a follow-up PR.
-
-
 
 
 ## T2 Week 9, Mar 2 - Mar 8
