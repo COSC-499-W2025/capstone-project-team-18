@@ -8,7 +8,7 @@ interface ContributionMapProps {
 }
 
 // Ruby red accent color
-const ACCENT_COLOR = "#E63946";
+const ACCENT_COLOR = "#002145";
 
 /**
  * GitHub-style contribution map with two views:
@@ -272,7 +272,7 @@ export default function ContributionMap({
               const bgColor =
                 opacity === 0
                   ? "#e8e8e8"
-                  : `rgba(230, 57, 70, ${opacity})`;
+                  : `rgba(0, 33, 69, ${opacity})`;
 
               return (
                 <div
@@ -322,7 +322,7 @@ export default function ContributionMap({
                   background:
                     opacity === 0
                       ? "#e8e8e8"
-                      : `rgba(230, 57, 70, ${opacity})`,
+                      : `rgba(0, 33, 69, ${opacity})`,
                   borderRadius: 2,
                 }}
               />

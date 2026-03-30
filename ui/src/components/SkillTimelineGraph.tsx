@@ -13,16 +13,16 @@ type SkillTimelineGraphProps = {
 
 const TOP_SKILLS_LIMIT = 5;
 const SKILL_COLORS = [
-  "#E63946", // Ruby red
-  "#7A9BA8", // Muted blue slate
-  "#A89B6B", // Muted ochre
-  "#7B8B6F", // Muted sage
-  "#8B6B7A", // Muted mauve
-  "#5B8C85", // Teal
-  "#9B6B5B", // Terracotta
-  "#6B7B9B", // Slate blue
-  "#8C7B5B", // Warm tan
-  "#7B5B9B", // Soft purple
+  "#002145", // UBC Blue (primary)
+  "#5090AA", // Blue slate
+  "#B09040", // Ochre
+  "#5F8050", // Sage
+  "#80506A", // Mauve
+  "#2E7A72", // Teal
+  "#9A5038", // Terracotta
+  "#4B6490", // Slate blue
+  "#8C6E30", // Warm tan
+  "#6A3E90", // Soft purple
 ];
 
 type TimelineBucket = {

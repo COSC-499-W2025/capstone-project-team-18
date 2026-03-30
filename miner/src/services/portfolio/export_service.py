@@ -178,8 +178,8 @@ header h1 {
 
 .figure-btn {
   background: transparent;
-  border: 1px solid #dc2626;
-  color: #dc2626;
+  border: 1px solid #002145;
+  color: #002145;
   padding: 0.3rem 0.55rem;
   border-radius: 6px;
   cursor: pointer;
@@ -187,7 +187,7 @@ header h1 {
 }
 
 .figure-btn.active {
-  background: #dc2626;
+  background: #002145;
   color: #ffffff;
 }
 
@@ -224,16 +224,16 @@ header h1 {
 
 .contrib-cell.has-activity:hover {
   transform: scale(1.15);
-  border-color: #dc2626;
+  border-color: #002145;
 }
 
 .contrib-cell.active {
-  border-color: #dc2626;
+  border-color: #002145;
 }
 
 .contrib-hover-info {
   margin-top: 0.75rem;
-  border-left: 3px solid #dc2626;
+  border-left: 3px solid #002145;
   background: #f5f5f5;
   color: #111111;
   font-size: 0.78rem;
@@ -278,7 +278,7 @@ header h1 {
 .skill-toggle-btn:first-child { border-radius: 6px 0 0 6px; }
 .skill-toggle-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
 .skill-toggle-btn.active {
-  background: #dc2626;
+  background: #002145;
   color: #ffffff;
   font-weight: 600;
 }
@@ -528,7 +528,7 @@ header h1 {
 .badge.tone   { background: #e5e7eb; color: #374151; }
 .badge.tag    { background: #dcfce7; color: #166534; }
 .badge.skill  { background: #f3e8ff; color: #7c3aed; }
-.badge.framework { background: #fee2e2; color: #dc2626; }
+.badge.framework { background: #dde8f4; color: #002145; }
 
 .card-meta {
   font-size: 0.75rem;
@@ -856,7 +856,7 @@ _FILTER_JS = """\
       var yearLabel = mk('span', null);
       yearLabel.style.minWidth = '54px';
       yearLabel.style.textAlign = 'center';
-      yearLabel.style.color = '#dc2626';
+      yearLabel.style.color = '#002145';
       yearLabel.style.fontSize = '0.78rem';
       yearLabel.style.fontWeight = '600';
       yearLabel.textContent = String(year);
@@ -882,7 +882,7 @@ _FILTER_JS = """\
         week.forEach(function (date) {
           var cell = mk('div', 'contrib-cell');
           var opacity = opacityFor(date, dateRange, maxP);
-          cell.style.background = opacity === 0 ? '#e8e8e8' : 'rgba(230, 57, 70, ' + opacity + ')';
+          cell.style.background = opacity === 0 ? '#e8e8e8' : 'rgba(0, 33, 69, ' + opacity + ')';
           var tip = tooltipFor(date);
           if (tip) {
             cell.title = tip;
@@ -926,7 +926,7 @@ _FILTER_JS = """\
       right.appendChild(less);
       [0, 0.25, 0.5, 0.75, 1].forEach(function (o) {
         var l = mk('span', 'legend-cell');
-        l.style.background = o === 0 ? '#e8e8e8' : 'rgba(230, 57, 70, ' + o + ')';
+        l.style.background = o === 0 ? '#e8e8e8' : 'rgba(0, 33, 69, ' + o + ')';
         right.appendChild(l);
       });
       var more = mk('span', null);
@@ -1054,8 +1054,8 @@ _FILTER_JS = """\
       if (lastValue > globalMaxCumulative) globalMaxCumulative = lastValue;
     });
 
-    var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A',
-                  '#5B8C85', '#9B6B5B', '#6B7B9B', '#8C7B5B', '#7B5B9B'];
+    var colors = ['#002145', '#5090AA', '#B09040', '#5F8050', '#80506A',
+                  '#2E7A72', '#9A5038', '#4B6490', '#8C6E30', '#6A3E90'];
     var tickIndexes = buildTickIndexes(mKeys.length);
     var n = mKeys.length;
 
