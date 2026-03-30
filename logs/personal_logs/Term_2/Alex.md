@@ -12,6 +12,7 @@
 
 **[Week 10, Mar 9 - 15](#week-10-mar-9---15)**
 
+**[Week 11-12, Mar 16 – Mar 29](#week-11-12-mar-16--mar-29-1)**
 ---
 
 ## Week 1, Jan. 05 – 11
@@ -91,3 +92,58 @@ Here are the PRs that I reviewed:
 After meeting with the team and planning out the requirements, goals, and work needed for Milestone 3, I began working on a deployment task for extra credit. After the user generates their portfolio, they will have the option to turn it into a static webpage and have us deploy it to a GitHub Pages site on their GitHub account automatically. I began working on the endpoints needed for an OAuth2 workflow to get the user's token and make calls to GitHub's REST API to deploy the portfolio.
 
 This week, I also reviewed one PR: [483 interactive mock interview mode for job specific interview preparation, Priyansh](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/483)
+
+## Week 11-12, Mar 16 – Mar 29
+
+### Peer Eval
+
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/alex/week12.png)
+
+### Recap
+
+During the past two weeks, I have added some additional features and made a lot of significant changes as we wrap up Milestone #3. This includes improvements to backend logic and frontend UI/UX and a unique feature for bonus marks.
+
+Here are the contributions I made:
+
+- [517 User GitHub OAuth Flow](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/517): Added an OAuth workflow for users to authorize our app to take actions on their behalf on GitHub.
+
+- [526 GitHub pages deployment](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/526): Added a feature
+for our app to deploy the user's portfolio to a GitHub Pages site at a repository named "portfolio".
+
+- [543 Fixed GitHub noreply emails counting seperately from user contribution](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/543): Fixed a bug that could cause some Git-related statistics to be inaccurate.
+
+- [547 App UI Cleanup](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/547): Made a lot of significant changes to the Electron UI to make it feel more like an actual app.
+
+- [552 Project Insights Frontend, (Sam's PR)](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/552): After talking with Sam face-to-face about some changes I thought should be made, I went ahead and implemented them on his PR for him while he worked on other features.
+
+- [557 Small changes to Profile page](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/557): Improved the overall feel of the `Profile` page's UX and UI.
+
+- [560 several portfolio changes](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/560): Made several improvements to the statically generated portfolio website to make it look and feel more like the `Portfolio` page on the Electron app.
+
+Here are the PRs that I reviewed:
+
+- [496 Consistent Error Handling and Documentation in the API, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/496)
+
+- [499 Portfolio Structural Changes for Sorting and Web Download, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/499)
+
+- [500 Front End Portfolio Changes, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/500)
+
+- [519 [fix] Duplicate Project Analysis, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/519)
+
+- [523 Electron Skeleton UI & Loading Loop, Tawana](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/523)
+
+- [531 Support for Front end Project Thumbnails, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/531)
+
+- [533 Front-End Portfolio Edit Page, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/533)
+
+- [534 Resume Front End Suite, Tawana](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/534)
+
+- [544 Added new Skill Timeline, Adjusted Contirbution Map, and ensured exporting of all figures, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/544)
+
+- [545 Resume Bullet Point Refactor, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/545)
+
+- [550 Project View Page Refactor, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/550)
+
+- [551 Settings Modal -> Profile Page, Jimi](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/551)
+
+- [552 Project Insights Frontend, Sam](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/552)
