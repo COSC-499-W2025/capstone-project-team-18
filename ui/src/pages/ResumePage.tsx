@@ -1087,20 +1087,20 @@ function EntryListSection({
   const inputBase: React.CSSProperties = {
     padding: "7px 10px",
     borderRadius: 8,
-    border: "1px solid #2a2a2a",
-    background: "#111",
-    color: "#fff",
+    border: "1px solid var(--border-strong)",
+    background: "var(--bg-input)",
+    color: "var(--text-primary)",
     fontSize: 13,
     fontFamily: "inherit",
     outline: "none",
   };
 
   return (
-    <div style={{ border: "1px solid #2a2a2a", borderRadius: 14, padding: "16px 20px", background: "#161616", marginBottom: 16 }}>
+    <div style={{ border: "1px solid var(--border)", borderRadius: 14, padding: "16px 20px", background: "var(--bg-surface)", marginBottom: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <span style={SECTION_LABEL}>{label}</span>
         {!editing && (
-          <button onClick={startEditing} style={{ padding: "4px 10px", borderRadius: 7, border: "1px solid #2a2a2a", background: "transparent", color: "#999", cursor: "pointer", fontSize: 12 }}>
+          <button onClick={startEditing} style={{ padding: "4px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}>
             Edit
           </button>
         )}
@@ -1109,10 +1109,10 @@ function EntryListSection({
       {editing ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {draft.map((entry, i) => (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, background: "#1a1a1a", borderRadius: 10, padding: "10px 12px", position: "relative" }}>
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--bg-surface-deep)", borderRadius: 10, padding: "10px 12px", position: "relative" }}>
               <button
                 onClick={() => removeEntry(i)}
-                style={{ position: "absolute", top: 8, right: 8, padding: "2px 7px", borderRadius: 6, border: "1px solid #3a1111", background: "transparent", color: "#ff8a8a", cursor: "pointer", fontSize: 12 }}
+                style={{ position: "absolute", top: 8, right: 8, padding: "2px 7px", borderRadius: 6, border: "1px solid var(--danger-bg-strong)", background: "transparent", color: "var(--danger-text)", cursor: "pointer", fontSize: 12 }}
               >✕</button>
               <input
                 style={{ ...inputBase, width: "calc(100% - 44px)" }}
@@ -1128,11 +1128,11 @@ function EntryListSection({
           ))}
           <button
             onClick={() => setDraft((d) => [...d, { title: "", start: "", end: "" }])}
-            style={{ alignSelf: "flex-start", padding: "5px 12px", borderRadius: 7, border: "1px solid #2a2a2a", background: "transparent", color: "#888", cursor: "pointer", fontSize: 12, marginTop: 2 }}
+            style={{ alignSelf: "flex-start", padding: "5px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, marginTop: 2 }}
           >+ Add Entry</button>
           <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-            <button onClick={() => setEditing(false)} disabled={saving} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #2a2a2a", background: "transparent", color: "#888", cursor: "pointer", fontSize: 13, opacity: saving ? 0.6 : 1 }}>Cancel</button>
-            <button onClick={handleSave} disabled={saving} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #3a3a3a", background: "#222", color: saving ? "#666" : "#fff", cursor: saving ? "not-allowed" : "pointer", fontSize: 13, opacity: saving ? 0.6 : 1 }}>
+            <button onClick={() => setEditing(false)} disabled={saving} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, opacity: saving ? 0.6 : 1 }}>Cancel</button>
+            <button onClick={handleSave} disabled={saving} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--btn-primary)", color: saving ? "var(--text-muted)" : "#fff", cursor: saving ? "not-allowed" : "pointer", fontSize: 13, opacity: saving ? 0.6 : 1 }}>
               {saving ? "Saving..." : "Save"}
             </button>
           </div>
@@ -1140,14 +1140,14 @@ function EntryListSection({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {entries.length === 0 ? (
-            <span style={{ fontSize: 13, color: "#444" }}>{emptyText}</span>
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{emptyText}</span>
           ) : (
             entries.map((entry, i) => {
               const dateRange = [entry.start, entry.end].filter(Boolean).join(" \u2013 ");
               return (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, color: "#ddd" }}>
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, color: "var(--text-primary)" }}>
                   <span style={{ fontWeight: 500 }}>{entry.title}</span>
-                  {dateRange && <span style={{ color: "#888", fontSize: 12, marginLeft: 16, whiteSpace: "nowrap" }}>{dateRange}</span>}
+                  {dateRange && <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 16, whiteSpace: "nowrap" }}>{dateRange}</span>}
                 </div>
               );
             })
@@ -1289,9 +1289,9 @@ function HeaderSection({
     width: "100%",
     padding: "7px 10px",
     borderRadius: 8,
-    border: "1px solid #2a2a2a",
-    background: "#111",
-    color: "#fff",
+    border: "1px solid var(--border-strong)",
+    background: "var(--bg-input)",
+    color: "var(--text-primary)",
     fontSize: 13,
     fontFamily: "inherit",
     outline: "none",
@@ -1306,7 +1306,7 @@ function HeaderSection({
 
   const labelStyle: React.CSSProperties = {
     fontSize: 11,
-    color: "#666",
+    color: "var(--text-muted)",
     fontWeight: 600,
     letterSpacing: "0.05em",
     textTransform: "uppercase",
@@ -1315,10 +1315,10 @@ function HeaderSection({
   return (
     <div
       style={{
-        border: "1px solid #2a2a2a",
+        border: "1px solid var(--border)",
         borderRadius: 14,
         padding: "16px 20px",
-        background: "#161616",
+        background: "var(--bg-surface)",
         marginBottom: 16,
       }}
     >
@@ -1330,9 +1330,9 @@ function HeaderSection({
             style={{
               padding: "4px 10px",
               borderRadius: 7,
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               background: "transparent",
-              color: "#999",
+              color: "var(--text-muted)",
               cursor: "pointer",
               fontSize: 12,
             }}
@@ -1396,9 +1396,9 @@ function HeaderSection({
               style={{
                 padding: "6px 14px",
                 borderRadius: 8,
-                border: "1px solid #2a2a2a",
+                border: "1px solid var(--border)",
                 background: "transparent",
-                color: "#888",
+                color: "var(--text-muted)",
                 cursor: "pointer",
                 fontSize: 13,
                 opacity: saving ? 0.6 : 1,
@@ -1412,9 +1412,9 @@ function HeaderSection({
               style={{
                 padding: "6px 14px",
                 borderRadius: 8,
-                border: "1px solid #3a3a3a",
-                background: "#222",
-                color: saving ? "#666" : "#fff",
+                border: "none",
+                background: "var(--btn-primary)",
+                color: saving ? "var(--text-muted)" : "#fff",
                 cursor: saving ? "not-allowed" : "pointer",
                 fontSize: 13,
                 opacity: saving ? 0.6 : 1,
@@ -1426,11 +1426,11 @@ function HeaderSection({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
-          <div><span style={{ color: "#555", marginRight: 8 }}>Name</span><span style={{ color: resume.name ? "#ddd" : "#444" }}>{resume.name || "—"}</span></div>
-          <div><span style={{ color: "#555", marginRight: 8 }}>Location</span><span style={{ color: resume.location ? "#ddd" : "#444" }}>{resume.location || "—"}</span></div>
-          <div><span style={{ color: "#555", marginRight: 8 }}>Email</span><span style={{ color: resume.email ? "#ddd" : "#444" }}>{resume.email || "—"}</span></div>
-          <div><span style={{ color: "#555", marginRight: 8 }}>LinkedIn</span><span style={{ color: resume.linkedin ? "#ddd" : "#444" }}>{resume.linkedin || "—"}</span></div>
-          <div><span style={{ color: "#555", marginRight: 8 }}>GitHub</span><span style={{ color: resume.github ? "#ddd" : "#444" }}>{resume.github || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>Name</span><span style={{ color: resume.name ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.name || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>Location</span><span style={{ color: resume.location ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.location || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>Email</span><span style={{ color: resume.email ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.email || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>LinkedIn</span><span style={{ color: resume.linkedin ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.linkedin || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>GitHub</span><span style={{ color: resume.github ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.github || "—"}</span></div>
         </div>
       )}
     </div>
@@ -1723,14 +1723,12 @@ export default function ResumePage() {
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--btn-primary)",
               borderRadius: 10,
-              color: exporting ? "#555" : "#ddd",
+              color: exporting ? "var(--text-muted)" : "var(--btn-primary)",
+              fontWeight: 500,
               cursor: exporting ? "not-allowed" : "pointer",
-              color: "var(--text-muted)",
-              cursor: "not-allowed",
-              fontSize: 14,
-              opacity: exporting ? 0.5 : 1,
+              opacity: exporting ? 0.6 : 1,
             }}
           >
             {exporting ? "Exporting..." : "Export PDF"}
@@ -1754,12 +1752,12 @@ export default function ResumePage() {
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--btn-primary)",
               borderRadius: 10,
-              color: exportingDocx ? "#555" : "#ddd",
+              color: exportingDocx ? "var(--text-muted)" : "var(--btn-primary)",
+              fontWeight: 500,
               cursor: exportingDocx ? "not-allowed" : "pointer",
-              fontSize: 14,
-              opacity: exportingDocx ? 0.5 : 1,
+              opacity: exportingDocx ? 0.6 : 1,
             }}
           >
             {exportingDocx ? "Exporting..." : "Export Word"}

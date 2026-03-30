@@ -149,7 +149,7 @@ export default function PortfoliosPage() {
             color: "var(--text-muted)",
           }}
         >
-          No portfolios yet. Click "+ Create Portfolio" to get started.
+          No portfolios yet. Click "Create Portfolio" to get started.
         </div>
       )}
 
