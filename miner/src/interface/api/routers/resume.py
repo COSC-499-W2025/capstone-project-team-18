@@ -6,8 +6,9 @@ import datetime
 
 from src.interface.api.routers.util import get_session
 from src.interface.api.routers.user_config import get_user_config_safe
+import src.database as _db
 from src.database import (
-    get_project_report_by_name
+    get_project_report_by_name,
 )
 from src.database.api.CRUD.resume import (
     save_resume,
@@ -17,6 +18,7 @@ from src.database.api.CRUD.resume import (
     delete_resume,
 )
 from src.core.report.user.user_report import UserReport
+from src.core.statistic.user_stat_collection import UserStatCollection
 from src.utils.errors import ResumeNotFoundError, ProjectNotFoundError, DatabaseOperationError
 from datetime import date
 
@@ -146,11 +148,17 @@ def _build_resume_response(resume_model) -> ResumeResponse:
     education = [EducationEntry(**_normalize_entry(e)) for e in (resume_model.education or [])]
     awards = [AwardEntry(**_normalize_entry(a)) for a in (resume_model.awards or [])]
 
-    skills_by_expertise = SkillsByExpertiseResponse(
-        expert=resume_model.skills_expert or [],
-        intermediate=resume_model.skills_intermediate or [],
-        exposure=resume_model.skills_exposure or [],
-    )
+    expert = resume_model.skills_expert or []
+    intermediate = resume_model.skills_intermediate or []
+    exposure = resume_model.skills_exposure or []
+    if expert or intermediate or exposure:
+        skills_by_expertise = SkillsByExpertiseResponse(
+            expert=expert,
+            intermediate=intermediate,
+            exposure=exposure,
+        )
+    else:
+        skills_by_expertise = None
 
     return ResumeResponse(
         id=resume_model.id,
@@ -254,6 +262,38 @@ def get_resume(resume_id: int, session=Depends(get_session)):
 
     if not result:
         raise ResumeNotFoundError(f"No resume found with id {resume_id}")
+
+    # If no stored skills, try to calculate from UserReport
+    has_stored_skills = (
+        bool(result.skills_expert) or
+        bool(result.skills_intermediate) or
+        bool(result.skills_exposure)
+    )
+    if not has_stored_skills:
+        user_config = _db.get_most_recent_user_config(session)
+        if user_config and user_config.project_reports:
+            try:
+                project_reports = [
+                    get_project_report_by_name(session, p.project_name)
+                    for p in user_config.project_reports
+                ]
+                project_reports = [p for p in project_reports if p is not None]
+                if project_reports:
+                    report = UserReport(project_reports)
+                    weighted_skills = report.statistics.get_value(UserStatCollection.USER_SKILLS.value) or []
+                    expert, intermediate, exposure = [], [], []
+                    for ws in weighted_skills:
+                        if ws.weight >= 0.7:
+                            expert.append(ws.skill_name)
+                        elif ws.weight >= 0.4:
+                            intermediate.append(ws.skill_name)
+                        else:
+                            exposure.append(ws.skill_name)
+                    result.skills_expert = expert
+                    result.skills_intermediate = intermediate
+                    result.skills_exposure = exposure
+            except Exception:
+                pass
 
     return _build_resume_response(result)
 
