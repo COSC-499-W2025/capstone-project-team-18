@@ -1483,6 +1483,9 @@ export default function ResumePage() {
   const [savingTitle, setSavingTitle] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Export
+  const [exporting, setExporting] = useState(false);
+
   // Delete
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -1724,19 +1727,32 @@ export default function ResumePage() {
           </button>
 
           <button
-            disabled
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await api.exportResumePdf(
+                  Number(resumeId),
+                  `${resume.title || `resume_${resume.id}`}.pdf`
+                );
+              } catch (e: any) {
+                setError(e?.message ?? "Export failed.");
+              } finally {
+                setExporting(false);
+              }
+            }}
+            disabled={exporting}
             style={{
               padding: "10px 14px",
               background: "transparent",
               border: "1px solid #2a2a2a",
               borderRadius: 10,
-              color: "#555",
-              cursor: "not-allowed",
+              color: exporting ? "#555" : "#ddd",
+              cursor: exporting ? "not-allowed" : "pointer",
               fontSize: 14,
-              opacity: 0.5,
+              opacity: exporting ? 0.5 : 1,
             }}
           >
-            Export
+            {exporting ? "Exporting..." : "Export PDF"}
           </button>
 
           <button
