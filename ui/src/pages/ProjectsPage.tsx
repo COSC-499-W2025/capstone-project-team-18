@@ -61,7 +61,7 @@ export default function ProjectsPage() {
       >
         <div>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Projects</h1>
-          <p style={{ marginTop: 6, color: "#666", margin: "6px 0 0" }}>
+          <p style={{ marginTop: 6, color: "var(--text-secondary)", margin: "6px 0 0" }}>
             Browse uploaded projects and open a project to view details.
           </p>
         </div>
@@ -93,7 +93,7 @@ export default function ProjectsPage() {
             background: "var(--bg-surface)",
           }}
         >
-          <div style={{ color: "#666", fontSize: 14, marginBottom: 16 }}>
+          <div style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 16 }}>
             Loading projects...
           </div>
           <ProjectSkeleton count={6} />
@@ -121,7 +121,7 @@ export default function ProjectsPage() {
             borderRadius: 14,
             padding: 20,
             background: "var(--bg-surface)",
-            color: "#999",
+            color: "var(--text-muted)",
           }}
         >
           No projects yet. Click "Upload Project" to get started.

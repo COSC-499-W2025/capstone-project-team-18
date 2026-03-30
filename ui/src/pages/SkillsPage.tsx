@@ -79,11 +79,11 @@ export default function SkillsPage() {
         <>
           <section style={{ marginTop: 24 }}>
             <h2 style={{ marginBottom: 8, fontSize: 18 }}>Your Skills</h2>
-            <p style={{ color: "#666", marginTop: 0, fontSize: 13 }}>
+            <p style={{ color: "var(--text-secondary)", marginTop: 0, fontSize: 13 }}>
               Manually added via Profile. Used in resume generation.
             </p>
             {userSkills.length === 0 ? (
-              <div style={{ color: "#888" }}>
+              <div style={{ color: "var(--text-muted)" }}>
                 No skills added yet. Add them in{" "}
                 <strong>Profile → Skills</strong>.
               </div>
@@ -110,11 +110,11 @@ export default function SkillsPage() {
 
           <section style={{ marginTop: 32 }}>
             <h2 style={{ marginBottom: 8, fontSize: 18 }}>Detected Skills</h2>
-            <p style={{ color: "#666", marginTop: 0, fontSize: 13 }}>
+            <p style={{ color: "var(--text-secondary)", marginTop: 0, fontSize: 13 }}>
               Auto-extracted from your mined projects.
             </p>
             {detectedSkills.length === 0 ? (
-              <div style={{ color: "#888" }}>
+              <div style={{ color: "var(--text-muted)" }}>
                 No detected skills yet. Mine a project to populate this list.
               </div>
             ) : (

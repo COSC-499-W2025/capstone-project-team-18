@@ -170,12 +170,12 @@ export default function CreateResumeModal({
           <label
             style={{
               fontSize: 14,
-              color: "#aaa",
+              color: "var(--text-muted)",
               display: "block",
               marginBottom: 6,
             }}
           >
-            Title <span style={{ color: "#555" }}>(optional)</span>
+            Title <span style={{ color: "var(--text-secondary)" }}>(optional)</span>
           </label>
           <input
             value={title}
@@ -189,7 +189,7 @@ export default function CreateResumeModal({
               borderRadius: 10,
               border: "1px solid var(--border)",
               background: "var(--bg-surface)",
-              color: "#fff",
+              color: "var(--text-primary)",
               fontSize: 14,
               outline: "none",
               fontFamily: "inherit",
@@ -202,7 +202,7 @@ export default function CreateResumeModal({
           <label
             style={{
               fontSize: 14,
-              color: "#aaa",
+              color: "var(--text-muted)",
               display: "block",
               marginBottom: 6,
             }}
@@ -217,7 +217,7 @@ export default function CreateResumeModal({
                 borderRadius: 12,
                 padding: 16,
                 background: "var(--bg-surface)",
-                color: "#999",
+                color: "var(--text-muted)",
                 fontSize: 14,
               }}
             >
@@ -264,7 +264,7 @@ export default function CreateResumeModal({
                 borderRadius: 12,
                 padding: 16,
                 background: "var(--bg-surface)",
-                color: "#999",
+                color: "var(--text-muted)",
                 fontSize: 14,
               }}
             >
@@ -353,7 +353,7 @@ export default function CreateResumeModal({
             gap: 12,
           }}
         >
-          <div style={{ color: "#999", fontSize: 13 }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
             {isSubmitting
               ? "Creating resume... this may take a moment."
               : "Select at least one project."}
@@ -382,8 +382,8 @@ export default function CreateResumeModal({
                 padding: "10px 16px",
                 borderRadius: 10,
                 border: "none",
-                background: canSubmit ? "#2b2b2b" : "#202020",
-                color: "#fff",
+                background: canSubmit ? "var(--accent)" : "var(--bg-surface-deep)",
+                color: canSubmit ? "#fff" : "var(--text-muted)",
                 opacity: canSubmit ? 1 : 0.6,
                 cursor: canSubmit ? "pointer" : "not-allowed",
               }}

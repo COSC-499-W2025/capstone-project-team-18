@@ -150,9 +150,9 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
         background: "var(--bg-surface)",
       }}
     >
-      <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }
@@ -180,7 +180,7 @@ function SectionCard({
         flexDirection: "column",
       }}
     >
-      <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 15, color: "#444", fontWeight: 600 }}>
+      <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 15, color: "var(--text-primary)", fontWeight: 600 }}>
         {title}
       </h3>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: centerContent ? "center" : "flex-start" }}>
@@ -198,7 +198,7 @@ function expandHex(hex: string): string {
 }
 
 function TagChips({ items, color = "#6EC4E8" }: { items: string[]; color?: string }) {
-  if (!items.length) return <span style={{ color: "#555", fontSize: 13 }}>—</span>;
+  if (!items.length) return <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>—</span>;
   const base = expandHex(color);
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -208,10 +208,11 @@ function TagChips({ items, color = "#6EC4E8" }: { items: string[]; color?: strin
           style={{
             padding: "3px 10px",
             borderRadius: 999,
-            background: `${base}1a`,
-            border: `1px solid ${base}44`,
+            background: `${base}18`,
+            border: `1px solid ${base}55`,
             color,
             fontSize: 12,
+            fontWeight: 600,
             lineHeight: 1.6,
           }}
         >
@@ -235,7 +236,7 @@ function LabelRow({ label, children }: { label: string; children: ReactNode }) {
         marginBottom: 14,
       }}
     >
-      <span style={{ fontSize: 12, color: "#777", paddingTop: 4 }}>{label}</span>
+      <span style={{ fontSize: 12, color: "var(--text-primary)", paddingTop: 4 }}>{label}</span>
       <div>{children}</div>
     </div>
   );
@@ -256,7 +257,7 @@ function ProgressBar({
       <div
         style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}
       >
-        <span style={{ color: "#999" }}>{label}</span>
+        <span style={{ color: "var(--text-secondary)" }}>{label}</span>
         <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{pct}%</span>
       </div>
       <div style={{ height: 8, background: "var(--bg-surface-deep)", borderRadius: 4, overflow: "hidden" }}>
@@ -318,7 +319,7 @@ function LanguageDonut({ langs }: { langs: Array<{ lang: string; ratio: number }
             justifyContent: "center",
           }}
         >
-          <span style={{ fontSize: 10, color: "#666", textAlign: "center", lineHeight: 1.3 }}>
+          <span style={{ fontSize: 10, color: "var(--text-secondary)", textAlign: "center", lineHeight: 1.3 }}>
             {langs.length} lang{langs.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -336,8 +337,8 @@ function LanguageDonut({ langs }: { langs: Array<{ lang: string; ratio: number }
                 flexShrink: 0,
               }}
             />
-            <span style={{ color: "#444", minWidth: 80 }}>{s.lang}</span>
-            <span style={{ color: "#777" }}>{s.pct.toFixed(1)}%</span>
+            <span style={{ color: "var(--text-primary)", minWidth: 80 }}>{s.lang}</span>
+            <span style={{ color: "var(--text-muted)" }}>{s.pct.toFixed(1)}%</span>
           </div>
         ))}
       </div>
@@ -349,7 +350,7 @@ function CommitTypeChart({ items }: { items: Array<{ type: string; pct: number }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {items.map(({ type, pct }) => {
-        const color = COMMIT_COLORS[type.toLowerCase()] ?? "#888";
+        const color = COMMIT_COLORS[type.toLowerCase()] ?? "var(--text-muted)";
         return (
           <div key={type}>
             <div
@@ -360,8 +361,8 @@ function CommitTypeChart({ items }: { items: Array<{ type: string; pct: number }
                 marginBottom: 5,
               }}
             >
-              <span style={{ color: "#555", textTransform: "capitalize" }}>{type}</span>
-              <span style={{ color: "#777" }}>{pct}%</span>
+              <span style={{ color: "var(--text-primary)", textTransform: "capitalize" }}>{type}</span>
+              <span style={{ color: "var(--text-secondary)" }}>{pct}%</span>
             </div>
             <div style={{ height: 6, background: "var(--bg-surface-deep)", borderRadius: 3, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 3 }} />
@@ -375,12 +376,12 @@ function CommitTypeChart({ items }: { items: Array<{ type: string; pct: number }
 
 function WorkPatternBadge({ pattern }: { pattern: string }) {
   const cfg: Record<string, { color: string; label: string }> = {
-    consistent: { color: "#7cff9a", label: "Consistent" },
-    sprint: { color: "#ffd06f", label: "Sprint-based" },
-    burst: { color: "#ff7c6f", label: "Burst" },
-    sporadic: { color: "#c06fff", label: "Sporadic" },
+    consistent: { color: "#16a34a", label: "Consistent" },
+    sprint: { color: "#b45309", label: "Sprint-based" },
+    burst: { color: "#dc2626", label: "Burst" },
+    sporadic: { color: "#7c3aed", label: "Sporadic" },
   };
-  const c = cfg[pattern.toLowerCase()] ?? { color: "#888", label: pattern };
+  const c = cfg[pattern.toLowerCase()] ?? { color: "var(--text-muted)", label: pattern };
   return (
     <span
       style={{
@@ -638,7 +639,7 @@ export default function ProjectDetailsPage() {
             {/* Title + metadata + quick stats */}
             <div style={{ flex: 1, minWidth: 200 }}>
               <h1 style={{ margin: 0, marginBottom: 8, fontSize: 32, fontWeight: 700, letterSpacing: "-0.5px" }}>{project.project_name}</h1>
-              <div style={{ fontSize: 13, color: "#666", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
                 Added {formatDate(project.created_at)}
                 {project.last_updated && ` · Updated ${formatDate(project.last_updated)}`}
               </div>
@@ -680,7 +681,7 @@ export default function ProjectDetailsPage() {
                     overflow: "hidden",
                     borderRadius: 14,
                     border: "1px solid var(--border)",
-                    background: "#f0f0f0",
+                    background: "var(--bg-surface-deep)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -700,7 +701,7 @@ export default function ProjectDetailsPage() {
                   style={{
                     width: 260,
                     flex: 1,
-                    border: "1px dashed #3a3a3a",
+                    border: "1px dashed var(--border-strong)",
                     borderRadius: 14,
                     background: "var(--bg-input)",
                     cursor: imageUploading ? "not-allowed" : "pointer",
@@ -712,8 +713,8 @@ export default function ProjectDetailsPage() {
                     opacity: imageUploading ? 0.6 : 1,
                   }}
                 >
-                  <span style={{ fontSize: 28, color: "#444" }}>+</span>
-                  <span style={{ fontSize: 12, color: "#555" }}>
+                  <span style={{ fontSize: 28, color: "var(--text-muted)" }}>+</span>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     {imageUploading ? "Uploading…" : "Add Thumbnail"}
                   </span>
                 </button>
@@ -743,7 +744,7 @@ export default function ProjectDetailsPage() {
                     disabled={imageUploading || imageRemoving}
                     onClick={handleImageRemove}
                     style={{
-                      border: "1px solid #4a2020",
+                      border: "1px solid var(--danger-bg-strong)",
                       borderRadius: 7,
                       background: "transparent",
                       color: "var(--danger-text)",
@@ -795,7 +796,7 @@ export default function ProjectDetailsPage() {
                   )}
                   {commitDistribution.length > 0 && (
                     <>
-                      <div style={{ fontSize: 12, color: "#777", marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10 }}>
                         Commit type distribution
                       </div>
                       <CommitTypeChart items={commitDistribution} />
@@ -840,8 +841,8 @@ export default function ProjectDetailsPage() {
                           display: "inline-block",
                           padding: "3px 12px",
                           borderRadius: 999,
-                          background: "#6EC4E81a",
-                          border: "1px solid #6EC4E844",
+                          background: "var(--accent-subtle)",
+                          border: "1px solid var(--hover-border)",
                           color: "var(--accent)",
                           fontSize: 13,
                           fontWeight: 600,
@@ -853,7 +854,7 @@ export default function ProjectDetailsPage() {
                     </div>
                   )}
                   {roleDescription && (
-                    <p style={{ margin: 0, color: "#555", fontSize: 14, lineHeight: 1.7 }}>
+                    <p style={{ margin: 0, color: "var(--text-primary)", fontSize: 14, lineHeight: 1.7 }}>
                       {roleDescription}
                     </p>
                   )}
@@ -867,12 +868,12 @@ export default function ProjectDetailsPage() {
             <SectionCard title="Skills & Technologies">
               {skills.length > 0 && (
                 <LabelRow label="Skills">
-                  <TagChips items={skills} color="#ddd" />
+                  <TagChips items={skills} color="#1a4a7a" />
                 </LabelRow>
               )}
               {frameworks.length > 0 && (
                 <LabelRow label="Frameworks & Libraries">
-                  <TagChips items={frameworks} color="#e08060" />
+                  <TagChips items={frameworks} color="#7a3010" />
                 </LabelRow>
               )}
             </SectionCard>
@@ -888,9 +889,9 @@ export default function ProjectDetailsPage() {
                       display: "inline-block",
                       padding: "3px 12px",
                       borderRadius: 999,
-                      background: "#ffd06f1a",
-                      border: "1px solid #ffd06f44",
-                      color: "#ffd06f",
+                      background: "#ffd06f22",
+                      border: "1px solid #b89030",
+                      color: "#7a5c00",
                       fontSize: 13,
                       fontWeight: 600,
                       textTransform: "capitalize",
@@ -902,12 +903,12 @@ export default function ProjectDetailsPage() {
               )}
               {projectThemes.length > 0 && (
                 <LabelRow label="Themes">
-                  <TagChips items={projectThemes} color="#6EC4E8" />
+                  <TagChips items={projectThemes} color="#0d4f7a" />
                 </LabelRow>
               )}
               {projectTags.length > 0 && (
                 <LabelRow label="Tags">
-                  <TagChips items={projectTags} color="#8ad6a2" />
+                  <TagChips items={projectTags} color="#0d5230" />
                 </LabelRow>
               )}
             </SectionCard>

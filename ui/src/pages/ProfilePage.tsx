@@ -231,7 +231,7 @@ export default function ProfilePage() {
           style={{
             background: "var(--bg-surface)",
             borderRadius: 16,
-            padding: 24,
+            padding: "24px 32px",
             border: "1px solid var(--border)",
           }}
         >
@@ -500,7 +500,7 @@ export default function ProfilePage() {
                   <span
                     style={{
                       fontSize: 11,
-                      color: "#888",
+                      color: "var(--text-muted)",
                       background: "var(--bg-surface-deep)",
                       borderRadius: 4,
                       padding: "1px 5px",
@@ -537,7 +537,7 @@ export default function ProfilePage() {
           style={{
             background: "var(--bg-surface)",
             borderRadius: 16,
-            padding: 24,
+            padding: "24px 32px",
             border: "1px solid var(--border)",
           }}
         >

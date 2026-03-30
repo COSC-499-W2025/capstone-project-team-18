@@ -92,7 +92,7 @@ function pillStyle(color?: string) {
 
 const sectionLabel: React.CSSProperties = {
   fontSize: 12,
-  color: "#888",
+  color: "var(--text-muted)",
   fontWeight: 600,
   textTransform: "uppercase",
   letterSpacing: "0.05em",
@@ -179,11 +179,11 @@ function PillField({
             }
           }}
           placeholder={placeholder}
-          style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "#fff", fontSize: 12, outline: "none" }}
+          style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }}
         />
         <button
           onClick={() => onAdd(inputValue.trim())}
-          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "#aaa", cursor: "pointer", fontSize: 12 }}
+          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}
         >
           + Add
         </button>
@@ -776,7 +776,7 @@ export default function PortfolioEditPage() {
                   borderRadius: 8,
                   border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#999",
+                  color: "var(--text-muted)",
                   cursor: "pointer",
                   fontSize: 12,
                 }}
@@ -789,7 +789,7 @@ export default function PortfolioEditPage() {
           <div
             style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}
           >
-            <span style={{ fontSize: 13, color: "#666" }}>
+            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
               Updated: {formatDate(portfolio.metadata.last_updated_at)}
             </span>
           </div>
@@ -878,7 +878,7 @@ export default function PortfolioEditPage() {
       )}
 
       {contributionLoading && (
-        <div style={{ marginTop: 16, color: "#999", fontSize: 13 }}>
+        <div style={{ marginTop: 16, color: "var(--text-muted)", fontSize: 13 }}>
           Loading activity graphs...
         </div>
       )}
@@ -1006,7 +1006,7 @@ export default function PortfolioEditPage() {
                               borderRadius: 8,
                               border: "1px solid var(--border)",
                               background: "#f0f0f0",
-                              color: "#999",
+                              color: "var(--text-muted)",
                               fontSize: 12,
                               overflowX: "auto",
                               fontFamily: "monospace",
@@ -1034,7 +1034,7 @@ export default function PortfolioEditPage() {
           <h2 style={{ marginBottom: 16 }}>Figures</h2>
 
           {contributionLoading && (
-            <div style={{ color: "#999", fontSize: 13 }}>
+            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
               Loading activity graphs...
             </div>
           )}
@@ -1068,7 +1068,7 @@ export default function PortfolioEditPage() {
               borderRadius: 16,
               padding: 20,
               background: "var(--bg-surface)",
-              color: "#999",
+              color: "var(--text-muted)",
             }}
           >
             No project cards.
@@ -1171,7 +1171,7 @@ export default function PortfolioEditPage() {
                         </h2>
                         <button
                           onClick={() => handleCloseEditModal(card.project_name)}
-                          style={{ background: "transparent", border: "none", color: "#888", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "2px 6px", borderRadius: 6 }}
+                          style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "2px 6px", borderRadius: 6 }}
                         >
                           ✕
                         </button>

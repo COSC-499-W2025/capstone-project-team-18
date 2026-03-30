@@ -88,7 +88,7 @@ export default function TextListBlockEditor({
           padding: "7px 12px",
           borderRadius: 8,
           border: "none",
-          background: saving ? "#202020" : "#2b2b2b",
+          background: saving ? "var(--bg-surface-deep)" : "var(--accent)",
           color: "#fff",
           cursor: saving ? "not-allowed" : "pointer",
           opacity: saving ? 0.6 : 1,

@@ -36,7 +36,7 @@ const SECTION_LABEL = {
   fontWeight: 700,
   letterSpacing: "0.07em",
   textTransform: "uppercase" as const,
-  color: "#555",
+  color: "var(--text-secondary)",
   display: "block",
   marginBottom: 8,
 };
@@ -46,11 +46,11 @@ function Toast({ message, type }: { message: string; type: "success" | "error" }
   return (
     <div
       style={{
-        border: `1px solid ${ok ? "#22462b" : "#3a1f1f"}`,
+        border: `1px solid ${ok ? "#bbf7d0" : "var(--danger-bg-strong)"}`,
         borderRadius: 10,
         padding: "11px 16px",
         background: ok ? "#f0faf0" : "var(--danger-bg)",
-        color: ok ? "#8ad6a2" : "#ff8a8a",
+        color: ok ? "#166534" : "var(--danger-text)",
         fontSize: 15,
         marginBottom: 14,
       }}
@@ -99,8 +99,8 @@ const SKILL_CATS: {
     key: "exposure",
     inputKey: "exposureInput",
     label: "Exposure",
-    color: "#999",
-    border: "#444",
+    color: "var(--text-muted)",
+    border: "var(--border-strong)",
     bg: "transparent",
   },
 ];
@@ -190,7 +190,7 @@ function SkillsSection({
               borderRadius: 7,
               border: "1px solid var(--border)",
               background: "transparent",
-              color: "#888",
+              color: "var(--text-muted)",
               fontSize: 14,
               cursor: "pointer",
             }}
@@ -207,7 +207,7 @@ function SkillsSection({
                 borderRadius: 7,
                 border: "1px solid var(--border)",
                 background: "transparent",
-                color: "#888",
+                color: "var(--text-muted)",
                 fontSize: 14,
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.6 : 1,
@@ -223,7 +223,7 @@ function SkillsSection({
                 borderRadius: 7,
                 border: "1px solid var(--border-strong)",
                 background: "var(--bg-surface-deep)",
-                color: "#fff",
+                color: "var(--text-primary)",
                 fontSize: 14,
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.6 : 1,
@@ -277,7 +277,7 @@ function SkillsSection({
             })}
           </div>
         ) : (
-          <div style={{ fontSize: 15, color: "#555" }}>
+          <div style={{ fontSize: 15, color: "var(--text-secondary)" }}>
             No skills yet. Click "Edit Skills" to add them.
           </div>
         )
@@ -569,7 +569,7 @@ function ItemCard({
               borderRadius: 8,
               border: "1px solid var(--border)",
               background: "var(--bg-input)",
-              color: "#fff",
+              color: "var(--text-primary)",
               fontSize: 15,
               fontWeight: 600,
               fontFamily: "inherit",
@@ -592,7 +592,7 @@ function ItemCard({
               setEditingMeta(true);
               setMetaError(null);
             }}
-            style={{ ...btnBase, padding: "3px 10px", color: "#666", fontSize: 14, marginLeft: 10, flexShrink: 0 }}
+            style={{ ...btnBase, padding: "3px 10px", color: "var(--text-secondary)", fontSize: 14, marginLeft: 10, flexShrink: 0 }}
           >
             Edit
           </button>
@@ -615,14 +615,14 @@ function ItemCard({
                 borderRadius: 8,
                 border: "1px solid var(--border)",
                 background: "var(--bg-input)",
-                color: "#fff",
+                color: "var(--text-primary)",
                 fontSize: 14,
                 outline: "none",
                 colorScheme: "dark",
                 fontFamily: "inherit",
               }}
             />
-            <span style={{ color: "#555", fontSize: 14 }}>–</span>
+            <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>–</span>
             <input
               type="month"
               value={endDraft}
@@ -634,7 +634,7 @@ function ItemCard({
                 borderRadius: 8,
                 border: "1px solid var(--border)",
                 background: "var(--bg-input)",
-                color: "#fff",
+                color: "var(--text-primary)",
                 fontSize: 14,
                 outline: "none",
                 colorScheme: "dark",
@@ -644,7 +644,7 @@ function ItemCard({
           </div>
         </div>
       ) : (
-        <div style={{ fontSize: 14, color: "#555", marginBottom: 12 }}>
+        <div style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 12 }}>
           {item.project_name && <span>{item.project_name} · </span>}
           {formatMonthYear(item.start_date)} – {formatMonthYear(item.end_date)}
         </div>
@@ -661,7 +661,7 @@ function ItemCard({
                 setMetaError(null);
               }}
               disabled={savingMeta}
-              style={{ ...btnBase, padding: "6px 12px", color: "#888", fontSize: 14, opacity: savingMeta ? 0.6 : 1 }}
+              style={{ ...btnBase, padding: "6px 12px", color: "var(--text-muted)", fontSize: 14, opacity: savingMeta ? 0.6 : 1 }}
             >
               Cancel
             </button>
@@ -673,7 +673,7 @@ function ItemCard({
                 padding: "6px 14px",
                 border: "1px solid var(--border-strong)",
                 background: "var(--bg-surface-deep)",
-                color: "#fff",
+                color: "var(--text-primary)",
                 fontSize: 14,
                 opacity: savingMeta ? 0.6 : 1,
               }}
@@ -693,9 +693,9 @@ function ItemCard({
           label="Frameworks & Technologies"
           pills={frameworksDraft}
           inputValue={newFwInput}
-          pillColor="#e08060"
-          borderColor="#e0806044"
-          bgColor="#e0806011"
+          pillColor="#7a3010"
+          borderColor="#7a301055"
+          bgColor="#7a301011"
           placeholder="Add a framework or technology…"
           disabled={savingFw}
           onRemove={(v) => setFrameworksDraft((p) => p.filter((x) => x !== v))}
@@ -715,7 +715,7 @@ function ItemCard({
                 padding: "5px 14px",
                 border: "1px solid var(--border-strong)",
                 background: "var(--bg-surface-deep)",
-                color: "#e08060",
+                color: "#7a3010",
                 fontSize: 14,
                 opacity: savingFw ? 0.6 : 1,
               }}
@@ -741,8 +741,8 @@ function ItemCard({
                 padding: "3px 10px",
                 borderRadius: 7,
                 border: `1px solid ${showInsights ? "#9b8bc7" : "var(--border)"}`,
-                background: showInsights ? "#f0eeff" : "transparent",
-                color: insightsLoading ? "#555" : "#7c5cbf",
+                background: showInsights ? "var(--accent-subtle)" : "transparent",
+                color: insightsLoading ? "var(--text-muted)" : "var(--accent)",
                 fontSize: 13,
                 cursor: insightsLoading ? "wait" : "pointer",
                 display: "flex",
@@ -777,8 +777,8 @@ function ItemCard({
                         background: isEditing ? "var(--hover-bg)" : "var(--bg-input)",
                       }}
                     >
-                      <div style={{ color: "#555", lineHeight: 1.6, flexShrink: 0 }}>•</div>
-                      <div style={{ flex: 1, color: "#444", lineHeight: 1.6, fontSize: 15 }}>
+                      <div style={{ color: "var(--text-secondary)", lineHeight: 1.6, flexShrink: 0 }}>•</div>
+                      <div style={{ flex: 1, color: "var(--text-secondary)", lineHeight: 1.6, fontSize: 15 }}>
                         {bullet}
                       </div>
                       <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
@@ -797,7 +797,7 @@ function ItemCard({
                             ...btnBase,
                             padding: "3px 9px",
                             background: isEditing ? "var(--hover-bg)" : "transparent",
-                            color: isEditing ? "#8888ff" : "#777",
+                            color: isEditing ? "var(--accent)" : "var(--text-muted)",
                             fontSize: 13,
                             opacity: savingBullet ? 0.6 : 1,
                           }}
@@ -810,7 +810,7 @@ function ItemCard({
                           style={{
                             ...btnBase,
                             padding: "3px 7px",
-                            color: "#663333",
+                            color: "var(--danger-text)",
                             fontSize: 14,
                             opacity: savingBullet ? 0.6 : 1,
                           }}
@@ -826,7 +826,7 @@ function ItemCard({
                           padding: "10px 12px",
                           borderRadius: 9,
                           border: "1px solid var(--border)",
-                          background: "#f0f0f0",
+                          background: "var(--bg-surface-deep)",
                           marginTop: 4,
                         }}
                       >
@@ -842,7 +842,7 @@ function ItemCard({
                             borderRadius: 7,
                             border: "1px solid var(--border)",
                             background: "var(--bg-surface)",
-                            color: "#fff",
+                            color: "var(--text-primary)",
                             padding: "9px 11px",
                             fontFamily: "inherit",
                             fontSize: 15,
@@ -857,7 +857,7 @@ function ItemCard({
                               setEditedBulletText("");
                             }}
                             disabled={savingBullet}
-                            style={{ ...btnBase, padding: "5px 11px", color: "#888", fontSize: 13, opacity: savingBullet ? 0.6 : 1 }}
+                            style={{ ...btnBase, padding: "5px 11px", color: "var(--text-muted)", fontSize: 13, opacity: savingBullet ? 0.6 : 1 }}
                           >
                             Cancel
                           </button>
@@ -869,7 +869,7 @@ function ItemCard({
                               padding: "5px 13px",
                               border: "1px solid var(--border-strong)",
                               background: "var(--bg-surface-deep)",
-                              color: bulletHasChanges ? "#fff" : "#555",
+                              color: bulletHasChanges ? "#fff" : "var(--text-secondary)",
                               fontSize: 13,
                               opacity: savingBullet || !bulletHasChanges ? 0.6 : 1,
                             }}
@@ -892,7 +892,7 @@ function ItemCard({
                   ...btnBase,
                   padding: "7px 14px",
                   border: "1px dashed var(--border)",
-                  color: "#555",
+                  color: "var(--text-secondary)",
                   fontSize: 14,
                   width: "100%",
                   textAlign: "left",
@@ -906,7 +906,7 @@ function ItemCard({
                   padding: "10px 12px",
                   borderRadius: 9,
                   border: "1px solid var(--border)",
-                  background: "#f0f0f0",
+                  background: "var(--bg-surface-deep)",
                 }}
               >
                 <textarea
@@ -923,7 +923,7 @@ function ItemCard({
                     borderRadius: 7,
                     border: "1px solid var(--border)",
                     background: "var(--bg-surface)",
-                    color: "#fff",
+                    color: "var(--text-primary)",
                     padding: "9px 11px",
                     fontFamily: "inherit",
                     fontSize: 15,
@@ -938,7 +938,7 @@ function ItemCard({
                       setNewBulletText("");
                     }}
                     disabled={savingBullet}
-                    style={{ ...btnBase, padding: "5px 11px", color: "#888", fontSize: 13, opacity: savingBullet ? 0.6 : 1 }}
+                    style={{ ...btnBase, padding: "5px 11px", color: "var(--text-muted)", fontSize: 13, opacity: savingBullet ? 0.6 : 1 }}
                   >
                     Cancel
                   </button>
@@ -950,7 +950,7 @@ function ItemCard({
                       padding: "5px 13px",
                       border: "1px solid var(--border-strong)",
                       background: "var(--bg-surface-deep)",
-                      color: newBulletText.trim() ? "#fff" : "#555",
+                      color: newBulletText.trim() ? "#fff" : "var(--text-secondary)",
                       fontSize: 13,
                       opacity: savingBullet || !newBulletText.trim() ? 0.6 : 1,
                     }}
@@ -969,20 +969,20 @@ function ItemCard({
                 width: 320,
                 flexShrink: 0,
                 borderRadius: 10,
-                border: "1px solid #2a1f3d",
-                background: "var(--bg-surface-deep)",
+                border: "1px solid var(--hover-border)",
+                background: "var(--accent-subtle)",
                 padding: "12px 14px",
               }}
             >
               {insightsError ? (
                 <div style={{ color: "var(--danger-text)", fontSize: 14 }}>{insightsError}</div>
               ) : visibleInsights.length === 0 ? (
-                <div style={{ color: "#555", fontSize: 14 }}>
+                <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>
                   No writing prompts available for this project.
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: 14, color: "#888", marginBottom: 10, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 10, lineHeight: 1.5 }}>
                     These prompts are based on your project's data. They are intended to help guide you to create or modify the project's bullet points.
                   </div>
                   <div style={{ display: "grid", gap: 7 }}>
@@ -995,21 +995,21 @@ function ItemCard({
                           alignItems: "flex-start",
                           padding: "8px 10px",
                           borderRadius: 8,
-                          border: "1px solid #2a1f3d",
-                          background: "var(--bg-surface-deep)",
+                          border: "1px solid var(--hover-border)",
+                          background: "#ffffff",
                         }}
                       >
-                        <span style={{ color: "#a08cff", flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>✦</span>
-                        <span style={{ flex: 1, fontSize: 14, color: "#444", lineHeight: 1.6 }}>{message}</span>
+                        <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>✦</span>
+                        <span style={{ flex: 1, fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6 }}>{message}</span>
                         <button
                           onClick={() => handleDismissInsight(message, idx)}
                           title="Dismiss this prompt"
                           style={{
                             padding: "1px 6px",
                             borderRadius: 5,
-                            border: "1px solid #3a2a5a",
+                            border: "1px solid var(--border-strong)",
                             background: "transparent",
-                            color: "#554466",
+                            color: "var(--text-muted)",
                             fontSize: 15,
                             cursor: "pointer",
                             flexShrink: 0,
@@ -1131,7 +1131,7 @@ export default function ResumePage() {
             borderRadius: 14,
             padding: 20,
             background: "var(--bg-surface)",
-            color: "#555",
+            color: "var(--text-secondary)",
             fontSize: 14,
           }}
         >
@@ -1153,7 +1153,7 @@ export default function ResumePage() {
           }}
         >
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No resume found</div>
-          <div style={{ color: "#666", marginBottom: 20, fontSize: 14 }}>
+          <div style={{ color: "var(--text-secondary)", marginBottom: 20, fontSize: 14 }}>
             {error ?? "Create a resume from the resumes page."}
           </div>
           <Link
@@ -1164,7 +1164,7 @@ export default function ResumePage() {
               borderRadius: 9,
               border: "1px solid var(--border)",
               background: "var(--bg-surface-deep)",
-              color: "#333",
+              color: "var(--text-primary)",
               textDecoration: "none",
               fontSize: 14,
             }}
@@ -1216,7 +1216,7 @@ export default function ResumePage() {
                   borderRadius: 10,
                   border: "1px solid var(--border)",
                   background: "var(--bg-input)",
-                  color: "#fff",
+                  color: "var(--text-primary)",
                   minWidth: 280,
                   fontFamily: "inherit",
                   outline: "none",
@@ -1230,7 +1230,7 @@ export default function ResumePage() {
                   borderRadius: 10,
                   border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#333",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
                   fontSize: 14,
                 }}
@@ -1245,7 +1245,7 @@ export default function ResumePage() {
                   borderRadius: 10,
                   border: "1px solid var(--border)",
                   background: "transparent",
-                  color: savingTitle ? "#777" : "#444",
+                  color: savingTitle ? "var(--text-muted)" : "var(--text-primary)",
                   cursor: savingTitle ? "not-allowed" : "pointer",
                   fontSize: 14,
                   opacity: savingTitle ? 0.6 : 1,
@@ -1264,7 +1264,7 @@ export default function ResumePage() {
                   borderRadius: 8,
                   border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#999",
+                  color: "var(--text-muted)",
                   cursor: "pointer",
                   fontSize: 14,
                 }}
@@ -1285,7 +1285,7 @@ export default function ResumePage() {
               borderRadius: 10,
               border: "1px solid var(--border-strong)",
               background: "var(--bg-surface-deep)",
-              color: "#fff",
+              color: "var(--text-primary)",
               cursor: savingTitle ? "not-allowed" : "pointer",
               fontSize: 14,
               opacity: savingTitle ? 0.6 : 1,
@@ -1301,7 +1301,7 @@ export default function ResumePage() {
               background: "transparent",
               border: "1px solid var(--border)",
               borderRadius: 10,
-              color: "#555",
+              color: "var(--text-secondary)",
               cursor: "not-allowed",
               fontSize: 14,
               opacity: 0.5,
@@ -1315,7 +1315,7 @@ export default function ResumePage() {
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid #3a1111",
+              border: "1px solid var(--danger-bg-strong)",
               borderRadius: 10,
               color: "var(--danger-text)",
               cursor: "pointer",
@@ -1357,7 +1357,7 @@ export default function ResumePage() {
         <span style={SECTION_LABEL}>Projects</span>
 
         {!resume.items || resume.items.length === 0 ? (
-          <div style={{ fontSize: 15, color: "#555" }}>No projects in this resume.</div>
+          <div style={{ fontSize: 15, color: "var(--text-secondary)" }}>No projects in this resume.</div>
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
             {resume.items.map((item, itemIndex) => (
@@ -1402,7 +1402,7 @@ export default function ResumePage() {
             }}
           >
             <h2 style={{ marginTop: 0 }}>Delete Resume</h2>
-            <p style={{ color: "#444", lineHeight: 1.6 }}>
+            <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
               Are you sure you want to delete{" "}
               <strong>"{displayTitle}"</strong>? This will permanently remove
               the resume and all its content. This cannot be undone.
@@ -1415,7 +1415,7 @@ export default function ResumePage() {
                   fontSize: 14,
                   marginBottom: 16,
                   padding: "8px 12px",
-                  background: "#3a1111",
+                  background: "var(--danger-bg)",
                   borderRadius: 8,
                 }}
               >
@@ -1432,7 +1432,7 @@ export default function ResumePage() {
                   borderRadius: 10,
                   border: "1px solid var(--border)",
                   background: "transparent",
-                  color: deleting ? "#777" : "#444",
+                  color: deleting ? "var(--text-muted)" : "var(--text-primary)",
                   cursor: deleting ? "not-allowed" : "pointer",
                 }}
               >
@@ -1445,8 +1445,8 @@ export default function ResumePage() {
                 style={{
                   padding: "10px 16px",
                   borderRadius: 10,
-                  border: "1px solid #3a1111",
-                  background: deleting ? "#202020" : "#3a1111",
+                  border: "1px solid var(--danger-bg-strong)",
+                  background: deleting ? "var(--danger-bg)" : "var(--danger-bg-strong)",
                   color: "var(--danger-text)",
                   cursor: deleting ? "not-allowed" : "pointer",
                   opacity: deleting ? 0.7 : 1,
