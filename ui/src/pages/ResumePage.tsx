@@ -41,6 +41,44 @@ const SECTION_LABEL = {
   marginBottom: 8,
 };
 
+// ─── Page overflow estimator ──────────────────────────────────────────────────
+// Approximates line usage based on the Jake Gutierrez LaTeX template at 11pt.
+// A single page holds roughly 55 content lines with 0.7in margins.
+const LINES_PER_PAGE = 55;
+
+function estimateResumeLines(resume: ResumeResponse): number {
+  let lines = 0;
+
+  // Header: name + contact row
+  lines += 2;
+
+  // Each section heading costs ~1.5 lines (title + rule + spacing)
+  const sectionHeading = 1.5;
+
+  if (resume.education && resume.education.length > 0) {
+    lines += sectionHeading + resume.education.length;
+  }
+  if (resume.awards && resume.awards.length > 0) {
+    lines += sectionHeading + resume.awards.length;
+  }
+  if (resume.items && resume.items.length > 0) {
+    lines += sectionHeading;
+    for (const item of resume.items) {
+      // Project heading row
+      lines += 1;
+      // Each bullet wraps at ~90 chars; average bullet is ~120 chars → ~1.5 lines
+      for (const b of item.bullet_points ?? []) {
+        lines += Math.max(1, Math.ceil(b.length / 90));
+      }
+    }
+  }
+  if (resume.skills && resume.skills.length > 0) {
+    lines += sectionHeading + 1;
+  }
+
+  return lines;
+}
+
 function Toast({ message, type }: { message: string; type: "success" | "error" }) {
   const ok = type === "success";
   return (
@@ -1776,6 +1814,30 @@ export default function ResumePage() {
 
       {error && <Toast message={error} type="error" />}
       {success && <Toast message={success} type="success" />}
+
+      {/* Page overflow warning */}
+      {estimateResumeLines(resume) > LINES_PER_PAGE && (
+        <div
+          style={{
+            border: "1px solid #6b4f00",
+            borderRadius: 10,
+            padding: "11px 16px",
+            background: "#1e1600",
+            color: "#f5c542",
+            fontSize: 14,
+            marginBottom: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 18 }}>⚠</span>
+          <span>
+            Your resume may exceed one page when exported. Consider reducing the
+            number of bullet points or projects to keep it concise.
+          </span>
+        </div>
+      )}
 
       {/* Header */}
       <HeaderSection
