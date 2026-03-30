@@ -9,7 +9,7 @@ project comparison, skills to highlight, projects selected for showcase)
 
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlmodel import Session, select
@@ -97,7 +97,7 @@ def edit_portfolio_metadata(
     if project_ids_include is not None:
         portfolio_model.project_ids_include = list(project_ids_include)
 
-    portfolio_model.last_updated_at = datetime.now()
+    portfolio_model.last_updated_at = datetime.now(timezone.utc)
     session.add(portfolio_model)
     session.commit()
     session.refresh(portfolio_model)

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ViewMode = "personal" | "ratio";
 
@@ -21,18 +21,38 @@ export default function ContributionMap({
 }: ContributionMapProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("personal");
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
-  // Generate list of dates covering the range of both timelines
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    for (const date of [...Object.keys(personalTimeline), ...Object.keys(totalTimeline)]) {
+      const year = Number(date.slice(0, 4));
+      if (!Number.isNaN(year)) {
+        years.add(year);
+      }
+    }
+    return Array.from(years).sort((a, b) => a - b);
+  }, [personalTimeline, totalTimeline]);
+
+  useEffect(() => {
+    if (availableYears.length === 0) {
+      setSelectedYear(null);
+      return;
+    }
+
+    setSelectedYear((prev) =>
+      prev && availableYears.includes(prev)
+        ? prev
+        : availableYears[availableYears.length - 1]
+    );
+  }, [availableYears]);
+
+  // Generate list of dates for the selected year
   const dateRange = useMemo(() => {
-    const allDates = new Set([
-      ...Object.keys(personalTimeline),
-      ...Object.keys(totalTimeline),
-    ]);
-    const sortedDates = Array.from(allDates).sort();
-    if (sortedDates.length === 0) return [];
+    if (!selectedYear) return [];
 
-    const startDate = new Date(sortedDates[0]);
-    const endDate = new Date(sortedDates[sortedDates.length - 1]);
+    const startDate = new Date(selectedYear, 0, 1);
+    const endDate = new Date(selectedYear, 11, 31);
     const dates: string[] = [];
 
     const current = new Date(startDate);
@@ -45,7 +65,29 @@ export default function ContributionMap({
     }
 
     return dates;
-  }, [personalTimeline, totalTimeline]);
+  }, [selectedYear]);
+
+  const goToPreviousYear = () => {
+    if (availableYears.length === 0 || selectedYear == null) return;
+
+    const currentIndex = availableYears.indexOf(selectedYear);
+    if (currentIndex <= 0) return;
+    setSelectedYear(availableYears[currentIndex - 1]);
+    setHoveredDate(null);
+  };
+
+  const goToNextYear = () => {
+    if (availableYears.length === 0 || selectedYear == null) return;
+
+    const currentIndex = availableYears.indexOf(selectedYear);
+    if (currentIndex === -1 || currentIndex >= availableYears.length - 1) return;
+    setSelectedYear(availableYears[currentIndex + 1]);
+    setHoveredDate(null);
+  };
+
+  const selectedYearIndex = selectedYear == null ? -1 : availableYears.indexOf(selectedYear);
+  const canGoPreviousYear = selectedYearIndex > 0;
+  const canGoNextYear = selectedYearIndex !== -1 && selectedYearIndex < availableYears.length - 1;
 
   // Calculate opacity for personal view
   const getPersonalOpacity = (date: string): number => {
@@ -90,15 +132,21 @@ export default function ContributionMap({
     if (userCount === 0) return "";
 
     const dateObj = new Date(date);
-    const dayName = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+    const displayDate = Number.isNaN(dateObj.getTime())
+      ? date
+      : dateObj.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
 
     if (viewMode === "personal") {
-      return `${date}: ${userCount} commit${userCount !== 1 ? "s" : ""}`;
+      return `${displayDate}: ${userCount} commit${userCount !== 1 ? "s" : ""}`;
     } else {
       const percentage = totalCount > 0
         ? ((userCount / totalCount) * 100).toFixed(1)
         : "0";
-      return `${date}: ${userCount}/${totalCount} commits (${percentage}% of team activity)`;
+      return `${displayDate}: ${userCount}/${totalCount} commits (${percentage}% of team activity)`;
     }
   };
 
@@ -257,29 +305,83 @@ export default function ContributionMap({
           borderTop: "1px solid #2a2a2a",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          justifyContent: "space-between",
           fontSize: 11,
           color: "#888",
         }}
       >
-        <span>Less</span>
-        <div style={{ display: "flex", gap: 2 }}>
-          {[0, 0.25, 0.5, 0.75, 1].map((opacity, i) => (
-            <div
-              key={i}
-              style={{
-                width: 10,
-                height: 10,
-                background:
-                  opacity === 0
-                    ? "#2a2a2a"
-                    : `rgba(230, 57, 70, ${opacity})`,
-                borderRadius: 2,
-              }}
-            />
-          ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span>Less</span>
+          <div style={{ display: "flex", gap: 2 }}>
+            {[0, 0.25, 0.5, 0.75, 1].map((opacity, i) => (
+              <div
+                key={i}
+                style={{
+                  width: 10,
+                  height: 10,
+                  background:
+                    opacity === 0
+                      ? "#2a2a2a"
+                      : `rgba(230, 57, 70, ${opacity})`,
+                  borderRadius: 2,
+                }}
+              />
+            ))}
+          </div>
+          <span>More</span>
         </div>
-        <span>More</span>
+
+        {selectedYear && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              onClick={goToPreviousYear}
+              disabled={!canGoPreviousYear}
+              style={{
+                padding: "6px 10px",
+                background: "transparent",
+                border: `1px solid ${canGoPreviousYear ? ACCENT_COLOR : "#444"}`,
+                borderRadius: 8,
+                color: canGoPreviousYear ? ACCENT_COLOR : "#666",
+                cursor: canGoPreviousYear ? "pointer" : "not-allowed",
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+              title="Previous year"
+            >
+              ←
+            </button>
+
+            <div
+              style={{
+                minWidth: 70,
+                textAlign: "center",
+                fontSize: 11,
+                fontWeight: 600,
+                color: ACCENT_COLOR,
+              }}
+            >
+              {selectedYear}
+            </div>
+
+            <button
+              onClick={goToNextYear}
+              disabled={!canGoNextYear}
+              style={{
+                padding: "6px 10px",
+                background: "transparent",
+                border: `1px solid ${canGoNextYear ? ACCENT_COLOR : "#444"}`,
+                borderRadius: 8,
+                color: canGoNextYear ? ACCENT_COLOR : "#666",
+                cursor: canGoNextYear ? "pointer" : "not-allowed",
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+              title="Next year"
+            >
+              →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Hovered date info */}

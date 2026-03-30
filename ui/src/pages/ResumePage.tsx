@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   api,
   type ResumeResponse,
@@ -11,7 +11,7 @@ import PillField from "../components/PillField";
 
 function toMonthInput(dateStr?: string | null): string {
   if (!dateStr) return "";
-  return String(dateStr).slice(0, 7); // "YYYY-MM-DD" → "YYYY-MM"
+  return String(dateStr).slice(0, 7); // "YYYY-MM-DD" becomes "YYYY-MM"
 }
 
 function fromMonthInput(monthStr: string, fallback?: string | null): string {
@@ -32,7 +32,7 @@ function formatMonthYear(value?: string | null): string {
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
 const SECTION_LABEL = {
-  fontSize: 11,
+  fontSize: 13,
   fontWeight: 700,
   letterSpacing: "0.07em",
   textTransform: "uppercase" as const,
@@ -51,7 +51,7 @@ function Toast({ message, type }: { message: string; type: "success" | "error" }
         padding: "11px 16px",
         background: ok ? "#0e1f14" : "#1a1111",
         color: ok ? "#8ad6a2" : "#ff8a8a",
-        fontSize: 13,
+        fontSize: 15,
         marginBottom: 14,
       }}
     >
@@ -191,7 +191,7 @@ function SkillsSection({
               border: "1px solid #2a2a2a",
               background: "transparent",
               color: "#888",
-              fontSize: 12,
+              fontSize: 14,
               cursor: "pointer",
             }}
           >
@@ -208,7 +208,7 @@ function SkillsSection({
                 border: "1px solid #2a2a2a",
                 background: "transparent",
                 color: "#888",
-                fontSize: 12,
+                fontSize: 14,
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.6 : 1,
               }}
@@ -224,7 +224,7 @@ function SkillsSection({
                 border: "1px solid #3a3a3a",
                 background: "#222",
                 color: "#fff",
-                fontSize: 12,
+                fontSize: 14,
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.6 : 1,
               }}
@@ -245,7 +245,7 @@ function SkillsSection({
                 <div key={key} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <span
                     style={{
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: 600,
                       color,
                       width: 90,
@@ -264,7 +264,7 @@ function SkillsSection({
                           borderRadius: 999,
                           border: `1px solid ${border}`,
                           background: bg,
-                          fontSize: 12,
+                          fontSize: 14,
                           color,
                         }}
                       >
@@ -277,7 +277,7 @@ function SkillsSection({
             })}
           </div>
         ) : (
-          <div style={{ fontSize: 13, color: "#555" }}>
+          <div style={{ fontSize: 15, color: "#555" }}>
             No skills yet. Click "Edit Skills" to add them.
           </div>
         )
@@ -354,6 +354,14 @@ function ItemCard({
   const [addingBullet, setAddingBullet] = useState(false);
   const [newBulletText, setNewBulletText] = useState("");
   const [savingBullet, setSavingBullet] = useState(false);
+
+  // ── Insights
+  const [showInsights, setShowInsights] = useState(false);
+  const [insightsLoaded, setInsightsLoaded] = useState(false);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [visibleInsights, setVisibleInsights] = useState<string[]>([]);
+  const [insightsCache, setInsightsCache] = useState<string[]>([]);
 
   // Sync state when item prop updates from parent
   useEffect(() => {
@@ -482,6 +490,53 @@ function ItemCard({
     }
   }
 
+  async function handleToggleInsights() {
+    if (showInsights) {
+      setShowInsights(false);
+      return;
+    }
+    setShowInsights(true);
+    if (insightsLoaded) return;
+
+    if (!item.project_name) {
+      setInsightsError("No project associated with this resume item.");
+      return;
+    }
+
+    try {
+      setInsightsLoading(true);
+      setInsightsError(null);
+      const res = await api.getProjectInsights(item.project_name);
+      const all = res.insights.map((i) => i.message);
+      setVisibleInsights(all.slice(0, 3));
+      setInsightsCache(all.slice(3));
+      setInsightsLoaded(true);
+    } catch (e: any) {
+      setInsightsError(e?.message ?? "Failed to load writing prompts.");
+    } finally {
+      setInsightsLoading(false);
+    }
+  }
+
+  async function handleDismissInsight(message: string, idx: number) {
+    setVisibleInsights((prev) => {
+      const updated = [...prev];
+      if (insightsCache.length > 0) {
+        updated[idx] = insightsCache[0];
+      } else {
+        updated.splice(idx, 1);
+      }
+      return updated;
+    });
+    setInsightsCache((prev) => prev.slice(1));
+    if (!item.project_name) return;
+    try {
+      await api.dismissInsight(item.project_name, message);
+    } catch {
+      // dismissed locally even if the network call fails
+    }
+  }
+
   const btnBase = {
     borderRadius: 7,
     border: "1px solid #2a2a2a",
@@ -537,7 +592,7 @@ function ItemCard({
               setEditingMeta(true);
               setMetaError(null);
             }}
-            style={{ ...btnBase, padding: "3px 10px", color: "#666", fontSize: 12, marginLeft: 10, flexShrink: 0 }}
+            style={{ ...btnBase, padding: "3px 10px", color: "#666", fontSize: 14, marginLeft: 10, flexShrink: 0 }}
           >
             Edit
           </button>
@@ -561,13 +616,13 @@ function ItemCard({
                 border: "1px solid #2a2a2a",
                 background: "#111",
                 color: "#fff",
-                fontSize: 13,
+                fontSize: 14,
                 outline: "none",
                 colorScheme: "dark",
                 fontFamily: "inherit",
               }}
             />
-            <span style={{ color: "#555", fontSize: 13 }}>–</span>
+            <span style={{ color: "#555", fontSize: 14 }}>–</span>
             <input
               type="month"
               value={endDraft}
@@ -580,7 +635,7 @@ function ItemCard({
                 border: "1px solid #2a2a2a",
                 background: "#111",
                 color: "#fff",
-                fontSize: 13,
+                fontSize: 14,
                 outline: "none",
                 colorScheme: "dark",
                 fontFamily: "inherit",
@@ -589,7 +644,7 @@ function ItemCard({
           </div>
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>
+        <div style={{ fontSize: 14, color: "#555", marginBottom: 12 }}>
           {item.project_name && <span>{item.project_name} · </span>}
           {formatMonthYear(item.start_date)} – {formatMonthYear(item.end_date)}
         </div>
@@ -606,7 +661,7 @@ function ItemCard({
                 setMetaError(null);
               }}
               disabled={savingMeta}
-              style={{ ...btnBase, padding: "6px 12px", color: "#888", fontSize: 12, opacity: savingMeta ? 0.6 : 1 }}
+              style={{ ...btnBase, padding: "6px 12px", color: "#888", fontSize: 14, opacity: savingMeta ? 0.6 : 1 }}
             >
               Cancel
             </button>
@@ -619,7 +674,7 @@ function ItemCard({
                 border: "1px solid #3a3a3a",
                 background: "#222",
                 color: "#fff",
-                fontSize: 12,
+                fontSize: 14,
                 opacity: savingMeta ? 0.6 : 1,
               }}
             >
@@ -661,7 +716,7 @@ function ItemCard({
                 border: "1px solid #3a3a3a",
                 background: "#222",
                 color: "#e08060",
-                fontSize: 12,
+                fontSize: 14,
                 opacity: savingFw ? 0.6 : 1,
               }}
             >
@@ -675,206 +730,304 @@ function ItemCard({
 
       {/* ── BULLET POINTS ─────────────────────────────────────── */}
       <div>
-        <div style={SECTION_LABEL}>Bullet Points</div>
-        <div style={{ display: "grid", gap: 6, marginBottom: 6 }}>
-          {(item.bullet_points ?? []).map((bullet, bulletIndex) => {
-            const isEditing = editingBulletIdx === bulletIndex;
-            return (
-              <div key={bulletIndex}>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    alignItems: "flex-start",
-                    padding: "9px 12px",
-                    borderRadius: 9,
-                    border: isEditing ? "1px solid #3a3a5a" : "1px solid #1e1e1e",
-                    background: isEditing ? "#0f1220" : "#111",
-                  }}
-                >
-                  <div style={{ color: "#555", lineHeight: 1.6, flexShrink: 0 }}>•</div>
-                  <div style={{ flex: 1, color: "#ccc", lineHeight: 1.6, fontSize: 13 }}>
-                    {bullet}
-                  </div>
-                  <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                    <button
-                      onClick={() => {
-                        if (isEditing) {
-                          setEditingBulletIdx(null);
-                          setEditedBulletText("");
-                        } else {
-                          setEditingBulletIdx(bulletIndex);
-                          setEditedBulletText(bullet);
-                        }
-                      }}
-                      disabled={savingBullet}
-                      style={{
-                        ...btnBase,
-                        padding: "3px 9px",
-                        background: isEditing ? "#1a1a2e" : "transparent",
-                        color: isEditing ? "#8888ff" : "#777",
-                        fontSize: 11,
-                        opacity: savingBullet ? 0.6 : 1,
-                      }}
-                    >
-                      {isEditing ? "Editing" : "Edit"}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteBullet(bulletIndex)}
-                      disabled={savingBullet}
-                      style={{
-                        ...btnBase,
-                        padding: "3px 7px",
-                        color: "#663333",
-                        fontSize: 12,
-                        opacity: savingBullet ? 0.6 : 1,
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-
-                {isEditing && (
-                  <div
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 9,
-                      border: "1px solid #2a2a2a",
-                      background: "#0d0d0d",
-                      marginTop: 4,
-                    }}
-                  >
-                    <textarea
-                      value={editedBulletText}
-                      onChange={(e) => setEditedBulletText(e.target.value)}
-                      rows={3}
-                      disabled={savingBullet}
-                      style={{
-                        width: "100%",
-                        boxSizing: "border-box",
-                        resize: "vertical",
-                        borderRadius: 7,
-                        border: "1px solid #2a2a2a",
-                        background: "#161616",
-                        color: "#fff",
-                        padding: "9px 11px",
-                        fontFamily: "inherit",
-                        fontSize: 13,
-                        lineHeight: 1.6,
-                        outline: "none",
-                      }}
-                    />
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 7, gap: 7 }}>
-                      <button
-                        onClick={() => {
-                          setEditingBulletIdx(null);
-                          setEditedBulletText("");
-                        }}
-                        disabled={savingBullet}
-                        style={{ ...btnBase, padding: "5px 11px", color: "#888", fontSize: 12, opacity: savingBullet ? 0.6 : 1 }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleSaveBullet}
-                        disabled={savingBullet || !bulletHasChanges}
-                        style={{
-                          ...btnBase,
-                          padding: "5px 13px",
-                          border: "1px solid #3a3a3a",
-                          background: "#222",
-                          color: bulletHasChanges ? "#fff" : "#555",
-                          fontSize: 12,
-                          opacity: savingBullet || !bulletHasChanges ? 0.6 : 1,
-                        }}
-                      >
-                        {savingBullet ? "Saving..." : "Save"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        {/* Header row: label + sparkles button */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <span style={SECTION_LABEL}>Bullet Points</span>
+          {item.project_name && (
+            <button
+              onClick={handleToggleInsights}
+              disabled={insightsLoading}
+              style={{
+                padding: "3px 10px",
+                borderRadius: 7,
+                border: `1px solid ${showInsights ? "#5a4a8a" : "#2a2a2a"}`,
+                background: showInsights ? "#1a1030" : "transparent",
+                color: insightsLoading ? "#555" : "#a08cff",
+                fontSize: 13,
+                cursor: insightsLoading ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                fontFamily: "inherit",
+              }}
+            >
+              ✦ {insightsLoading ? "Loading…" : "Writing prompts"}
+            </button>
+          )}
         </div>
 
-        {/* Add bullet */}
-        {!addingBullet ? (
-          <button
-            onClick={() => setAddingBullet(true)}
-            style={{
-              ...btnBase,
-              padding: "7px 14px",
-              border: "1px dashed #2a2a2a",
-              color: "#555",
-              fontSize: 12,
-              width: "100%",
-              textAlign: "left",
-            }}
-          >
-            + Add bullet point
-          </button>
-        ) : (
-          <div
-            style={{
-              padding: "10px 12px",
-              borderRadius: 9,
-              border: "1px solid #2a2a2a",
-              background: "#0d0d0d",
-            }}
-          >
-            <textarea
-              value={newBulletText}
-              onChange={(e) => setNewBulletText(e.target.value)}
-              rows={3}
-              placeholder="Describe what you did or achieved…"
-              disabled={savingBullet}
-              autoFocus
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                resize: "vertical",
-                borderRadius: 7,
-                border: "1px solid #2a2a2a",
-                background: "#161616",
-                color: "#fff",
-                padding: "9px 11px",
-                fontFamily: "inherit",
-                fontSize: 13,
-                lineHeight: 1.6,
-                outline: "none",
-              }}
-            />
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 7, gap: 7 }}>
+        {/* Content row: bullets left, insights right */}
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+
+          {/* Left: bullet list + add button */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "grid", gap: 6, marginBottom: 6 }}>
+              {(item.bullet_points ?? []).map((bullet, bulletIndex) => {
+                const isEditing = editingBulletIdx === bulletIndex;
+                return (
+                  <div key={bulletIndex}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "flex-start",
+                        padding: "9px 12px",
+                        borderRadius: 9,
+                        border: isEditing ? "1px solid #3a3a5a" : "1px solid #1e1e1e",
+                        background: isEditing ? "#0f1220" : "#111",
+                      }}
+                    >
+                      <div style={{ color: "#555", lineHeight: 1.6, flexShrink: 0 }}>•</div>
+                      <div style={{ flex: 1, color: "#ccc", lineHeight: 1.6, fontSize: 15 }}>
+                        {bullet}
+                      </div>
+                      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                        <button
+                          onClick={() => {
+                            if (isEditing) {
+                              setEditingBulletIdx(null);
+                              setEditedBulletText("");
+                            } else {
+                              setEditingBulletIdx(bulletIndex);
+                              setEditedBulletText(bullet);
+                            }
+                          }}
+                          disabled={savingBullet}
+                          style={{
+                            ...btnBase,
+                            padding: "3px 9px",
+                            background: isEditing ? "#1a1a2e" : "transparent",
+                            color: isEditing ? "#8888ff" : "#777",
+                            fontSize: 13,
+                            opacity: savingBullet ? 0.6 : 1,
+                          }}
+                        >
+                          {isEditing ? "Editing" : "Edit"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBullet(bulletIndex)}
+                          disabled={savingBullet}
+                          style={{
+                            ...btnBase,
+                            padding: "3px 7px",
+                            color: "#663333",
+                            fontSize: 14,
+                            opacity: savingBullet ? 0.6 : 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+
+                    {isEditing && (
+                      <div
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: 9,
+                          border: "1px solid #2a2a2a",
+                          background: "#0d0d0d",
+                          marginTop: 4,
+                        }}
+                      >
+                        <textarea
+                          value={editedBulletText}
+                          onChange={(e) => setEditedBulletText(e.target.value)}
+                          rows={3}
+                          disabled={savingBullet}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            resize: "vertical",
+                            borderRadius: 7,
+                            border: "1px solid #2a2a2a",
+                            background: "#161616",
+                            color: "#fff",
+                            padding: "9px 11px",
+                            fontFamily: "inherit",
+                            fontSize: 15,
+                            lineHeight: 1.6,
+                            outline: "none",
+                          }}
+                        />
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 7, gap: 7 }}>
+                          <button
+                            onClick={() => {
+                              setEditingBulletIdx(null);
+                              setEditedBulletText("");
+                            }}
+                            disabled={savingBullet}
+                            style={{ ...btnBase, padding: "5px 11px", color: "#888", fontSize: 13, opacity: savingBullet ? 0.6 : 1 }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveBullet}
+                            disabled={savingBullet || !bulletHasChanges}
+                            style={{
+                              ...btnBase,
+                              padding: "5px 13px",
+                              border: "1px solid #3a3a3a",
+                              background: "#222",
+                              color: bulletHasChanges ? "#fff" : "#555",
+                              fontSize: 13,
+                              opacity: savingBullet || !bulletHasChanges ? 0.6 : 1,
+                            }}
+                          >
+                            {savingBullet ? "Saving..." : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add bullet */}
+            {!addingBullet ? (
               <button
-                onClick={() => {
-                  setAddingBullet(false);
-                  setNewBulletText("");
-                }}
-                disabled={savingBullet}
-                style={{ ...btnBase, padding: "5px 11px", color: "#888", fontSize: 12, opacity: savingBullet ? 0.6 : 1 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddBullet}
-                disabled={savingBullet || !newBulletText.trim()}
+                onClick={() => setAddingBullet(true)}
                 style={{
                   ...btnBase,
-                  padding: "5px 13px",
-                  border: "1px solid #3a3a3a",
-                  background: "#222",
-                  color: newBulletText.trim() ? "#fff" : "#555",
-                  fontSize: 12,
-                  opacity: savingBullet || !newBulletText.trim() ? 0.6 : 1,
+                  padding: "7px 14px",
+                  border: "1px dashed #2a2a2a",
+                  color: "#555",
+                  fontSize: 14,
+                  width: "100%",
+                  textAlign: "left",
                 }}
               >
-                {savingBullet ? "Adding..." : "Add Bullet"}
+                + Add bullet point
               </button>
-            </div>
+            ) : (
+              <div
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 9,
+                  border: "1px solid #2a2a2a",
+                  background: "#0d0d0d",
+                }}
+              >
+                <textarea
+                  value={newBulletText}
+                  onChange={(e) => setNewBulletText(e.target.value)}
+                  rows={3}
+                  placeholder="Describe what you did or achieved…"
+                  disabled={savingBullet}
+                  autoFocus
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                    borderRadius: 7,
+                    border: "1px solid #2a2a2a",
+                    background: "#161616",
+                    color: "#fff",
+                    padding: "9px 11px",
+                    fontFamily: "inherit",
+                    fontSize: 15,
+                    lineHeight: 1.6,
+                    outline: "none",
+                  }}
+                />
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 7, gap: 7 }}>
+                  <button
+                    onClick={() => {
+                      setAddingBullet(false);
+                      setNewBulletText("");
+                    }}
+                    disabled={savingBullet}
+                    style={{ ...btnBase, padding: "5px 11px", color: "#888", fontSize: 13, opacity: savingBullet ? 0.6 : 1 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddBullet}
+                    disabled={savingBullet || !newBulletText.trim()}
+                    style={{
+                      ...btnBase,
+                      padding: "5px 13px",
+                      border: "1px solid #3a3a3a",
+                      background: "#222",
+                      color: newBulletText.trim() ? "#fff" : "#555",
+                      fontSize: 13,
+                      opacity: savingBullet || !newBulletText.trim() ? 0.6 : 1,
+                    }}
+                  >
+                    {savingBullet ? "Adding..." : "Add Bullet"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Right: insights panel */}
+          {showInsights && !insightsLoading && (
+            <div
+              style={{
+                width: 320,
+                flexShrink: 0,
+                borderRadius: 10,
+                border: "1px solid #2a1f3d",
+                background: "#0e0d18",
+                padding: "12px 14px",
+              }}
+            >
+              {insightsError ? (
+                <div style={{ color: "#ff8a8a", fontSize: 14 }}>{insightsError}</div>
+              ) : visibleInsights.length === 0 ? (
+                <div style={{ color: "#555", fontSize: 14 }}>
+                  No writing prompts available for this project.
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 14, color: "#888", marginBottom: 10, lineHeight: 1.5 }}>
+                    These prompts are based on your project's data. They are intended to help guide you to create or modify the project's bullet points.
+                  </div>
+                  <div style={{ display: "grid", gap: 7 }}>
+                    {visibleInsights.map((message, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "flex-start",
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid #2a1f3d",
+                          background: "#13102a",
+                        }}
+                      >
+                        <span style={{ color: "#a08cff", flexShrink: 0, fontSize: 14, lineHeight: 1.6 }}>✦</span>
+                        <span style={{ flex: 1, fontSize: 14, color: "#ccc", lineHeight: 1.6 }}>{message}</span>
+                        <button
+                          onClick={() => handleDismissInsight(message, idx)}
+                          title="Dismiss this prompt"
+                          style={{
+                            padding: "1px 6px",
+                            borderRadius: 5,
+                            border: "1px solid #3a2a5a",
+                            background: "transparent",
+                            color: "#554466",
+                            fontSize: 15,
+                            cursor: "pointer",
+                            flexShrink: 0,
+                            fontFamily: "inherit",
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );
@@ -1470,6 +1623,9 @@ function HeaderSection({
 export default function ResumePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo: string = (location.state as any)?.from ?? "/resumes";
+  const backLabel = backTo === "/" ? "← Back to Dashboard" : "← Back to Resumes";
   const resumeId = id ?? "1";
 
   const [loading, setLoading] = useState(true);
@@ -1556,7 +1712,7 @@ export default function ResumePage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
+      <div style={{ padding: 24, paddingTop: 40 }}>
         <div
           style={{
             border: "1px solid #2a2a2a",
@@ -1575,7 +1731,7 @@ export default function ResumePage() {
 
   if (!resume) {
     return (
-      <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
+      <div style={{ padding: 24, paddingTop: 40 }}>
         <div
           style={{
             border: "1px solid #2a2a2a",
@@ -1589,7 +1745,7 @@ export default function ResumePage() {
             {error ?? "Create a resume from the resumes page."}
           </div>
           <Link
-            to="/resumes"
+            to={backTo}
             style={{
               display: "inline-block",
               padding: "9px 16px",
@@ -1601,7 +1757,7 @@ export default function ResumePage() {
               fontSize: 14,
             }}
           >
-            ← Go to Resumes
+            {backTo === "/" ? "← Go to Dashboard" : "← Go to Resumes"}
           </Link>
         </div>
       </div>
@@ -1611,10 +1767,10 @@ export default function ResumePage() {
   const displayTitle = resume.title || `Resume #${resume.id}`;
 
   return (
-    <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
+    <div style={{ padding: 24, paddingTop: 40 }}>
       {/* Back */}
-      <Link to="/resumes" style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}>
-        ← Back to Resumes
+      <Link to={backTo} style={{ color: "#6f7cff", textDecoration: "none", fontSize: 14 }}>
+        {backLabel}
       </Link>
 
       {/* Header */}
@@ -1698,7 +1854,7 @@ export default function ResumePage() {
                   background: "transparent",
                   color: "#999",
                   cursor: "pointer",
-                  fontSize: 12,
+                  fontSize: 14,
                 }}
               >
                 Edit
@@ -1835,7 +1991,7 @@ export default function ResumePage() {
         <span style={SECTION_LABEL}>Projects</span>
 
         {!resume.items || resume.items.length === 0 ? (
-          <div style={{ fontSize: 13, color: "#555" }}>No projects in this resume.</div>
+          <div style={{ fontSize: 15, color: "#555" }}>No projects in this resume.</div>
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
             {resume.items.map((item, itemIndex) => (

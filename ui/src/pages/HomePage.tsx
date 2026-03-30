@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   api,
   getLatestResumeId,
@@ -7,7 +7,7 @@ import {
   type ResumeListItem,
   type ResumeListResponse,
 } from "../api/apiClient";
-import UploadProjectModal from "../components/update/modal/UploadProjectModal";
+import UploadProjectModal from "../components/update/Modal/UploadProjectModal";
 import ProjectSkeleton from "@/components/ProjectSkeleton";
 
 type PortfolioListItem = {
@@ -27,7 +27,8 @@ function getImageSrc(base64: string): string {
   return `data:image/jpeg;base64,${base64}`;
 }
 
-export default function HomePage() {
+export default function HomePage({ backendReady }: { backendReady: boolean }) {
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
@@ -36,12 +37,12 @@ export default function HomePage() {
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
   const [portfoliosLoading, setPortfoliosLoading] = useState(true);
   const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
-  
+
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [resumesLoading, setResumesLoading] = useState(true);
   const [resumesError, setResumesError] = useState<string | null>(null);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
-  
+
   const [hoveredProjectName, setHoveredProjectName] = useState<string | null>(null);
 
   const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(false);
@@ -92,11 +93,18 @@ export default function HomePage() {
 }
 
   useEffect(() => {
+    if (!backendReady) return;
     loadProjects();
     loadPortfolios();
     loadResumes();
     loadLatestResume();
-  }, []);
+  }, [backendReady]);
+
+  useEffect(() => {
+    if ((location.state as any)?.openUploadModal) {
+      setShowUploadModal(true);
+    }
+  }, [location.state]);
 
   function loadLatestResume() {
   const resumeId = getLatestResumeId();
@@ -177,7 +185,7 @@ async function handleUploadSuccess() {
         <div>
           <h1 style={{ margin: 0 }}>Dashboard</h1>
           <p style={{ marginTop: 8, color: "#666" }}>
-            Manage projects, resumes, portfolios, and settings.
+            Manage projects, resumes, portfolios, and your profile.
           </p>
         </div>
 
@@ -244,6 +252,7 @@ async function handleUploadSuccess() {
                       <Link
                         key={project.project_name}
                         to={`/projects/${encodeURIComponent(project.project_name)}`}
+                        state={{ from: "/" }}
                         onMouseEnter={() => setHoveredProjectName(project.project_name)}
                         onMouseLeave={() => setHoveredProjectName(null)}
                         style={{
@@ -324,17 +333,18 @@ async function handleUploadSuccess() {
                       Failed to load resumes.
                       </div>
                     )}
-                    
+
                     {!resumesLoading && !resumesError && resumes.length === 0 && (
                       <div style={{ color: "#999" }}>No resumes yet.</div>
                       )}
-                      
+
                       {!resumesLoading && !resumesError && resumes.length > 0 && (
                         <div style={{ display: "grid", gap: 12 }}>
                           {resumes.slice(0, 3).map((resume) => (
                             <Link
                             key={resume.id}
                             to={`/resume/${resume.id}`}
+                            state={{ from: "/" }}
                             style={{
                               display: "block",
                               textDecoration: "none",
@@ -353,7 +363,7 @@ async function handleUploadSuccess() {
                               </div>
                             )}
                         </div>
-                        
+
                         <div
                         style={{
                           marginTop: 20,
@@ -402,6 +412,7 @@ async function handleUploadSuccess() {
                   <Link
                     key={p.id}
                     to={`/portfolios/${p.id}`}
+                    state={{ from: "/" }}
                     style={{
                       display: "block",
                       textDecoration: "none",

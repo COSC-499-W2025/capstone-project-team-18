@@ -155,6 +155,7 @@ export type UserConfigResponse = {
   id: number;
   consent: boolean;
   ml_consent: boolean;
+  name?: string | null;
   user_email?: string | null;
   github?: string | null;
   github_connected?: boolean;
@@ -181,6 +182,7 @@ export type GithubOauthStatusResponse = {
 export type UpdateUserConfigPayload = {
   consent: boolean;
   ml_consent?: boolean;
+  name?: string | null;
   user_email: string;
   github?: string | null;
   resume_config?: ResumeConfigRequest | null;
@@ -261,6 +263,36 @@ export type SkillsByExpertise = {
 export type ResumeListResponse = {
   resumes: ResumeListItem[];
   count: number;
+};
+
+export type JobReadinessRequest = {
+  job_description: string;
+  resume_id?: number | null;
+  project_names?: string[];
+};
+
+export type RankedFinding = {
+  item: string;
+  reason: string;
+  rank: number;
+};
+
+export type PrioritizedSuggestion = {
+  item: string;
+  reason: string;
+  priority: number;
+  action_type: string;
+  resource_name: string;
+  resource_type: string;
+  resource_hint: string;
+};
+
+export type JobReadinessResponse = {
+  fit_score: number;
+  summary: string;
+  strengths: RankedFinding[];
+  weaknesses: RankedFinding[];
+  suggestions: PrioritizedSuggestion[];
 };
 
 export type GenerateResumePayload = {
@@ -352,10 +384,14 @@ export const api = {
    * Lightweight connectivity check.
    */
   ping: async (): Promise<boolean> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
     try {
-      const res = await fetch(buildUrl("/ping"));
+      const res = await fetch(buildUrl("/ping"), { signal: controller.signal });
+      clearTimeout(timeoutId);
       return res.ok;
     } catch {
+      clearTimeout(timeoutId);
       return false;
     }
   },
@@ -370,6 +406,12 @@ export const api = {
   getProjectInsights: (name: string | number) =>
     getJson<ProjectInsightsResponse>(
       `/projects/${encodeURIComponent(String(name))}/insights`
+    ),
+
+  dismissInsight: (name: string | number, message: string) =>
+    postJson<{ dismissed: boolean }>(
+      `/projects/${encodeURIComponent(String(name))}/insights/dismiss`,
+      { message }
     ),
 
   getUserConfig: () => getJson<UserConfigResponse>("/user-config"),
@@ -526,6 +568,9 @@ export const api = {
 
     return res;
   },
+
+  analyzeJobReadiness: (payload: JobReadinessRequest) =>
+    postJson<JobReadinessResponse>("/job-readiness/analyze", payload),
 
   // Portfolio endpoints
   getPortfolios: () => getJson<any>("/portfolio"),

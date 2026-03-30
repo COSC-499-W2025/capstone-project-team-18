@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/apiClient";
 import TextBlockEditor from "../components/blocks/TextBlockEditor";
 import TextListBlockEditor from "../components/blocks/TextListBlockEditor";
@@ -67,7 +67,13 @@ type BlockEditEntry = {
 function formatDate(value?: string) {
   if (!value) return "—";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+  return Number.isNaN(d.getTime())
+    ? value
+    : d.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
 }
 
 function pillStyle(color?: string) {
@@ -191,6 +197,9 @@ function PillField({
 export default function PortfolioEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo: string = (location.state as any)?.from ?? "/portfolios";
+  const backLabel = backTo === "/" ? "← Back to Dashboard" : "← Back to Portfolios";
 
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
@@ -260,6 +269,13 @@ export default function PortfolioEditPage() {
   const [skillTimelineData, setSkillTimelineData] = useState<
     Record<string, Record<string, number>>
   >({});
+  const [skillTimelineRange, setSkillTimelineRange] = useState<{
+    startDate: string | null;
+    endDate: string | null;
+  }>({
+    startDate: null,
+    endDate: null,
+  });
   const [contributionLoading, setContributionLoading] = useState(false);
 
   // ---- Load ----------------------------------------------------------------
@@ -291,6 +307,28 @@ export default function PortfolioEditPage() {
         const personal_timeline: Record<string, number> = {};
         const total_timeline: Record<string, number> = {};
         const skill_timeline: Record<string, Record<string, number>> = {};
+        let earliestProjectStartTs: number | null = null;
+        let latestProjectEndTs: number | null = null;
+        const toIsoDate = (value: number | null) =>
+          value === null ? null : new globalThis.Date(value).toISOString().slice(0, 10);
+
+        const updateTimelineRange = (value: unknown, isStart: boolean) => {
+          if (typeof value !== "string") return;
+          const parsed = new globalThis.Date(value);
+          if (Number.isNaN(parsed.getTime())) return;
+          const parsedTs = parsed.getTime();
+
+          if (isStart) {
+            if (earliestProjectStartTs === null || parsedTs < earliestProjectStartTs) {
+              earliestProjectStartTs = parsedTs;
+            }
+            return;
+          }
+
+          if (latestProjectEndTs === null || parsedTs > latestProjectEndTs) {
+            latestProjectEndTs = parsedTs;
+          }
+        };
 
         const projectResults = await Promise.all(
           projectNames.map((projectName) =>
@@ -312,6 +350,8 @@ export default function PortfolioEditPage() {
 
           const projectData = (result as { projectName: string; projectData: any }).projectData;
           const statistic = projectData?.statistic || {};
+          updateTimelineRange(statistic.PROJECT_START_DATE, true);
+          updateTimelineRange(statistic.PROJECT_END_DATE, false);
 
           // Extract contribution timelines from project statistics
           const personalTimeline = statistic.COMMIT_ACTIVITY_TIMELINE || {};
@@ -346,11 +386,19 @@ export default function PortfolioEditPage() {
           total_timeline,
         });
         setSkillTimelineData(skill_timeline);
+        setSkillTimelineRange({
+          startDate: toIsoDate(earliestProjectStartTs),
+          endDate: toIsoDate(latestProjectEndTs),
+        });
       } catch (e: any) {
         // Silently fail contribution loading so it doesn't block the page
         console.warn("Failed to load contribution map:", e?.message);
         setContributionData(null);
         setSkillTimelineData({});
+        setSkillTimelineRange({
+          startDate: null,
+          endDate: null,
+        });
       } finally {
         setContributionLoading(false);
       }
@@ -634,10 +682,10 @@ export default function PortfolioEditPage() {
     return (
       <div style={{ padding: 24, paddingTop: 40 }}>
         <Link
-          to="/portfolios"
+          to={backTo}
           style={{ color: "#6f7cff", fontSize: 14, textDecoration: "none" }}
         >
-          ← Back to Portfolios
+          {backLabel}
         </Link>
         <div
           style={{
@@ -668,10 +716,10 @@ export default function PortfolioEditPage() {
     <div style={{ padding: 24, paddingTop: 40 }}>
       {/* Back */}
       <Link
-        to="/portfolios"
+        to={backTo}
         style={{ color: "#6f7cff", fontSize: 14, textDecoration: "none" }}
       >
-        ← Back to Portfolios
+        {backLabel}
       </Link>
 
       {/* Header */}
@@ -1002,7 +1050,7 @@ export default function PortfolioEditPage() {
 
           {Object.keys(skillTimelineData).length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <SkillTimelineGraph data={skillTimelineData} />
+              <SkillTimelineGraph data={skillTimelineData} range={skillTimelineRange} />
             </div>
           )}
         </div>

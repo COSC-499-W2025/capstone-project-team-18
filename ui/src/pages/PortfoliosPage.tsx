@@ -17,7 +17,10 @@ type ListPortfoliosResponse = {
 
 function formatRelativeDate(value?: string | null) {
   if (!value) return "—";
-  const d = new Date(value);
+  // Treat naive datetime strings (no timezone suffix) as UTC, since the
+  // backend stores UTC datetimes without a 'Z' designator.
+  const normalized = /[Zz]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}Z`;
+  const d = new Date(normalized);
   if (Number.isNaN(d.getTime())) return value;
 
   const now = Date.now();
@@ -97,7 +100,7 @@ export default function PortfoliosPage() {
             whiteSpace: "nowrap",
           }}
         >
-          + Create Portfolio
+          Create Portfolio
         </button>
       </div>
 
@@ -156,6 +159,7 @@ export default function PortfoliosPage() {
             <Link
               key={p.id}
               to={`/portfolios/${p.id}`}
+              state={{ from: "/portfolios" }}
               style={{
                 display: "block",
                 textDecoration: "none",

@@ -3,6 +3,8 @@ from src.core.resume.bullet_point_builder import (
     ActivityTypeContributionBulletPoint,
     CodingLanguageBulletPoint,
     WeightedSkillsBulletPoint,
+    ContributionPatternBulletPoint,
+    ProjectThemesBulletPoint,
 )
 from src.core.statistic import (
     WeightedSkills,
@@ -81,7 +83,7 @@ def test_coding_language_bp_single():
     ratio = {CodingLanguage.PYTHON: 1.0}
     report = type("Report", (), {"get_value": lambda self, key: ratio})()
     bp = CodingLanguageBulletPoint().generate(report)[0]  # type: ignore
-    assert bp == "Project was coded using the Python language"
+    assert bp == "Built the project utilizing Python"
 
 
 def test_coding_language_bp_small_shares():
@@ -132,14 +134,13 @@ def test_bullet_point_builder_aggregates_stats(project_report_from_stats):
     bp = BulletPointBuilder()
     bullets = bp.build(report)
 
-    # should include language, skills, collaboration, and percentages
+    # should include language, skills, and collaboration bullets
     assert any("python" in b.lower() for b in bullets)
     assert any("ml" in b.lower() or "machine" in b.lower() for b in bullets)
     assert any("collaborated" in b.lower() for b in bullets)
-    assert any("authored 25.0%" in b.lower()
-               or "authored 25%" in b.lower() for b in bullets)
-    assert any("accounted for 40.0%" in b.lower()
-               or "accounted for 40%" in b.lower() for b in bullets)
+    # contrib % (40.0) is higher than commit % (25.0) → only "delivered" bullet
+    assert any("delivered 40.0%" in b.lower() or "delivered 40%" in b.lower() for b in bullets)
+    assert not any("drove 25" in b.lower() for b in bullets)
 
 
 def test_bullet_point_builder_individual(project_report_from_stats):
@@ -149,4 +150,83 @@ def test_bullet_point_builder_individual(project_report_from_stats):
     report = project_report_from_stats(stats)
     bp = BulletPointBuilder()
     bullets = bp.build(report)
-    assert any("individ" in b.lower() for b in bullets)
+    assert any("independ" in b.lower() for b in bullets)
+
+
+def test_contribution_pattern_bp_role_mapped(monkeypatch):
+    """COLLABORATION_ROLE is mapped to a resume-quality phrase."""
+    import src.core.resume.bullet_point_builder as bpb
+    monkeypatch.setattr(bpb, "ml_extraction_allowed", lambda: True)
+
+    def get_value(self, key):
+        if key == ProjectStatCollection.COLLABORATION_ROLE.value:
+            return "leader"
+        return None
+
+    report = type("Report", (), {"get_value": get_value})()
+    bullets = ContributionPatternBulletPoint().generate(report)  # type: ignore
+    assert any("led" in b.lower() for b in bullets)
+    assert not any(b == "leader" for b in bullets)
+
+
+def test_contribution_pattern_bp_occasional_role_skipped(monkeypatch):
+    """Occasional and solo roles produce no role bullet."""
+    import src.core.resume.bullet_point_builder as bpb
+    monkeypatch.setattr(bpb, "ml_extraction_allowed", lambda: True)
+
+    for role in ["occasional", "solo"]:
+        def get_value(self, key, _role=role):
+            if key == ProjectStatCollection.COLLABORATION_ROLE.value:
+                return _role
+            return None
+
+        report = type("Report", (), {"get_value": get_value})()
+        bullets = ContributionPatternBulletPoint().generate(report)  # type: ignore
+        assert not any(role in b for b in bullets)
+
+
+def test_contribution_pattern_bp_commit_dist_mapped(monkeypatch):
+    """Commit type labels are mapped to action-verb phrases."""
+    import src.core.resume.bullet_point_builder as bpb
+    monkeypatch.setattr(bpb, "ml_extraction_allowed", lambda: True)
+
+    dist = {"feat": 40.0, "fix": 35.0, "unknown": 25.0}
+
+    def get_value(self, key):
+        if key == ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value:
+            return dist
+        return None
+
+    report = type("Report", (), {"get_value": get_value})()
+    bullets = ContributionPatternBulletPoint().generate(report)  # type: ignore
+    assert any("spearheaded feature development" in b.lower() for b in bullets)
+    assert any("40%" in b for b in bullets)
+    assert not any(b.lower().startswith("primary contribution focus") for b in bullets)
+    # "unknown" should be filtered out
+    assert not any("unknown" in b.lower() for b in bullets)
+
+
+def test_project_themes_bp_multiple(monkeypatch):
+    """Multiple themes produce a spanning sentence."""
+    import src.core.resume.bullet_point_builder as bpb
+    monkeypatch.setattr(bpb, "ml_extraction_allowed", lambda: True)
+
+    themes = ["Microsoft Azure AI integration", "Pronunciation feedback and phonics training", "React and Next.js"]
+
+    report = type("Report", (), {"get_value": lambda self, key: themes})()
+    bullets = ProjectThemesBulletPoint().generate(report)  # type: ignore
+    assert len(bullets) == 1
+    assert "Microsoft Azure AI integration" in bullets[0]
+    assert bullets[0].startswith("Developed solutions spanning")
+    # should cap at 2 themes
+    assert "React and Next.js" not in bullets[0]
+
+
+def test_project_themes_bp_ml_disabled(monkeypatch):
+    """No themes bullet when ML is disabled."""
+    import src.core.resume.bullet_point_builder as bpb
+    monkeypatch.setattr(bpb, "ml_extraction_allowed", lambda: False)
+
+    report = type("Report", (), {"get_value": lambda self, key: ["theme1"]})()
+    bullets = ProjectThemesBulletPoint().generate(report)  # type: ignore
+    assert len(bullets) == 0

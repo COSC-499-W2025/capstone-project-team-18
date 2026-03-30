@@ -1,16 +1,16 @@
+import { type CSSProperties, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { api, getLatestResumeId } from "./api/apiClient";
 import HomePage from "./pages/HomePage";
-import ProjectsPage from "./pages/ProjectsPage";
+import JobReadinessPage from "./pages/JobReadinessPage";
+import PortfolioEditPage from "./pages/PortfolioEditPage";
+import PortfoliosPage from "./pages/PortfoliosPage";
+import ProfilePage from "@/pages/ProfilePage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
+import ProjectsPage from "./pages/ProjectsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
-import PortfoliosPage from "./pages/PortfoliosPage";
-import PortfolioEditPage from "./pages/PortfolioEditPage";
 import SkillsPage from "./pages/SkillsPage";
-import { useState } from "react";
-import SettingsModal from "./components/update/modal/SettingsModal";
-import { getLatestResumeId } from "./api/apiClient";
-
 function ResumeRedirect() {
   const latestResumeId = getLatestResumeId();
 
@@ -21,8 +21,24 @@ function ResumeRedirect() {
   return <Navigate to="/resume/new" replace />;
 }
 
+function navLinkStyle(isActive: boolean) {
+  return {
+    padding: "8px 14px",
+    borderRadius: 12,
+    textDecoration: "none",
+    color: isActive ? "#fff" : "#ccc",
+    background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
+    transition: "all 0.2s ease",
+    display: "inline-block",
+  };
+}
+
 export default function App() {
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [backendDown, setBackendDown] = useState(false);
+
+  useEffect(() => {
+    api.ping().then((ok) => setBackendDown(!ok));
+  }, []);
 
   const location = useLocation();
   const isResumeRoute =
@@ -34,119 +50,119 @@ export default function App() {
     location.pathname === "/projects" ||
     location.pathname.startsWith("/projects/");
 
+  const isJobReadinessRoute = location.pathname === "/job-readiness";
+
   return (
     <div style={{ fontFamily: "system-ui" }}>
+      {backendDown && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#1a0a0a",
+              border: "1.5px solid #dc2626",
+              borderRadius: 12,
+              padding: "32px 40px",
+              textAlign: "center",
+              maxWidth: 400,
+            }}
+          >
+            <div style={{ fontSize: 28, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#f87171" }}>
+              Backend Unreachable
+            </div>
+            <div style={{ color: "#fca5a5", marginBottom: 24, fontSize: 14 }}>
+              Cannot connect to the API server. Please ensure the backend is running and try again.
+            </div>
+            <button
+              onClick={() => api.ping().then((ok) => setBackendDown(!ok))}
+              style={{
+                padding: "8px 24px",
+                borderRadius: 8,
+                border: "none",
+                backgroundColor: "#dc2626",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: 14,
+              }}
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      )}
       <header
         style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 24px",
-          borderBottom: "1px solid #eee"
-        }}
+          padding: "8px 24px 8px 80px",
+          borderBottom: "1px solid #eee",
+          backgroundColor: "#242424",
+          WebkitAppRegion: "drag",
+        } as CSSProperties}
       >
-        <div style={{ fontWeight: 700 }}>Digital Artifact Miner</div>
-
-        <nav style={{ display: "flex", gap: 8 }}>
-          <NavLink
+        <NavLink
           to="/"
-          end
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Dashboard
-              </NavLink>
-
-          <NavLink
-  to="/projects"
-  style={() => ({
-    padding: "8px 14px",
-    borderRadius: 12,
-    textDecoration: "none",
-    color: isProjectsRoute ? "#fff" : "#ccc",
-    background: isProjectsRoute
-      ? "rgba(255, 255, 255, 0.12)"
-      : "transparent",
-    transition: "all 0.2s ease",
-    display: "inline-block",
-  })}
->
-  Projects
-</NavLink>
-
-          <NavLink
-          to="/portfolios"
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Portfolios
-          </NavLink>
-
-          <NavLink
-          to="/skills"
-          end
-          style={({ isActive }) => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isActive ? "#fff" : "#ccc",
-            background: isActive ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Skills
-          </NavLink>
-
-          <NavLink
-          to="/resumes"
-          style={() => ({
-            padding: "8px 14px",
-            borderRadius: 12,
-            textDecoration: "none",
-            color: isResumeRoute ? "#fff" : "#ccc",
-            background: isResumeRoute ? "rgba(255, 255, 255, 0.12)" : "transparent",
-            transition: "all 0.2s ease",
-            display: "inline-block",
-            })}
-            >
-              Resumes
-          </NavLink>
-
-          <button
-          onClick={() => setShowSettingsModal(true)}
           style={{
-            padding: "8px 14px",
-            borderRadius: 12,
-            border: "none",
-            background: "transparent",
-            color: "#ccc",
-            cursor: "pointer",
-            }}
-            >
-              Settings
-          </button>
+            fontWeight: 700,
+            color: "inherit",
+            textDecoration: "none",
+            WebkitAppRegion: "no-drag",
+          } as CSSProperties}
+        >
+          Digital Artifact Miner
+        </NavLink>
+
+        <nav style={{ display: "flex", gap: 8, WebkitAppRegion: "no-drag" } as CSSProperties}>
+          <NavLink to="/" end style={({ isActive }) => navLinkStyle(isActive)}>
+            Dashboard
+          </NavLink>
+
+          <NavLink to="/projects" style={() => navLinkStyle(isProjectsRoute)}>
+            Projects
+          </NavLink>
+
+          <NavLink to="/job-readiness" style={() => navLinkStyle(isJobReadinessRoute)}>
+            Job Readiness
+          </NavLink>
+
+          <NavLink to="/portfolios" style={({ isActive }) => navLinkStyle(isActive)}>
+            Portfolios
+          </NavLink>
+
+          <NavLink to="/skills" end style={({ isActive }) => navLinkStyle(isActive)}>
+            Skills
+          </NavLink>
+
+          <NavLink to="/resumes" style={() => navLinkStyle(isResumeRoute)}>
+            Resumes
+          </NavLink>
+
+          <NavLink to="/profile" style={({ isActive }) => navLinkStyle(isActive)}>
+            Profile
+          </NavLink>
         </nav>
       </header>
 
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<HomePage backendReady={!backendDown} />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+        <Route path="/job-readiness" element={<JobReadinessPage />} />
         <Route path="/skills" element={<SkillsPage />} />
         <Route path="/resumes" element={<ResumesPage />} />
         <Route path="/resume" element={<ResumeRedirect />} />
@@ -154,12 +170,8 @@ export default function App() {
         <Route path="/resume/:id" element={<ResumePage />} />
         <Route path="/portfolios" element={<PortfoliosPage />} />
         <Route path="/portfolios/:id" element={<PortfolioEditPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
-
-      <SettingsModal
-      open={showSettingsModal}
-      onClose={() => setShowSettingsModal(false)}
-      />
     </div>
   );
 }
