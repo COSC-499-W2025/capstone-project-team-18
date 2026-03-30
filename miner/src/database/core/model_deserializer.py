@@ -111,6 +111,8 @@ def deserialize_resume(model: ResumeModel) -> Resume:
         name=model.name,
         location=model.location,
         linkedin=model.linkedin,
+        education=list(model.education or []),
+        awards=list(model.awards or []),
     )
 
     # Restore skills list directly

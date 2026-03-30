@@ -172,6 +172,16 @@ class ResumeModel(SQLModel, table=True):
     linkedin: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
 
+    # Per-resume snapshots of education and awards (set at generation time)
+    education: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+    awards: List[str] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+
     # Store categorized skills as snapshot at gen/edit time
     skills_expert: List[str] = Field(
         sa_column=Column(JSON, nullable=False),
