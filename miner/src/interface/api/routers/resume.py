@@ -84,6 +84,27 @@ class SkillsByExpertiseResponse(SQLModel):
     exposure: List[str] = []
 
 
+class EducationEntry(SQLModel):
+    """A single structured education entry with optional date range."""
+    title: str
+    start: Optional[str] = None
+    end: Optional[str] = None
+
+
+class AwardEntry(SQLModel):
+    """A single structured award entry with optional date range."""
+    title: str
+    start: Optional[str] = None
+    end: Optional[str] = None
+
+
+def _normalize_entry(entry) -> dict:
+    """Normalize a legacy plain-string entry or a structured dict into {title, start, end}."""
+    if isinstance(entry, dict):
+        return {"title": entry.get("title", ""), "start": entry.get("start"), "end": entry.get("end")}
+    return {"title": str(entry), "start": None, "end": None}
+
+
 class ResumeResponse(SQLModel):
     """Response model for a resume with items"""
     id: Optional[int] = None
@@ -95,8 +116,8 @@ class ResumeResponse(SQLModel):
     linkedin: Optional[str] = None
     skills: List[str]
     skills_by_expertise: Optional[SkillsByExpertiseResponse] = None
-    education: List[str] = []
-    awards: List[str] = []
+    education: List[EducationEntry] = []
+    awards: List[AwardEntry] = []
     items: List[ResumeItemResponse] = []
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
@@ -123,8 +144,8 @@ def _build_resume_response(resume_model, session) -> ResumeResponse:
     """
     Build a ResumeResponse using per-resume education/awards snapshots.
     """
-    education = list(resume_model.education or [])
-    awards = list(resume_model.awards or [])
+    education = [EducationEntry(**_normalize_entry(e)) for e in (resume_model.education or [])]
+    awards = [AwardEntry(**_normalize_entry(a)) for a in (resume_model.awards or [])]
 
     skills_by_expertise = None
 
@@ -229,12 +250,12 @@ class EditFrameworksRequest(SQLModel):
 
 class EditEducationRequest(SQLModel):
     """Request model for replacing the education list on a resume"""
-    education: List[str]
+    education: List[EducationEntry]
 
 
 class EditAwardsRequest(SQLModel):
     """Request model for replacing the awards list on a resume"""
-    awards: List[str]
+    awards: List[AwardEntry]
 
 
 # ---------- Resume API Endpoints ----------
@@ -332,8 +353,8 @@ def edit_resume_education(
         )
 
     try:
-        resume_model.education = request.education
-        resume_model.last_updated = datetime.datetime.now()
+        resume_model.education = [e.model_dump() for e in request.education]
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(resume_model)
         session.commit()
@@ -365,8 +386,8 @@ def edit_resume_awards(
         )
 
     try:
-        resume_model.awards = request.awards
-        resume_model.last_updated = datetime.datetime.now()
+        resume_model.awards = [a.model_dump() for a in request.awards]
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(resume_model)
         session.commit()
@@ -426,9 +447,10 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
         user_report = UserReport(
             project_reports=project_reports, report_name="Generated Resume")
 
-        # Extract email and github from user config
+        # Extract defaults from user config
         user_email = user_config.user_email if user_config else None
         user_github = user_config.github if user_config else None
+        user_name = user_config.name if user_config else None
 
         # Extract education/awards from ResumeConfigModel
         user_education = []
@@ -437,12 +459,13 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
             user_education = user_config.resume_config.education or []
             user_awards = user_config.resume_config.awards or []
 
-        # Generate resume with email, github, education and awards
+        # Generate resume with email, github, name, education and awards
         resume_domain = user_report.generate_resume(
             user_email,
             user_github,
             education=user_education,
-            awards=user_awards
+            awards=user_awards,
+            name=user_name,
         )
 
         # Save using serialize_resume
