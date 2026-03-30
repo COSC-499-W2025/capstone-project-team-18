@@ -185,7 +185,7 @@ async function handleUploadSuccess() {
         <div>
           <h1 style={{ margin: 0 }}>Dashboard</h1>
           <p style={{ marginTop: 8, color: "#666" }}>
-            Manage projects, resumes, portfolios, and your profile.
+            View projects, resumes, and portfolios.
           </p>
         </div>
 
@@ -240,7 +240,7 @@ async function handleUploadSuccess() {
               <>
                 {isProjectAnalysisInProgress && (
                   <div style={{ color: "#999", marginBottom: 12 }}>
-                    Project Analysis In Progress...
+                    Project Analysis in Progress...
                   </div>
                 )}
                 {!error && projects.length === 0 && !isProjectAnalysisInProgress && (

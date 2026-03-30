@@ -245,7 +245,7 @@ export default function ProfilePage() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Paula Atreides"
+              placeholder="e.g. Paul Atreides"
               disabled={isSaving || isLoadingConfig}
               style={{
                 width: "100%",
@@ -603,7 +603,7 @@ export default function ProfilePage() {
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
+              placeholder="patreides@email.com"
               disabled={isSaving || isLoadingConfig}
               style={{
                 width: "100%",
@@ -617,7 +617,7 @@ export default function ProfilePage() {
             />
             {email && !emailIsValid && (
               <div style={{ color: "#ff8a8a", fontSize: 13, marginTop: 6 }}>
-                Please enter a valid email (e.g. example@gmail.com)
+                Please enter a valid email (e.g. patreides@email.com)
               </div>
             )}
           </div>

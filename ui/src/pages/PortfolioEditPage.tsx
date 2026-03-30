@@ -916,7 +916,7 @@ export default function PortfolioEditPage() {
       {/* ---- Narrative Sections ---- */}
       {sortedSections.length > 0 && (
         <div style={{ marginTop: 40 }}>
-          <h2 style={{ marginBottom: 16 }}>Narrative Sections</h2>
+
 
           <div style={{ display: "grid", gap: 24 }}>
             {sortedSections.map((section) => (

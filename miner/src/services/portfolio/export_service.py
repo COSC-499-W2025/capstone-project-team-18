@@ -3,10 +3,11 @@ Static web portfolio export service.
 
 Produces a downloadable ZIP archive containing a self-contained single-page
 web portfolio:
-  - index.html     — page structure and inline rendering of Part A sections
-  - portfolio_data.js — embedded JSON snapshot of all three portfolio parts
-  - style.css      — visual styles (showcase cards glow yellow, etc.)
-  - filter.js      — client-side gallery search/filter/sort logic (public mode)
+  - index.html        — page structure and inline rendering of Part A sections
+  - portfolio_data.js — embedded JSON snapshot of all portfolio parts + figures data
+  - style.css         — visual styles
+  - filter.js         — client-side gallery search/filter/sort logic
+  - figures.js        — contribution map and skill timeline visualizations
 
 The static bundle requires no server — it is the "public mode" deliverable.
 Images are base64-encoded inline so the ZIP is fully self-contained.
@@ -15,14 +16,15 @@ Images are base64-encoded inline so the ZIP is fully self-contained.
 import base64
 import io
 import json
+import urllib.request
 import zipfile
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Optional
 
 from sqlmodel import Session
 
 from src.database.api.CRUD.portfolio import load_portfolio, get_project_cards_for_portfolio
-from src.database.api.CRUD.projects import get_project_report_model_by_name
+from src.database import get_project_report_models_by_names, get_most_recent_user_config
 from src.utils.errors import KeyNotFoundError
 
 
@@ -46,21 +48,24 @@ _HTML_TEMPLATE = """\
 <body>
   <header>
     <h1 id="portfolio-title">{title}</h1>
+    <p class="portfolio-updated">Last updated: {last_updated}</p>
   </header>
+
+  <nav id="section-nav">{nav_html}</nav>
 
   <!-- Part A: Narrative sections -->
   <section id="narrative">
 {sections_html}
   </section>
 
-  <!-- Figures: Contribution map + skill timeline -->
+  <!-- Figures: contribution map + skill timeline -->
   <section id="figures">
     <h2>Figures</h2>
-    <div id="contribution-map" class="figure-card"></div>
-    <div id="skill-timeline" class="figure-card"></div>
+    <div id="contribution-map"></div>
+    <div id="skill-timeline"></div>
   </section>
 
-  <!-- Part B + C: Project gallery (showcase cards float to top, highlighted) -->
+  <!-- Part B + C: Project gallery -->
   <section id="gallery">
     <h2>Projects</h2>
 
@@ -78,6 +83,7 @@ _HTML_TEMPLATE = """\
 
   <script src="portfolio_data.js"></script>
   <script src="filter.js"></script>
+  <script src="figures.js"></script>
 </body>
 </html>
 """
@@ -88,14 +94,14 @@ _CSS = """\
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0f0f13;
-  color: #e2e2e2;
+  background: #161616;
+  color: #ddd;
   line-height: 1.6;
 }
 
 header {
   padding: 2rem;
-  border-bottom: 1px solid #2a2a3a;
+  border-bottom: 1px solid #2a2a2a;
 }
 
 header h1 {
@@ -103,9 +109,41 @@ header h1 {
   color: #ffffff;
 }
 
+header .portfolio-updated {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+/* ===== Section navigation ===== */
+#section-nav {
+  max-width: 1100px;
+  margin: 1rem auto 0;
+  padding: 0 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nav-links a {
+  font-size: 0.8rem;
+  color: #6f7cff;
+  text-decoration: none;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(111, 124, 255, 0.3);
+  background: rgba(111, 124, 255, 0.06);
+  transition: all 0.15s;
+}
+
+.nav-links a:hover {
+  background: rgba(111, 124, 255, 0.18);
+  border-color: rgba(111, 124, 255, 0.55);
+}
+
 /* ===== Part A: Narrative sections ===== */
 #narrative {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 2rem auto;
   padding: 0 1.5rem;
 }
@@ -117,18 +155,40 @@ header h1 {
 .narrative-section h2 {
   font-size: 1.25rem;
   color: #a0aec0;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid #2a2a3a;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #2a2a2a;
   padding-bottom: 0.25rem;
 }
 
-.narrative-section .block-content {
-  white-space: pre-wrap;
-  font-size: 0.95rem;
-  color: #cbd5e0;
+.narrative-section h2 a.section-anchor {
+  color: inherit;
+  text-decoration: none;
 }
 
-/* ===== Figures ===== */
+.narrative-section h2 a.section-anchor:hover {
+  text-decoration: underline;
+}
+
+.block-text {
+  font-size: 0.95rem;
+  color: #ccc;
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.block-list {
+  font-size: 0.95rem;
+  color: #ccc;
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+  line-height: 1.8;
+}
+
+.block-list li {
+  margin-bottom: 0.2rem;
+}
+
+/* ===== Figures section ===== */
 #figures {
   max-width: 1100px;
   margin: 2rem auto;
@@ -142,255 +202,11 @@ header h1 {
 }
 
 .figure-card {
-  background: #1a1a2e;
-  border: 1px solid #2a2a3a;
-  border-radius: 10px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.figure-empty {
-  color: #a0aec0;
-  font-size: 0.9rem;
-}
-
-.figure-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
-}
-
-.figure-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.figure-controls {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-}
-
-.figure-btn {
-  background: transparent;
-  border: 1px solid #e63946;
-  color: #e63946;
-  padding: 0.3rem 0.55rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.75rem;
-}
-
-.figure-btn.active {
-  background: #e63946;
-  color: #ffffff;
-}
-
-.figure-btn:disabled {
-  border-color: #40445a;
-  color: #6b7280;
-  cursor: not-allowed;
-}
-
-.contrib-grid {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-}
-
-.contrib-week {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.contrib-cell {
-  width: 11px;
-  height: 11px;
-  border-radius: 2px;
-  border: 1px solid transparent;
-  transition: transform 0.12s ease, border-color 0.12s ease;
-}
-
-.contrib-cell.has-activity {
-  cursor: pointer;
-}
-
-.contrib-cell.has-activity:hover {
-  transform: scale(1.15);
-  border-color: #e63946;
-}
-
-.contrib-cell.active {
-  border-color: #e63946;
-}
-
-.contrib-hover-info {
-  margin-top: 0.75rem;
-  border-left: 3px solid #e63946;
-  background: #111826;
-  color: #d5d9e4;
-  font-size: 0.78rem;
-  border-radius: 6px;
-  padding: 0.5rem 0.6rem;
-}
-
-.contrib-legend {
-  margin-top: 0.8rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #a0aec0;
-  font-size: 0.75rem;
-}
-
-.legend-scale {
-  display: flex;
-  gap: 3px;
-  align-items: center;
-}
-
-.legend-cell {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-.skill-view-toggle {
-  display: flex;
-  gap: 0;
-}
-.skill-toggle-btn {
-  padding: 4px 12px;
-  font-size: 0.75rem;
-  border: 1px solid #333;
-  background: transparent;
-  color: #888;
-  cursor: pointer;
-  font-weight: 400;
-}
-.skill-toggle-btn:first-child { border-radius: 6px 0 0 6px; }
-.skill-toggle-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
-.skill-toggle-btn.active {
-  background: #2a2a2a;
-  color: #e8e8e8;
-  font-weight: 600;
-}
-
-.skill-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-.skill-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  color: #ccc;
-}
-.skill-legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.skill-stacked-wrap {
-  border-radius: 8px;
-  border: 1px solid #222;
-  background: #121212;
-  padding: 10px 4px 4px;
-  position: relative;
-}
-.skill-stacked-svg {
-  display: block;
-  width: 100%;
-  height: 380px;
-}
-.skill-tooltip {
-  position: absolute;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 8px 12px;
-  pointer-events: none;
-  z-index: 20;
-  width: 170px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
-  display: none;
-}
-.skill-tooltip-label {
-  font-size: 0.69rem;
-  color: #888;
-  margin-bottom: 6px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #2a2a2a;
-  white-space: nowrap;
-}
-.skill-tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 3px;
-}
-.skill-tooltip-swatch {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-.skill-tooltip-name {
-  font-size: 0.69rem;
-  color: #bbb;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.skill-tooltip-count {
-  font-size: 0.69rem;
-  color: #e8e8e8;
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-
-.skill-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1rem;
-}
-
-.skill-card {
-  border: 1px solid #2a2a3a;
-  border-radius: 10px;
-  padding: 0.8rem;
-  background: #121220;
-}
-
-.skill-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 0.35rem;
-}
-
-.skill-total {
-  font-size: 0.72rem;
-  color: #a0aec0;
-  margin-bottom: 0.5rem;
-}
-
-.skill-chart {
-  width: 100%;
-  height: 120px;
-  display: block;
+  background: #161616;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 1.25rem;
 }
 
 /* ===== Part B + C: Gallery ===== */
@@ -416,9 +232,9 @@ header h1 {
 }
 
 #gallery-filters input[type="text"] {
-  background: #1a1a2e;
-  border: 1px solid #2a2a3a;
-  color: #e2e2e2;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  color: #ddd;
   padding: 0.4rem 0.75rem;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -435,45 +251,52 @@ header h1 {
 #search-input { min-width: 220px; }
 
 #clear-filters {
-  background: #2a2a3a;
+  background: #2a2a2a;
   border: none;
-  color: #e2e2e2;
+  color: #ddd;
   padding: 0.4rem 1rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
 }
-#clear-filters:hover { background: #3a3a5a; }
+#clear-filters:hover { background: #3a3a3a; }
 
 /* Cards grid */
 #cards-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(700px, 1fr));
   gap: 1.25rem;
 }
 
 /* Base card */
 .project-card {
-  background: #1a1a2e;
-  border: 1px solid #2a2a3a;
+  background: #161616;
+  border: 1px solid #2a2a2a;
   border-radius: 10px;
   padding: 1.25rem;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .project-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  border-color: #3a3a3a;
 }
 
-/* Part B: showcase cards glow yellow */
+/* Part B: showcase cards use gold border */
 .project-card.showcase {
-  border-color: #f6c90e;
-  box-shadow: 0 0 12px rgba(246, 201, 14, 0.35);
+  border-color: #b8860b;
 }
 
-.project-card.showcase .card-name {
-  color: #f6c90e;
+/* Showcase label */
+.showcase-label {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: #f5c518;
+  border: 1px solid #b8860b;
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-bottom: 0.5rem;
 }
 
 /* Card internals */
@@ -513,23 +336,188 @@ header h1 {
 }
 
 .badge {
-  background: #2a2a3a;
-  border-radius: 4px;
-  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  padding: 3px 8px;
   font-size: 0.7rem;
-  color: #cbd5e0;
+  border: 1px solid #2a2a2a;
+  color: #ddd;
+  background: transparent;
 }
 
-.badge.theme  { background: #1e3a5f; color: #90cdf4; }
-.badge.tone   { background: #2d3748; color: #e2e8f0; }
-.badge.tag    { background: #2c4a2c; color: #9ae6b4; }
-.badge.skill  { background: #4a1a4a; color: #e9d8fd; }
-.badge.framework { background: #3d1a1a; color: #feb2b2; }
+.badge.theme    { background: rgba(111, 124, 255, 0.07); color: #6f7cff; border-color: rgba(111, 124, 255, 0.27); }
+.badge.tone     { background: transparent; color: #999; border-color: #2a2a2a; }
+.badge.tag      { background: rgba(138, 214, 162, 0.07); color: #8ad6a2; border-color: rgba(138, 214, 162, 0.27); }
+.badge.skill    { background: transparent; color: #ddd; border-color: #2a2a2a; }
+.badge.framework { background: rgba(224, 128, 96, 0.07); color: #e08060; border-color: rgba(224, 128, 96, 0.27); }
 
 .card-meta {
   font-size: 0.75rem;
   color: #718096;
   margin-top: 0.5rem;
+}
+
+/* ===== Card details section ===== */
+.card-details {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #222;
+}
+
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  background: #111;
+  border-radius: 8px;
+  border: 1px solid #222;
+}
+
+.stat-box {}
+
+.stat-label {
+  font-size: 0.62rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+
+.stat-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.card-section-title {
+  font-size: 0.7rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0.75rem 0 0.45rem;
+}
+
+/* Language breakdown */
+.lang-stacked {
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.lang-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.1rem;
+}
+
+.lang-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: #aaa;
+}
+
+.lang-legend-item span + span { color: #555; margin-left: 2px; }
+
+/* Activity breakdown */
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.activity-label {
+  font-size: 0.72rem;
+  color: #aaa;
+  min-width: 64px;
+}
+
+.activity-track {
+  flex: 1;
+  height: 4px;
+  background: #222;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.activity-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.activity-pct {
+  font-size: 0.7rem;
+  color: #666;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Your Contribution */
+.contrib-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.contrib-label {
+  font-size: 0.72rem;
+  color: #999;
+  min-width: 110px;
+}
+
+.contrib-bar-track {
+  flex: 1;
+  height: 5px;
+  background: #222;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.contrib-bar-fill-commit {
+  height: 100%;
+  border-radius: 3px;
+  background: #6f7cff;
+}
+
+.contrib-bar-fill-loc {
+  height: 100%;
+  border-radius: 3px;
+  background: #8ad6a2;
+}
+
+.contrib-pct {
+  font-size: 0.7rem;
+  color: #999;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* GitHub link button */
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #6f7cff;
+  text-decoration: none;
+  padding: 5px 12px;
+  border: 1px solid rgba(111, 124, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(111, 124, 255, 0.06);
+  transition: all 0.15s;
+}
+
+.github-link:hover {
+  background: rgba(111, 124, 255, 0.18);
+  border-color: rgba(111, 124, 255, 0.55);
 }
 
 .hidden { display: none !important; }
@@ -542,10 +530,52 @@ _FILTER_JS = """\
 
   var container = document.getElementById('cards-container');
 
-  function mk(tag, className) {
-    var el = document.createElement(tag);
-    if (className) el.className = className;
-    return el;
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun',
+                'Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function formatDate(iso) {
+    if (!iso) return '?';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso.slice(0, 10);
+    return MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  }
+
+  var LANG_COLORS = ['#6f7cff','#E63946','#A89B6B','#8ad6a2','#7A9BA8','#e08060','#8B6B7A','#5B8C85','#7fc0db'];
+
+  var COMMIT_COLORS = {
+    'feat':'#6f7cff','feature':'#6f7cff',
+    'fix':'#E63946','bugfix':'#E63946',
+    'docs':'#8ad6a2','doc':'#8ad6a2',
+    'refactor':'#7fc0db','chore':'#7fc0db',
+    'test':'#A89B6B',
+    'perf':'#e08060','performance':'#e08060',
+    'config':'#8B6B7A','unknown':'#555'
+  };
+
+  var COMMIT_NAMES = {
+    'feat':'Feat','feature':'Feat',
+    'fix':'Fix','bugfix':'Fix',
+    'docs':'Docs','doc':'Docs',
+    'refactor':'Refactor','chore':'Chore',
+    'test':'Test','perf':'Perf','performance':'Perf',
+    'config':'Config','unknown':'Other'
+  };
+
+  function computeDuration(start, end) {
+    if (!start) return null;
+    var s = new Date(start);
+    var e = end ? new Date(end) : new Date();
+    if (isNaN(s.getTime())) return null;
+    var months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+    if (months < 1) return '< 1 month';
+    if (months === 1) return '1 month';
+    if (months < 12) return months + ' months';
+    var yrs = Math.round(months / 12 * 10) / 10;
+    return yrs + (yrs === 1 ? ' year' : ' years');
+  }
+
+  function displayLang(key) {
+    return key.replace(/^CodingLanguage\\./i, '');
   }
 
   // ---- Render all cards on load ----
@@ -587,9 +617,9 @@ _FILTER_JS = """\
     // Dates
     if (card.start_date || card.end_date) {
       html += '<div class="card-dates">' +
-        (card.start_date ? card.start_date.slice(0, 10) : '?') +
-        ' — ' +
-        (card.end_date ? card.end_date.slice(0, 10) : 'present') +
+        formatDate(card.start_date) +
+        ' \u2014 ' +
+        (card.end_date ? formatDate(card.end_date) : 'present') +
         '</div>';
     }
 
@@ -633,13 +663,83 @@ _FILTER_JS = """\
         '</div>';
     }
 
-    // Meta
+    // ---- Details section (stats, language, activity, contribution) ----
+    html += '<div class="card-details">';
+
+    // Stats strip
+    html += '<div class="card-stats">';
+    var dur = computeDuration(card.start_date, card.end_date);
+    if (dur) html += '<div class="stat-box"><div class="stat-label">Duration</div><div class="stat-value">' + esc(dur) + '</div></div>';
+    if (card.total_lines != null) html += '<div class="stat-box"><div class="stat-label">Lines of Code</div><div class="stat-value">' + Number(card.total_lines).toLocaleString() + '</div></div>';
+    if (card.contributors != null) html += '<div class="stat-box"><div class="stat-label">Contributors</div><div class="stat-value">' + esc(String(card.contributors)) + '</div></div>';
+    if (card.work_pattern) html += '<div class="stat-box"><div class="stat-label">Work Pattern</div><div class="stat-value">' + esc(card.work_pattern) + '</div></div>';
+    html += '</div>';
+
+    // Language Breakdown
+    if (card.languages && Object.keys(card.languages).length) {
+      var langKeys = Object.keys(card.languages).sort(function(a,b){return card.languages[b]-card.languages[a];}).slice(0,6);
+      var langTotal = langKeys.reduce(function(s,k){return s+card.languages[k];},0);
+      if (langTotal > 0) {
+        html += '<div class="card-section-title">Language Breakdown</div>';
+        html += '<div class="lang-stacked">';
+        langKeys.forEach(function(k,i){
+          var pct=(card.languages[k]/langTotal*100).toFixed(1);
+          var c=LANG_COLORS[i%LANG_COLORS.length];
+          html+='<div style="width:'+pct+'%;background:'+c+';height:100%;" title="'+esc(displayLang(k))+' '+pct+'%"></div>';
+        });
+        html += '</div><div class="lang-legend">';
+        langKeys.forEach(function(k,i){
+          var pct=(card.languages[k]/langTotal*100).toFixed(1);
+          var c=LANG_COLORS[i%LANG_COLORS.length];
+          html+='<div class="lang-legend-item"><div style="width:8px;height:8px;border-radius:2px;background:'+c+';flex-shrink:0;"></div><span>'+esc(displayLang(k))+'</span><span>'+pct+'%</span></div>';
+        });
+        html += '</div>';
+      }
+    }
+
+    // Activity Breakdown
+    if (card.commit_type_distribution && Object.keys(card.commit_type_distribution).length) {
+      var ctEntries = Object.keys(card.commit_type_distribution)
+        .map(function(k){return{key:k,val:card.commit_type_distribution[k]};})
+        .sort(function(a,b){return b.val-a.val;})
+        .slice(0,6);
+      if (ctEntries.length) {
+        html += '<div class="card-section-title">Activity Breakdown</div>';
+        ctEntries.forEach(function(e){
+          var lk=e.key.toLowerCase();
+          var name=COMMIT_NAMES[lk]||e.key;
+          var c=COMMIT_COLORS[lk]||'#6f7cff';
+          var pct=Math.round(e.val);
+          html+='<div class="activity-row"><span class="activity-label">'+esc(name)+'</span>'+
+            '<div class="activity-track"><div class="activity-fill" style="width:'+Math.min(100,pct)+'%;background:'+c+';"></div></div>'+
+            '<span class="activity-pct">'+pct+'%</span></div>';
+        });
+      }
+    }
+
+    html += '</div>'; // end .card-details
+
+    // Meta: role + group project
     var meta = [];
     if (card.collaboration_role) meta.push(card.collaboration_role);
-    if (card.work_pattern) meta.push(card.work_pattern);
     if (card.is_group_project) meta.push('Group project');
     if (meta.length) {
-      html += '<div class="card-meta">' + meta.map(esc).join(' · ') + '</div>';
+      html += '<div class="card-meta">' + meta.map(esc).join(' \u00b7 ') + '</div>';
+    }
+
+    // GitHub link (only present if repo is public)
+    if (card.repo_url) {
+      html += '<a class="github-link" href="' + esc(card.repo_url) + '" target="_blank" rel="noopener noreferrer">' +
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0">' +
+        '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38' +
+        ' 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52' +
+        '-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2' +
+        '-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82' +
+        '.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12' +
+        '.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01' +
+        ' 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>' +
+        '</svg>' +
+        'View on GitHub</a>';
     }
 
     el.innerHTML = html;
@@ -717,711 +817,511 @@ _FILTER_JS = """\
   // ---- Initial render ----
   if (typeof PORTFOLIO_DATA !== 'undefined') {
     renderCards(PORTFOLIO_DATA.project_cards || []);
-    renderContributionFigure(PORTFOLIO_DATA.figures || {});
-    renderSkillTimelineFigure(PORTFOLIO_DATA.figures || {});
+  }
+}());
+"""
+
+
+_FIGURES_JS = """\
+(function () {
+  'use strict';
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function renderContributionFigure(figures) {
-    var root = document.getElementById('contribution-map');
-    if (!root) return;
+  if (typeof PORTFOLIO_DATA === 'undefined') return;
 
-    var contribution = figures.contribution || {};
-    var personal = contribution.personal_timeline || {};
-    var total = contribution.total_timeline || {};
+  var contrib  = PORTFOLIO_DATA.contribution || {};
+  var personal = contrib.personal_timeline  || {};
+  var totalTL  = contrib.total_timeline     || {};
+  var skillAct = PORTFOLIO_DATA.skill_activity || {};
 
-    var keys = Object.keys(personal).concat(Object.keys(total));
-    if (!keys.length) {
-      root.innerHTML = '<div class="figure-empty">No contribution data available.</div>';
-      return;
-    }
+  var hasContrib = Object.keys(personal).length > 0 || Object.keys(totalTL).length > 0;
+  var hasSkill   = Object.keys(skillAct).length > 0;
 
-    var yearSet = {};
-    keys.forEach(function (d) {
-      var y = Number(String(d).slice(0, 4));
-      if (!isNaN(y)) yearSet[y] = true;
+  if (!hasContrib && !hasSkill) {
+    var fig = document.getElementById('figures');
+    if (fig) fig.style.display = 'none';
+    return;
+  }
+
+  if (hasContrib) {
+    var cmEl = document.getElementById('contribution-map');
+    if (cmEl) buildContributionMap(cmEl, personal, totalTL);
+  }
+  if (hasSkill) {
+    var stEl = document.getElementById('skill-timeline');
+    if (stEl) buildSkillTimeline(stEl, skillAct);
+  }
+
+  // ==========================================================
+  // ContributionMap
+  // ==========================================================
+  function buildContributionMap(el, personal, total) {
+    var ACCENT = '#E63946';
+    var ML = ['January','February','March','April','May','June',
+              'July','August','September','October','November','December'];
+
+    // Collect available years from data
+    var yrs = {};
+    [].concat(Object.keys(personal), Object.keys(total)).forEach(function (d) {
+      if (/^\\d{4}-\\d{2}-\\d{2}$/.test(d)) yrs[d.slice(0, 4)] = true;
     });
-    var years = Object.keys(yearSet).map(Number).sort(function (a, b) { return a - b; });
-    var state = {
-      yearIndex: years.length - 1,
-      mode: 'personal',
-    };
+    var sortedYears = Object.keys(yrs).sort();
+    if (!sortedYears.length) return;
 
-    function maxPersonal() {
-      var vals = Object.keys(personal).map(function (k) { return Number(personal[k] || 0); });
-      return vals.length ? Math.max.apply(null, vals.concat([1])) : 1;
+    var yIdx = sortedYears.length - 1;
+    var mode = 'personal';
+
+    // Build DOM skeleton
+    el.className = 'figure-card';
+
+    var hdr = el.appendChild(document.createElement('div'));
+    hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;';
+
+    var hTitle = hdr.appendChild(document.createElement('h3'));
+    hTitle.textContent = 'Contribution Map';
+    hTitle.style.cssText = 'margin:0;font-size:18px;font-weight:600;';
+
+    var btnRow = hdr.appendChild(document.createElement('div'));
+    btnRow.style.cssText = 'display:flex;gap:8px;';
+
+    function mkBtn(label, active) {
+      var b = document.createElement('button');
+      b.textContent = label;
+      b.style.cssText = 'padding:6px 10px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid ' + ACCENT + ';transition:all 0.2s;';
+      b.style.background = active ? ACCENT : 'transparent';
+      b.style.color      = active ? '#fff' : ACCENT;
+      return b;
     }
+    var btnP = btnRow.appendChild(mkBtn('Personal', true));
+    var btnR = btnRow.appendChild(mkBtn('Ratio View', false));
 
-    function datesForYear(y) {
-      var start = new Date(y, 0, 1);
-      var end = new Date(y, 11, 31);
-      var dates = [];
-      var cur = new Date(start);
-      while (cur <= end) {
-        var mm = String(cur.getMonth() + 1).padStart(2, '0');
-        var dd = String(cur.getDate()).padStart(2, '0');
-        dates.push(cur.getFullYear() + '-' + mm + '-' + dd);
-        cur.setDate(cur.getDate() + 1);
-      }
-      return dates;
-    }
+    var desc = el.appendChild(document.createElement('p'));
+    desc.style.cssText = 'margin:0 0 12px;font-size:12px;color:#888;';
 
-    function opacityFor(date, dateRange, maxP) {
-      var p = Number(personal[date] || 0);
-      var t = Number(total[date] || 0);
-      if (state.mode === 'personal') {
-        if (p <= 0) return 0;
-        return Math.max(0.1, p / maxP);
-      }
+    var grid = el.appendChild(document.createElement('div'));
+    grid.style.cssText = 'display:flex;gap:3px;overflow-x:auto;padding-bottom:8px;min-height:90px;';
 
-      if (p <= 0 || t <= 0) return 0;
-      var ratio = p / t;
-      var maxRatio = 0.1;
-      dateRange.forEach(function (d) {
-        var pd = Number(personal[d] || 0);
-        var td = Number(total[d] || 0);
-        if (td > 0) {
-          maxRatio = Math.max(maxRatio, pd / td);
-        }
-      });
-      return Math.max(0.1, ratio / maxRatio);
-    }
+    // Footer: legend + year nav
+    var foot = el.appendChild(document.createElement('div'));
+    foot.style.cssText = 'margin-top:16px;padding-top:12px;border-top:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#888;flex-wrap:wrap;gap:8px;';
 
-    function tooltipFor(date) {
-      var p = Number(personal[date] || 0);
-      var t = Number(total[date] || 0);
-      if (p <= 0) return '';
-      var parsedDate = new Date(date);
-      var displayDate = isNaN(parsedDate.getTime())
-        ? date
-        : parsedDate.toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-          });
-      if (state.mode === 'personal') {
-        return displayDate + ': ' + p + ' commit' + (p === 1 ? '' : 's');
-      }
-      var pct = t > 0 ? ((p / t) * 100).toFixed(1) : '0.0';
-      return displayDate + ': ' + p + '/' + t + ' commits (' + pct + '% of team activity)';
-    }
+    var leg = foot.appendChild(document.createElement('div'));
+    leg.style.cssText = 'display:flex;align-items:center;gap:8px;';
+    leg.innerHTML = '<span>Less</span>' +
+      [0, 0.25, 0.5, 0.75, 1].map(function (op) {
+        var bg = op === 0 ? '#2a2a2a' : 'rgba(230,57,70,' + op + ')';
+        return '<div style="width:10px;height:10px;border-radius:2px;background:' + bg + ';display:inline-block;margin:0 1px;"></div>';
+      }).join('') +
+      '<span>More</span>';
 
-    function groupedWeeks(dateRange) {
-      var weeks = [];
-      var current = [];
-      dateRange.forEach(function (date) {
-        var day = new Date(date).getDay();
-        if (day === 0 && current.length) {
-          weeks.push(current);
-          current = [];
-        }
-        current.push(date);
-      });
-      if (current.length) weeks.push(current);
-      return weeks;
-    }
+    var ynav = foot.appendChild(document.createElement('div'));
+    ynav.style.cssText = 'display:flex;align-items:center;gap:6px;';
 
-    var activeCell = null;
-    var hoverInfo = null;
+    var prevBtn = ynav.appendChild(document.createElement('button'));
+    prevBtn.innerHTML = '\\u2190';
+    var yearLbl = ynav.appendChild(document.createElement('span'));
+    yearLbl.style.cssText = 'min-width:50px;text-align:center;font-size:11px;font-weight:600;color:' + ACCENT + ';';
+    var nextBtn = ynav.appendChild(document.createElement('button'));
+    nextBtn.innerHTML = '\\u2192';
+    [prevBtn, nextBtn].forEach(function (b) {
+      b.style.cssText = 'padding:4px 8px;background:transparent;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;';
+    });
+
+    var tooltip = document.body.appendChild(document.createElement('div'));
+    tooltip.style.cssText = 'position:fixed;pointer-events:none;display:none;background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:8px 12px;font-size:12px;color:' + ACCENT + ';z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,0.5);white-space:nowrap;';
 
     function draw() {
-      root.innerHTML = '';
-      var year = years[state.yearIndex];
-      var dateRange = datesForYear(year);
-      var weeks = groupedWeeks(dateRange);
-      var maxP = maxPersonal();
+      var yr = sortedYears[yIdx];
+      yearLbl.textContent = yr;
 
-      var header = mk('div', 'figure-header');
-      var title = mk('div', 'figure-title');
-      title.textContent = 'Contribution Map';
+      var canPrev = yIdx > 0, canNext = yIdx < sortedYears.length - 1;
+      prevBtn.disabled = !canPrev;
+      nextBtn.disabled = !canNext;
+      prevBtn.style.border = '1px solid ' + (canPrev ? ACCENT : '#444');
+      prevBtn.style.color  = canPrev ? ACCENT : '#555';
+      nextBtn.style.border = '1px solid ' + (canNext ? ACCENT : '#444');
+      nextBtn.style.color  = canNext ? ACCENT : '#555';
 
-      var controls = mk('div', 'figure-controls');
+      desc.textContent = mode === 'personal'
+        ? 'Contribution activity as a function of commits'
+        : 'Your activity as a percentage of total team contributions';
 
-      var personalBtn = mk('button', 'figure-btn' + (state.mode === 'personal' ? ' active' : ''));
-      personalBtn.textContent = 'Personal';
-      personalBtn.onclick = function () { state.mode = 'personal'; draw(); };
+      // Generate dates for this year
+      var dates = [];
+      var cur = new Date(Date.UTC(+yr, 0, 1));
+      var end = new Date(Date.UTC(+yr, 11, 31));
+      while (cur <= end) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
 
-      var ratioBtn = mk('button', 'figure-btn' + (state.mode === 'ratio' ? ' active' : ''));
-      ratioBtn.textContent = 'Ratio';
-      ratioBtn.onclick = function () { state.mode = 'ratio'; draw(); };
-
-      var prevBtn = mk('button', 'figure-btn');
-      prevBtn.textContent = '←';
-      prevBtn.disabled = state.yearIndex <= 0;
-      prevBtn.onclick = function () { state.yearIndex -= 1; draw(); };
-
-      var yearLabel = mk('span', null);
-      yearLabel.style.minWidth = '54px';
-      yearLabel.style.textAlign = 'center';
-      yearLabel.style.color = '#e63946';
-      yearLabel.style.fontSize = '0.78rem';
-      yearLabel.style.fontWeight = '600';
-      yearLabel.textContent = String(year);
-
-      var nextBtn = mk('button', 'figure-btn');
-      nextBtn.textContent = '→';
-      nextBtn.disabled = state.yearIndex >= years.length - 1;
-      nextBtn.onclick = function () { state.yearIndex += 1; draw(); };
-
-      controls.appendChild(personalBtn);
-      controls.appendChild(ratioBtn);
-      controls.appendChild(prevBtn);
-      controls.appendChild(yearLabel);
-      controls.appendChild(nextBtn);
-
-      header.appendChild(title);
-      header.appendChild(controls);
-      root.appendChild(header);
-
-      var grid = mk('div', 'contrib-grid');
-      weeks.forEach(function (week) {
-        var weekEl = mk('div', 'contrib-week');
-        week.forEach(function (date) {
-          var cell = mk('div', 'contrib-cell');
-          var opacity = opacityFor(date, dateRange, maxP);
-          cell.style.background = opacity === 0 ? '#2a2a3a' : 'rgba(230, 57, 70, ' + opacity + ')';
-          var tip = tooltipFor(date);
-          if (tip) {
-            cell.title = tip;
-            cell.classList.add('has-activity');
-            cell.onmouseenter = function () {
-              if (activeCell) activeCell.classList.remove('active');
-              activeCell = cell;
-              activeCell.classList.add('active');
-              if (hoverInfo) hoverInfo.textContent = tip;
-            };
-            cell.onmouseleave = function () {
-              cell.classList.remove('active');
-              if (hoverInfo) {
-                hoverInfo.textContent = state.mode === 'personal'
-                  ? 'Hover over a highlighted day to see commit details.'
-                  : 'Hover over a highlighted day to see your commit ratio details.';
-              }
-            };
-          }
-          weekEl.appendChild(cell);
+      // Normalisation values
+      var maxP = 1;
+      dates.forEach(function (d) { if ((personal[d] || 0) > maxP) maxP = personal[d]; });
+      var maxR = 0.1;
+      if (mode === 'ratio') {
+        dates.forEach(function (d) {
+          var u = personal[d] || 0, t = total[d] || 0;
+          if (t > 0 && u > 0) { var r = u / t; if (r > maxR) maxR = r; }
         });
-        grid.appendChild(weekEl);
+      }
+
+      // Group into Sunday-start weeks
+      var weeks = [], wk = [];
+      dates.forEach(function (d) {
+        if (new Date(d + 'T12:00:00Z').getUTCDay() === 0 && wk.length) { weeks.push(wk); wk = []; }
+        wk.push(d);
       });
-      root.appendChild(grid);
+      if (wk.length) weeks.push(wk);
 
-      hoverInfo = mk('div', 'contrib-hover-info');
-      hoverInfo.textContent = state.mode === 'personal'
-        ? 'Hover over a highlighted day to see commit details.'
-        : 'Hover over a highlighted day to see your commit ratio details.';
-      root.appendChild(hoverInfo);
-
-      var legend = mk('div', 'contrib-legend');
-      var left = mk('span', null);
-      left.textContent = state.mode === 'personal'
-        ? 'Intensity based on personal commit count'
-        : 'Intensity based on personal/team ratio';
-
-      var right = mk('div', 'legend-scale');
-      var less = mk('span', null);
-      less.textContent = 'Less';
-      right.appendChild(less);
-      [0, 0.25, 0.5, 0.75, 1].forEach(function (o) {
-        var l = mk('span', 'legend-cell');
-        l.style.background = o === 0 ? '#2a2a3a' : 'rgba(230, 57, 70, ' + o + ')';
-        right.appendChild(l);
+      grid.innerHTML = '';
+      weeks.forEach(function (week) {
+        var col = document.createElement('div');
+        col.style.cssText = 'display:flex;flex-direction:column;gap:3px;flex-shrink:0;';
+        week.forEach(function (d) {
+          var u = personal[d] || 0, t = total[d] || 0;
+          var opacity = 0;
+          if (mode === 'personal') {
+            opacity = u > 0 ? Math.max(0.1, u / maxP) : 0;
+          } else {
+            if (u > 0 && t > 0) opacity = Math.max(0.1, (u / t) / maxR);
+          }
+          var bg = opacity === 0 ? '#2a2a2a' : 'rgba(230,57,70,' + opacity.toFixed(3) + ')';
+          var sq = document.createElement('div');
+          sq.style.cssText = 'width:11px;height:11px;border-radius:2px;background:' + bg + ';flex-shrink:0;cursor:default;';
+          if (u > 0) {
+            var dateObj = new Date(d + 'T12:00:00Z');
+            var lbl = ML[dateObj.getUTCMonth()] + ' ' + dateObj.getUTCDate() + ', ' + dateObj.getUTCFullYear() +
+              ': ' + u + ' commit' + (u !== 1 ? 's' : '');
+            if (mode === 'ratio' && t > 0) lbl += ' (' + Math.round(u / t * 100) + '% of team)';
+            (function (lbl) {
+              sq.addEventListener('mouseenter', function (e) { tooltip.textContent = lbl; tooltip.style.display = 'block'; tooltip.style.left = (e.clientX + 14) + 'px'; tooltip.style.top = (e.clientY + 14) + 'px'; });
+              sq.addEventListener('mousemove', function (e) { tooltip.style.left = (e.clientX + 14) + 'px'; tooltip.style.top = (e.clientY + 14) + 'px'; });
+              sq.addEventListener('mouseleave', function () { tooltip.style.display = 'none'; });
+            }(lbl));
+          }
+          col.appendChild(sq);
+        });
+        grid.appendChild(col);
       });
-      var more = mk('span', null);
-      more.textContent = 'More';
-      right.appendChild(more);
-
-      legend.appendChild(left);
-      legend.appendChild(right);
-      root.appendChild(legend);
     }
+
+    btnP.addEventListener('click', function () {
+      mode = 'personal';
+      btnP.style.background = ACCENT; btnP.style.color = '#fff';
+      btnR.style.background = 'transparent'; btnR.style.color = ACCENT;
+      draw();
+    });
+    btnR.addEventListener('click', function () {
+      mode = 'ratio';
+      btnR.style.background = ACCENT; btnR.style.color = '#fff';
+      btnP.style.background = 'transparent'; btnP.style.color = ACCENT;
+      draw();
+    });
+    prevBtn.addEventListener('click', function () { if (yIdx > 0) { yIdx--; draw(); } });
+    nextBtn.addEventListener('click', function () { if (yIdx < sortedYears.length - 1) { yIdx++; draw(); } });
 
     draw();
   }
 
-  function renderSkillTimelineFigure(figures) {
-    var root = document.getElementById('skill-timeline');
-    if (!root) return;
+  // ==========================================================
+  // SkillTimelineGraph
+  // ==========================================================
+  function buildSkillTimeline(el, skillAct) {
+    var COLORS = ['#E63946','#7A9BA8','#A89B6B','#7B8B6F','#8B6B7A',
+                  '#5B8C85','#9B6B5B','#6B7B9B','#8C7B5B','#7B5B9B'];
+    var MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    var data = figures.skill_timeline || {};
-    var range = figures.skill_timeline_range || {};
-    var skills = Object.keys(data);
-    if (!skills.length) {
-      root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
-      return;
-    }
-
-    function parseDateValue(value) {
-      if (typeof value !== 'string') return null;
-      var parsed = new Date(value);
-      return isNaN(parsed.getTime()) ? null : parsed;
-    }
-
-    function monthStart(dt) {
-      return new Date(dt.getFullYear(), dt.getMonth(), 1);
-    }
-
-    function monthKey(dt) {
-      var month = String(dt.getMonth() + 1);
-      if (month.length < 2) month = '0' + month;
-      return dt.getFullYear() + '-' + month;
-    }
-
-    function buildTimelineBuckets(startDate, endDate) {
-      var buckets = [];
-      var start = monthStart(startDate);
-      var end = monthStart(endDate);
-      if (end < start) {
-        return [{
-          key: monthKey(start),
-          shortLabel: start.toLocaleString(undefined, { month: 'short', year: '2-digit' }),
-          fullLabel: start.toLocaleString(undefined, { month: 'short', year: 'numeric' })
-        }];
-      }
-      var cursor = new Date(start);
-      while (cursor <= end) {
-        buckets.push({
-          key: monthKey(cursor),
-          shortLabel: cursor.toLocaleString(undefined, { month: 'short', year: '2-digit' }),
-          fullLabel: cursor.toLocaleString(undefined, { month: 'short', year: 'numeric' })
-        });
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
-      return buckets;
-    }
-
-    function buildTickIndexes(length) {
-      if (length <= 1) return [0];
-      if (length <= 6) {
-        var all = [];
-        for (var idx = 0; idx < length; idx += 1) all.push(idx);
-        return all;
-      }
-      var desired = 6;
-      var step = (length - 1) / (desired - 1);
-      var ticks = [0, length - 1];
-      for (var i = 1; i < desired - 1; i += 1) {
-        var candidate = Math.round(step * i);
-        if (ticks.indexOf(candidate) === -1) ticks.push(candidate);
-      }
-      ticks.sort(function (a, b) { return a - b; });
-      return ticks;
-    }
-
-    var skillMonthCounts = {};
-    var totalBySkill = {};
-    var minActivityDate = null;
-    var maxActivityDate = null;
-    var globalMaxCumulative = 1;
-
-    skills.forEach(function (skill) {
-      var byDate = data[skill] || {};
-      Object.keys(byDate).forEach(function (dateStr) {
-        var count = Number(byDate[dateStr] || 0);
-        if (!isFinite(count) || count <= 0) return;
-        var dt = parseDateValue(dateStr);
-        if (!dt) return;
-        if (!minActivityDate || dt < minActivityDate) minActivityDate = dt;
-        if (!maxActivityDate || dt > maxActivityDate) maxActivityDate = dt;
-        if (!skillMonthCounts[skill]) skillMonthCounts[skill] = {};
-        var key = monthKey(dt);
-        skillMonthCounts[skill][key] = Number(skillMonthCounts[skill][key] || 0) + count;
-        totalBySkill[skill] = Number(totalBySkill[skill] || 0) + count;
+    // 1. Aggregate into monthly counts
+    var monthly = {}, totals = {}, minD = null, maxD = null;
+    Object.keys(skillAct).forEach(function (skill) {
+      var byDate = skillAct[skill] || {};
+      Object.keys(byDate).forEach(function (ds) {
+        var cnt = +(byDate[ds]) || 0;
+        if (cnt <= 0) return;
+        var d = new Date(ds);
+        if (isNaN(d.getTime())) return;
+        if (!minD || d < minD) minD = new Date(d);
+        if (!maxD || d > maxD) maxD = new Date(d);
+        var mk = ds.slice(0, 7);
+        if (!monthly[skill]) monthly[skill] = {};
+        monthly[skill][mk] = (monthly[skill][mk] || 0) + cnt;
+        totals[skill] = (totals[skill] || 0) + cnt;
       });
     });
 
-    var rangeStart = parseDateValue(range.start_date) || minActivityDate;
-    var rangeEnd = parseDateValue(range.end_date) || maxActivityDate;
-    if (!rangeStart || !rangeEnd) {
-      root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
-      return;
+    var skills = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a]; });
+    if (!skills.length || !minD || !maxD) return;
+
+    // 2. Month buckets
+    var buckets = [];
+    var cur = new Date(minD.getFullYear(), minD.getMonth(), 1);
+    var endM = new Date(maxD.getFullYear(), maxD.getMonth(), 1);
+    while (cur <= endM) {
+      var yr4 = cur.getFullYear(), mo = cur.getMonth();
+      var mk = yr4 + '-' + String(mo + 1).padStart(2, '0');
+      buckets.push({
+        key:   mk,
+        short: MS[mo] + " '" + String(yr4).slice(2),
+        full:  MS[mo] + ' ' + yr4
+      });
+      cur.setMonth(mo + 1);
     }
 
-    var buckets = buildTimelineBuckets(rangeStart, rangeEnd);
-    var mKeys = buckets.map(function (b) { return b.key; });
-    var skillSeries = {};
-
-    Object.keys(totalBySkill).forEach(function (skill) {
-      var runningTotal = 0;
-      var series = mKeys.map(function (key) {
-        runningTotal += Number((skillMonthCounts[skill] || {})[key] || 0);
-        return runningTotal;
-      });
-      skillSeries[skill] = series;
-      var lastValue = series.length ? series[series.length - 1] : 0;
-      if (lastValue > globalMaxCumulative) globalMaxCumulative = lastValue;
+    // 3. Cumulative series
+    var cumul = {}, gMax = 1;
+    skills.forEach(function (s) {
+      var run = 0;
+      cumul[s] = buckets.map(function (b) { run += (monthly[s] && monthly[s][b.key]) || 0; return run; });
+      var last = cumul[s][buckets.length - 1] || 0;
+      if (last > gMax) gMax = last;
     });
 
-    var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A',
-                  '#5B8C85', '#9B6B5B', '#6B7B9B', '#8C7B5B', '#7B5B9B'];
-    var tickIndexes = buildTickIndexes(mKeys.length);
-    var n = mKeys.length;
+    var mode = 'stacked';
 
-    // All skills with >= 10 occurrences (for stacked view)
-    var stackedSkills = Object.keys(totalBySkill)
-      .filter(function (s) { return Number(totalBySkill[s] || 0) >= 10; })
-      .sort(function (a, b) { return Number(totalBySkill[b] || 0) - Number(totalBySkill[a] || 0); });
+    // Build wrapper DOM
+    el.className = 'figure-card';
 
-    // Top 5 with any occurrences (for small-multiples view)
-    var smallSkills = Object.keys(totalBySkill)
-      .filter(function (s) { return Number(totalBySkill[s] || 0) > 0; })
-      .sort(function (a, b) { return Number(totalBySkill[b] || 0) - Number(totalBySkill[a] || 0); })
-      .slice(0, 5);
+    var hdr = el.appendChild(document.createElement('div'));
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap;';
 
-    if (!stackedSkills.length && !smallSkills.length) {
-      root.innerHTML = '<div class="figure-empty">No skill timeline data available.</div>';
-      return;
+    var hTitle = hdr.appendChild(document.createElement('h3'));
+    hTitle.textContent = 'Most Utilized Skills';
+    hTitle.style.cssText = 'margin:0;font-size:18px;font-weight:600;';
+
+    var tgl = hdr.appendChild(document.createElement('div'));
+    var btnS = tgl.appendChild(document.createElement('button'));
+    btnS.textContent = 'Stacked';
+    btnS.style.cssText = 'padding:4px 12px;font-size:12px;border-radius:6px 0 0 6px;border:1px solid #333;background:#2a2a2a;color:#e8e8e8;cursor:pointer;font-weight:600;';
+    var btnI = tgl.appendChild(document.createElement('button'));
+    btnI.textContent = 'Individual';
+    btnI.style.cssText = 'padding:4px 12px;font-size:12px;border-radius:0 6px 6px 0;border:1px solid #333;border-left:none;background:transparent;color:#888;cursor:pointer;';
+
+    var subDesc = el.appendChild(document.createElement('p'));
+    subDesc.textContent = 'Cumulative running total of skill occurrences across all projects.';
+    subDesc.style.cssText = 'margin:0 0 12px;font-size:12px;color:#999;';
+
+    var chartArea = el.appendChild(document.createElement('div'));
+
+    // ---- Shared helpers ----
+    function ticks(len) {
+      if (len <= 1) return [0];
+      if (len <= 6) { var r = []; for (var i = 0; i < len; i++) r.push(i); return r; }
+      var step = (len - 1) / 5, s = {};
+      s[0] = s[len - 1] = true;
+      for (var t = 1; t < 5; t++) s[Math.round(step * t)] = true;
+      return Object.keys(s).map(Number).sort(function (a, b) { return a - b; });
     }
-
-    root.innerHTML = '';
-
-    // ---- Header ----
-    var header = mk('div', 'figure-header');
-    header.style.display = 'flex';
-    header.style.alignItems = 'center';
-    header.style.justifyContent = 'space-between';
-    header.style.flexWrap = 'wrap';
-    header.style.gap = '12px';
-    header.style.marginBottom = '12px';
-
-    var title = mk('div', 'figure-title');
-    title.textContent = 'Most Utilized Skills';
-    title.style.margin = '0';
-    header.appendChild(title);
-
-    var toggle = mk('div', 'skill-view-toggle');
-    var btnStacked = mk('button', 'skill-toggle-btn active');
-    btnStacked.textContent = 'Stacked';
-    btnStacked.setAttribute('type', 'button');
-    var btnIndiv = mk('button', 'skill-toggle-btn');
-    btnIndiv.textContent = 'Individual';
-    btnIndiv.setAttribute('type', 'button');
-    toggle.appendChild(btnStacked);
-    toggle.appendChild(btnIndiv);
-    header.appendChild(toggle);
-    root.appendChild(header);
-
-    var subtitle = mk('div', 'figure-subtitle');
-    subtitle.textContent = 'Cumulative running total of skill occurrences across all projects, plotted continuously from the earliest to latest project date.';
-    subtitle.style.marginBottom = '12px';
-    subtitle.style.fontSize = '0.75rem';
-    subtitle.style.color = '#6f6f78';
-    root.appendChild(subtitle);
 
     // ---- Stacked view ----
-    var stackedView = mk('div', '');
-
-    // Legend
-    var legend = mk('div', 'skill-legend');
-    stackedSkills.forEach(function (skill, k) {
-      var item = mk('div', 'skill-legend-item');
-      var swatch = mk('div', 'skill-legend-swatch');
-      swatch.style.background = colors[k % colors.length];
-      var label = document.createElement('span');
-      label.textContent = skill;
-      var count = document.createElement('span');
-      count.textContent = '(' + (totalBySkill[skill] || 0) + ')';
-      count.style.color = '#666';
-      count.style.fontSize = '0.69rem';
-      item.appendChild(swatch);
-      item.appendChild(label);
-      item.appendChild(count);
-      legend.appendChild(item);
-    });
-    stackedView.appendChild(legend);
-
-    // Build log-stacked series
-    var globalMaxIndividual = 1;
-    stackedSkills.forEach(function (skill) {
-      var last = (skillSeries[skill] || []).length ? skillSeries[skill][skillSeries[skill].length - 1] : 0;
-      if (last > globalMaxIndividual) globalMaxIndividual = last;
-    });
-
-    function indivLogNorm(v) {
-      return Math.log(1 + v) / Math.log(1 + globalMaxIndividual);
-    }
-
-    var logStackedSeries = [];
-    stackedSkills.forEach(function (skill, k) {
-      var logSeries = (skillSeries[skill] || []).map(indivLogNorm);
-      if (k === 0) {
-        logStackedSeries.push(logSeries.slice());
-      } else {
-        var prev = logStackedSeries[k - 1];
-        logStackedSeries.push(logSeries.map(function (v, i) { return v + (prev[i] || 0); }));
+    function renderStacked() {
+      var vis = skills.filter(function (s) { return (totals[s] || 0) >= 10; });
+      if (!vis.length) {
+        chartArea.innerHTML = '<p style="color:#999;padding:20px;text-align:center;">Not enough data (\u226510 occurrences required per skill).</p>';
+        return;
       }
-    });
+      var n = buckets.length;
+      var W = 760, H = 380, L = 8, R = 8, T = 12, B = 30;
+      var CW = W - L - R, CH = H - T - B;
 
-    var totalLogHeight = 1;
-    if (logStackedSeries.length) {
-      var lastSeries = logStackedSeries[logStackedSeries.length - 1];
-      var lastVal = lastSeries.length ? lastSeries[lastSeries.length - 1] : 1;
-      if (lastVal > totalLogHeight) totalLogHeight = lastVal;
-    }
+      var gmI = Math.max.apply(null, vis.map(function (s) { return cumul[s][n - 1] || 0; }).concat([1]));
+      function ln(v) { return Math.log(1 + v) / Math.log(1 + gmI); }
 
-    var SVG_W = 760, SVG_H = 380;
-    var L = 8, R = 8, T = 12, B = 30;
-    var CW = SVG_W - L - R, CH = SVG_H - T - B;
-
-    function xAt(i) { return L + (i / Math.max(1, n - 1)) * CW; }
-    function yAt(logV) { return T + (1 - logV / totalLogHeight) * CH; }
-
-    var svgNS = 'http://www.w3.org/2000/svg';
-    var chartWrap = mk('div', 'skill-stacked-wrap');
-
-    var svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('viewBox', '0 0 ' + SVG_W + ' ' + SVG_H);
-    svg.setAttribute('class', 'skill-stacked-svg');
-    svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', 'Stacked cumulative skill activity');
-
-    // Grid lines
-    [0.25, 0.5, 0.75, 1].forEach(function (ratio) {
-      var gline = document.createElementNS(svgNS, 'line');
-      gline.setAttribute('x1', String(L));
-      gline.setAttribute('x2', String(SVG_W - R));
-      gline.setAttribute('y1', String(T + CH * (1 - ratio)));
-      gline.setAttribute('y2', String(T + CH * (1 - ratio)));
-      gline.setAttribute('stroke', '#1e1e1e');
-      gline.setAttribute('stroke-width', '1');
-      svg.appendChild(gline);
-    });
-
-    // Stacked bands
-    stackedSkills.forEach(function (skill, k) {
-      var topSeries = logStackedSeries[k] || [];
-      var botSeries = k === 0 ? new Array(n).fill(0) : (logStackedSeries[k - 1] || []);
-      var color = colors[k % colors.length];
-
-      var topPts = topSeries.map(function (v, i) {
-        return (i === 0 ? 'M' : 'L') + ' ' + xAt(i) + ' ' + yAt(v);
+      // Log-stacked series
+      var ls = [];
+      vis.forEach(function (s, k) {
+        var logS = (cumul[s] || []).map(ln);
+        ls.push(k === 0 ? logS.slice() : logS.map(function (v, i) { return v + (ls[k - 1][i] || 0); }));
       });
-      var botPts = botSeries.slice().reverse().map(function (v, ri) {
-        return 'L ' + xAt(n - 1 - ri) + ' ' + yAt(v);
+      var tH = Math.max(1, (ls[ls.length - 1] || [])[n - 1] || 1);
+
+      function xA(i) { return (L + (i / Math.max(1, n - 1)) * CW).toFixed(2); }
+      function yA(v) { return (T + (1 - v / tH) * CH).toFixed(2); }
+
+      // Legend
+      var legHtml = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">';
+      vis.forEach(function (s, k) {
+        var c = COLORS[k % COLORS.length];
+        legHtml += '<div style="display:flex;align-items:center;gap:5px;">' +
+          '<div style="width:10px;height:10px;border-radius:2px;background:' + c + ';flex-shrink:0;"></div>' +
+          '<span style="font-size:12px;color:#ccc;">' + esc(s) + '</span>' +
+          '<span style="font-size:11px;color:#666;">(' + (totals[s] || 0) + ')</span></div>';
       });
-      var areaD = topPts.join(' ') + ' ' + botPts.join(' ') + ' Z';
-      var lineD = topSeries.map(function (v, i) {
-        return (i === 0 ? 'M' : 'L') + ' ' + xAt(i) + ' ' + yAt(v);
-      }).join(' ');
+      legHtml += '</div>';
 
-      var areaEl = document.createElementNS(svgNS, 'path');
-      areaEl.setAttribute('d', areaD);
-      areaEl.setAttribute('fill', color);
-      areaEl.setAttribute('fill-opacity', '0.75');
-      svg.appendChild(areaEl);
-
-      var lineEl = document.createElementNS(svgNS, 'path');
-      lineEl.setAttribute('d', lineD);
-      lineEl.setAttribute('fill', 'none');
-      lineEl.setAttribute('stroke', color);
-      lineEl.setAttribute('stroke-width', '1.2');
-      lineEl.setAttribute('stroke-opacity', '0.9');
-      svg.appendChild(lineEl);
-    });
-
-    // Crosshair
-    var crosshair = document.createElementNS(svgNS, 'line');
-    crosshair.setAttribute('x1', '0');
-    crosshair.setAttribute('y1', String(T));
-    crosshair.setAttribute('x2', '0');
-    crosshair.setAttribute('y2', String(T + CH));
-    crosshair.setAttribute('stroke', '#ffffff');
-    crosshair.setAttribute('stroke-width', '1');
-    crosshair.setAttribute('stroke-opacity', '0.2');
-    crosshair.setAttribute('stroke-dasharray', '3 3');
-    crosshair.style.display = 'none';
-    svg.appendChild(crosshair);
-
-    // X-axis ticks
-    tickIndexes.forEach(function (mi) {
-      var lbl = document.createElementNS(svgNS, 'text');
-      lbl.setAttribute('x', String(xAt(mi)));
-      lbl.setAttribute('y', String(SVG_H - 6));
-      lbl.setAttribute('text-anchor', 'middle');
-      lbl.setAttribute('fill', '#7f7f7f');
-      lbl.setAttribute('font-size', '9');
-      lbl.textContent = buckets[mi] ? buckets[mi].shortLabel : '';
-      svg.appendChild(lbl);
-    });
-
-    chartWrap.appendChild(svg);
-
-    // Tooltip
-    var tooltip = mk('div', 'skill-tooltip');
-    var tooltipLabel = mk('div', 'skill-tooltip-label');
-    tooltip.appendChild(tooltipLabel);
-    var tooltipRows = stackedSkills.map(function (skill, k) {
-      var row = mk('div', 'skill-tooltip-row');
-      var swatch = mk('div', 'skill-tooltip-swatch');
-      swatch.style.background = colors[k % colors.length];
-      var name = mk('span', 'skill-tooltip-name');
-      name.textContent = skill;
-      var cnt = mk('span', 'skill-tooltip-count');
-      row.appendChild(swatch);
-      row.appendChild(name);
-      row.appendChild(cnt);
-      tooltip.appendChild(row);
-      return { row: row, cnt: cnt };
-    });
-    chartWrap.appendChild(tooltip);
-
-    svg.addEventListener('mousemove', function (e) {
-      var ctm = svg.getScreenCTM();
-      if (!ctm) return;
-      var svgX = (e.clientX - ctm.e) / ctm.a;
-      var frac = Math.max(0, Math.min(1, (svgX - L) / CW));
-      var mi = Math.round(frac * Math.max(0, n - 1));
-
-      crosshair.setAttribute('x1', String(xAt(mi)));
-      crosshair.setAttribute('x2', String(xAt(mi)));
-      crosshair.style.display = '';
-
-      tooltipLabel.textContent = buckets[mi] ? buckets[mi].fullLabel : '';
-      stackedSkills.forEach(function (skill, k) {
-        var count = (skillSeries[skill] || [])[mi] || 0;
-        tooltipRows[k].row.style.display = count > 0 ? 'flex' : 'none';
-        tooltipRows[k].cnt.textContent = String(count);
-      });
-
-      var wrapRect = chartWrap.getBoundingClientRect();
-      var tipX = e.clientX - wrapRect.left;
-      var tipY = e.clientY - wrapRect.top;
-      var tipLeft = tipX + 16;
-      if (tipLeft + 170 > wrapRect.width) tipLeft = tipX - 178;
-      tooltip.style.left = tipLeft + 'px';
-      tooltip.style.top = Math.max(8, tipY - 16) + 'px';
-      tooltip.style.display = 'block';
-    });
-    svg.addEventListener('mouseleave', function () {
-      crosshair.style.display = 'none';
-      tooltip.style.display = 'none';
-    });
-
-    stackedView.appendChild(chartWrap);
-
-    // ---- Small-multiples view ----
-    var smallView = mk('div', '');
-    smallView.style.display = 'none';
-
-    var grid = mk('div', 'skill-grid');
-
-    smallSkills.forEach(function (skill, index) {
-      var series = skillSeries[skill] || [];
-      var timelineTotal = Number(totalBySkill[skill] || 0);
-      var color = colors[index % colors.length];
-      var denominator = Math.max(1, series.length - 1);
-
-      var card = mk('div', 'skill-card');
-      card.style.borderTop = '3px solid ' + color;
-
-      var nameEl = mk('div', 'skill-name');
-      nameEl.textContent = skill;
-      var totalEl = mk('div', 'skill-total');
-      totalEl.textContent = timelineTotal + ' occurrence' + (timelineTotal === 1 ? '' : 's');
-
-      var svgEl = document.createElementNS(svgNS, 'svg');
-      svgEl.setAttribute('viewBox', '0 0 360 120');
-      svgEl.setAttribute('class', 'skill-chart');
-      svgEl.setAttribute('role', 'img');
-      svgEl.setAttribute('aria-label', skill + ' cumulative activity');
-
-      var sleft = 10, stop = 12, swidth = 340, sheight = 78;
-
-      function logScaleSmall(value) {
-        return globalMaxCumulative <= 1
-          ? value / globalMaxCumulative
-          : Math.log(1 + value) / Math.log(1 + globalMaxCumulative);
-      }
-
+      var svg = ['<svg width="100%" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;">'];
       [0.25, 0.5, 0.75, 1].forEach(function (r) {
-        var gy = stop + sheight * (1 - r);
-        var gline = document.createElementNS(svgNS, 'line');
-        gline.setAttribute('x1', String(sleft));
-        gline.setAttribute('x2', String(sleft + swidth));
-        gline.setAttribute('y1', String(gy));
-        gline.setAttribute('y2', String(gy));
-        gline.setAttribute('stroke', '#1f1f1f');
-        gline.setAttribute('stroke-width', '1');
-        svgEl.appendChild(gline);
+        var y = (T + CH * (1 - r)).toFixed(2);
+        svg.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="#1e1e1e" stroke-width="1"/>');
       });
-
-      var linePts = '', areaPts = '';
-      series.forEach(function (value, mi) {
-        var sx = sleft + (mi / denominator) * swidth;
-        var sy = stop + (1 - logScaleSmall(value)) * sheight;
-        linePts += (mi === 0 ? 'M ' : ' L ') + sx + ' ' + sy;
+      vis.forEach(function (s, k) {
+        var top = ls[k] || [], bot = k === 0 ? new Array(n).fill(0) : (ls[k - 1] || []);
+        var c = COLORS[k % COLORS.length];
+        var tp = top.map(function (v, i) { return (i ? 'L' : 'M') + ' ' + xA(i) + ' ' + yA(v); }).join(' ');
+        var bp = bot.slice().reverse().map(function (v, ri) { return 'L ' + xA(n - 1 - ri) + ' ' + yA(v); }).join(' ');
+        svg.push('<path d="' + tp + ' ' + bp + ' Z" fill="' + c + '" fill-opacity="0.75"/>');
+        svg.push('<path d="' + tp + '" fill="none" stroke="' + c + '" stroke-width="1.2" stroke-opacity="0.9"/>');
       });
-      areaPts = linePts
-        + ' L ' + (sleft + swidth) + ' ' + (stop + sheight)
-        + ' L ' + sleft + ' ' + (stop + sheight) + ' Z';
-
-      var areaEl2 = document.createElementNS(svgNS, 'path');
-      areaEl2.setAttribute('d', areaPts);
-      areaEl2.setAttribute('fill', color);
-      areaEl2.setAttribute('fill-opacity', '0.2');
-      svgEl.appendChild(areaEl2);
-
-      var lineEl2 = document.createElementNS(svgNS, 'path');
-      lineEl2.setAttribute('d', linePts);
-      lineEl2.setAttribute('fill', 'none');
-      lineEl2.setAttribute('stroke', color);
-      lineEl2.setAttribute('stroke-width', '2');
-      svgEl.appendChild(lineEl2);
-
-      series.forEach(function (value, mi) {
-        var sx = sleft + (mi / denominator) * swidth;
-        var sy = stop + (1 - logScaleSmall(value)) * sheight;
-        var dot = document.createElementNS(svgNS, 'circle');
-        dot.setAttribute('cx', String(sx));
-        dot.setAttribute('cy', String(sy));
-        dot.setAttribute('r', '2.4');
-        dot.setAttribute('fill', color);
-        dot.setAttribute('stroke', '#121212');
-        dot.setAttribute('stroke-width', '0.6');
-        var dotTitle = document.createElementNS(svgNS, 'title');
-        dotTitle.textContent = (buckets[mi] ? buckets[mi].fullLabel : '') + ': ' + value + ' cumulative';
-        dot.appendChild(dotTitle);
-        svgEl.appendChild(dot);
+      ticks(n).forEach(function (i) {
+        svg.push('<text x="' + xA(i) + '" y="' + (H - 6) + '" text-anchor="middle" fill="#7f7f7f" font-size="9">' + esc((buckets[i] || {}).short || '') + '</text>');
       });
+      svg.push('</svg>');
 
-      var smallTicks = buildTickIndexes(series.length);
-      smallTicks.forEach(function (mi) {
-        var sx = sleft + (mi / denominator) * swidth;
-        var lbl = document.createElementNS(svgNS, 'text');
-        lbl.setAttribute('x', String(sx));
-        lbl.setAttribute('y', '112');
-        lbl.setAttribute('text-anchor', 'middle');
-        lbl.setAttribute('fill', '#7f7f7f');
-        lbl.setAttribute('font-size', '8.5');
-        lbl.textContent = buckets[mi] ? buckets[mi].shortLabel : '';
-        svgEl.appendChild(lbl);
+      chartArea.innerHTML = legHtml + '<div style="border-radius:8px;border:1px solid #222;background:#121212;padding:10px 4px 4px;">' + svg.join('') + '</div>';
+
+      // ---- Hover tooltip for stacked chart ----
+      var svgEl = chartArea.querySelector('svg');
+      var wrapper = chartArea.querySelector('div');
+      if (svgEl && wrapper) {
+        wrapper.style.position = 'relative';
+        var tip = wrapper.appendChild(document.createElement('div'));
+        tip.style.cssText = 'position:absolute;pointer-events:none;display:none;background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:10px 14px;font-size:12px;color:#ccc;z-index:10;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.5);';
+        svgEl.style.cursor = 'crosshair';
+        svgEl.addEventListener('mousemove', function(e) {
+          var svgRect = svgEl.getBoundingClientRect();
+          var mx = (e.clientX - svgRect.left) / svgRect.width * W;
+          var idx = Math.round((mx - L) / CW * Math.max(1, n - 1));
+          idx = Math.max(0, Math.min(n - 1, idx));
+          var b = buckets[idx];
+          if (!b) { tip.style.display = 'none'; return; }
+          var tHtml = '<div style="font-weight:600;margin-bottom:7px;color:#e8e8e8;border-bottom:1px solid #2a2a2a;padding-bottom:6px;">' + esc(b.full) + '</div>';
+          vis.forEach(function(s, k) {
+            var c = COLORS[k % COLORS.length], cnt = cumul[s][idx] || 0;
+            tHtml += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
+              '<div style="width:8px;height:8px;border-radius:2px;background:' + c + ';flex-shrink:0;"></div>' +
+              '<span style="flex:1;">' + esc(s) + '</span>' +
+              '<span style="color:#aaa;min-width:30px;text-align:right;">' + cnt + '</span>' +
+              '</div>';
+          });
+          tip.innerHTML = tHtml;
+          var wrapRect = wrapper.getBoundingClientRect();
+          var tx = e.clientX - wrapRect.left + 14;
+          var ty = e.clientY - wrapRect.top - 20;
+          if (tx + 200 > wrapRect.width) tx -= 220;
+          if (ty < 0) ty = 4;
+          tip.style.left = tx + 'px'; tip.style.top = ty + 'px'; tip.style.display = 'block';
+        });
+        svgEl.addEventListener('mouseleave', function() { tip.style.display = 'none'; });
+      }
+    }
+
+    // ---- Individual (small multiples) view ----
+    function renderIndividual() {
+      var vis = skills.slice(0, 5).filter(function (s) { return (totals[s] || 0) > 0; });
+      if (!vis.length) { chartArea.innerHTML = '<p style="color:#999;padding:20px;text-align:center;">No skill data.</p>'; return; }
+      var W = 400, H = 140, LP = 10, RP = 10, TP = 12, BP = 22;
+      var CW2 = W - LP - RP, CH2 = H - TP - BP;
+      var n = buckets.length;
+      function logS(v) { return gMax <= 1 ? v / gMax : Math.log(1 + v) / Math.log(1 + gMax); }
+      function xF(i) { return (LP + (i / Math.max(1, n - 1)) * CW2).toFixed(2); }
+      function yF(v) { return (TP + (1 - logS(v)) * CH2).toFixed(2); }
+      var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:24px;padding-top:8px;">';
+      vis.forEach(function (s, idx) {
+        var c = COLORS[idx % COLORS.length], ser = cumul[s] || [], tot = totals[s] || 0;
+        var lp = ser.map(function (v, i) { return (i ? 'L' : 'M') + ' ' + xF(i) + ' ' + yF(v); }).join(' ');
+        var btm = (TP + CH2).toFixed(2);
+        var ap = lp + ' L ' + xF(n - 1) + ' ' + btm + ' L ' + xF(0) + ' ' + btm + ' Z';
+        var svg = ['<svg width="100%" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;">'];
+        [0.25, 0.5, 0.75, 1].forEach(function (r) {
+          var y = (TP + CH2 * (1 - r)).toFixed(2);
+          svg.push('<line x1="' + LP + '" x2="' + (W - RP) + '" y1="' + y + '" y2="' + y + '" stroke="#1f1f1f" stroke-width="1"/>');
+        });
+        if (lp) {
+          svg.push('<path d="' + ap + '" fill="' + c + '" fill-opacity="0.2"/>');
+          svg.push('<path d="' + lp + '" fill="none" stroke="' + c + '" stroke-width="2"/>');
+        }
+        ser.forEach(function (v, i) {
+          var lbl = ((buckets[i] || {}).full || '') + ': ' + v + ' occurrence' + (v !== 1 ? 's' : '') + ' cumulative';
+          svg.push('<circle cx="' + xF(i) + '" cy="' + yF(v) + '" r="2.4" fill="' + c + '" stroke="#121212" stroke-width="0.6"><title>' + esc(lbl) + '</title></circle>');
+        });
+        ticks(n).forEach(function (i) {
+          svg.push('<text x="' + xF(i) + '" y="' + (H - 6) + '" text-anchor="middle" fill="#7f7f7f" font-size="9">' + esc((buckets[i] || {}).short || '') + '</text>');
+        });
+        svg.push('</svg>');
+        html += '<div style="border:1px solid #2a2a2a;border-radius:10px;background:#121212;padding:18px;border-top:3px solid ' + c + ';">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+          '<div style="color:#e8e8e8;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(s) + '">' + esc(s) + '</div>' +
+          '<div style="color:#989898;font-size:11px;">' + tot + ' occurrence' + (tot !== 1 ? 's' : '') + '</div></div>' +
+          svg.join('') + '</div>';
       });
+      html += '</div>';
+      chartArea.innerHTML = html;
+    }
 
-      card.appendChild(nameEl);
-      card.appendChild(totalEl);
-      card.appendChild(svgEl);
-      grid.appendChild(card);
+    btnS.addEventListener('click', function () {
+      mode = 'stacked';
+      btnS.style.background = '#2a2a2a'; btnS.style.color = '#e8e8e8'; btnS.style.fontWeight = '600';
+      btnI.style.background = 'transparent'; btnI.style.color = '#888'; btnI.style.fontWeight = '';
+      renderStacked();
+    });
+    btnI.addEventListener('click', function () {
+      mode = 'individual';
+      btnI.style.background = '#2a2a2a'; btnI.style.color = '#e8e8e8'; btnI.style.fontWeight = '600';
+      btnS.style.background = 'transparent'; btnS.style.color = '#888'; btnS.style.fontWeight = '';
+      renderIndividual();
     });
 
-    smallView.appendChild(grid);
-
-    root.appendChild(stackedView);
-    root.appendChild(smallView);
-
-    // ---- Toggle behaviour ----
-    btnStacked.addEventListener('click', function () {
-      btnStacked.classList.add('active');
-      btnIndiv.classList.remove('active');
-      stackedView.style.display = '';
-      smallView.style.display = 'none';
-    });
-    btnIndiv.addEventListener('click', function () {
-      btnIndiv.classList.add('active');
-      btnStacked.classList.remove('active');
-      smallView.style.display = '';
-      stackedView.style.display = 'none';
-    });
+    renderStacked();
   }
+
 }());
 """
+
+
+def _get_github_repo_url(username: str, repo_name: str, token: Optional[str] = None) -> Optional[str]:
+    """
+    Returns the GitHub HTML URL if the repo exists and is public, else None.
+    Uses the OAuth token when available for a higher API rate limit.
+    """
+    api_url = f"https://api.github.com/repos/{username}/{repo_name}"
+    req = urllib.request.Request(api_url)
+    req.add_header("Accept", "application/vnd.github+json")
+    req.add_header("X-GitHub-Api-Version", "2022-11-28")
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if not data.get("private", True):
+                return data.get("html_url") or f"https://github.com/{username}/{repo_name}"
+    except Exception:
+        pass
+    return None
+
+
+def _render_section_html(section) -> str:
+    """
+    Render a PortfolioSection as HTML, producing proper semantic elements:
+    - TextBlock → <p class="block-text">
+    - TextListBlock → <ul class="block-list"><li>...</li></ul>
+    - Unknown types → escaped plain text in a <p>
+    """
+    parts = []
+    for tag in section.block_order:
+        block = section.blocks_by_tag.get(tag)
+        if block is None or block.current_content is None:
+            continue
+        content = block.current_content
+        ctype = content.content_type.value if hasattr(content, "content_type") else ""
+        if ctype == "TextList":
+            items_html = "".join(
+                f"<li>{_esc(item)}</li>" for item in content.items
+            )
+            parts.append(f'      <ul class="block-list">{items_html}</ul>')
+        elif ctype == "Text":
+            text = content.text
+            if text:
+                parts.append(f'      <p class="block-text">{_esc(text)}</p>')
+        else:
+            rendered = content.render()
+            if rendered:
+                parts.append(f'      <p class="block-text">{_esc(rendered)}</p>')
+    return "\n".join(parts)
 
 
 def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
@@ -1434,6 +1334,7 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     - `portfolio_data.js`
     - `style.css`
     - `filter.js`
+    - `figures.js`
 
     Raises `KeyNotFoundError` if the portfolio does not exist.
     """
@@ -1444,78 +1345,30 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     # --- Build Part A HTML (sections) ---
     sections_html_parts = []
     for section in portfolio.sections:
-        rendered = section.render()
+        rendered_blocks_html = _render_section_html(section)
         sections_html_parts.append(
-            f'    <div class="narrative-section">\n'
-            f'      <h2>{_esc(section.title)}</h2>\n'
-            f'      <div class="block-content">{_esc(rendered)}</div>\n'
+            f'    <div class="narrative-section" id="section-{_esc(section.id)}">\n'
+            f'      <h2><a class="section-anchor" href="#section-{_esc(section.id)}">'
+            f'{_esc(section.title)}</a></h2>\n'
+            f'{rendered_blocks_html}\n'
             f'    </div>'
         )
     sections_html = "\n".join(sections_html_parts)
 
+    # --- Build section navigation links ---
+    nav_links_html = "".join(
+        f'<a href="#section-{_esc(s.id)}">{_esc(s.title)}</a>'
+        for s in portfolio.sections
+    ) + '<a href="#figures">Figures</a><a href="#gallery">Projects</a>'
+    nav_html = f'<div class="nav-links">{nav_links_html}</div>'
+
+    # --- Format last updated date ---
+    last_updated = portfolio.metadata.last_updated_at.strftime("%-d %b %Y")
+
     # --- Build Part C card data ---
-    # Fetch cards ordered: showcase first, then alphabetically
     card_models = get_project_cards_for_portfolio(session, portfolio_id)
     cards_data = []
-    personal_timeline: dict[str, int] = {}
-    total_timeline: dict[str, int] = {}
-    skill_timeline: dict[str, dict[str, int]] = {}
-    earliest_project_start: date | None = None
-    latest_project_end: date | None = None
-
-    def _parse_stat_date(value: Any) -> date | None:
-      if isinstance(value, date):
-        return value
-      if not isinstance(value, str):
-        return None
-      try:
-        return date.fromisoformat(value[:10])
-      except ValueError:
-        return None
-
     for c in card_models:
-        project = get_project_report_model_by_name(session, c.project_name)
-        statistic = project.statistic if project and isinstance(
-            project.statistic, dict) else {}
-
-        stat_start = _parse_stat_date(statistic.get("PROJECT_START_DATE"))
-        if stat_start and (earliest_project_start is None or stat_start < earliest_project_start):
-          earliest_project_start = stat_start
-        stat_end = _parse_stat_date(statistic.get("PROJECT_END_DATE"))
-        if stat_end and (latest_project_end is None or stat_end > latest_project_end):
-          latest_project_end = stat_end
-
-        # Aggregate contribution timelines across all included projects.
-        personal = statistic.get("COMMIT_ACTIVITY_TIMELINE", {})
-        total = statistic.get("TOTAL_COMMIT_ACTIVITY_TIMELINE", {})
-        for key, value in personal.items() if isinstance(personal, dict) else []:
-            try:
-                count = int(value)
-            except (TypeError, ValueError):
-                continue
-            personal_timeline[str(key)] = personal_timeline.get(
-                str(key), 0) + count
-        for key, value in total.items() if isinstance(total, dict) else []:
-            try:
-                count = int(value)
-            except (TypeError, ValueError):
-                continue
-            total_timeline[str(key)] = total_timeline.get(str(key), 0) + count
-
-        # Aggregate per-skill activity as {skill: {YYYY-MM-DD: count}}.
-        skill_activity = statistic.get("PROJECT_SKILL_ACTIVITY", {})
-        if isinstance(skill_activity, dict):
-            for skill, dates in skill_activity.items():
-                if not isinstance(dates, list):
-                    continue
-                if skill not in skill_timeline:
-                    skill_timeline[skill] = {}
-                for date_value in dates:
-                    if not isinstance(date_value, str):
-                        continue
-                    skill_timeline[skill][date_value] = skill_timeline[skill].get(
-                        date_value, 0) + 1
-
         cards_data.append({
             "project_name": c.project_name,
             "title_override": c.title_override,
@@ -1537,23 +1390,77 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
             "activity_metrics": c.activity_metrics or {},
             "is_showcase": c.is_showcase,
             "image_data": c.image_data,
+            # Populated later from ProjectReportModel / GitHub API
+            "total_lines": None,
+            "contributors": None,
+            "commit_share": None,
+            "loc_share": None,
+            "repo_url": None,
         })
+
+    # --- Aggregate figures data from project reports ---
+    # COMMIT_ACTIVITY_TIMELINE / TOTAL_COMMIT_ACTIVITY_TIMELINE: {date: count}
+    # PROJECT_SKILL_ACTIVITY: {skill: [date, ...]}
+    project_names = [c.project_name for c in card_models]
+    personal_timeline: dict = {}
+    total_timeline: dict = {}
+    skill_activity: dict = {}  # {skill: {date: count}}
+
+    try:
+        report_models = get_project_report_models_by_names(session, project_names)
+        report_by_name = {rm.project_name: rm for rm in (report_models or []) if rm is not None}
+        for i, pname in enumerate(project_names):
+            rm = report_by_name.get(pname)
+            if rm is None:
+                continue
+            stat = rm.statistic or {}
+
+            # Per-project card stats
+            cards_data[i]["total_lines"] = stat.get("TOTAL_PROJECT_LINES")
+            cards_data[i]["contributors"] = stat.get("TOTAL_AUTHORS")
+            cards_data[i]["commit_share"] = stat.get("USER_COMMIT_PERCENTAGE")
+            cards_data[i]["loc_share"] = stat.get("TOTAL_CONTRIBUTION_PERCENTAGE")
+
+            for d, cnt in (stat.get("COMMIT_ACTIVITY_TIMELINE") or {}).items():
+                personal_timeline[d] = personal_timeline.get(d, 0) + int(cnt)
+
+            for d, cnt in (stat.get("TOTAL_COMMIT_ACTIVITY_TIMELINE") or {}).items():
+                total_timeline[d] = total_timeline.get(d, 0) + int(cnt)
+
+            for skill, dates in (stat.get("PROJECT_SKILL_ACTIVITY") or {}).items():
+                if not isinstance(dates, list):
+                    continue
+                if skill not in skill_activity:
+                    skill_activity[skill] = {}
+                for d in dates:
+                    if isinstance(d, str):
+                        skill_activity[skill][d] = skill_activity[skill].get(d, 0) + 1
+    except Exception:
+        pass  # Figures data is non-critical; silently omit if unavailable
+
+    # --- Populate GitHub repo URLs for public repos ---
+    try:
+        user_config = get_most_recent_user_config(session)
+        github_username = (user_config.github or "").strip()
+        github_token = user_config.access_token
+        if github_username:
+            for card_data in cards_data:
+                card_data["repo_url"] = _get_github_repo_url(
+                    github_username, card_data["project_name"], github_token
+                )
+    except Exception:
+        pass  # GitHub links are non-critical
 
     portfolio_data = {
         "portfolio_id": portfolio_id,
         "title": portfolio.title,
+        "last_updated_at": portfolio.metadata.last_updated_at.isoformat(),
         "project_cards": cards_data,
-        "figures": {
-            "contribution": {
-                "personal_timeline": personal_timeline,
-                "total_timeline": total_timeline,
-            },
-            "skill_timeline": skill_timeline,
-          "skill_timeline_range": {
-            "start_date": earliest_project_start.isoformat() if earliest_project_start else None,
-            "end_date": latest_project_end.isoformat() if latest_project_end else None,
-          },
+        "contribution": {
+            "personal_timeline": personal_timeline,
+            "total_timeline": total_timeline,
         },
+        "skill_activity": skill_activity,
     }
     portfolio_data_js = "var PORTFOLIO_DATA = " + json.dumps(
         portfolio_data, default=_json_default, indent=2
@@ -1563,6 +1470,8 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     index_html = _HTML_TEMPLATE.format(
         title=_esc(portfolio.title),
         sections_html=sections_html,
+        nav_html=nav_html,
+        last_updated=_esc(last_updated),
     )
 
     # --- Assemble ZIP ---
@@ -1572,6 +1481,7 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
         zf.writestr("portfolio_data.js", portfolio_data_js)
         zf.writestr("style.css", _CSS)
         zf.writestr("filter.js", _FILTER_JS)
+        zf.writestr("figures.js", _FIGURES_JS)
 
     return buf.getvalue()
 

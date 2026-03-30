@@ -21,6 +21,7 @@ export default function ContributionMap({
 }: ContributionMapProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("personal");
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const availableYears = useMemo(() => {
@@ -277,7 +278,8 @@ export default function ContributionMap({
               return (
                 <div
                   key={date}
-                  onMouseEnter={() => setHoveredDate(date)}
+                  onMouseEnter={(e) => { setHoveredDate(date); setMousePos({ x: e.clientX, y: e.clientY }); }}
+                  onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
                   onMouseLeave={() => setHoveredDate(null)}
                   style={{
                     width: 12,
@@ -289,7 +291,6 @@ export default function ContributionMap({
                     transition: "all 0.2s",
                     position: "relative",
                   }}
-                  title={getTooltipText(date)}
                 />
               );
             })}
@@ -384,17 +385,23 @@ export default function ContributionMap({
         )}
       </div>
 
-      {/* Hovered date info */}
+      {/* Floating tooltip that follows the cursor */}
       {hoveredDate && getTooltipText(hoveredDate) && (
         <div
           style={{
-            marginTop: 12,
-            padding: 8,
-            background: "#0a0a0a",
-            borderRadius: 6,
+            position: "fixed",
+            left: mousePos.x + 14,
+            top: mousePos.y + 14,
+            pointerEvents: "none",
+            zIndex: 1000,
+            background: "#111",
+            border: "1px solid #2a2a2a",
+            borderRadius: 8,
+            padding: "8px 12px",
             fontSize: 12,
             color: ACCENT_COLOR,
-            borderLeft: `3px solid ${ACCENT_COLOR}`,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+            whiteSpace: "nowrap",
           }}
         >
           {getTooltipText(hoveredDate)}
