@@ -6,7 +6,7 @@ function SkeletonBar({ width, height }: { width: string; height: number }) {
         height,
         borderRadius: 10,
         background:
-          "linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.16) 50%, rgba(255,255,255,0.08) 100%)",
+          "linear-gradient(90deg, #e8e8e8 0%, #d0d0d0 50%, #e8e8e8 100%)",
         backgroundSize: "200% 100%",
         animation: "project-skeleton-shimmer 1.4s ease-in-out infinite",
       }}
@@ -28,10 +28,10 @@ export default function ProjectSkeleton({ count = 3 }: { count?: number }) {
           <div
             key={i}
             style={{
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               borderRadius: 12,
               padding: 14,
-              background: "#101010",
+              background: "#f0f0f0",
               display: "grid",
               gap: 10,
             }}

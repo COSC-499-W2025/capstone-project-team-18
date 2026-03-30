@@ -118,13 +118,13 @@ const LANG_COLOR_MAP: Record<string, string> = {
   R:          "#198CE7",
 };
 const LANG_FALLBACK_COLORS = [
-  "#6f7cff", "#ff7c6f", "#7cff9a", "#ffd06f",
+  "#6EC4E8", "#ff7c6f", "#7cff9a", "#ffd06f",
   "#c06fff", "#6fecff", "#ff6fb8", "#a8ff6f",
 ];
 
 const COMMIT_COLORS: Record<string, string> = {
-  feature: "#6f7cff",
-  feat: "#6f7cff",
+  feature: "#6EC4E8",
+  feat: "#6EC4E8",
   fix: "#ff7c6f",
   bugfix: "#ff7c6f",
   refactor: "#ffd06f",
@@ -144,15 +144,15 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   return (
     <div
       style={{
-        border: "1px solid #2a2a2a",
+        border: "1px solid var(--border)",
         borderRadius: 14,
         padding: "14px 18px",
-        background: "#161616",
+        background: "var(--bg-surface)",
       }}
     >
-      <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#eee" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{sub}</div>}
+      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }
@@ -171,16 +171,16 @@ function SectionCard({
   return (
     <section
       style={{
-        border: "1px solid #2a2a2a",
+        border: "1px solid var(--border)",
         borderRadius: 16,
         padding: 20,
-        background: "#161616",
+        background: "var(--bg-surface)",
         marginBottom: mb,
         display: "flex",
         flexDirection: "column",
       }}
     >
-      <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 15, color: "#ccc", fontWeight: 600 }}>
+      <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 15, color: "var(--text-primary)", fontWeight: 600 }}>
         {title}
       </h3>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: centerContent ? "center" : "flex-start" }}>
@@ -197,9 +197,18 @@ function expandHex(hex: string): string {
   return `#${expanded}`;
 }
 
-function TagChips({ items, color = "#6f7cff" }: { items: string[]; color?: string }) {
+function TagChips({
+  items,
+  color = "#0055B7",
+  bg = "#dbeafe",
+  border = "#93c5fd",
+}: {
+  items: string[];
+  color?: string;
+  bg?: string;
+  border?: string;
+}) {
   if (!items.length) return <span style={{ color: "#555", fontSize: 13 }}>—</span>;
-  const base = expandHex(color);
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
       {items.map((tag) => (
@@ -208,11 +217,13 @@ function TagChips({ items, color = "#6f7cff" }: { items: string[]; color?: strin
           style={{
             padding: "3px 10px",
             borderRadius: 999,
-            background: `${base}1a`,
-            border: `1px solid ${base}44`,
+            background: bg,
+            border: `1px solid ${border}`,
             color,
             fontSize: 12,
+            fontWeight: 600,
             lineHeight: 1.6,
+            fontWeight: 500,
           }}
         >
           {tag}
@@ -231,11 +242,11 @@ function LabelRow({ label, children }: { label: string; children: ReactNode }) {
         gap: 12,
         alignItems: "start",
         paddingBottom: 14,
-        borderBottom: "1px solid #1e1e1e",
+        borderBottom: "1px solid var(--border)",
         marginBottom: 14,
       }}
     >
-      <span style={{ fontSize: 12, color: "#777", paddingTop: 4 }}>{label}</span>
+      <span style={{ fontSize: 12, color: "var(--text-primary)", paddingTop: 4 }}>{label}</span>
       <div>{children}</div>
     </div>
   );
@@ -244,7 +255,7 @@ function LabelRow({ label, children }: { label: string; children: ReactNode }) {
 function ProgressBar({
   label,
   value,
-  color = "#6f7cff",
+  color = "#6EC4E8",
 }: {
   label: string;
   value: number;
@@ -256,10 +267,10 @@ function ProgressBar({
       <div
         style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}
       >
-        <span style={{ color: "#999" }}>{label}</span>
-        <span style={{ color: "#eee", fontWeight: 600 }}>{pct}%</span>
+        <span style={{ color: "var(--text-secondary)" }}>{label}</span>
+        <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{pct}%</span>
       </div>
-      <div style={{ height: 8, background: "#222", borderRadius: 4, overflow: "hidden" }}>
+      <div style={{ height: 8, background: "var(--bg-surface-deep)", borderRadius: 4, overflow: "hidden" }}>
         <div
           style={{
             height: "100%",
@@ -312,13 +323,13 @@ function LanguageDonut({ langs }: { langs: Array<{ lang: string; ratio: number }
             width: 72,
             height: 72,
             borderRadius: "50%",
-            background: "#161616",
+            background: "var(--bg-surface)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <span style={{ fontSize: 10, color: "#666", textAlign: "center", lineHeight: 1.3 }}>
+          <span style={{ fontSize: 10, color: "var(--text-secondary)", textAlign: "center", lineHeight: 1.3 }}>
             {langs.length} lang{langs.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -336,8 +347,8 @@ function LanguageDonut({ langs }: { langs: Array<{ lang: string; ratio: number }
                 flexShrink: 0,
               }}
             />
-            <span style={{ color: "#ccc", minWidth: 80 }}>{s.lang}</span>
-            <span style={{ color: "#777" }}>{s.pct.toFixed(1)}%</span>
+            <span style={{ color: "var(--text-primary)", minWidth: 80 }}>{s.lang}</span>
+            <span style={{ color: "var(--text-muted)" }}>{s.pct.toFixed(1)}%</span>
           </div>
         ))}
       </div>
@@ -349,7 +360,7 @@ function CommitTypeChart({ items }: { items: Array<{ type: string; pct: number }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {items.map(({ type, pct }) => {
-        const color = COMMIT_COLORS[type.toLowerCase()] ?? "#888";
+        const color = COMMIT_COLORS[type.toLowerCase()] ?? "var(--text-muted)";
         return (
           <div key={type}>
             <div
@@ -360,10 +371,10 @@ function CommitTypeChart({ items }: { items: Array<{ type: string; pct: number }
                 marginBottom: 5,
               }}
             >
-              <span style={{ color: "#bbb", textTransform: "capitalize" }}>{type}</span>
-              <span style={{ color: "#777" }}>{pct}%</span>
+              <span style={{ color: "var(--text-primary)", textTransform: "capitalize" }}>{type}</span>
+              <span style={{ color: "var(--text-secondary)" }}>{pct}%</span>
             </div>
-            <div style={{ height: 6, background: "#1e1e1e", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ height: 6, background: "var(--bg-surface-deep)", borderRadius: 3, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 3 }} />
             </div>
           </div>
@@ -375,12 +386,12 @@ function CommitTypeChart({ items }: { items: Array<{ type: string; pct: number }
 
 function WorkPatternBadge({ pattern }: { pattern: string }) {
   const cfg: Record<string, { color: string; label: string }> = {
-    consistent: { color: "#7cff9a", label: "Consistent" },
-    sprint: { color: "#ffd06f", label: "Sprint-based" },
-    burst: { color: "#ff7c6f", label: "Burst" },
-    sporadic: { color: "#c06fff", label: "Sporadic" },
+    consistent: { color: "#16a34a", label: "Consistent" },
+    sprint: { color: "#b45309", label: "Sprint-based" },
+    burst: { color: "#dc2626", label: "Burst" },
+    sporadic: { color: "#7c3aed", label: "Sporadic" },
   };
-  const c = cfg[pattern.toLowerCase()] ?? { color: "#888", label: pattern };
+  const c = cfg[pattern.toLowerCase()] ?? { color: "var(--text-muted)", label: pattern };
   return (
     <span
       style={{
@@ -579,7 +590,7 @@ export default function ProjectDetailsPage() {
             background: "transparent",
             border: "none",
             padding: 0,
-            color: "#6f7cff",
+            color: "var(--accent)",
             cursor: "pointer",
             fontSize: 16,
           }}
@@ -591,10 +602,10 @@ export default function ProjectDetailsPage() {
       {loading && (
         <div
           style={{
-            border: "1px solid #2a2a2a",
+            border: "1px solid var(--border)",
             borderRadius: 16,
             padding: 20,
-            background: "#161616",
+            background: "var(--bg-surface)",
           }}
         >
           Loading project details...
@@ -604,11 +615,11 @@ export default function ProjectDetailsPage() {
       {!loading && error && (
         <div
           style={{
-            border: "1px solid #3a1f1f",
+            border: "1px solid var(--danger-bg-strong)",
             borderRadius: 16,
             padding: 20,
-            background: "#1a1111",
-            color: "#ff8a8a",
+            background: "var(--danger-bg)",
+            color: "var(--danger-text)",
           }}
         >
           {isNotFoundError(error) ? (
@@ -638,7 +649,7 @@ export default function ProjectDetailsPage() {
             {/* Title + metadata + quick stats */}
             <div style={{ flex: 1, minWidth: 200 }}>
               <h1 style={{ margin: 0, marginBottom: 8, fontSize: 32, fontWeight: 700, letterSpacing: "-0.5px" }}>{project.project_name}</h1>
-              <div style={{ fontSize: 13, color: "#666", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
                 Added {formatDate(project.created_at)}
                 {project.last_updated && ` · Updated ${formatDate(project.last_updated)}`}
               </div>
@@ -679,8 +690,8 @@ export default function ProjectDetailsPage() {
                     flex: 1,
                     overflow: "hidden",
                     borderRadius: 14,
-                    border: "1px solid #2a2a2a",
-                    background: "#0d0d0d",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-surface-deep)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -700,9 +711,9 @@ export default function ProjectDetailsPage() {
                   style={{
                     width: 260,
                     flex: 1,
-                    border: "1px dashed #3a3a3a",
+                    border: "1px dashed var(--border-strong)",
                     borderRadius: 14,
-                    background: "#111",
+                    background: "var(--bg-input)",
                     cursor: imageUploading ? "not-allowed" : "pointer",
                     display: "flex",
                     flexDirection: "column",
@@ -712,8 +723,8 @@ export default function ProjectDetailsPage() {
                     opacity: imageUploading ? 0.6 : 1,
                   }}
                 >
-                  <span style={{ fontSize: 28, color: "#444" }}>+</span>
-                  <span style={{ fontSize: 12, color: "#555" }}>
+                  <span style={{ fontSize: 28, color: "var(--text-muted)" }}>+</span>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     {imageUploading ? "Uploading…" : "Add Thumbnail"}
                   </span>
                 </button>
@@ -726,10 +737,10 @@ export default function ProjectDetailsPage() {
                     disabled={imageUploading || imageRemoving}
                     onClick={() => imageInputRef.current?.click()}
                     style={{
-                      border: "1px solid #2a2a2a",
+                      border: "1px solid #002145",
                       borderRadius: 7,
                       background: "transparent",
-                      color: "#6f7cff",
+                      color: "#002145",
                       padding: "5px 10px",
                       cursor: imageUploading || imageRemoving ? "not-allowed" : "pointer",
                       fontSize: 12,
@@ -743,10 +754,10 @@ export default function ProjectDetailsPage() {
                     disabled={imageUploading || imageRemoving}
                     onClick={handleImageRemove}
                     style={{
-                      border: "1px solid #4a2020",
+                      border: "none",
                       borderRadius: 7,
-                      background: "transparent",
-                      color: "#ff8a8a",
+                      background: "#dc2626",
+                      color: "#fff",
                       padding: "5px 10px",
                       cursor: imageUploading || imageRemoving ? "not-allowed" : "pointer",
                       fontSize: 12,
@@ -759,7 +770,7 @@ export default function ProjectDetailsPage() {
               )}
 
               {imageUploadError && (
-                <div style={{ color: "#ff8a8a", fontSize: 11, marginTop: 6, maxWidth: 200, textAlign: "center" }}>
+                <div style={{ color: "var(--danger-text)", fontSize: 11, marginTop: 6, maxWidth: 200, textAlign: "center" }}>
                   {imageUploadError}
                 </div>
               )}
@@ -795,7 +806,7 @@ export default function ProjectDetailsPage() {
                   )}
                   {commitDistribution.length > 0 && (
                     <>
-                      <div style={{ fontSize: 12, color: "#777", marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10 }}>
                         Commit type distribution
                       </div>
                       <CommitTypeChart items={commitDistribution} />
@@ -819,7 +830,7 @@ export default function ProjectDetailsPage() {
               {showContributions && (
                 <SectionCard title="Your Contribution" mb={0}>
                   {userCommitPct !== undefined && (
-                    <ProgressBar label="Commit share" value={userCommitPct / 100} color="#6f7cff" />
+                    <ProgressBar label="Commit share" value={userCommitPct / 100} color="#6EC4E8" />
                   )}
                   {totalContribPct !== undefined && (
                     <ProgressBar
@@ -840,9 +851,9 @@ export default function ProjectDetailsPage() {
                           display: "inline-block",
                           padding: "3px 12px",
                           borderRadius: 999,
-                          background: "#6f7cff1a",
-                          border: "1px solid #6f7cff44",
-                          color: "#6f7cff",
+                          background: "#00214511",
+                          border: "1px solid #00214544",
+                          color: "var(--accent)",
                           fontSize: 13,
                           fontWeight: 600,
                           textTransform: "capitalize",
@@ -853,7 +864,7 @@ export default function ProjectDetailsPage() {
                     </div>
                   )}
                   {roleDescription && (
-                    <p style={{ margin: 0, color: "#bbb", fontSize: 14, lineHeight: 1.7 }}>
+                    <p style={{ margin: 0, color: "var(--text-primary)", fontSize: 14, lineHeight: 1.7 }}>
                       {roleDescription}
                     </p>
                   )}
@@ -867,12 +878,12 @@ export default function ProjectDetailsPage() {
             <SectionCard title="Skills & Technologies">
               {skills.length > 0 && (
                 <LabelRow label="Skills">
-                  <TagChips items={skills} color="#ddd" />
+                  <TagChips items={skills} color="#0055B7" bg="#dbeafe" border="#93c5fd" />
                 </LabelRow>
               )}
               {frameworks.length > 0 && (
                 <LabelRow label="Frameworks & Libraries">
-                  <TagChips items={frameworks} color="#e08060" />
+                  <TagChips items={frameworks} color="#6d28d9" bg="#ede9fe" border="#c4b5fd" />
                 </LabelRow>
               )}
             </SectionCard>
@@ -888,9 +899,9 @@ export default function ProjectDetailsPage() {
                       display: "inline-block",
                       padding: "3px 12px",
                       borderRadius: 999,
-                      background: "#ffd06f1a",
-                      border: "1px solid #ffd06f44",
-                      color: "#ffd06f",
+                      background: "#f3f4f6",
+                      border: "1px solid #d1d5db",
+                      color: "#6b7280",
                       fontSize: 13,
                       fontWeight: 600,
                       textTransform: "capitalize",
@@ -902,12 +913,12 @@ export default function ProjectDetailsPage() {
               )}
               {projectThemes.length > 0 && (
                 <LabelRow label="Themes">
-                  <TagChips items={projectThemes} color="#6f7cff" />
+                  <TagChips items={projectThemes} color="#0f766e" bg="#ccfbf1" border="#5eead4" />
                 </LabelRow>
               )}
               {projectTags.length > 0 && (
                 <LabelRow label="Tags">
-                  <TagChips items={projectTags} color="#8ad6a2" />
+                  <TagChips items={projectTags} color="#166534" bg="#dcfce7" border="#86efac" />
                 </LabelRow>
               )}
             </SectionCard>

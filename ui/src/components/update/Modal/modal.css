@@ -1,5 +1,5 @@
 .update-modal {
-  --primary-color: rgb(224, 30, 90);
+  --primary-color: rgb(0, 33, 69);
 
   .update-modal__mask {
     width: 100vw;
@@ -53,7 +53,7 @@
     .content__body {
       padding: 10px;
       background-color: #fff;
-      color: #333;
+      color: var(--text-secondary);
     }
 
     .content__footer {

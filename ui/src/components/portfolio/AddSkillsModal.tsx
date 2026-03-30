@@ -65,8 +65,8 @@ export default function AddSkillsModal({
         style={{
           width: "100%",
           maxWidth: 480,
-          background: "#1b1b1b",
-          border: "1px solid #2a2a2a",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border)",
           borderRadius: 16,
           padding: 24,
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
@@ -90,7 +90,7 @@ export default function AddSkillsModal({
             style={{
               background: "transparent",
               border: "none",
-              color: "#888",
+              color: "var(--text-muted)",
               cursor: "pointer",
               fontSize: 22,
               lineHeight: 1,
@@ -114,9 +114,9 @@ export default function AddSkillsModal({
             width: "100%",
             padding: "10px 12px",
             borderRadius: 8,
-            border: "1px solid #2a2a2a",
-            background: "#111",
-            color: "#fff",
+            border: "1px solid var(--border)",
+            background: "var(--bg-input)",
+            color: "var(--text-primary)",
             fontSize: 14,
             boxSizing: "border-box",
             outline: "none",
@@ -141,11 +141,11 @@ export default function AddSkillsModal({
                   alignItems: "center",
                   gap: 4,
                   fontSize: 12,
-                  color: "#6f7cff",
-                  border: "1px solid #6f7cff44",
+                  color: "var(--accent)",
+                  border: "1px solid #6EC4E844",
                   borderRadius: 999,
                   padding: "3px 10px",
-                  background: "#6f7cff11",
+                  background: "#6EC4E811",
                 }}
               >
                 {skill}
@@ -154,7 +154,7 @@ export default function AddSkillsModal({
                   style={{
                     background: "transparent",
                     border: "none",
-                    color: "#6f7cff99",
+                    color: "#6EC4E899",
                     cursor: "pointer",
                     fontSize: 15,
                     lineHeight: 1,
@@ -174,7 +174,7 @@ export default function AddSkillsModal({
             <div
               style={{
                 fontSize: 11,
-                color: "#666",
+                color: "var(--text-secondary)",
                 marginBottom: 10,
                 fontWeight: 600,
                 textTransform: "uppercase",
@@ -193,8 +193,8 @@ export default function AddSkillsModal({
                     alignItems: "center",
                     gap: 5,
                     fontSize: 12,
-                    color: "#bbb",
-                    border: "1px solid #333",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border)",
                     borderRadius: 999,
                     padding: "5px 12px",
                     background: "transparent",
@@ -216,7 +216,7 @@ export default function AddSkillsModal({
             justifyContent: "space-between",
             alignItems: "center",
             marginTop: 28,
-            borderTop: "1px solid #222",
+            borderTop: "1px solid var(--border)",
             paddingTop: 18,
           }}
         >
@@ -225,7 +225,7 @@ export default function AddSkillsModal({
             style={{
               background: "transparent",
               border: "none",
-              color: "#aaa",
+              color: "var(--text-muted)",
               cursor: "pointer",
               fontSize: 14,
               padding: "8px 0",

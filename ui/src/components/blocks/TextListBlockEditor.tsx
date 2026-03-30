@@ -31,9 +31,9 @@ export default function TextListBlockEditor({
               flex: 1,
               padding: "7px 10px",
               borderRadius: 8,
-              border: "1px solid #2a2a2a",
-              background: "#0d0d0d",
-              color: "#ddd",
+              border: "1px solid var(--border)",
+              background: "#f0f0f0",
+              color: "#333",
               fontSize: 13,
               boxSizing: "border-box",
             }}
@@ -44,9 +44,9 @@ export default function TextListBlockEditor({
             style={{
               padding: "6px 10px",
               borderRadius: 8,
-              border: "1px solid #2a2a2a",
+              border: "1px solid var(--border)",
               background: "transparent",
-              color: "#ff8a8a",
+              color: "var(--danger-text)",
               cursor: saving ? "not-allowed" : "pointer",
               fontSize: 12,
               whiteSpace: "nowrap",
@@ -63,9 +63,9 @@ export default function TextListBlockEditor({
         style={{
           padding: "6px 12px",
           borderRadius: 8,
-          border: "1px solid #2a2a2a",
+          border: "1px solid var(--border)",
           background: "transparent",
-          color: "#6f7cff",
+          color: "var(--accent)",
           cursor: saving ? "not-allowed" : "pointer",
           fontSize: 12,
           marginBottom: 10,
@@ -76,7 +76,7 @@ export default function TextListBlockEditor({
       </button>
 
       {error && (
-        <div style={{ color: "#ff8a8a", fontSize: 12, marginBottom: 6 }}>
+        <div style={{ color: "var(--danger-text)", fontSize: 12, marginBottom: 6 }}>
           {error}
         </div>
       )}
@@ -88,7 +88,7 @@ export default function TextListBlockEditor({
           padding: "7px 12px",
           borderRadius: 8,
           border: "none",
-          background: saving ? "#202020" : "#2b2b2b",
+          background: saving ? "var(--bg-surface-deep)" : "var(--accent)",
           color: "#fff",
           cursor: saving ? "not-allowed" : "pointer",
           opacity: saving ? 0.6 : 1,
