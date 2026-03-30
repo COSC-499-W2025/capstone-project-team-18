@@ -744,9 +744,9 @@ function ItemCard({
               style={{
                 padding: "3px 10px",
                 borderRadius: 7,
-                border: `1px solid ${showInsights ? "#9b8bc7" : "var(--border)"}`,
-                background: showInsights ? "var(--accent-subtle)" : "transparent",
-                color: insightsLoading ? "var(--text-muted)" : "var(--accent)",
+                border: `1px solid ${showInsights ? "#8b5cf6" : "var(--border)"}`,
+                background: showInsights ? "#faf5ff" : "transparent",
+                color: insightsLoading ? "var(--text-muted)" : "#7c3aed",
                 fontSize: 13,
                 cursor: insightsLoading ? "wait" : "pointer",
                 display: "flex",

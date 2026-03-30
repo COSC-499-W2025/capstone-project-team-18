@@ -1274,8 +1274,8 @@ _FIGURES_JS = """\
   // SkillTimelineGraph
   // ==========================================================
   function buildSkillTimeline(el, skillAct) {
-    var COLORS = ['#002145','#5090AA','#B09040','#5F8050','#80506A',
-                  '#2E7A72','#9A5038','#4B6490','#8C6E30','#6A3E90'];
+    var COLORS = ['#0055B7','#0891b2','#d97706','#65a30d','#be185d',
+                  '#0f766e','#ea580c','#4f46e5','#b45309','#7c3aed'];
     var MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
     // 1. Aggregate into monthly counts
