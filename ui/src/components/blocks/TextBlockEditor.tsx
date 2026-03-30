@@ -23,9 +23,9 @@ export default function TextBlockEditor({
           width: "100%",
           padding: "8px 10px",
           borderRadius: 8,
-          border: "1px solid #2a2a2a",
-          background: "#0d0d0d",
-          color: "#ddd",
+          border: "1px solid var(--border)",
+          background: "#f0f0f0",
+          color: "var(--text-primary)",
           fontSize: 13,
           resize: "vertical",
           boxSizing: "border-box",
@@ -35,7 +35,7 @@ export default function TextBlockEditor({
       />
 
       {error && (
-        <div style={{ color: "#ff8a8a", fontSize: 12, marginTop: 6 }}>
+        <div style={{ color: "var(--danger-text)", fontSize: 12, marginTop: 6 }}>
           {error}
         </div>
       )}
@@ -48,7 +48,7 @@ export default function TextBlockEditor({
           padding: "7px 12px",
           borderRadius: 8,
           border: "none",
-          background: saving ? "#202020" : "#2b2b2b",
+          background: saving ? "var(--bg-surface-deep)" : "var(--accent)",
           color: "#fff",
           cursor: saving ? "not-allowed" : "pointer",
           opacity: saving ? 0.6 : 1,

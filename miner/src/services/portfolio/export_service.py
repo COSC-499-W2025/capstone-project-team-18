@@ -20,8 +20,8 @@ from datetime import date, datetime
 from typing import Any
 
 from sqlmodel import Session
-
-from src.database.api.CRUD.portfolio import load_portfolio, get_project_cards_for_portfolio
+from src.database.api.CRUD.portfolio import (get_project_cards_for_portfolio,
+                                             load_portfolio)
 from src.database.api.CRUD.projects import get_project_report_model_by_name
 from src.utils.errors import KeyNotFoundError
 
@@ -88,19 +88,20 @@ _CSS = """\
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0f0f13;
-  color: #e2e2e2;
+  background: #f0f0f0;
+  color: #111111;
   line-height: 1.6;
 }
 
 header {
   padding: 2rem;
-  border-bottom: 1px solid #2a2a3a;
+  border-bottom: 1px solid #e0e0e0;
+  background: #ffffff;
 }
 
 header h1 {
   font-size: 2rem;
-  color: #ffffff;
+  color: #111111;
 }
 
 /* ===== Part A: Narrative sections ===== */
@@ -116,16 +117,16 @@ header h1 {
 
 .narrative-section h2 {
   font-size: 1.25rem;
-  color: #a0aec0;
+  color: #444444;
   margin-bottom: 0.5rem;
-  border-bottom: 1px solid #2a2a3a;
+  border-bottom: 1px solid #e0e0e0;
   padding-bottom: 0.25rem;
 }
 
 .narrative-section .block-content {
   white-space: pre-wrap;
   font-size: 0.95rem;
-  color: #cbd5e0;
+  color: #333333;
 }
 
 /* ===== Figures ===== */
@@ -137,20 +138,20 @@ header h1 {
 
 #figures h2 {
   font-size: 1.5rem;
-  color: #ffffff;
+  color: #111111;
   margin-bottom: 1rem;
 }
 
 .figure-card {
-  background: #1a1a2e;
-  border: 1px solid #2a2a3a;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   border-radius: 10px;
   padding: 1rem;
   margin-bottom: 1rem;
 }
 
 .figure-empty {
-  color: #a0aec0;
+  color: #777777;
   font-size: 0.9rem;
 }
 
@@ -166,7 +167,7 @@ header h1 {
 .figure-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #ffffff;
+  color: #111111;
 }
 
 .figure-controls {
@@ -177,8 +178,8 @@ header h1 {
 
 .figure-btn {
   background: transparent;
-  border: 1px solid #e63946;
-  color: #e63946;
+  border: 1px solid #002145;
+  color: #002145;
   padding: 0.3rem 0.55rem;
   border-radius: 6px;
   cursor: pointer;
@@ -186,13 +187,13 @@ header h1 {
 }
 
 .figure-btn.active {
-  background: #e63946;
+  background: #002145;
   color: #ffffff;
 }
 
 .figure-btn:disabled {
-  border-color: #40445a;
-  color: #6b7280;
+  border-color: #d0d0d0;
+  color: #aaaaaa;
   cursor: not-allowed;
 }
 
@@ -223,18 +224,18 @@ header h1 {
 
 .contrib-cell.has-activity:hover {
   transform: scale(1.15);
-  border-color: #e63946;
+  border-color: #002145;
 }
 
 .contrib-cell.active {
-  border-color: #e63946;
+  border-color: #002145;
 }
 
 .contrib-hover-info {
   margin-top: 0.75rem;
-  border-left: 3px solid #e63946;
-  background: #111826;
-  color: #d5d9e4;
+  border-left: 3px solid #002145;
+  background: #f5f5f5;
+  color: #111111;
   font-size: 0.78rem;
   border-radius: 6px;
   padding: 0.5rem 0.6rem;
@@ -245,7 +246,7 @@ header h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #a0aec0;
+  color: #777777;
   font-size: 0.75rem;
 }
 
@@ -268,17 +269,17 @@ header h1 {
 .skill-toggle-btn {
   padding: 4px 12px;
   font-size: 0.75rem;
-  border: 1px solid #333;
+  border: 1px solid #d0d0d0;
   background: transparent;
-  color: #888;
+  color: #666666;
   cursor: pointer;
   font-weight: 400;
 }
 .skill-toggle-btn:first-child { border-radius: 6px 0 0 6px; }
 .skill-toggle-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
 .skill-toggle-btn.active {
-  background: #2a2a2a;
-  color: #e8e8e8;
+  background: #002145;
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -293,7 +294,7 @@ header h1 {
   align-items: center;
   gap: 5px;
   font-size: 0.75rem;
-  color: #ccc;
+  color: #444444;
 }
 .skill-legend-swatch {
   width: 10px;
@@ -304,8 +305,8 @@ header h1 {
 
 .skill-stacked-wrap {
   border-radius: 8px;
-  border: 1px solid #222;
-  background: #121212;
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
   padding: 10px 4px 4px;
   position: relative;
 }
@@ -316,22 +317,22 @@ header h1 {
 }
 .skill-tooltip {
   position: absolute;
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 8px 12px;
   pointer-events: none;
   z-index: 20;
   width: 170px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   display: none;
 }
 .skill-tooltip-label {
   font-size: 0.69rem;
-  color: #888;
+  color: #777777;
   margin-bottom: 6px;
   padding-bottom: 5px;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid #e0e0e0;
   white-space: nowrap;
 }
 .skill-tooltip-row {
@@ -348,7 +349,7 @@ header h1 {
 }
 .skill-tooltip-name {
   font-size: 0.69rem;
-  color: #bbb;
+  color: #555555;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -356,7 +357,7 @@ header h1 {
 }
 .skill-tooltip-count {
   font-size: 0.69rem;
-  color: #e8e8e8;
+  color: #111111;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
@@ -368,22 +369,22 @@ header h1 {
 }
 
 .skill-card {
-  border: 1px solid #2a2a3a;
+  border: 1px solid #e0e0e0;
   border-radius: 10px;
   padding: 0.8rem;
-  background: #121220;
+  background: #ffffff;
 }
 
 .skill-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #ffffff;
+  color: #111111;
   margin-bottom: 0.35rem;
 }
 
 .skill-total {
   font-size: 0.72rem;
-  color: #a0aec0;
+  color: #777777;
   margin-bottom: 0.5rem;
 }
 
@@ -402,7 +403,7 @@ header h1 {
 
 #gallery h2 {
   font-size: 1.5rem;
-  color: #ffffff;
+  color: #111111;
   margin-bottom: 1rem;
 }
 
@@ -416,9 +417,9 @@ header h1 {
 }
 
 #gallery-filters input[type="text"] {
-  background: #1a1a2e;
-  border: 1px solid #2a2a3a;
-  color: #e2e2e2;
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
+  color: #111111;
   padding: 0.4rem 0.75rem;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -429,21 +430,21 @@ header h1 {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.85rem;
-  color: #a0aec0;
+  color: #666666;
 }
 
 #search-input { min-width: 220px; }
 
 #clear-filters {
-  background: #2a2a3a;
+  background: #e0e0e0;
   border: none;
-  color: #e2e2e2;
+  color: #111111;
   padding: 0.4rem 1rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
 }
-#clear-filters:hover { background: #3a3a5a; }
+#clear-filters:hover { background: #d0d0d0; }
 
 /* Cards grid */
 #cards-container {
@@ -454,8 +455,8 @@ header h1 {
 
 /* Base card */
 .project-card {
-  background: #1a1a2e;
-  border: 1px solid #2a2a3a;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   border-radius: 10px;
   padding: 1.25rem;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -463,17 +464,17 @@ header h1 {
 
 .project-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
 /* Part B: showcase cards glow yellow */
 .project-card.showcase {
-  border-color: #f6c90e;
-  box-shadow: 0 0 12px rgba(246, 201, 14, 0.35);
+  border-color: #ca8a04;
+  box-shadow: 0 0 12px rgba(202, 138, 4, 0.25);
 }
 
 .project-card.showcase .card-name {
-  color: #f6c90e;
+  color: #92400e;
 }
 
 /* Card internals */
@@ -489,20 +490,22 @@ header h1 {
 .card-name {
   font-size: 1rem;
   font-weight: 600;
-  color: #ffffff;
+  color: #111111;
   margin-bottom: 0.4rem;
+  word-break: break-word;
 }
 
 .card-dates {
   font-size: 0.75rem;
-  color: #718096;
+  color: #777777;
   margin-bottom: 0.5rem;
 }
 
 .card-summary {
   font-size: 0.85rem;
-  color: #a0aec0;
+  color: #555555;
   margin-bottom: 0.75rem;
+  word-break: break-word;
 }
 
 .card-badges {
@@ -513,22 +516,24 @@ header h1 {
 }
 
 .badge {
-  background: #2a2a3a;
-  border-radius: 4px;
-  padding: 0.15rem 0.5rem;
+  background: #f0f0f0;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
   font-size: 0.7rem;
-  color: #cbd5e0;
+  color: #333333;
+  border: 1px solid #e0e0e0;
+  word-break: break-all;
 }
 
-.badge.theme  { background: #1e3a5f; color: #90cdf4; }
-.badge.tone   { background: #2d3748; color: #e2e8f0; }
-.badge.tag    { background: #2c4a2c; color: #9ae6b4; }
-.badge.skill  { background: #4a1a4a; color: #e9d8fd; }
-.badge.framework { background: #3d1a1a; color: #feb2b2; }
+.badge.theme  { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
+.badge.tone   { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+.badge.tag    { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.badge.skill  { background: #dbeafe; color: #0055B7; border: 1px solid #93c5fd; }
+.badge.framework { background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd; }
 
 .card-meta {
   font-size: 0.75rem;
-  color: #718096;
+  color: #777777;
   margin-top: 0.5rem;
 }
 
@@ -852,7 +857,7 @@ _FILTER_JS = """\
       var yearLabel = mk('span', null);
       yearLabel.style.minWidth = '54px';
       yearLabel.style.textAlign = 'center';
-      yearLabel.style.color = '#e63946';
+      yearLabel.style.color = '#002145';
       yearLabel.style.fontSize = '0.78rem';
       yearLabel.style.fontWeight = '600';
       yearLabel.textContent = String(year);
@@ -878,7 +883,7 @@ _FILTER_JS = """\
         week.forEach(function (date) {
           var cell = mk('div', 'contrib-cell');
           var opacity = opacityFor(date, dateRange, maxP);
-          cell.style.background = opacity === 0 ? '#2a2a3a' : 'rgba(230, 57, 70, ' + opacity + ')';
+          cell.style.background = opacity === 0 ? '#e8e8e8' : 'rgba(0, 33, 69, ' + opacity + ')';
           var tip = tooltipFor(date);
           if (tip) {
             cell.title = tip;
@@ -922,7 +927,7 @@ _FILTER_JS = """\
       right.appendChild(less);
       [0, 0.25, 0.5, 0.75, 1].forEach(function (o) {
         var l = mk('span', 'legend-cell');
-        l.style.background = o === 0 ? '#2a2a3a' : 'rgba(230, 57, 70, ' + o + ')';
+        l.style.background = o === 0 ? '#e8e8e8' : 'rgba(0, 33, 69, ' + o + ')';
         right.appendChild(l);
       });
       var more = mk('span', null);
@@ -1050,8 +1055,8 @@ _FILTER_JS = """\
       if (lastValue > globalMaxCumulative) globalMaxCumulative = lastValue;
     });
 
-    var colors = ['#E63946', '#7A9BA8', '#A89B6B', '#7B8B6F', '#8B6B7A',
-                  '#5B8C85', '#9B6B5B', '#6B7B9B', '#8C7B5B', '#7B5B9B'];
+    var colors = ['#0055B7', '#0891b2', '#d97706', '#65a30d', '#be185d',
+                  '#0f766e', '#ea580c', '#4f46e5', '#b45309', '#7c3aed'];
     var tickIndexes = buildTickIndexes(mKeys.length);
     var n = mKeys.length;
 
@@ -1103,7 +1108,7 @@ _FILTER_JS = """\
     subtitle.textContent = 'Cumulative running total of skill occurrences across all projects, plotted continuously from the earliest to latest project date.';
     subtitle.style.marginBottom = '12px';
     subtitle.style.fontSize = '0.75rem';
-    subtitle.style.color = '#6f6f78';
+    subtitle.style.color = '#777777';
     root.appendChild(subtitle);
 
     // ---- Stacked view ----
@@ -1464,14 +1469,14 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
     latest_project_end: date | None = None
 
     def _parse_stat_date(value: Any) -> date | None:
-      if isinstance(value, date):
-        return value
-      if not isinstance(value, str):
-        return None
-      try:
-        return date.fromisoformat(value[:10])
-      except ValueError:
-        return None
+        if isinstance(value, date):
+            return value
+        if not isinstance(value, str):
+            return None
+        try:
+            return date.fromisoformat(value[:10])
+        except ValueError:
+            return None
 
     for c in card_models:
         project = get_project_report_model_by_name(session, c.project_name)
@@ -1480,10 +1485,10 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
 
         stat_start = _parse_stat_date(statistic.get("PROJECT_START_DATE"))
         if stat_start and (earliest_project_start is None or stat_start < earliest_project_start):
-          earliest_project_start = stat_start
+            earliest_project_start = stat_start
         stat_end = _parse_stat_date(statistic.get("PROJECT_END_DATE"))
         if stat_end and (latest_project_end is None or stat_end > latest_project_end):
-          latest_project_end = stat_end
+            latest_project_end = stat_end
 
         # Aggregate contribution timelines across all included projects.
         personal = statistic.get("COMMIT_ACTIVITY_TIMELINE", {})
@@ -1549,10 +1554,10 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
                 "total_timeline": total_timeline,
             },
             "skill_timeline": skill_timeline,
-          "skill_timeline_range": {
-            "start_date": earliest_project_start.isoformat() if earliest_project_start else None,
-            "end_date": latest_project_end.isoformat() if latest_project_end else None,
-          },
+            "skill_timeline_range": {
+                "start_date": earliest_project_start.isoformat() if earliest_project_start else None,
+                "end_date": latest_project_end.isoformat() if latest_project_end else None,
+            },
         },
     }
     portfolio_data_js = "var PORTFOLIO_DATA = " + json.dumps(

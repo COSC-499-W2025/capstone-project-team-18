@@ -7,9 +7,39 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: light;
+
+  /* Design tokens — light mode */
+  --bg-base:          #f0f0f0;
+  --bg-surface:       #ffffff;
+  --bg-surface-deep:  #f5f5f5;
+  --bg-input:         #fafafa;
+  --text-primary:     #111111;   /* main content — 19.5:1 on white */
+  --text-secondary:   #374151;   /* body descriptions, supporting text — ~10.7:1 on white */
+  --text-muted:       #6b7280;   /* labels, captions, metadata — ~5.7:1 on white (WCAG AA) */
+  --border:           #e0e0e0;
+  --border-strong:    #cccccc;
+
+  /* Accent — blue (UBC) */
+  --accent:           #002145;
+  --accent-hover:     #001830;
+  --accent-subtle:    #e6eaf0;
+
+  /* Button primary — brighter blue */
+  --btn-primary:      #0055B7;
+  --btn-primary-hover:#004499;
+
+  /* Hover effect — vivid blue tint */
+  --hover-border:     #0055B7;
+  --hover-bg:         #e6eaf0;
+
+  /* Danger / error */
+  --danger-bg:        #fee2e2;
+  --danger-bg-strong: #fecaca;
+  --danger-text:      #dc2626;
+
+  color: var(--text-primary);
+  background-color: var(--bg-base);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -25,8 +55,8 @@ body,
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  background-color: #242424;
-  color: rgba(255, 255, 255, 0.87);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
 }
 
 body {
@@ -35,12 +65,12 @@ body {
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--accent);
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #747bff;
+  color: var(--accent-hover);
 }
 
 button {
@@ -50,23 +80,39 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
-  color: rgba(255, 255, 255, 0.87);
+  background-color: var(--bg-surface-deep);
+  color: var(--text-primary);
   cursor: pointer;
   transition: border-color 0.25s;
 }
 
+input, textarea, select {
+  box-sizing: border-box;
+}
+
 button:hover {
-  border-color: #646cff;
+  border-color: var(--accent);
 }
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+  border-color: var(--focus-ring) !important;
 }
 
 code {
-  background-color: #1a1a1a;
+  background-color: var(--bg-surface-deep);
   padding: 2px 4px;
   margin: 0 4px;
   border-radius: 4px;

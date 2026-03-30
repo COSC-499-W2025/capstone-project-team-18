@@ -3,7 +3,7 @@ import React from "react";
 // Shared label style used across card/form editors
 export const sectionLabel: React.CSSProperties = {
   fontSize: 12,
-  color: "#888",
+  color: "var(--text-muted)",
   fontWeight: 600,
   textTransform: "uppercase",
   letterSpacing: "0.05em",
@@ -92,9 +92,9 @@ export default function PillField({
             flex: 1,
             padding: "6px 10px",
             borderRadius: 8,
-            border: "1px solid #2a2a2a",
-            background: "#111",
-            color: "#fff",
+            border: "1px solid var(--border)",
+            background: "var(--bg-input)",
+            color: "var(--text-primary)",
             fontSize: 12,
             outline: "none",
             opacity: disabled ? 0.6 : 1,
@@ -106,11 +106,12 @@ export default function PillField({
           style={{
             padding: "6px 12px",
             borderRadius: 8,
-            border: "1px solid #2a2a2a",
-            background: "transparent",
-            color: "#aaa",
+            border: "none",
+            background: "var(--btn-primary)",
+            color: "#fff",
             cursor: disabled ? "not-allowed" : "pointer",
             fontSize: 12,
+            fontWeight: 600,
             opacity: disabled ? 0.6 : 1,
           }}
         >
