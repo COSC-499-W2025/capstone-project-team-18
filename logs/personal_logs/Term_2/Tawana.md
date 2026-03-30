@@ -28,10 +28,14 @@ In parallel, I enhanced resume customization by restructuring education and awar
 
 On the UI side, I enhanced the project upload experience by implementing a loading skeleton and improved feedback during project analysis. This included adding a polling mechanism to detect when analysis completes, refining rendering logic for different states, and improving the transition from upload to dashboard. Overall, these changes make the system more responsive, intuitive, and aligned with a production-ready workflow. [PR `#523` Electron Skeleton UI & Loading Loop](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/523)
 
+Additionally, I worked on refining the overall frontend UI/UX to improve consistency and usability across the dashboard, projects, and resume flows. This included redesigning the dashboard layout for better information hierarchy, aligning project and resume cards visually, and cleaning up project detail pages by removing unused or misleading elements. I also improved feedback mechanisms in the resume editing experience and standardized styling across components, ensuring the UI more accurately reflects backend data and provides a cleaner, more intuitive user experience. [PR `502` Peer testing Endpoint Connection](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/502)
+
 Additionally, I reviewed the following PRs:
 1. [PR `#564` Removed Extra Skills Levels](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/564)
 2. [PR `#557` Small changes to Profile page](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/557)
 3. [PR `526` GitHub pages deployment](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/526)
+4. [PR `517` User GitHub OAuth Flow](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/517)
+5. [PR `494` 494 add more project insights](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/518)
 
 # Week 10 03/09 - 03/15
 [Peer Eval THN](../../../logs/log_images/personal_log_imgs/Term_2/tawana/tawana_week10_log.png)
