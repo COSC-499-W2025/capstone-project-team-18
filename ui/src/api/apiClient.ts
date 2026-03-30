@@ -350,6 +350,10 @@ export type EditResumeEducationPayload = {
   education: string[];
 };
 
+export type EditResumeAwardsPayload = {
+  awards: string[];
+};
+
 export function getLatestResumeId(): number | null {
   try {
     const raw = window.localStorage.getItem(LATEST_RESUME_ID_KEY);
@@ -522,6 +526,12 @@ export const api = {
   editResumeEducation: (resumeId: number, payload: EditResumeEducationPayload) =>
     postJson<ResumeResponse>(
       `/resume/${encodeURIComponent(String(resumeId))}/edit/education`,
+      payload
+    ),
+
+  editResumeAwards: (resumeId: number, payload: EditResumeAwardsPayload) =>
+    postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/awards`,
       payload
     ),
 
