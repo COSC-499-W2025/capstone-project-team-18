@@ -120,16 +120,10 @@ class ResumeListResponse(SQLModel):
 # Helper function.
 def _build_resume_response(resume_model, session) -> ResumeResponse:
     """
-    Build a ResumeResponse by fetching education/awards from user config.
+    Build a ResumeResponse using per-resume education/awards snapshots.
     """
-    from src.database import get_most_recent_user_config
-
-    user_config = get_most_recent_user_config(session)
-    education = []
-    awards = []
-    if user_config and user_config.resume_config:
-        education = user_config.resume_config.education or []
-        awards = user_config.resume_config.awards or []
+    education = list(resume_model.education or [])
+    awards = list(resume_model.awards or [])
 
     skills_by_expertise = None
 
@@ -437,7 +431,7 @@ def edit_resume_metadata(
             resume_model.github = request.github_username
 
         if request.linkedin is not None:
-            resume_model.linkedn = request.linkedin.strip() or None
+            resume_model.linkedin = request.linkedin.strip() or None
 
         resume_model.last_updated = datetime.datetime.now()
 

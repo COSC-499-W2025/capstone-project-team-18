@@ -128,6 +128,8 @@ def serialize_resume(resume: Resume) -> ResumeModel:
         email=resume.email,
         github=resume.github,
         linkedin=resume.linkedin,
+        education=resume.education,
+        awards=resume.awards,
         skills=resume.skills,
         skills_expert=skills_expert,
         skills_intermediate=skills_intermediate,
