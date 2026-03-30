@@ -272,9 +272,9 @@ export default function CreatePortfolioModal({
                       padding: 12,
                       borderRadius: 10,
                       border: selected
-                        ? "1px solid #6EC4E8"
+                        ? "1px solid var(--btn-primary)"
                         : "1px solid var(--border)",
-                      background: selected ? "var(--hover-bg)" : "var(--bg-surface)",
+                      background: selected ? "var(--accent-subtle)" : "var(--bg-surface)",
                       color: selected ? "var(--text-primary)" : "var(--text-secondary)",
                       cursor: isSubmitting ? "not-allowed" : "pointer",
                       textAlign: "left",
@@ -288,8 +288,8 @@ export default function CreatePortfolioModal({
                         width: 16,
                         height: 16,
                         borderRadius: 4,
-                        border: selected ? "2px solid #6EC4E8" : "2px solid #555",
-                        background: selected ? "#6EC4E8" : "transparent",
+                        border: selected ? "2px solid var(--btn-primary)" : "2px solid var(--border-strong)",
+                        background: selected ? "var(--btn-primary)" : "transparent",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -359,8 +359,9 @@ export default function CreatePortfolioModal({
                 padding: "10px 16px",
                 borderRadius: 10,
                 border: "none",
-                background: canSubmit ? "var(--accent)" : "var(--bg-surface-deep)",
+                background: canSubmit ? "var(--btn-primary)" : "var(--bg-surface-deep)",
                 color: canSubmit ? "#fff" : "var(--text-muted)",
+                fontWeight: 600,
                 opacity: canSubmit ? 1 : 0.6,
                 cursor: canSubmit ? "pointer" : "not-allowed",
               }}

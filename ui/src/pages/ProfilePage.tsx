@@ -556,9 +556,9 @@ export default function ProfilePage() {
                   style={{
                     padding: "8px 14px",
                     borderRadius: 8,
-                    border: "1px solid #444",
-                    background: "transparent",
-                    color: "var(--danger-text)",
+                    border: "none",
+                    background: "#dc2626",
+                    color: "#fff",
                     cursor: "pointer",
                     fontSize: 13,
                   }}

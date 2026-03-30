@@ -7,7 +7,7 @@ interface ContributionMapProps {
   totalTimeline: Record<string, number>;   // { "2024-03-01": 10, ... }
 }
 
-// Ruby red accent color
+// UBC blue accent color
 const ACCENT_COLOR = "#002145";
 
 /**
@@ -339,9 +339,9 @@ export default function ContributionMap({
               style={{
                 padding: "6px 10px",
                 background: "transparent",
-                border: `1px solid ${canGoPreviousYear ? ACCENT_COLOR : "#444"}`,
+                border: `1px solid ${canGoPreviousYear ? ACCENT_COLOR : "#6b7280"}`,
                 borderRadius: 8,
-                color: canGoPreviousYear ? ACCENT_COLOR : "#666",
+                color: canGoPreviousYear ? ACCENT_COLOR : "var(--text-muted)",
                 cursor: canGoPreviousYear ? "pointer" : "not-allowed",
                 fontSize: 11,
                 fontWeight: 600,
@@ -369,9 +369,9 @@ export default function ContributionMap({
               style={{
                 padding: "6px 10px",
                 background: "transparent",
-                border: `1px solid ${canGoNextYear ? ACCENT_COLOR : "#444"}`,
+                border: `1px solid ${canGoNextYear ? ACCENT_COLOR : "#6b7280"}`,
                 borderRadius: 8,
-                color: canGoNextYear ? ACCENT_COLOR : "#666",
+                color: canGoNextYear ? ACCENT_COLOR : "var(--text-muted)",
                 cursor: canGoNextYear ? "pointer" : "not-allowed",
                 fontSize: 11,
                 fontWeight: 600,

@@ -106,11 +106,12 @@ export default function PillField({
           style={{
             padding: "6px 12px",
             borderRadius: 8,
-            border: "1px solid var(--border)",
-            background: "transparent",
-            color: "var(--text-muted)",
+            border: "none",
+            background: "var(--btn-primary)",
+            color: "#fff",
             cursor: disabled ? "not-allowed" : "pointer",
             fontSize: 12,
+            fontWeight: 600,
             opacity: disabled ? 0.6 : 1,
           }}
         >

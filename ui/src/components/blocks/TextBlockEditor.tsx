@@ -25,7 +25,7 @@ export default function TextBlockEditor({
           borderRadius: 8,
           border: "1px solid var(--border)",
           background: "#f0f0f0",
-          color: "#333",
+          color: "var(--text-primary)",
           fontSize: 13,
           resize: "vertical",
           boxSizing: "border-box",

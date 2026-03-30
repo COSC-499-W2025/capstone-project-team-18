@@ -20,8 +20,8 @@ from datetime import date, datetime
 from typing import Any
 
 from sqlmodel import Session
-
-from src.database.api.CRUD.portfolio import load_portfolio, get_project_cards_for_portfolio
+from src.database.api.CRUD.portfolio import (get_project_cards_for_portfolio,
+                                             load_portfolio)
 from src.database.api.CRUD.projects import get_project_report_model_by_name
 from src.utils.errors import KeyNotFoundError
 
@@ -517,18 +517,19 @@ header h1 {
 
 .badge {
   background: #f0f0f0;
-  border-radius: 4px;
-  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
   font-size: 0.7rem;
   color: #333333;
+  border: 1px solid #e0e0e0;
   word-break: break-all;
 }
 
-.badge.theme  { background: #dbeafe; color: #1e40af; }
-.badge.tone   { background: #e5e7eb; color: #374151; }
-.badge.tag    { background: #dcfce7; color: #166534; }
-.badge.skill  { background: #f3e8ff; color: #7c3aed; }
-.badge.framework { background: #dde8f4; color: #002145; }
+.badge.theme  { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
+.badge.tone   { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+.badge.tag    { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.badge.skill  { background: #dbeafe; color: #0055B7; border: 1px solid #93c5fd; }
+.badge.framework { background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd; }
 
 .card-meta {
   font-size: 0.75rem;

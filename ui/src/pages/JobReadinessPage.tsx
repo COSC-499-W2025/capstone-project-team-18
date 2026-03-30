@@ -493,7 +493,7 @@ export default function JobReadinessPage() {
 
                           <div
                             style={{
-                              border: "1px solid var(--border-strong)",
+                              border: "1px solid var(--border)",
                               borderRadius: 14,
                               padding: 14,
                               background: "var(--bg-surface-deep)",
