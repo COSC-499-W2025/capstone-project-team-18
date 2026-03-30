@@ -1076,10 +1076,11 @@ _FIGURES_JS = """\
 
   if (typeof PORTFOLIO_DATA === 'undefined') return;
 
-  var contrib  = PORTFOLIO_DATA.contribution || {};
+  var figures  = PORTFOLIO_DATA.figures || {};
+  var contrib  = figures.contribution || {};
   var personal = contrib.personal_timeline  || {};
   var totalTL  = contrib.total_timeline     || {};
-  var skillAct = PORTFOLIO_DATA.skill_activity || {};
+  var skillAct = figures.skill_timeline || {};
 
   var hasContrib = Object.keys(personal).length > 0 || Object.keys(totalTL).length > 0;
   var hasSkill   = Object.keys(skillAct).length > 0;
@@ -1698,11 +1699,13 @@ def export_portfolio_static(portfolio_id: int, session: Session) -> bytes:
         "title": portfolio.title,
         "last_updated_at": portfolio.metadata.last_updated_at.isoformat(),
         "project_cards": cards_data,
-        "contribution": {
-            "personal_timeline": personal_timeline,
-            "total_timeline": total_timeline,
+        "figures": {
+            "contribution": {
+                "personal_timeline": personal_timeline,
+                "total_timeline": total_timeline,
+            },
+            "skill_timeline": skill_activity,
         },
-        "skill_activity": skill_activity,
     }
     portfolio_data_js = "var PORTFOLIO_DATA = " + json.dumps(
         portfolio_data, default=_json_default, indent=2
