@@ -6,6 +6,7 @@ import {
   type SkillsByExpertise,
 } from "../api/apiClient";
 import PillField from "../components/PillField";
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -1830,11 +1831,11 @@ export default function ResumePage() {
       {estimateResumeLines(resume) > LINES_PER_PAGE && (
         <div
           style={{
-            border: "1px solid #6b4f00",
+            border: "1px solid #d97706",
             borderRadius: 10,
             padding: "11px 16px",
-            background: "#1e1600",
-            color: "#f5c542",
+            background: "#fffbeb",
+            color: "#92400e",
             fontSize: 14,
             marginBottom: 14,
             display: "flex",
@@ -1842,7 +1843,7 @@ export default function ResumePage() {
             gap: 10,
           }}
         >
-          <span style={{ fontSize: 18 }}>⚠</span>
+          <WarningAmberIcon style={{ fontSize: 20 }} />
           <span>
             Your resume may exceed one page when exported. Consider reducing the
             number of bullet points or projects to keep it concise.
