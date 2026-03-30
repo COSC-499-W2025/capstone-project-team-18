@@ -339,7 +339,10 @@ export default function UploadProjectModal({
             borderRadius: 12,
             padding: "12px 14px",
             marginBottom: 16,
-            color: "#bdbdbd", />
+            color: "var(--text-secondary)",
+          }}
+        >
+          <InfoIcon style={{ fontSize: 18, flexShrink: 0, color: "var(--accent)" }} />
           <div style={{ fontSize: 14, lineHeight: 1.5 }}>
             {isLoadingConfig
               ? "Loading saved settings..."
