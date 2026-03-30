@@ -43,8 +43,15 @@ export default function HomePage({ backendReady }: { backendReady: boolean }) {
   const [resumesError, setResumesError] = useState<string | null>(null);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
 
-  const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(false);
-  const [projectCountBeforeUpload, setProjectCountBeforeUpload] = useState(0);
+  const ANALYSIS_KEY = "project_analysis_in_progress";
+  const COUNT_KEY = "project_count_before_upload";
+
+  const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(
+    () => localStorage.getItem(ANALYSIS_KEY) === "true"
+  );
+  const [projectCountBeforeUpload, setProjectCountBeforeUpload] = useState(
+    () => parseInt(localStorage.getItem(COUNT_KEY) ?? "0", 10)
+  );
 
   async function loadProjects() {
     try {
@@ -123,10 +130,14 @@ export default function HomePage({ backendReady }: { backendReady: boolean }) {
 
       if (updatedProjects.length > projectCountBeforeUpload) {
         setIsProjectAnalysisInProgress(false);
+        localStorage.removeItem(ANALYSIS_KEY);
+        localStorage.removeItem(COUNT_KEY);
       }
     } catch (e: any) {
       setError(e?.message ?? "Failed to load projects");
       setIsProjectAnalysisInProgress(false);
+      localStorage.removeItem(ANALYSIS_KEY);
+      localStorage.removeItem(COUNT_KEY);
     }
   }, 3000);
 
@@ -163,9 +174,12 @@ async function handleCreateResume() {
 }
 
 async function handleUploadSuccess() {
-  setProjectCountBeforeUpload(projects.length);
+  const count = projects.length;
+  setProjectCountBeforeUpload(count);
+  localStorage.setItem(COUNT_KEY, String(count));
   setShowUploadModal(false);
   setIsProjectAnalysisInProgress(true);
+  localStorage.setItem(ANALYSIS_KEY, "true");
   await loadProjects();
 }
 

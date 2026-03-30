@@ -21,11 +21,20 @@ type ListProjectsResponse = {
 };
 
 
+const ANALYSIS_KEY = "project_analysis_in_progress";
+const COUNT_KEY = "project_count_before_upload";
+
 export default function ProjectsPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [isAnalysisInProgress, setIsAnalysisInProgress] = useState(
+    () => localStorage.getItem(ANALYSIS_KEY) === "true"
+  );
+  const [projectCountBeforeUpload] = useState(
+    () => parseInt(localStorage.getItem(COUNT_KEY) ?? "0", 10)
+  );
 
   async function load() {
     try {
@@ -45,6 +54,29 @@ export default function ProjectsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (!isAnalysisInProgress) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = (await api.getProjects()) as ListProjectsResponse;
+        const updated = Array.isArray(res?.projects) ? res.projects : [];
+        setProjects(updated);
+        if (updated.length > projectCountBeforeUpload) {
+          setIsAnalysisInProgress(false);
+          localStorage.removeItem(ANALYSIS_KEY);
+          localStorage.removeItem(COUNT_KEY);
+        }
+      } catch {
+        setIsAnalysisInProgress(false);
+        localStorage.removeItem(ANALYSIS_KEY);
+        localStorage.removeItem(COUNT_KEY);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isAnalysisInProgress, projectCountBeforeUpload]);
 
   return (
     <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
@@ -84,6 +116,12 @@ export default function ProjectsPage() {
         </button>
       </div>
 
+      {isAnalysisInProgress && (
+        <div style={{ color: "var(--text-muted)", marginBottom: 16, fontSize: 14 }}>
+          Project analysis in progress...
+        </div>
+      )}
+
       {loading && (
         <div
           style={{
@@ -114,7 +152,7 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {!loading && !error && projects.length === 0 && (
+      {!loading && !error && projects.length === 0 && !isAnalysisInProgress && (
         <div
           style={{
             border: "1px solid var(--border)",
@@ -180,7 +218,12 @@ export default function ProjectsPage() {
               </div>
             </Link>
           ))}
+          {isAnalysisInProgress && <ProjectSkeleton count={3} />}
         </div>
+      )}
+
+      {!loading && !error && projects.length === 0 && isAnalysisInProgress && (
+        <ProjectSkeleton count={3} />
       )}
     </div>
   );
