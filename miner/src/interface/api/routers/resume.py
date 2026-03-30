@@ -226,6 +226,16 @@ class EditFrameworksRequest(SQLModel):
     frameworks: List[str]
 
 
+class EditEducationRequest(SQLModel):
+    """Request model for replacing the education list on a resume"""
+    education: List[str]
+
+
+class EditAwardsRequest(SQLModel):
+    """Request model for replacing the awards list on a resume"""
+    awards: List[str]
+
+
 # ---------- Resume API Endpoints ----------
 
 @router.get("", response_model=ResumeListResponse)
@@ -304,6 +314,72 @@ def edit_resume_skills(
             status_code=500,
             detail=f"Failed to edit skills: {str(e)}"
         )
+
+@router.post("/{resume_id}/edit/education", response_model=ResumeResponse)
+def edit_resume_education(
+    resume_id: int,
+    request: EditEducationRequest,
+    session=Depends(get_session)
+):
+    """Replace the education list for a resume."""
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
+
+    try:
+        resume_model.education = request.education
+        resume_model.last_updated = datetime.datetime.now()
+
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model, session)
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to edit education: {str(e)}"
+        )
+
+
+@router.post("/{resume_id}/edit/awards", response_model=ResumeResponse)
+def edit_resume_awards(
+    resume_id: int,
+    request: EditAwardsRequest,
+    session=Depends(get_session)
+):
+    """Replace the awards list for a resume."""
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
+
+    try:
+        resume_model.awards = request.awards
+        resume_model.last_updated = datetime.datetime.now()
+
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model, session)
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to edit awards: {str(e)}"
+        )
+
 
 @router.post("/generate", response_model=ResumeResponse)
 def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)):
