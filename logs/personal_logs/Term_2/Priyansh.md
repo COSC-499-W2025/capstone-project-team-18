@@ -14,6 +14,12 @@
 
 **[Week 9, Mar. 02-08](#week-9-mar-02-08)**
 
+**[Week 10, Mar. 09-15](#week-10-mar-09-15)**
+
+**[Week 11, Mar. 16-22](#week-11-mar-16-22)**
+
+**[Week 12, Mar. 23-29](#week-12-mar-23-29)**
+
 ---
 
 ## Week 1, Jan. 05-11
@@ -157,6 +163,7 @@ I also reviewed [PR #469 - Project Thumbnail](https://github.com/COSC-499-W2025/
 - Continue Working on ML Related Changes
 - Milestone 3 Implementations
 
+
 ## Week 10, Mar. 09-15
 
 ### Peer Eval
@@ -177,3 +184,43 @@ I reviewed [PR #482 - Created Project Insights Class Structure, Endpoint, Databa
 #### Goals for Next Week
 
 - Continue refining Milestone 3 features
+
+## Week 11-12, Mar. 16-29
+
+### Peer Eval
+![Peer Eval](../../../logs/log_images/personal_log_imgs/Term_2/priyansh/priyansh_week11-12_term2_log.png)
+
+### Recap
+In these two week's the team focused on continuing Milestone 3 development, especially around project insights, frontend/backend integration, and making ML-powered features in line with user configuration and consent settings.
+
+#### Coding Tasks
+
+I completed [PR #516 - 493 add machine learning consent flag](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/516), which closes [Issue #493](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/493). This PR adds a dedicated machine learning consent flag to user configuration and uses it to gate ML-powered features across the app. When ML consent is disabled, the system avoids generating ML-derived insights and hides ML-only outputs from downstream resume and portfolio experiences. I also updated the app, API routers, portfolio generation flow, and settings modal so the consent behavior is applied consistently across both backend and frontend flows.
+
+I also completed [PR #518 - 494 add more project insights](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/518), which closes [Issue #494](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/494). This PR expands the ProjectInsights system to provide more useful resume-writing guidance from analyzed project data. I integrated the new insights flow across the backend and frontend, added resume-insights support to the project details page, expanded backend test coverage for project insight calculators, and added frontend test coverage to verify the UI behavior.
+
+I also completed [PR #549 - 540 frontend for job readiness feature](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/549), which closes [Issue #540](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/540). This PR delivers the Job Readiness experience end to end by adding a dedicated frontend page and API integration that lets users submit a target job description with selected resume and project evidence and receive structured results such as fit score, strengths, weaknesses, and recommendations. I integrated the new flow across UI and backend calls, addressed Azure OpenAI and job readiness integration fixes, and expanded automated coverage with backend API tests and frontend tests for the Job Readiness page and client behavior.
+
+#### Reviewing Tasks
+
+I reviewed [PR #507 - 481 resume add skills categorized by expertise level](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/507). My review focused on ensuring code quality, proper error handling, test coverage, and alignment with our system architecture.
+
+I also reviewed [PR #502 - Peer testing Endpoint Connection](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/502). My review focused on endpoint behavior, integration correctness, and making sure the peer-testing flow aligned with the surrounding API design.
+
+I also reviewed [PR #500 - Front End Portfolio Changes](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/500). My review focused on frontend integration behavior, API usage, and making sure the portfolio UI changes aligned with the data being returned by the backend.
+
+I also reviewed [PR #496 - Consistent Error Handling and Documentation in the API](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/496)
+
+I also reviewed [PR #490 - Peer Testing Frontend Dev](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/490). My review focused on frontend behavior, data flow, and making sure the peer-testing interface changes fit cleanly into the existing UI.
+
+I also reviewed [PR #551 - Settings Modal -> Profile Page](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/551). My review focused on the frontend settings navigation flow, consistency with the profile page UX, and integration correctness across the updated settings entry points.
+
+I also reviewed [PR #543 - Fixed GitHub noreply emails counting separately from user contribution](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/543). My review focused on contributor identity mapping correctness, contribution statistics integrity, and edge cases around noreply email attribution.
+
+I also reviewed [PR #529 - Figures, Plots & Timelines (frontend)](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/529).
+
+#### Goals for Next Week
+- Finishing Milestone 3 features and integrations
+
+
+
