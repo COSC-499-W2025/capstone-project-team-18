@@ -276,13 +276,14 @@ export default function JobReadinessPage() {
                   onClick={handleAnalyze}
                   disabled={submitting || loadingEvidence || !jobDescription.trim()}
                   style={{
-                    padding: "12px 18px",
-                    borderRadius: 12,
-                    border: "1px solid var(--accent)",
-                    background: submitting ? "#22366f" : "#2c4fbf",
+                    padding: "10px 18px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: "var(--accent)",
                     color: "#fff",
                     fontWeight: 600,
                     cursor: submitting ? "progress" : "pointer",
+                    opacity: submitting ? 0.7 : 1,
                   }}
                 >
                   {submitting ? "Analyzing..." : "Analyze Readiness"}
