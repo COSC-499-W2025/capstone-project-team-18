@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+**[Week 12, Mar. 23 - 29](#week-10-mar-23---29)**
 **[Week 10, Mar. 09 - 15](#week-10-mar-09---15)**
 **[Week 8, Feb, 24 - Mar 01](#week-8-feb-24---mar-01)**
 **[Week 5, Feb, 02 - 08](#week-4-feb-02---08)**
@@ -10,6 +11,46 @@
 **[Week 1, Jan. 05 - 11](#week-1-jan-05---11)**
 
 ---
+
+## Week 12, Mar. 23 - 29
+
+### Peer Eval
+
+![Peer Eval SS](../../../logs/log_images/personal_log_imgs/Term_2/jimi/jimi_week12_log.png)
+
+
+### Recap
+
+Last week we worked to finalize all requirements for the milestone. This meant improving the front-end, working on additional statistics in order to output graphs, peer peer testing and bug fixes. Additionally, we worked to ensure we added any and all necessary /new API endpoints for our project.
+
+### This Week
+
+This week we worked on bug fixes, mostly in the UI and mproving out product based on insights provided during the presentation. This included a shift to light mode, imporvements on some figures and adding additional AI features.
+
+
+### Coding Tasks
+Personally, I was working on improving some of the figures for the dashboard. This included the PRs: [529](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/485) & [544](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/544). I also moved away from a settings modal and improved our profile page for the user's information. Seen here: [551](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/551). Additonally, a fix was made for some duplicate analysis feature errors and can be seen here: [519](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/519).
+
+### Testing Tasks
+Testing tasks for this week can be found in all above PRs. The group based statistics were all tested to ensure they did not break any past behaviour and that they returned expected output upon changes. This was necessary for all new stats. A test was also added for the `DB` tests to ensure the error wouldn't occur again.
+
+
+### Reviewing Tasks
+This week I reviewed:
+- 540 frontend for job readiness feature [549](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/549)
+- App UI Cleanup [547](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/547)
+- Resume Bullet Point Refactor [545](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/545)
+- Front-End Portfolio Edit Page [533](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/533)
+- frontend for skills, edu, & awards [522](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/522)
+- 494 add more project insights [518](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/518)
+- User GitHub OAuth Flow [517](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/517)
+- Peer testing Endpoint Connection [502](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/502)
+- Small bug fix [497](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/497)
+- 467 add education and awards to user config and resume generation [484](https://github.com/COSC-499-W2025/capstone-project-team-18/pull/484)
+
+
+### Next Week
+Next week, we will be working on cleaning up the codebase, testing the remaining code and expanding endpoints. Further more, the frontend needs to be fleshed out to better serve a non-technical userbase.
 
 ## Week 10, Mar. 09 - 15
 
