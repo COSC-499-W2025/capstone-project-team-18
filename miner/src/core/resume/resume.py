@@ -59,11 +59,17 @@ class Resume:
         education: Optional[list[str]] = None,
         awards: Optional[list[str]] = None,
         title: Optional[str] = None,
+        name: Optional[str] = None,
+        location: Optional[str] = None,
+        linkedin: Optional[str] = None,
     ):
         self.items = []
         self.email = email if email else None
         self.github = github if github else None
         self.title = title
+        self.name = name if name else None
+        self.location = location if location else None
+        self.linkedin = linkedin if linkedin else None
         self.skills = []
         self.education = education or []
         self.awards = awards or []

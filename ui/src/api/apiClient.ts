@@ -226,15 +226,30 @@ export type ResumeItemResponse = {
   end_date?: string | null;
 };
 
+export type EducationEntry = {
+  title: string;
+  start?: string | null;
+  end?: string | null;
+};
+
+export type AwardEntry = {
+  title: string;
+  start?: string | null;
+  end?: string | null;
+};
+
 export type ResumeResponse = {
   id?: number | null;
   title?: string | null;
+  name?: string | null;
+  location?: string | null;
   email?: string | null;
   github?: string | null;
+  linkedin?: string | null;
   skills: string[];
   skills_by_expertise?: SkillsByExpertise | null;
-  education?: string[];
-  awards?: string[];
+  education?: EducationEntry[];
+  awards?: AwardEntry[];
   items: ResumeItemResponse[];
   created_at?: string | null;
   last_updated?: string | null;
@@ -302,6 +317,15 @@ export type EditResumeTitlePayload = {
   title: string | null;
 };
 
+export type EditResumeHeaderPayload = {
+  title?: string | null;
+  name?: string | null;
+  location?: string | null;
+  email?: string | null;
+  github_username?: string | null;
+  linkedin?: string | null;
+};
+
 export type EditResumeBulletPointPayload = {
   resume_id: number;
   item_index: number;
@@ -332,6 +356,14 @@ export type EditResumeSkillsPayload = {
   expert: string[];
   intermediate: string[];
   exposure: string[];
+};
+
+export type EditResumeEducationPayload = {
+  education: EducationEntry[];
+};
+
+export type EditResumeAwardsPayload = {
+  awards: AwardEntry[];
 };
 
 export function getLatestResumeId(): number | null {
@@ -427,6 +459,42 @@ export const api = {
   getResume: (resumeId: string | number) =>
     getJson<ResumeResponse>(`/resume/${encodeURIComponent(String(resumeId))}`),
 
+  exportResumeDocx: async (resumeId: number, filename?: string): Promise<void> => {
+    const url = buildUrl(`/resume/${encodeURIComponent(String(resumeId))}/export/docx`);
+    const res = await fetch(url);
+    if (!res.ok) {
+      const msg = await readApiError(res);
+      throw new Error(msg || `Export failed (${res.status})`);
+    }
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename || `resume_${resumeId}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+  },
+
+  exportResumePdf: async (resumeId: number, filename?: string): Promise<void> => {
+    const url = buildUrl(`/resume/${encodeURIComponent(String(resumeId))}/export/pdf`);
+    const res = await fetch(url);
+    if (!res.ok) {
+      const msg = await readApiError(res);
+      throw new Error(msg || `Export failed (${res.status})`);
+    }
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename || `resume_${resumeId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+  },
+
   generateResume: async (payload: GenerateResumePayload) => {
     const res = await postJson<ResumeResponse>("/resume/generate", payload);
 
@@ -491,9 +559,27 @@ export const api = {
       payload
     ),
 
+  editResumeHeader: (resumeId: number, payload: EditResumeHeaderPayload) =>
+    postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/metadata`,
+      payload
+    ),
+
   editResumeItem: (resumeId: number, payload: EditResumeItemPayload) =>
     postJson<ResumeResponse>(
       `/resume/${encodeURIComponent(String(resumeId))}/edit/resume_item`,
+      payload
+    ),
+
+  editResumeEducation: (resumeId: number, payload: EditResumeEducationPayload) =>
+    postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/education`,
+      payload
+    ),
+
+  editResumeAwards: (resumeId: number, payload: EditResumeAwardsPayload) =>
+    postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/awards`,
       payload
     ),
 

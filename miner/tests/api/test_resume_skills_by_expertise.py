@@ -100,14 +100,11 @@ def test_get_resume_with_skills_by_expertise(client, sample_resume_model):
     with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get, \
             patch('src.database.get_most_recent_user_config') as mock_get_config, \
             patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_load_project, \
-            patch('src.core.report.user.user_report.UserReport') as mock_user_report:
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report:
 
         mock_get.return_value = sample_resume_model
         mock_get_config.return_value = mock_user_config
         mock_load_project.return_value = MagicMock()
-
-        mock_report_instance = MagicMock()
-        mock_stats = MagicMock()
 
         mock_report_instance = MagicMock()
         mock_stats = MagicMock()
@@ -184,8 +181,8 @@ def test_get_resume_with_only_expert_skills(client, sample_resume_model):
 
     with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get, \
             patch('src.database.get_most_recent_user_config') as mock_get_config, \
-            patch('src.database.api.CRUD.projects.get_project_report_model_by_name') as mock_load_project, \
-            patch('src.core.report.user.user_report.UserReport') as mock_user_report:
+            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_load_project, \
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report:
 
         mock_get.return_value = sample_resume_model
         mock_get_config.return_value = mock_user_config
@@ -233,8 +230,8 @@ def test_get_resume_with_threshold_boundary_skills(client, sample_resume_model):
 
     with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get, \
             patch('src.database.get_most_recent_user_config') as mock_get_config, \
-            patch('src.database.api.CRUD.projects.get_project_report_model_by_name') as mock_load_project, \
-            patch('src.core.report.user.user_report.UserReport') as mock_user_report:
+            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_load_project, \
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report:
 
         mock_get.return_value = sample_resume_model
         mock_get_config.return_value = mock_user_config

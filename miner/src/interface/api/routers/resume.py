@@ -1,13 +1,14 @@
-from fastapi import APIRouter,  Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlmodel import SQLModel
 from typing import List, Optional
 import datetime
 
-from src.core.statistic.user_stat_collection import UserStatCollection
 from src.interface.api.routers.util import get_session
 from src.interface.api.routers.user_config import get_user_config_safe
+import src.database as _db
 from src.database import (
-    get_project_report_by_name
+    get_project_report_by_name,
 )
 from src.database.api.CRUD.resume import (
     save_resume,
@@ -17,6 +18,7 @@ from src.database.api.CRUD.resume import (
     delete_resume,
 )
 from src.core.report.user.user_report import UserReport
+from src.core.statistic.user_stat_collection import UserStatCollection
 from src.utils.errors import ResumeNotFoundError, ProjectNotFoundError, DatabaseOperationError
 from datetime import date
 
@@ -36,8 +38,11 @@ class GenerateResumeRequest(SQLModel):
 class EditResumeMetadataRequest(SQLModel):
     """Request model for editing a resume"""
     title: Optional[str] = None
+    name: Optional[str] = None
+    location: Optional[str] = None
     email: Optional[str] = None
     github_username: Optional[str] = None
+    linkedin: Optional[str] = None
 
 
 class EditBulletPointRequest(SQLModel):
@@ -80,16 +85,40 @@ class SkillsByExpertiseResponse(SQLModel):
     exposure: List[str] = []
 
 
+class EducationEntry(SQLModel):
+    """A single structured education entry with optional date range."""
+    title: str
+    start: Optional[str] = None
+    end: Optional[str] = None
+
+
+class AwardEntry(SQLModel):
+    """A single structured award entry with optional date range."""
+    title: str
+    start: Optional[str] = None
+    end: Optional[str] = None
+
+
+def _normalize_entry(entry) -> dict:
+    """Normalize a legacy plain-string entry or a structured dict into {title, start, end}."""
+    if isinstance(entry, dict):
+        return {"title": entry.get("title", ""), "start": entry.get("start"), "end": entry.get("end")}
+    return {"title": str(entry), "start": None, "end": None}
+
+
 class ResumeResponse(SQLModel):
     """Response model for a resume with items"""
     id: Optional[int] = None
     title: Optional[str] = None
+    name: Optional[str] = None
+    location: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
+    linkedin: Optional[str] = None
     skills: List[str]
     skills_by_expertise: Optional[SkillsByExpertiseResponse] = None
-    education: List[str] = []
-    awards: List[str] = []
+    education: List[EducationEntry] = []
+    awards: List[AwardEntry] = []
     items: List[ResumeItemResponse] = []
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
@@ -112,70 +141,33 @@ class ResumeListResponse(SQLModel):
     count: int
 
 # Helper function.
-def _build_resume_response(resume_model, session) -> ResumeResponse:
+def _build_resume_response(resume_model) -> ResumeResponse:
     """
-    Build a ResumeResponse by fetching education/awards from user config.
+    Build a ResumeResponse using per-resume education/awards snapshots.
     """
-    from src.database import get_most_recent_user_config
+    education = [EducationEntry(**_normalize_entry(e)) for e in (resume_model.education or [])]
+    awards = [AwardEntry(**_normalize_entry(a)) for a in (resume_model.awards or [])]
 
-    user_config = get_most_recent_user_config(session)
-    education = []
-    awards = []
-    if user_config and user_config.resume_config:
-        education = user_config.resume_config.education or []
-        awards = user_config.resume_config.awards or []
-
-    skills_by_expertise = None
-
-    has_stored_skills = bool(
-        resume_model.skills_expert or
-        resume_model.skills_intermediate or
-        resume_model.skills_exposure
-    )
-
-    if has_stored_skills:
+    expert = resume_model.skills_expert or []
+    intermediate = resume_model.skills_intermediate or []
+    exposure = resume_model.skills_exposure or []
+    if expert or intermediate or exposure:
         skills_by_expertise = SkillsByExpertiseResponse(
-            expert=resume_model.skills_expert or [],
-            intermediate=resume_model.skills_intermediate or [],
-            exposure=resume_model.skills_exposure or []
+            expert=expert,
+            intermediate=intermediate,
+            exposure=exposure,
         )
     else:
-        if user_config:
-            project_reports = user_config.project_reports
-            if project_reports:
-                from src.core.report.user.user_report import UserReport
-
-                domain_reports = [get_project_report_by_name(session, pr.project_name)
-                                for pr in project_reports if pr.project_name]
-                domain_reports = [r for r in domain_reports if r is not None]
-
-                if domain_reports:
-                    user_report = UserReport(project_reports=domain_reports)
-                    weighted_skills = user_report.statistics.get_value(
-                        UserStatCollection.USER_SKILLS.value
-                    )
-
-                    if weighted_skills:
-                        expert, intermediate, exposure = [], [], []
-                        for ws in weighted_skills:
-                            if ws.weight >= 0.7:
-                                expert.append(ws.skill_name)
-                            elif ws.weight >= 0.4:
-                                intermediate.append(ws.skill_name)
-                            else:
-                                exposure.append(ws.skill_name)
-
-                        skills_by_expertise = SkillsByExpertiseResponse(
-                            expert=expert,
-                            intermediate=intermediate,
-                            exposure=exposure
-                        )
+        skills_by_expertise = None
 
     return ResumeResponse(
         id=resume_model.id,
         title=resume_model.title,
+        name=resume_model.name,
+        location=resume_model.location,
         email=resume_model.email,
         github=resume_model.github,
+        linkedin=resume_model.linkedin,
         skills=resume_model.skills,
         skills_by_expertise=skills_by_expertise,
         education=education,
@@ -223,6 +215,16 @@ class EditFrameworksRequest(SQLModel):
     frameworks: List[str]
 
 
+class EditEducationRequest(SQLModel):
+    """Request model for replacing the education list on a resume"""
+    education: List[EducationEntry]
+
+
+class EditAwardsRequest(SQLModel):
+    """Request model for replacing the awards list on a resume"""
+    awards: List[AwardEntry]
+
+
 # ---------- Resume API Endpoints ----------
 
 @router.get("", response_model=ResumeListResponse)
@@ -261,7 +263,39 @@ def get_resume(resume_id: int, session=Depends(get_session)):
     if not result:
         raise ResumeNotFoundError(f"No resume found with id {resume_id}")
 
-    return _build_resume_response(result, session)
+    # If no stored skills, try to calculate from UserReport
+    has_stored_skills = (
+        bool(result.skills_expert) or
+        bool(result.skills_intermediate) or
+        bool(result.skills_exposure)
+    )
+    if not has_stored_skills:
+        user_config = _db.get_most_recent_user_config(session)
+        if user_config and user_config.project_reports:
+            try:
+                project_reports = [
+                    get_project_report_by_name(session, p.project_name)
+                    for p in user_config.project_reports
+                ]
+                project_reports = [p for p in project_reports if p is not None]
+                if project_reports:
+                    report = UserReport(project_reports)
+                    weighted_skills = report.statistics.get_value(UserStatCollection.USER_SKILLS.value) or []
+                    expert, intermediate, exposure = [], [], []
+                    for ws in weighted_skills:
+                        if ws.weight >= 0.7:
+                            expert.append(ws.skill_name)
+                        elif ws.weight >= 0.4:
+                            intermediate.append(ws.skill_name)
+                        else:
+                            exposure.append(ws.skill_name)
+                    result.skills_expert = expert
+                    result.skills_intermediate = intermediate
+                    result.skills_exposure = exposure
+            except Exception:
+                pass
+
+    return _build_resume_response(result)
 
 @router.post("/{resume_id}/edit/skills", response_model=ResumeResponse)
 def edit_resume_skills(
@@ -279,13 +313,20 @@ def edit_resume_skills(
         )
 
     try:
+        from sqlalchemy.orm.attributes import flag_modified
+
         # Update categorized skills
-        resume_model.skills_expert = request.expert
-        resume_model.skills_intermediate = request.intermediate
-        resume_model.skills_exposure = request.exposure
+        resume_model.skills_expert = list(request.expert)
+        resume_model.skills_intermediate = list(request.intermediate)
+        resume_model.skills_exposure = list(request.exposure)
 
         # Update flat skills list
-        resume_model.skills = request.expert + request.intermediate + request.exposure
+        resume_model.skills = list(request.expert) + list(request.intermediate) + list(request.exposure)
+
+        flag_modified(resume_model, "skills_expert")
+        flag_modified(resume_model, "skills_intermediate")
+        flag_modified(resume_model, "skills_exposure")
+        flag_modified(resume_model, "skills")
 
         resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
@@ -293,7 +334,7 @@ def edit_resume_skills(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -301,6 +342,72 @@ def edit_resume_skills(
             status_code=500,
             detail=f"Failed to edit skills: {str(e)}"
         )
+
+@router.post("/{resume_id}/edit/education", response_model=ResumeResponse)
+def edit_resume_education(
+    resume_id: int,
+    request: EditEducationRequest,
+    session=Depends(get_session)
+):
+    """Replace the education list for a resume."""
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
+
+    try:
+        resume_model.education = [e.model_dump() for e in request.education]
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model)
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to edit education: {str(e)}"
+        )
+
+
+@router.post("/{resume_id}/edit/awards", response_model=ResumeResponse)
+def edit_resume_awards(
+    resume_id: int,
+    request: EditAwardsRequest,
+    session=Depends(get_session)
+):
+    """Replace the awards list for a resume."""
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
+
+    try:
+        resume_model.awards = [a.model_dump() for a in request.awards]
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model)
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to edit awards: {str(e)}"
+        )
+
 
 @router.post("/generate", response_model=ResumeResponse)
 def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)):
@@ -346,9 +453,10 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
         user_report = UserReport(
             project_reports=project_reports, report_name="Generated Resume")
 
-        # Extract email and github from user config
+        # Extract defaults from user config
         user_email = user_config.user_email if user_config else None
         user_github = user_config.github if user_config else None
+        user_name = user_config.name if user_config else None
 
         # Extract education/awards from ResumeConfigModel
         user_education = []
@@ -357,12 +465,13 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
             user_education = user_config.resume_config.education or []
             user_awards = user_config.resume_config.awards or []
 
-        # Generate resume with email, github, education and awards
+        # Generate resume with email, github, name, education and awards
         resume_domain = user_report.generate_resume(
             user_email,
             user_github,
             education=user_education,
-            awards=user_awards
+            awards=user_awards,
+            name=user_name,
         )
 
         # Save using serialize_resume
@@ -373,7 +482,7 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
             resume_model.title = request.title.strip() or None
         session.commit()
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -415,11 +524,20 @@ def edit_resume_metadata(
         if request.title is not None:
             resume_model.title = request.title.strip() or None
 
+        if request.name is not None:
+            resume_model.name = request.name.strip() or None
+
+        if request.location is not None:
+            resume_model.location = request.location.strip() or None
+
         if request.email is not None:
             resume_model.email = request.email
 
         if request.github_username is not None:
             resume_model.github = request.github_username
+
+        if request.linkedin is not None:
+            resume_model.linkedin = request.linkedin.strip() or None
 
         resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
 
@@ -427,7 +545,7 @@ def edit_resume_metadata(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -505,7 +623,7 @@ def edit_resume_item_bullet_point(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -571,7 +689,7 @@ def edit_resume_item(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -638,7 +756,7 @@ def refresh_resume(
 
         session.commit()
 
-        return _build_resume_response(updated_model, session)
+        return _build_resume_response(updated_model)
 
     except Exception as e:
         session.rollback()
@@ -699,7 +817,7 @@ def delete_resume_item_bullet_point(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
@@ -753,11 +871,105 @@ def edit_resume_item_frameworks(
         session.commit()
         session.refresh(resume_model)
 
-        return _build_resume_response(resume_model, session)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
         raise DatabaseOperationError(f"Failed to edit frameworks: {str(e)}") from e
+
+
+@router.get("/{resume_id}/export/latex")
+def export_resume_latex(resume_id: int, session=Depends(get_session)):
+    """Export a resume as a raw LaTeX (.tex) file."""
+    from src.core.resume.render import ResumeLatexRenderer
+
+    resume = load_resume(session, resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail=f"No resume found with id {resume_id}")
+
+    tex = ResumeLatexRenderer().render(resume)
+    filename = f"{resume.title or f'resume_{resume_id}'}.tex"
+    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip() or f"resume_{resume_id}.tex"
+
+    return Response(
+        content=tex.encode("utf-8"),
+        media_type="application/x-tex",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{resume_id}/export/pdf")
+def export_resume_pdf(resume_id: int, session=Depends(get_session)):
+    """
+    Export a resume as a PDF file.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Returns:
+    - 200: PDF file as an attachment.
+
+    Raises:
+    - 404: No resume exists with the given ID.
+    - 500: PDF rendering failed (e.g. pdflatex not installed).
+    """
+    from src.core.resume.render import PDFRenderer
+
+    resume = load_resume(session, resume_id)
+    if resume is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
+
+    try:
+        pdf_bytes = PDFRenderer().render(resume)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"PDF rendering error: {str(e)}"
+        )
+
+    if not pdf_bytes:
+        raise HTTPException(
+            status_code=500,
+            detail="PDF rendering produced empty output. Ensure pdflatex is installed and the LaTeX source is valid."
+        )
+
+    filename = f"{resume.title or f'resume_{resume_id}'}.pdf"
+    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip()
+    if not filename:
+        filename = f"resume_{resume_id}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{resume_id}/export/docx")
+def export_resume_docx(resume_id: int, session=Depends(get_session)):
+    """Export a resume as a Word (.docx) file."""
+    from src.core.resume.render import DocxResumeRenderer
+
+    resume = load_resume(session, resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail=f"No resume found with id {resume_id}")
+
+    try:
+        docx_bytes = DocxResumeRenderer().render(resume)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Word export error: {str(e)}")
+
+    filename = f"{resume.title or f'resume_{resume_id}'}.docx"
+    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip() or f"resume_{resume_id}.docx"
+
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.delete("/{resume_id}", status_code=200)

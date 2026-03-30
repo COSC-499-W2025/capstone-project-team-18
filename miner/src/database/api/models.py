@@ -137,14 +137,14 @@ class ResumeConfigModel(SQLModel, table=True):
         unique=True  # Enforces 1-to-1
     )
 
-    # Education entries (e.g., ["BSc Computer Science, UBC, 2024"])
-    education: List[str] = Field(
+    # Education entries: {"title": str, "start": str|None, "end": str|None}
+    education: List[Any] = Field(
         sa_column=Column(JSON, nullable=False),
         default_factory=list
     )
 
-    # Awards/honors (e.g., ["Dean's List 2023"])
-    awards: List[str] = Field(
+    # Awards entries: {"title": str, "start": str|None, "end": str|None}
+    awards: List[Any] = Field(
         sa_column=Column(JSON, nullable=False),
         default_factory=list
     )
@@ -165,9 +165,23 @@ class ResumeConfigModel(SQLModel, table=True):
 class ResumeModel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: Optional[str] = None
+    name: Optional[str] = None
+    location: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
+    linkedin: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
+
+    # Per-resume snapshots of education and awards (set at generation time)
+    # Each entry: {"title": str, "start": str|None, "end": str|None}
+    education: List[Any] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+    awards: List[Any] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
 
     # Store categorized skills as snapshot at gen/edit time
     skills_expert: List[str] = Field(

@@ -6,6 +6,7 @@ import {
   type SkillsByExpertise,
 } from "../api/apiClient";
 import PillField from "../components/PillField";
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -40,6 +41,44 @@ const SECTION_LABEL = {
   display: "block",
   marginBottom: 8,
 };
+
+// ─── Page overflow estimator ──────────────────────────────────────────────────
+// Approximates line usage based on the Jake Gutierrez LaTeX template at 11pt.
+// A single page holds roughly 55 content lines with 0.7in margins.
+const LINES_PER_PAGE = 55;
+
+function estimateResumeLines(resume: ResumeResponse): number {
+  let lines = 0;
+
+  // Header: name + contact row
+  lines += 2;
+
+  // Each section heading costs ~1.5 lines (title + rule + spacing)
+  const sectionHeading = 1.5;
+
+  if (resume.education && resume.education.length > 0) {
+    lines += sectionHeading + resume.education.length;
+  }
+  if (resume.awards && resume.awards.length > 0) {
+    lines += sectionHeading + resume.awards.length;
+  }
+  if (resume.items && resume.items.length > 0) {
+    lines += sectionHeading;
+    for (const item of resume.items) {
+      // Project heading row
+      lines += 1;
+      // Each bullet wraps at ~90 chars; average bullet is ~120 chars → ~1.5 lines
+      for (const b of item.bullet_points ?? []) {
+        lines += Math.max(1, Math.ceil(b.length / 90));
+      }
+    }
+  }
+  if (resume.skills && resume.skills.length > 0) {
+    lines += sectionHeading + 1;
+  }
+
+  return lines;
+}
 
 function Toast({ message, type }: { message: string; type: "success" | "error" }) {
   const ok = type === "success";
@@ -1040,6 +1079,403 @@ function ItemCard({
   );
 }
 
+// ─── Education Section ────────────────────────────────────────────────────────
+
+type EntryDraft = { title: string; start: string; end: string };
+
+function EntryListSection({
+  label,
+  entries,
+  emptyText,
+  titlePlaceholder,
+  onSave,
+}: {
+  label: string;
+  entries: import("../api/apiClient").EducationEntry[];
+  emptyText: string;
+  titlePlaceholder: string;
+  onSave: (draft: EntryDraft[]) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<EntryDraft[]>([]);
+
+  function startEditing() {
+    setDraft(entries.map((e) => ({ title: e.title ?? "", start: e.start ?? "", end: e.end ?? "" })));
+    setEditing(true);
+  }
+
+  function updateField(i: number, field: keyof EntryDraft, value: string) {
+    setDraft((d) => d.map((e, idx) => (idx === i ? { ...e, [field]: value } : e)));
+  }
+
+  function removeEntry(i: number) {
+    setDraft((d) => d.filter((_, idx) => idx !== i));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await onSave(draft.filter((e) => e.title.trim()));
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputBase: React.CSSProperties = {
+    padding: "7px 10px",
+    borderRadius: 8,
+    border: "1px solid var(--border-strong)",
+    background: "var(--bg-input)",
+    color: "var(--text-primary)",
+    fontSize: 13,
+    fontFamily: "inherit",
+    outline: "none",
+  };
+
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 14, padding: "16px 20px", background: "var(--bg-surface)", marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <span style={SECTION_LABEL}>{label}</span>
+        {!editing && (
+          <button onClick={startEditing} style={{ padding: "4px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}>
+            Edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {draft.map((entry, i) => (
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--bg-surface-deep)", borderRadius: 10, padding: "10px 12px", position: "relative" }}>
+              <button
+                onClick={() => removeEntry(i)}
+                style={{ position: "absolute", top: 8, right: 8, padding: "2px 7px", borderRadius: 6, border: "1px solid var(--danger-bg-strong)", background: "transparent", color: "var(--danger-text)", cursor: "pointer", fontSize: 12 }}
+              >✕</button>
+              <input
+                style={{ ...inputBase, width: "calc(100% - 44px)" }}
+                value={entry.title}
+                onChange={(e) => updateField(i, "title", e.target.value)}
+                placeholder={titlePlaceholder}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input style={{ ...inputBase, flex: 1 }} value={entry.start} onChange={(e) => updateField(i, "start", e.target.value)} placeholder="Start (e.g. September 2022)" />
+                <input style={{ ...inputBase, flex: 1 }} value={entry.end} onChange={(e) => updateField(i, "end", e.target.value)} placeholder="End (e.g. April 2026)" />
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={() => setDraft((d) => [...d, { title: "", start: "", end: "" }])}
+            style={{ alignSelf: "flex-start", padding: "5px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, marginTop: 2 }}
+          >+ Add Entry</button>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button onClick={() => setEditing(false)} disabled={saving} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, opacity: saving ? 0.6 : 1 }}>Cancel</button>
+            <button onClick={handleSave} disabled={saving} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--btn-primary)", color: saving ? "var(--text-muted)" : "#fff", cursor: saving ? "not-allowed" : "pointer", fontSize: 13, opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {entries.length === 0 ? (
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{emptyText}</span>
+          ) : (
+            entries.map((entry, i) => {
+              const dateRange = [entry.start, entry.end].filter(Boolean).join(" \u2013 ");
+              return (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, color: "var(--text-primary)" }}>
+                  <span style={{ fontWeight: 500 }}>{entry.title}</span>
+                  {dateRange && <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 16, whiteSpace: "nowrap" }}>{dateRange}</span>}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EducationSection({
+  resumeId,
+  education,
+  onUpdated,
+  onError,
+}: {
+  resumeId: number;
+  education: import("../api/apiClient").EducationEntry[];
+  onUpdated: (res: import("../api/apiClient").ResumeResponse) => void;
+  onError: (msg: string) => void;
+}) {
+  return (
+    <EntryListSection
+      label="Education"
+      entries={education}
+      emptyText="No education entries. Click Edit to add."
+      titlePlaceholder="e.g. BSc Computer Science, University of British Columbia"
+      onSave={async (draft) => {
+        try {
+          const res = await api.editResumeEducation(resumeId, {
+            education: draft.map((e) => ({ title: e.title.trim(), start: e.start.trim() || null, end: e.end.trim() || null })),
+          });
+          onUpdated(res);
+        } catch (e: any) {
+          onError(e?.message ?? "Failed to save education.");
+          throw e;
+        }
+      }}
+    />
+  );
+}
+
+// ─── Awards Section ───────────────────────────────────────────────────────────
+
+function AwardsSection({
+  resumeId,
+  awards,
+  onUpdated,
+  onError,
+}: {
+  resumeId: number;
+  awards: import("../api/apiClient").AwardEntry[];
+  onUpdated: (res: import("../api/apiClient").ResumeResponse) => void;
+  onError: (msg: string) => void;
+}) {
+  return (
+    <EntryListSection
+      label="Awards"
+      entries={awards}
+      emptyText="No awards entries. Click Edit to add."
+      titlePlaceholder="e.g. Dean's List"
+      onSave={async (draft) => {
+        try {
+          const res = await api.editResumeAwards(resumeId, {
+            awards: draft.map((e) => ({ title: e.title.trim(), start: e.start.trim() || null, end: e.end.trim() || null })),
+          });
+          onUpdated(res);
+        } catch (e: any) {
+          onError(e?.message ?? "Failed to save awards.");
+          throw e;
+        }
+      }}
+    />
+  );
+}
+
+// ─── Header Section ───────────────────────────────────────────────────────────
+
+type HeaderDraft = {
+  name: string;
+  location: string;
+  email: string;
+  github: string;
+  linkedin: string;
+};
+
+function HeaderSection({
+  resumeId,
+  resume,
+  onUpdated,
+  onError,
+}: {
+  resumeId: number;
+  resume: import("../api/apiClient").ResumeResponse;
+  onUpdated: (res: import("../api/apiClient").ResumeResponse) => void;
+  onError: (msg: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<HeaderDraft>({
+    name: resume.name ?? "",
+    location: resume.location ?? "",
+    email: resume.email ?? "",
+    github: resume.github ?? "",
+    linkedin: resume.linkedin ?? "",
+  });
+
+  function startEditing() {
+    setDraft({
+      name: resume.name ?? "",
+      location: resume.location ?? "",
+      email: resume.email ?? "",
+      github: resume.github ?? "",
+      linkedin: resume.linkedin ?? "",
+    });
+    setEditing(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await api.editResumeHeader(resumeId, {
+        name: draft.name.trim() || null,
+        location: draft.location.trim() || null,
+        email: draft.email.trim() || null,
+        github_username: draft.github.trim() || null,
+        linkedin: draft.linkedin.trim() || null,
+      });
+      onUpdated(res);
+      setEditing(false);
+    } catch (e: any) {
+      onError(e?.message ?? "Failed to save header.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "7px 10px",
+    borderRadius: 8,
+    border: "1px solid var(--border-strong)",
+    background: "var(--bg-input)",
+    color: "var(--text-primary)",
+    fontSize: 13,
+    fontFamily: "inherit",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const rowStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: "var(--text-muted)",
+    fontWeight: 600,
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+  };
+
+  return (
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: 14,
+        padding: "16px 20px",
+        background: "var(--bg-surface)",
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <span style={SECTION_LABEL}>Header</span>
+        {!editing && (
+          <button
+            onClick={startEditing}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 7,
+              border: "1px solid var(--border)",
+              background: "transparent",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              fontSize: 12,
+            }}
+          >
+            Edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Full Name</span>
+            <input
+              style={inputStyle}
+              value={draft.name}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+              placeholder="e.g. Paul Atreides"
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Location</span>
+            <input
+              style={inputStyle}
+              value={draft.location}
+              onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))}
+              placeholder="e.g. Vancouver, BC"
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Email</span>
+            <input
+              style={inputStyle}
+              value={draft.email}
+              onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
+              placeholder="e.g. paulatreides@email.com"
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>LinkedIn</span>
+            <input
+              style={inputStyle}
+              value={draft.linkedin}
+              onChange={(e) => setDraft((d) => ({ ...d, linkedin: e.target.value }))}
+              placeholder="Your LinkedIn Username"
+            />
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>GitHub</span>
+            <input
+              style={inputStyle}
+              value={draft.github}
+              onChange={(e) => setDraft((d) => ({ ...d, github: e.target.value }))}
+              placeholder="Your GitHub Username"
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid var(--border)",
+                background: "transparent",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: 13,
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "none",
+                background: "var(--btn-primary)",
+                color: saving ? "var(--text-muted)" : "#fff",
+                cursor: saving ? "not-allowed" : "pointer",
+                fontSize: 13,
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>Name</span><span style={{ color: resume.name ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.name || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>Location</span><span style={{ color: resume.location ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.location || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>Email</span><span style={{ color: resume.email ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.email || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>LinkedIn</span><span style={{ color: resume.linkedin ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.linkedin || "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)", marginRight: 8 }}>GitHub</span><span style={{ color: resume.github ? "var(--text-primary)" : "var(--text-muted)" }}>{resume.github || "—"}</span></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ResumePage() {
@@ -1060,6 +1496,10 @@ export default function ResumePage() {
   const [titleDraft, setTitleDraft] = useState("");
   const [savingTitle, setSavingTitle] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Export
+  const [exporting, setExporting] = useState(false);
+  const [exportingDocx, setExportingDocx] = useState(false);
 
   // Delete
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1305,19 +1745,61 @@ export default function ResumePage() {
           </button>
 
           <button
-            disabled
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await api.exportResumePdf(
+                  Number(resumeId),
+                  `${resume.title || `resume_${resume.id}`}.pdf`
+                );
+              } catch (e: any) {
+                setError(e?.message ?? "Export failed.");
+              } finally {
+                setExporting(false);
+              }
+            }}
+            disabled={exporting}
             style={{
               padding: "10px 14px",
               background: "transparent",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--btn-primary)",
               borderRadius: 10,
-              color: "var(--text-muted)",
-              cursor: "not-allowed",
-              fontSize: 14,
-              opacity: 0.5,
+              color: exporting ? "var(--text-muted)" : "var(--btn-primary)",
+              fontWeight: 500,
+              cursor: exporting ? "not-allowed" : "pointer",
+              opacity: exporting ? 0.6 : 1,
             }}
           >
-            Export
+            {exporting ? "Exporting..." : "Export PDF"}
+          </button>
+
+          <button
+            onClick={async () => {
+              setExportingDocx(true);
+              try {
+                await api.exportResumeDocx(
+                  Number(resumeId),
+                  `${resume.title || `resume_${resume.id}`}.docx`
+                );
+              } catch (e: any) {
+                setError(e?.message ?? "Export failed.");
+              } finally {
+                setExportingDocx(false);
+              }
+            }}
+            disabled={exportingDocx}
+            style={{
+              padding: "10px 14px",
+              background: "transparent",
+              border: "1px solid var(--btn-primary)",
+              borderRadius: 10,
+              color: exportingDocx ? "var(--text-muted)" : "var(--btn-primary)",
+              fontWeight: 500,
+              cursor: exportingDocx ? "not-allowed" : "pointer",
+              opacity: exportingDocx ? 0.6 : 1,
+            }}
+          >
+            {exportingDocx ? "Exporting..." : "Export Word"}
           </button>
 
           <button
@@ -1345,6 +1827,63 @@ export default function ResumePage() {
       {error && <Toast message={error} type="error" />}
       {success && <Toast message={success} type="success" />}
 
+      {/* Page overflow warning */}
+      {estimateResumeLines(resume) > LINES_PER_PAGE && (
+        <div
+          style={{
+            border: "1px solid #d97706",
+            borderRadius: 10,
+            padding: "11px 16px",
+            background: "#fffbeb",
+            color: "#92400e",
+            fontSize: 14,
+            marginBottom: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <WarningAmberIcon style={{ fontSize: 20 }} />
+          <span>
+            Your resume may exceed one page when exported. Consider reducing the
+            number of bullet points or projects to keep it concise.
+          </span>
+        </div>
+      )}
+
+      {/* Header */}
+      <HeaderSection
+        resumeId={resume.id!}
+        resume={resume}
+        onUpdated={(res) => {
+          setResume(res);
+          showSuccess("Header saved.");
+        }}
+        onError={(msg) => setError(msg)}
+      />
+
+      {/* Education */}
+      <EducationSection
+        resumeId={resume.id!}
+        education={resume.education ?? []}
+        onUpdated={(res) => {
+          setResume(res);
+          showSuccess("Education saved.");
+        }}
+        onError={(msg) => setError(msg)}
+      />
+
+      {/* Awards */}
+      <AwardsSection
+        resumeId={resume.id!}
+        awards={resume.awards ?? []}
+        onUpdated={(res) => {
+          setResume(res);
+          showSuccess("Awards saved.");
+        }}
+        onError={(msg) => setError(msg)}
+      />
+
       {/* Skills */}
       <SkillsSection
         resumeId={resume.id!}
@@ -1371,12 +1910,19 @@ export default function ResumePage() {
           <div style={{ fontSize: 15, color: "var(--text-secondary)" }}>No projects in this resume.</div>
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
-            {resume.items.map((item, itemIndex) => (
+            {resume.items
+              .map((item, originalIndex) => ({ item, originalIndex }))
+              .sort((a, b) => {
+                const aDate = a.item.end_date || a.item.start_date || "";
+                const bDate = b.item.end_date || b.item.start_date || "";
+                return bDate.localeCompare(aDate);
+              })
+              .map(({ item, originalIndex }) => (
               <ItemCard
-                key={`${item.title}-${itemIndex}`}
+                key={`${item.title}-${originalIndex}`}
                 resumeId={resume.id!}
                 item={item}
-                itemIndex={itemIndex}
+                itemIndex={originalIndex}
                 onUpdated={handleUpdated}
                 onError={(msg) => setError(msg)}
               />
