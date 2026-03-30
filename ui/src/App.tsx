@@ -146,11 +146,7 @@ export default function App() {
             Portfolios
           </NavLink>
 
-          <NavLink to="/skills" end style={({ isActive }) => navLinkStyle(isActive)}>
-            Skills
-          </NavLink>
-
-          <NavLink to="/resumes" style={() => navLinkStyle(isResumeRoute)}>
+<NavLink to="/resumes" style={() => navLinkStyle(isResumeRoute)}>
             Resumes
           </NavLink>
 
