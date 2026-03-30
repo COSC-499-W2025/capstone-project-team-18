@@ -238,8 +238,8 @@ header .portfolio-updated {
 
 .figure-btn {
   background: transparent;
-  border: 1px solid #dc2626;
-  color: #dc2626;
+  border: 1px solid #002145;
+  color: #002145;
   padding: 0.3rem 0.55rem;
   border-radius: 6px;
   cursor: pointer;
@@ -247,7 +247,7 @@ header .portfolio-updated {
 }
 
 .figure-btn.active {
-  background: #dc2626;
+  background: #002145;
   color: #ffffff;
 }
 
@@ -284,16 +284,16 @@ header .portfolio-updated {
 
 .contrib-cell.has-activity:hover {
   transform: scale(1.15);
-  border-color: #dc2626;
+  border-color: #002145;
 }
 
 .contrib-cell.active {
-  border-color: #dc2626;
+  border-color: #002145;
 }
 
 .contrib-hover-info {
   margin-top: 0.75rem;
-  border-left: 3px solid #dc2626;
+  border-left: 3px solid #002145;
   background: #f5f5f5;
   color: #111111;
   font-size: 0.78rem;
@@ -338,7 +338,7 @@ header .portfolio-updated {
 .skill-toggle-btn:first-child { border-radius: 6px 0 0 6px; }
 .skill-toggle-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
 .skill-toggle-btn.active {
-  background: #dc2626;
+  background: #002145;
   color: #ffffff;
   font-weight: 600;
 }
@@ -584,11 +584,11 @@ header .portfolio-updated {
   background: transparent;
 }
 
-.badge.theme    { background: rgba(111, 124, 255, 0.1); color: #4f5be8; border-color: rgba(111, 124, 255, 0.3); }
+.badge.theme    { background: rgba(0, 33, 69, 0.08); color: #002145; border-color: rgba(0, 33, 69, 0.25); }
 .badge.tone     { background: transparent; color: #666; border-color: #d0d0d0; }
 .badge.tag      { background: rgba(22, 163, 74, 0.1); color: #15803d; border-color: rgba(22, 163, 74, 0.3); }
 .badge.skill    { background: transparent; color: #444; border-color: #d0d0d0; }
-.badge.framework { background: rgba(224, 128, 96, 0.1); color: #c05621; border-color: rgba(224, 128, 96, 0.3); }
+.badge.framework { background: rgba(80, 144, 170, 0.1); color: #336680; border-color: rgba(80, 144, 170, 0.3); }
 
 .card-meta {
   font-size: 0.75rem;
@@ -1101,7 +1101,7 @@ _FIGURES_JS = """\
   // ContributionMap
   // ==========================================================
   function buildContributionMap(el, personal, total) {
-    var ACCENT = '#E63946';
+    var ACCENT = '#002145';
     var ML = ['January','February','March','April','May','June',
               'July','August','September','October','November','December'];
 
@@ -1154,7 +1154,7 @@ _FIGURES_JS = """\
     leg.style.cssText = 'display:flex;align-items:center;gap:8px;';
     leg.innerHTML = '<span>Less</span>' +
       [0, 0.25, 0.5, 0.75, 1].map(function (op) {
-        var bg = op === 0 ? '#e8e8e8' : 'rgba(230,57,70,' + op + ')';
+        var bg = op === 0 ? '#e8e8e8' : 'rgba(0,33,69,' + op + ')';
         return '<div style="width:10px;height:10px;border-radius:2px;background:' + bg + ';display:inline-block;margin:0 1px;"></div>';
       }).join('') +
       '<span>More</span>';
@@ -1231,7 +1231,7 @@ _FIGURES_JS = """\
           } else {
             if (u > 0 && t > 0) opacity = Math.max(0.1, (u / t) / maxR);
           }
-          var bg = opacity === 0 ? '#e8e8e8' : 'rgba(230,57,70,' + opacity.toFixed(3) + ')';
+          var bg = opacity === 0 ? '#e8e8e8' : 'rgba(0,33,69,' + opacity.toFixed(3) + ')';
           var sq = document.createElement('div');
           sq.style.cssText = 'width:11px;height:11px;border-radius:2px;background:' + bg + ';flex-shrink:0;cursor:default;';
           if (u > 0) {
@@ -1273,8 +1273,8 @@ _FIGURES_JS = """\
   // SkillTimelineGraph
   // ==========================================================
   function buildSkillTimeline(el, skillAct) {
-    var COLORS = ['#E63946','#7A9BA8','#A89B6B','#7B8B6F','#8B6B7A',
-                  '#5B8C85','#9B6B5B','#6B7B9B','#8C7B5B','#7B5B9B'];
+    var COLORS = ['#002145','#5090AA','#B09040','#5F8050','#80506A',
+                  '#2E7A72','#9A5038','#4B6490','#8C6E30','#6A3E90'];
     var MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
     // 1. Aggregate into monthly counts
@@ -1337,7 +1337,7 @@ _FIGURES_JS = """\
     var tgl = hdr.appendChild(document.createElement('div'));
     var btnS = tgl.appendChild(document.createElement('button'));
     btnS.textContent = 'Stacked';
-    btnS.style.cssText = 'padding:4px 12px;font-size:12px;border-radius:6px 0 0 6px;border:1px solid #d0d0d0;background:#dc2626;color:#ffffff;cursor:pointer;font-weight:600;';
+    btnS.style.cssText = 'padding:4px 12px;font-size:12px;border-radius:6px 0 0 6px;border:1px solid #d0d0d0;background:#002145;color:#ffffff;cursor:pointer;font-weight:600;';
     var btnI = tgl.appendChild(document.createElement('button'));
     btnI.textContent = 'Individual';
     btnI.style.cssText = 'padding:4px 12px;font-size:12px;border-radius:0 6px 6px 0;border:1px solid #d0d0d0;border-left:none;background:transparent;color:#666;cursor:pointer;';
@@ -1495,13 +1495,13 @@ _FIGURES_JS = """\
 
     btnS.addEventListener('click', function () {
       mode = 'stacked';
-      btnS.style.background = '#dc2626'; btnS.style.color = '#ffffff'; btnS.style.fontWeight = '600';
+      btnS.style.background = '#002145'; btnS.style.color = '#ffffff'; btnS.style.fontWeight = '600';
       btnI.style.background = 'transparent'; btnI.style.color = '#666'; btnI.style.fontWeight = '';
       renderStacked();
     });
     btnI.addEventListener('click', function () {
       mode = 'individual';
-      btnI.style.background = '#dc2626'; btnI.style.color = '#ffffff'; btnI.style.fontWeight = '600';
+      btnI.style.background = '#002145'; btnI.style.color = '#ffffff'; btnI.style.fontWeight = '600';
       btnS.style.background = 'transparent'; btnS.style.color = '#666'; btnS.style.fontWeight = '';
       renderIndividual();
     });

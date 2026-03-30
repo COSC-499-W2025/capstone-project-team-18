@@ -21,9 +21,9 @@
   --border-strong:    #cccccc;
 
   /* Accent — red */
-  --accent:           #dc2626;
-  --accent-hover:     #b91c1c;
-  --accent-subtle:    #fee2e2;
+  --accent:           #002145;
+  --accent-hover:     #001530;
+  --accent-subtle:    #dde8f4;
 
   /* Hover effect — blue/indigo tint */
   --hover-border:     #6f7cff;

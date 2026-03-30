@@ -70,7 +70,7 @@ export default function App() {
           <div
             style={{
               backgroundColor: "var(--danger-bg)",
-              border: "1.5px solid #dc2626",
+              border: "1.5px solid var(--danger-text)",
               borderRadius: 12,
               padding: "32px 40px",
               textAlign: "center",
@@ -78,7 +78,7 @@ export default function App() {
             }}
           >
             <div style={{ fontSize: 28, marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#dc2626" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--danger-text)" }}>
               Backend Unreachable
             </div>
             <div style={{ color: "#555", marginBottom: 24, fontSize: 14 }}>
@@ -90,7 +90,7 @@ export default function App() {
                 padding: "8px 24px",
                 borderRadius: 8,
                 border: "none",
-                backgroundColor: "#dc2626",
+                backgroundColor: "var(--accent)",
                 color: "#fff",
                 fontWeight: 600,
                 cursor: "pointer",
