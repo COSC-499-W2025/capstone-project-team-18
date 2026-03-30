@@ -1066,6 +1066,192 @@ function EducationSection({
   );
 }
 
+// ─── Awards Section ───────────────────────────────────────────────────────────
+
+function AwardsSection({
+  resumeId,
+  awards,
+  onUpdated,
+  onError,
+}: {
+  resumeId: number;
+  awards: string[];
+  onUpdated: (res: import("../api/apiClient").ResumeResponse) => void;
+  onError: (msg: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<string[]>([]);
+
+  function startEditing() {
+    setDraft([...awards]);
+    setEditing(true);
+  }
+
+  function updateEntry(index: number, value: string) {
+    setDraft((d) => d.map((e, i) => (i === index ? value : e)));
+  }
+
+  function removeEntry(index: number) {
+    setDraft((d) => d.filter((_, i) => i !== index));
+  }
+
+  function addEntry() {
+    setDraft((d) => [...d, ""]);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await api.editResumeAwards(resumeId, {
+        awards: draft.map((e) => e.trim()).filter(Boolean),
+      });
+      onUpdated(res);
+      setEditing(false);
+    } catch (e: any) {
+      onError(e?.message ?? "Failed to save awards.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    padding: "7px 10px",
+    borderRadius: 8,
+    border: "1px solid #2a2a2a",
+    background: "#111",
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "inherit",
+    outline: "none",
+  };
+
+  return (
+    <div
+      style={{
+        border: "1px solid #2a2a2a",
+        borderRadius: 14,
+        padding: "16px 20px",
+        background: "#161616",
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <span style={SECTION_LABEL}>Awards</span>
+        {!editing && (
+          <button
+            onClick={startEditing}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 7,
+              border: "1px solid #2a2a2a",
+              background: "transparent",
+              color: "#999",
+              cursor: "pointer",
+              fontSize: 12,
+            }}
+          >
+            Edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {draft.map((entry, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                style={inputStyle}
+                value={entry}
+                onChange={(e) => updateEntry(i, e.target.value)}
+                placeholder="e.g. Dean's List 2023"
+              />
+              <button
+                onClick={() => removeEntry(i)}
+                style={{
+                  padding: "5px 9px",
+                  borderRadius: 7,
+                  border: "1px solid #3a1111",
+                  background: "transparent",
+                  color: "#ff8a8a",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={addEntry}
+            style={{
+              alignSelf: "flex-start",
+              padding: "5px 12px",
+              borderRadius: 7,
+              border: "1px solid #2a2a2a",
+              background: "transparent",
+              color: "#888",
+              cursor: "pointer",
+              fontSize: 12,
+              marginTop: 2,
+            }}
+          >
+            + Add Entry
+          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: "transparent",
+                color: "#888",
+                cursor: "pointer",
+                fontSize: 13,
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid #3a3a3a",
+                background: "#222",
+                color: saving ? "#666" : "#fff",
+                cursor: saving ? "not-allowed" : "pointer",
+                fontSize: 13,
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {awards.length === 0 ? (
+            <span style={{ fontSize: 13, color: "#444" }}>No awards entries. Click Edit to add.</span>
+          ) : (
+            awards.map((entry, i) => (
+              <div key={i} style={{ fontSize: 13, color: "#ddd" }}>
+                · {entry}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Header Section ───────────────────────────────────────────────────────────
 
 type HeaderDraft = {
@@ -1595,6 +1781,17 @@ export default function ResumePage() {
         onUpdated={(res) => {
           setResume(res);
           showSuccess("Education saved.");
+        }}
+        onError={(msg) => setError(msg)}
+      />
+
+      {/* Awards */}
+      <AwardsSection
+        resumeId={resume.id!}
+        awards={resume.awards ?? []}
+        onUpdated={(res) => {
+          setResume(res);
+          showSuccess("Awards saved.");
         }}
         onError={(msg) => setError(msg)}
       />
