@@ -1909,12 +1909,19 @@ export default function ResumePage() {
           <div style={{ fontSize: 15, color: "var(--text-secondary)" }}>No projects in this resume.</div>
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
-            {resume.items.map((item, itemIndex) => (
+            {resume.items
+              .map((item, originalIndex) => ({ item, originalIndex }))
+              .sort((a, b) => {
+                const aDate = a.item.end_date || a.item.start_date || "";
+                const bDate = b.item.end_date || b.item.start_date || "";
+                return bDate.localeCompare(aDate);
+              })
+              .map(({ item, originalIndex }) => (
               <ItemCard
-                key={`${item.title}-${itemIndex}`}
+                key={`${item.title}-${originalIndex}`}
                 resumeId={resume.id!}
                 item={item}
-                itemIndex={itemIndex}
+                itemIndex={originalIndex}
                 onUpdated={handleUpdated}
                 onError={(msg) => setError(msg)}
               />
