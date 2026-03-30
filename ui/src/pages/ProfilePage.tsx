@@ -2,19 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api/apiClient";
 
 const SKILL_LABELS: Record<number, string> = {
-  1: "Beginner",
-  2: "Basic",
-  3: "Intermediate",
-  4: "Advanced",
-  5: "Expert",
+  1: "Exposure",
+  2: "Intermediate",
+  3: "Expert",
 };
 
 const SKILL_LABEL_TO_NUM: Record<string, number> = {
-  Beginner: 1,
-  Basic: 2,
-  Intermediate: 3,
-  Advanced: 4,
-  Expert: 5,
+  Exposure: 1,
+  Intermediate: 2,
+  Expert: 3,
 };
 
 type RatedSkill = { name: string; rating: number };
@@ -34,7 +30,7 @@ export default function ProfilePage() {
   const [awardInput, setAwardInput] = useState("");
   const [skills, setSkills] = useState<RatedSkill[]>([]);
   const [skillInput, setSkillInput] = useState("");
-  const [skillRating, setSkillRating] = useState<number>(3);
+  const [skillRating, setSkillRating] = useState<number>(2);
 
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -427,7 +423,7 @@ export default function ProfilePage() {
                   if (e.key === "Enter" && skillInput.trim()) {
                     setSkills((prev) => [...prev, { name: skillInput.trim(), rating: skillRating }]);
                     setSkillInput("");
-                    setSkillRating(3);
+                    setSkillRating(2);
                   }
                 }}
                 placeholder="e.g. Python"
@@ -454,11 +450,9 @@ export default function ProfilePage() {
                   fontSize: 13,
                 }}
               >
-                <option value={1}>Beginner</option>
-                <option value={2}>Basic</option>
-                <option value={3}>Intermediate</option>
-                <option value={4}>Advanced</option>
-                <option value={5}>Expert</option>
+                <option value={1}>Exposure</option>
+                <option value={2}>Intermediate</option>
+                <option value={3}>Expert</option>
               </select>
               <button
                 type="button"
@@ -466,7 +460,7 @@ export default function ProfilePage() {
                   if (skillInput.trim()) {
                     setSkills((prev) => [...prev, { name: skillInput.trim(), rating: skillRating }]);
                     setSkillInput("");
-                    setSkillRating(3);
+                    setSkillRating(2);
                   }
                 }}
                 disabled={isSaving || isLoadingConfig || !skillInput.trim()}
