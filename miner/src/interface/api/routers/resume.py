@@ -1,4 +1,5 @@
-from fastapi import APIRouter,  Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlmodel import SQLModel
 from typing import List, Optional
 import datetime
@@ -846,6 +847,76 @@ def edit_resume_item_frameworks(
     except Exception as e:
         session.rollback()
         raise DatabaseOperationError(f"Failed to edit frameworks: {str(e)}") from e
+
+
+@router.get("/{resume_id}/export/latex")
+def export_resume_latex(resume_id: int, session=Depends(get_session)):
+    """Export a resume as a raw LaTeX (.tex) file."""
+    from src.core.resume.render import ResumeLatexRenderer
+
+    resume = load_resume(session, resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail=f"No resume found with id {resume_id}")
+
+    tex = ResumeLatexRenderer().render(resume)
+    filename = f"{resume.title or f'resume_{resume_id}'}.tex"
+    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip() or f"resume_{resume_id}.tex"
+
+    return Response(
+        content=tex.encode("utf-8"),
+        media_type="application/x-tex",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{resume_id}/export/pdf")
+def export_resume_pdf(resume_id: int, session=Depends(get_session)):
+    """
+    Export a resume as a PDF file.
+
+    Path parameters:
+    - `resume_id`: Integer primary key of the resume record.
+
+    Returns:
+    - 200: PDF file as an attachment.
+
+    Raises:
+    - 404: No resume exists with the given ID.
+    - 500: PDF rendering failed (e.g. pdflatex not installed).
+    """
+    from src.core.resume.render import PDFRenderer
+
+    resume = load_resume(session, resume_id)
+    if resume is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
+
+    try:
+        pdf_bytes = PDFRenderer().render(resume)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"PDF rendering error: {str(e)}"
+        )
+
+    if not pdf_bytes:
+        raise HTTPException(
+            status_code=500,
+            detail="PDF rendering produced empty output. Ensure pdflatex is installed and the LaTeX source is valid."
+        )
+
+    filename = f"{resume.title or f'resume_{resume_id}'}.pdf"
+    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip()
+    if not filename:
+        filename = f"resume_{resume_id}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.delete("/{resume_id}", status_code=200)
