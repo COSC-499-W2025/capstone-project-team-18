@@ -3,6 +3,7 @@ import tinycss2
 
 from src.core.statistic import Statistic, FileStatCollection
 from src.core.analyzer.specific_code_analyzer import SpecificCodeAnalyzer
+from src.core.analyzer.html_analyzer import _is_external, _is_font_url
 from src.infrastructure.log.logging import get_logger
 
 logger = get_logger(__name__)
@@ -78,7 +79,10 @@ class CSSAnalyzer(SpecificCodeAnalyzer):
                     class_tokens.update(
                         extract_classes_from_prelude(r.prelude))
 
-            imported_packages = list(set(imports))
+            imported_packages = list({
+                url for url in imports
+                if not (_is_external(url) and _is_font_url(url))
+            })
 
         else:
             # ---- Regex fallback (keeps analyzer usable if tinycss2 isn't installed) ----
@@ -106,7 +110,11 @@ class CSSAnalyzer(SpecificCodeAnalyzer):
                 r'@import\s+(?:url\(\s*[\'"]?([^\'")]+)[\'"]?\s*\)|[\'"]([^\'"]+)[\'"])',
                 cleaned
             )
-            imported_packages = list({a or b for a, b in imports})
+            imported_packages = list({
+                url for a, b in imports
+                for url in [a or b]
+                if not (_is_external(url) and _is_font_url(url))
+            })
 
         self.stats.extend([
             Statistic(FileStatCollection.NUMBER_OF_FUNCTIONS.value, rule_count),
