@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { api } from "../api/apiClient";
 
 const SKILL_LABELS: Record<number, string> = {
@@ -19,6 +20,19 @@ type RatedSkill = { name: string; rating: number };
 type GithubAuthStatus = "idle" | "pending" | "success" | "denied" | "error";
 
 export default function ProfilePage() {
+  const location = useLocation();
+  const [consentBanner, setConsentBanner] = useState(
+    () => (location.state as any)?.consentRequired === true
+  );
+  const consentSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!consentBanner) return;
+    const timer = setTimeout(() => {
+      consentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [consentBanner]);
   const location = useLocation();
   const [consentBanner, setConsentBanner] = useState(
     () => (location.state as any)?.consentRequired === true
@@ -684,7 +698,7 @@ export default function ProfilePage() {
                   animation: "slideDown 0.4s ease",
                 }}
               >
-                <span>You must enter your email and accept the data consent below before you can mine a project.</span>
+                <span>You must accept the data consent below before you can mine a project.</span>
                 <button
                   type="button"
                   onClick={() => setConsentBanner(false)}
