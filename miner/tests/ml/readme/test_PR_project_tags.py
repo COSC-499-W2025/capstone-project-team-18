@@ -28,7 +28,6 @@ def test_project_tags_from_readme_keyphrases():
 def test_project_tags_from_readme_text(tmp_path, monkeypatch, get_ready_specific_analyzer):
     readme_text = "API API API. This project exposes an API for clients."
 
-    monkeypatch.setattr(keyphrase_extraction, "azure_openai_enabled", lambda: False)
     monkeypatch.setattr(
         keyphrase_extraction,
         "_extract_with_keybert",
@@ -122,7 +121,6 @@ def test_bertopic_failure_falls_back(monkeypatch):
         def fit_transform(self, _texts):
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(readme_insights, "azure_openai_enabled", lambda: False)
     monkeypatch.setattr(readme_insights, "_MIN_DOCS_FOR_BERTOPIC", 1)
     monkeypatch.setattr(readme_insights, "_MIN_TOTAL_CHARS_FOR_BERTOPIC", 1)
     monkeypatch.setattr(readme_insights, "_get_topic_model",

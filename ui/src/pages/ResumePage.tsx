@@ -1703,30 +1703,23 @@ export default function ResumePage() {
               </button>
             </div>
           ) : (
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <h1 style={{ margin: 0, fontSize: 28 }}>{displayTitle}</h1>
-                <button
-                  onClick={() => setEditingTitle(true)}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: 8,
-                    border: "1px solid var(--btn-primary)",
-                    background: "transparent",
-                    color: "var(--btn-primary)",
-                    cursor: "pointer",
-                    fontSize: 14,
-                    fontWeight: 500,
-                  }}
-                >
-                  Edit
-                </button>
-              </div>
-              {resume.created_at && (
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
-                  Created {new Date(resume.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
-                </div>
-              )}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <h1 style={{ margin: 0, fontSize: 28 }}>{displayTitle}</h1>
+              <button
+                onClick={() => setEditingTitle(true)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                  border: "1px solid var(--btn-primary)",
+                  background: "transparent",
+                  color: "var(--btn-primary)",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 500,
+                }}
+              >
+                Edit
+              </button>
             </div>
           )}
         </div>

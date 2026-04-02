@@ -19,7 +19,7 @@ export function ProjectMiningProvider({ children }: { children: ReactNode }) {
     if (miningRef.current) return;
     miningRef.current = true;
     setIsProjectMining(true);
-    api.uploadProject({ file }).catch(() => {}).finally(() => {
+    api.uploadProject({ file }).finally(() => {
       miningRef.current = false;
       setIsProjectMining(false);
     });
