@@ -93,6 +93,37 @@ graph TB
 
 ---
 
+## 2. DFD Level 0 — Context Diagram
+
+Shows the system as a single process with all external entities and top-level data flows across the system boundary.
+
+```mermaid
+flowchart LR
+    %% Style Definitions
+    classDef entity fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000;
+    classDef system fill:#d1c4e9,stroke:#512da8,stroke-width:2px,color:#000;
+
+    %% Nodes
+    User(["User"]):::entity
+    GHOAuth(["GitHub OAuth"]):::entity
+    GHPages(["GitHub Pages"]):::entity
+    FS(["Local File System"]):::entity
+
+    System["Project Miner\nSystem"]:::system
+
+    %% Flows
+    User -->|"project archive ZIP\nuser profile & config\nproject selections\ncustomizations & edits"| System
+    System -->|"project & file reports\nresume PDF/LaTeX/DOCX\nportfolio\ninsights & interview questions\njob readiness report"| User
+
+    FS -->|"project source files\n(via upload)"| System
+
+    System <-->|"OAuth authorization request\n/ access token"| GHOAuth
+
+    System -->|"static portfolio site"| GHPages
+```
+
+---
+
 ## 3. DFD Level 1 — System Processes
 
 Decomposes the system into 4 core processes, 4 data stores, and the same external entities from Level 0.
