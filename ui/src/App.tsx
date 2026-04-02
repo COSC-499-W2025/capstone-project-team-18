@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { api, getLatestResumeId } from "./api/apiClient";
+import { ProjectMiningProvider } from "./context/ProjectMiningContext";
 import HomePage from "./pages/HomePage";
 import JobReadinessPage from "./pages/JobReadinessPage";
 import PortfolioEditPage from "./pages/PortfolioEditPage";
@@ -54,6 +55,7 @@ export default function App() {
   const isJobReadinessRoute = location.pathname === "/job-readiness";
 
   return (
+    <ProjectMiningProvider>
     <div style={{ fontFamily: "system-ui" }}>
       {backendDown && (
         <div
@@ -171,5 +173,6 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </div>
+    </ProjectMiningProvider>
   );
 }

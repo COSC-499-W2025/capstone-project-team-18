@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   api,
@@ -9,6 +9,7 @@ import {
 } from "../api/apiClient";
 import UploadProjectModal from "../components/update/Modal/UploadProjectModal";
 import ProjectSkeleton from "@/components/ProjectSkeleton";
+import { useProjectMining } from "@/context/ProjectMiningContext";
 
 type PortfolioListItem = {
   id: number;
@@ -29,6 +30,7 @@ function getImageSrc(base64: string): string {
 
 export default function HomePage({ backendReady }: { backendReady: boolean }) {
   const location = useLocation();
+  const { isProjectMining, startMining } = useProjectMining();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
@@ -42,16 +44,6 @@ export default function HomePage({ backendReady }: { backendReady: boolean }) {
   const [resumesLoading, setResumesLoading] = useState(true);
   const [resumesError, setResumesError] = useState<string | null>(null);
   const [latestResumeId, setLatestResumeId] = useState<number | null>(null);
-
-  const ANALYSIS_KEY = "project_analysis_in_progress";
-  const COUNT_KEY = "project_count_before_upload";
-
-  const [isProjectAnalysisInProgress, setIsProjectAnalysisInProgress] = useState(
-    () => localStorage.getItem(ANALYSIS_KEY) === "true"
-  );
-  const [projectCountBeforeUpload, setProjectCountBeforeUpload] = useState(
-    () => parseInt(localStorage.getItem(COUNT_KEY) ?? "0", 10)
-  );
 
   async function loadProjects() {
     try {
@@ -116,33 +108,13 @@ export default function HomePage({ backendReady }: { backendReady: boolean }) {
   setLatestResumeId(resumeId);
 }
 
+  const wasMining = useRef(false);
   useEffect(() => {
-  if (!isProjectAnalysisInProgress) return;
-
-  const interval = setInterval(async () => {
-    try {
-      const res = await api.getProjects();
-      const updatedProjects = Array.isArray(res?.projects) ? res.projects : [];
-
-      setProjects(updatedProjects);
-      setError(null);
-      setLoading(false);
-
-      if (updatedProjects.length > projectCountBeforeUpload) {
-        setIsProjectAnalysisInProgress(false);
-        localStorage.removeItem(ANALYSIS_KEY);
-        localStorage.removeItem(COUNT_KEY);
-      }
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load projects");
-      setIsProjectAnalysisInProgress(false);
-      localStorage.removeItem(ANALYSIS_KEY);
-      localStorage.removeItem(COUNT_KEY);
+    if (wasMining.current && !isProjectMining) {
+      loadProjects();
     }
-  }, 3000);
-
-  return () => clearInterval(interval);
-}, [isProjectAnalysisInProgress, projectCountBeforeUpload]);
+    wasMining.current = isProjectMining;
+  }, [isProjectMining]);
 
 async function handleCreateResume() {
   try {
@@ -173,14 +145,8 @@ async function handleCreateResume() {
   }
 }
 
-async function handleUploadSuccess() {
-  const count = projects.length;
-  setProjectCountBeforeUpload(count);
-  localStorage.setItem(COUNT_KEY, String(count));
-  setShowUploadModal(false);
-  setIsProjectAnalysisInProgress(true);
-  localStorage.setItem(ANALYSIS_KEY, "true");
-  await loadProjects();
+function handleUploadSuccess(file: File) {
+  startMining(file);
 }
 
   return (
@@ -260,12 +226,12 @@ async function handleUploadSuccess() {
               </>
             ) : (
               <>
-                {isProjectAnalysisInProgress && (
+                {isProjectMining && (
                   <div style={{ color: "var(--text-muted)", marginBottom: 12 }}>
                     Project Analysis In Progress...
                   </div>
                 )}
-                {!error && projects.length === 0 && !isProjectAnalysisInProgress && (
+                {!error && projects.length === 0 && !isProjectMining && (
                   <div>No projects found.</div>
                 )}
                 {!error && (
@@ -316,7 +282,7 @@ async function handleUploadSuccess() {
                         )}
                       </Link>
                     ))}
-                    {isProjectAnalysisInProgress && <ProjectSkeleton count={3} />}
+                    {isProjectMining && <ProjectSkeleton count={3} />}
                   </div>
                 )}
               </>
