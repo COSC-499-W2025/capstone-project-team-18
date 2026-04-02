@@ -1,56 +1,107 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import UploadProjectModal from "../UploadProjectModal";
+import { api } from "../../../../api/apiClient";
+
+const mockNavigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+vi.mock("../../../../api/apiClient", () => ({
+  api: {
+    getUserConfig: vi.fn(),
+  },
+}));
+
+const configWithConsent = { consent: true, github: "testuser" };
+const configWithoutConsent = { consent: false, github: "" };
 
 describe("UploadProjectModal", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.getUserConfig).mockResolvedValue(configWithConsent as any);
+  });
+
   it("does not render when open is false", () => {
     render(<UploadProjectModal open={false} onClose={vi.fn()} />);
     expect(screen.queryByText("Upload Project")).not.toBeInTheDocument();
   });
 
-  it("renders when open is true", () => {
+  it("renders after consent is confirmed", async () => {
     render(<UploadProjectModal open={true} onClose={vi.fn()} />);
-    expect(screen.getByText("Upload Project")).toBeInTheDocument();
+    expect(await screen.findByText("Upload Project")).toBeInTheDocument();
     expect(screen.getByText(/upload or drag and drop/i)).toBeInTheDocument();
   });
 
-  it("keeps Upload disabled until a valid file is selected", () => {
+  it("does not render content while consent check is pending", () => {
+    vi.mocked(api.getUserConfig).mockReturnValue(new Promise(() => {}));
     render(<UploadProjectModal open={true} onClose={vi.fn()} />);
-
-    const uploadButton = screen.getByRole("button", {name: /start mining|analyzing/i,
-    });
-    expect(uploadButton).toBeDisabled();
+    expect(screen.queryByText("Upload Project")).not.toBeInTheDocument();
   });
 
-  it("shows selected file name after file selection", () => {
-    render(<UploadProjectModal open={true} onClose={vi.fn()} />);
+  it("closes and redirects to profile when consent is missing", async () => {
+    vi.mocked(api.getUserConfig).mockResolvedValue(configWithoutConsent as any);
+    const onClose = vi.fn();
 
-    const input = screen.getByTestId("upload-input") as HTMLInputElement;
-    const file = new File(["dummy"], "project.zip", {
-      type: "application/zip",
+    render(<UploadProjectModal open={true} onClose={onClose} />);
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(mockNavigate).toHaveBeenCalledWith("/profile", {
+      state: { consentRequired: true },
     });
+    expect(screen.queryByText("Upload Project")).not.toBeInTheDocument();
+  });
 
-    fireEvent.change(input, { target: { files: [file] } });
+  it("keeps Start Mining disabled until a valid file is selected", async () => {
+    render(<UploadProjectModal open={true} onClose={vi.fn()} />);
+    const btn = await screen.findByRole("button", { name: /start mining/i });
+    expect(btn).toBeDisabled();
+  });
+
+  it("shows selected file name after a valid file is chosen", async () => {
+    render(<UploadProjectModal open={true} onClose={vi.fn()} />);
+    await screen.findByText("Upload Project");
+
+    fireEvent.change(screen.getByTestId("upload-input") as HTMLInputElement, {
+      target: { files: [new File(["x"], "project.zip", { type: "application/zip" })] },
+    });
 
     expect(screen.getByText("project.zip")).toBeInTheDocument();
   });
 
-  it("keeps Upload disabled for unsupported file types", () => {
+  it("keeps Start Mining disabled and shows an error for unsupported file types", async () => {
     render(<UploadProjectModal open={true} onClose={vi.fn()} />);
+    await screen.findByText("Upload Project");
 
-    const input = screen.getByTestId("upload-input") as HTMLInputElement;
-    const file = new File(["dummy"], "project.txt", {
-      type: "text/plain",
+    fireEvent.change(screen.getByTestId("upload-input") as HTMLInputElement, {
+      target: { files: [new File(["x"], "project.txt", { type: "text/plain" })] },
     });
 
-    fireEvent.change(input, { target: { files: [file] } });
+    expect(screen.getByText(/unsupported file type/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start mining/i })).toBeDisabled();
+  });
 
-    expect(
-      screen.getByText(/unsupported file type/i)
-    ).toBeInTheDocument();
+  it("calls onUploadSuccess with the file and closes when Start Mining is clicked", async () => {
+    const onClose = vi.fn();
+    const onUploadSuccess = vi.fn();
+    render(
+      <UploadProjectModal open={true} onClose={onClose} onUploadSuccess={onUploadSuccess} />
+    );
+    await screen.findByText("Upload Project");
 
-    const uploadButton = screen.getByRole("button", {name: /start mining|analyzing/i,
+    const file = new File(["x"], "project.zip", { type: "application/zip" });
+    fireEvent.change(screen.getByTestId("upload-input") as HTMLInputElement, {
+      target: { files: [file] },
     });
-    expect(uploadButton).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /start mining/i }));
+
+    expect(onClose).toHaveBeenCalled();
+    expect(onUploadSuccess).toHaveBeenCalledWith(file);
   });
 });
