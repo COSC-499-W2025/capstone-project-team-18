@@ -114,8 +114,8 @@ def save_project_report(
     existing = existing or latest_related_project
     previous_project_name = existing.project_name
 
-    # If no recomputation occurred (files unchanged), update in place without versioning
-    if not needs_recomputation and existing is not None:
+    # Update in place regardless of whether files changed or not
+    if existing is not None:
         existing.user_config_used = user_config_id
         existing.statistic = incoming_model.statistic
         existing.last_updated = datetime.now(timezone.utc)
