@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../../api/apiClient";
 import InfoIcon from '@mui/icons-material/Info';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -7,7 +8,7 @@ import FolderIcon from '@mui/icons-material/Folder';
 type UploadProjectModalProps = {
   open: boolean;
   onClose: () => void;
-  onUploadSuccess?: () => void;
+  onUploadSuccess?: (file: File) => void;
 };
 
 const ALLOWED_EXTENSIONS = [".zip", ".gz", ".7z", ".tar.gz"];
@@ -28,14 +29,13 @@ export default function UploadProjectModal({
   onClose,
   onUploadSuccess,
 }: UploadProjectModalProps) {
+  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [configuredGithub, setConfiguredGithub] = useState<string>("");
   const [hasConsent, setHasConsent] = useState<boolean | null>(null);
 
@@ -60,8 +60,14 @@ export default function UploadProjectModal({
 
         if (!alive) return;
 
+        if (!res?.consent) {
+          onClose();
+          navigate("/profile", { state: { consentRequired: true } });
+          return;
+        }
+
         setConfiguredGithub(res?.github?.trim?.() ?? "");
-        setHasConsent(res?.consent ?? false);
+        setHasConsent(true);
       } catch {
         if (!alive) return;
 
@@ -79,15 +85,13 @@ export default function UploadProjectModal({
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || hasConsent !== true) return null;
 
   function resetState() {
     setSelectedFile(null);
     setIsDragging(false);
     setIsLoadingConfig(false);
-    setIsUploading(false);
     setUploadError(null);
-    setUploadSuccess(null);
     setConfiguredGithub("");
     setHasConsent(null);
     if (inputRef.current) {
@@ -96,19 +100,18 @@ export default function UploadProjectModal({
   }
 
   function handleClose() {
-    if (isUploading || isLoadingConfig) return;
+    if (isLoadingConfig) return;
     resetState();
     onClose();
   }
 
   function handleChooseFile() {
-    if (isUploading || isLoadingConfig) return;
+    if (isLoadingConfig) return;
     inputRef.current?.click();
   }
 
   function handleSelectedFile(file: File | null) {
     setUploadError(null);
-    setUploadSuccess(null);
     setSelectedFile(file);
   }
 
@@ -119,7 +122,6 @@ export default function UploadProjectModal({
 
   function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
-    if (isUploading) return;
     setIsDragging(true);
   }
 
@@ -130,54 +132,44 @@ export default function UploadProjectModal({
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
-    if (isUploading) return;
-
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0] ?? null;
     handleSelectedFile(file);
   }
 
   function handleRemoveFile() {
-    if (isUploading) return;
     setSelectedFile(null);
     setUploadError(null);
-    setUploadSuccess(null);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
   }
 
-  async function handleUpload() {
-  setUploadError(null);
-  setUploadSuccess(null);
+  function handleUpload() {
+    setUploadError(null);
 
-  if (!selectedFile) {
-    setUploadError("Please select a project archive before uploading.");
-    return;
+    if (!selectedFile) {
+      setUploadError("Please select a project archive before uploading.");
+      return;
+    }
+
+    if (fileValidationError) {
+      setUploadError(fileValidationError);
+      return;
+    }
+
+    if (hasConsent === false) {
+      resetState();
+      onClose();
+      navigate("/profile", { state: { consentRequired: true } });
+      return;
+    }
+
+    const fileToUpload = selectedFile;
+    resetState();
+    onClose();
+    onUploadSuccess?.(fileToUpload);
   }
-
-  if (fileValidationError) {
-    setUploadError(fileValidationError);
-    return;
-  }
-
-  const fileToUpload = selectedFile;
-
-  setIsUploading(true);
-  resetState();
-  onClose();
-  onUploadSuccess?.();
-
-  try {
-    await api.uploadProject({
-      file: fileToUpload,
-    });
-  } catch (error: any) {
-    console.error(error);
-  } finally {
-    setIsUploading(false);
-  }
-}
 
   return (
     <div
@@ -217,14 +209,13 @@ export default function UploadProjectModal({
 
           <button
             onClick={handleClose}
-            disabled={isUploading || isLoadingConfig}
+            disabled={isLoadingConfig}
             style={{
               border: "none",
               background: "transparent",
-              color: isUploading || isLoadingConfig ? "#777" : "#444",
+              color: isLoadingConfig ? "#777" : "#444",
               fontSize: 20,
-              cursor:
-                isUploading || isLoadingConfig ? "not-allowed" : "pointer",
+              cursor: isLoadingConfig ? "not-allowed" : "pointer",
             }}
             aria-label="Close upload modal"
           >
@@ -238,7 +229,7 @@ export default function UploadProjectModal({
           type="file"
           accept=".zip,.gz,.7z,.tar.gz"
           onChange={handleFileChange}
-          disabled={isUploading || isLoadingConfig}
+          disabled={isLoadingConfig}
           style={{ display: "none" }}
         />
 
@@ -254,9 +245,9 @@ export default function UploadProjectModal({
             textAlign: "center",
             background: isDragging ? "#f0f4ff" : "var(--bg-surface)",
             marginBottom: 16,
-            cursor: isUploading || isLoadingConfig ? "not-allowed" : "pointer",
+            cursor: isLoadingConfig ? "not-allowed" : "pointer",
             transition: "all 0.2s ease",
-            opacity: isUploading || isLoadingConfig ? 0.7 : 1,
+            opacity: isLoadingConfig ? 0.7 : 1,
           }}
         >
           <div style={{ fontSize: 32, marginBottom: 12 }}>
@@ -293,42 +284,18 @@ export default function UploadProjectModal({
 
             <button
               onClick={handleRemoveFile}
-              disabled={isUploading || isLoadingConfig}
+              disabled={isLoadingConfig}
               style={{
                 padding: "8px 12px",
                 borderRadius: 10,
                 border: "1px solid var(--border)",
                 background: "transparent",
-                color: isUploading || isLoadingConfig ? "#777" : "#444",
-                cursor:
-                  isUploading || isLoadingConfig ? "not-allowed" : "pointer",
+                color: isLoadingConfig ? "#777" : "#444",
+                cursor: isLoadingConfig ? "not-allowed" : "pointer",
               }}
             >
               Remove
             </button>
-          </div>
-        )}
-
-        {!isLoadingConfig && hasConsent === false && (
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "flex-start",
-              background: "var(--danger-bg)",
-              border: "1px solid #7a3a1a",
-              borderRadius: 12,
-              padding: 14,
-              marginBottom: 16,
-              color: "#ffb07a",
-            }}
-          >
-            <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
-            <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-              You must complete your profile before uploading a project. Open{" "}
-              <strong>Profile</strong> (top-right of the app) and save your
-              preferences, including accepting the data consent, then try again.
-            </div>
           </div>
         )}
 
@@ -379,18 +346,6 @@ export default function UploadProjectModal({
           </div>
         )}
 
-        {uploadSuccess && (
-          <div
-            style={{
-              marginBottom: 12,
-              color: "#16a34a",
-              fontSize: 14,
-            }}
-          >
-            {uploadSuccess}
-          </div>
-        )}
-
         <div
           style={{
             display: "flex",
@@ -403,8 +358,6 @@ export default function UploadProjectModal({
           <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
             {isLoadingConfig
               ? "Loading saved settings..."
-              : isUploading
-              ? "Analyzing Project..."
               : selectedFile
               ? "Ready to Analyze."
               : "No file selected."}
@@ -419,15 +372,14 @@ export default function UploadProjectModal({
           >
             <button
               onClick={handleClose}
-              disabled={isUploading || isLoadingConfig}
+              disabled={isLoadingConfig}
               style={{
                 padding: "10px 14px",
                 background: "transparent",
                 border: "1px solid var(--border)",
                 borderRadius: 10,
-                color: isUploading || isLoadingConfig ? "#777" : "#444",
-                cursor:
-                  isUploading || isLoadingConfig ? "not-allowed" : "pointer",
+                color: isLoadingConfig ? "#777" : "#444",
+                cursor: isLoadingConfig ? "not-allowed" : "pointer",
               }}
             >
               Cancel
@@ -435,45 +387,24 @@ export default function UploadProjectModal({
 
             <button
               onClick={handleUpload}
-              disabled={
-                !selectedFile ||
-                !!fileValidationError ||
-                isUploading ||
-                isLoadingConfig ||
-                hasConsent === false
-              }
+              disabled={!selectedFile || !!fileValidationError || isLoadingConfig}
               style={{
                 padding: "10px 16px",
                 borderRadius: 10,
                 border: "none",
                 background:
-                  !selectedFile ||
-                  fileValidationError ||
-                  isUploading ||
-                  isLoadingConfig ||
-                  hasConsent === false
+                  !selectedFile || fileValidationError || isLoadingConfig
                     ? "#202020"
                     : "#0055B7",
                 color: "#fff",
-                opacity:
-                  !selectedFile ||
-                  fileValidationError ||
-                  isUploading ||
-                  isLoadingConfig ||
-                  hasConsent === false
-                    ? 0.6
-                    : 1,
+                opacity: !selectedFile || fileValidationError || isLoadingConfig ? 0.6 : 1,
                 cursor:
-                  !selectedFile ||
-                  fileValidationError ||
-                  isUploading ||
-                  isLoadingConfig ||
-                  hasConsent === false
+                  !selectedFile || fileValidationError || isLoadingConfig
                     ? "not-allowed"
                     : "pointer",
               }}
             >
-              {isUploading ? "Analyzing..." : "Start Mining"}
+              Start Mining
             </button>
           </div>
         </div>
