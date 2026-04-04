@@ -7,23 +7,28 @@ Team 18's project miner. This README has been updated with Milestone 2 requireme
 2. **[How to Use the System](#how-to-use-the-system)**
 3. **[Known Bugs](#known-bugs)**
 4. **[Testing the System](#testing-the-system)**
-5. **[Milestone 3 Documentation]()**
-6. **[Milestone 2 Documentation]()**
-7. **[Milestone 1 Documentation]()**
+5. **[Milestone 3 Documentation](#milestone-3-documentation)**
+6. **[Milestone 2 Documentation](#milestone-2-documentation)**
+7. **[Milestone 1 Documentation](#milestone-1-documentation)**
 
 ## Setup and Installation Guide
 
-Our project is a local desktop application that uses Electron for the frontend, the Python and the FastAPI web framework for the backend, and a MySQL database for storing user data.
+Our project is a desktop application that uses Electron for the frontend, the Python and the FastAPI web framework for the backend, and a MySQL database for storing user data. The entire app exists on the user's local device and is hosted over their local network.
+
+### Supported Operating Systems:
+- macOS
+- Linux
+- Windows (WSL recommended)
 
 ### Prerequisites
 
-- **Docker** (v4.65.0 or higher)
-- VSCode's [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
-- **npm** (v11.6.1 or higher)
+- **[Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)** extension for VSCode
+- **[Docker](https://www.docker.com/products/docker-desktop/)** (v4.65.0 or higher)
+- **[npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)** (v11.6.1 or higher)
+- **[Node.js](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)** (v20.0.0+ required; enforced via `ui/package.json` engines field)
+- **[Python](https://www.python.org/downloads/)** (v3.13 recommended)
 
-### Starting the Backend
-
-The easiest way to start the back-end for the project is through a Dev Container.
+### Downloading the Project and Starting the Backend
 
 #### Steps:
 1. Clone this repository locally, and open the folder in VSCode.
@@ -32,7 +37,7 @@ The easiest way to start the back-end for the project is through a Dev Container
   - Open the Command Palette by pressing `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS).
   - Enter `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all necessary dependencies within it.
 
-3. Once the project has opeend in the dev container, download our `.env` file [here](https://ubcca-my.sharepoint.com/:u:/g/personal/ataschuk_student_ubc_ca/IQClK5YDUTpxQZBVlP2vqhKtAS-VBQtvIZyO0TrRWBriubY?e=KvJypq). You will need to log into Microsoft with your UBC CWL account. After the file has downloaded, move it into the project's root directory.
+3. Once the project has opened in the dev container, download our `.env` file [here](https://ubcca-my.sharepoint.com/:u:/g/personal/ataschuk_student_ubc_ca/IQClK5YDUTpxQZBVlP2vqhKtAS-VBQtvIZyO0TrRWBriubY?e=KvJypq). You will need to log into Microsoft with your UBC CWL account. After the file has downloaded, move it into the project's root directory.
 
 4. Open a new terminal in the dev container and do the following:
 
@@ -72,8 +77,7 @@ You can verify the API is running by going to http://127.0.0.1:8000/ping in your
     npm run dev
     ```
 
-For more detailed instructions and help with error handling, check [`ui/README.md`](/ui/README.md).
-
+For help with error handling, check [`ui/troubleshoot.md`](/ui/troubleshoot.md).
 
 ## How to Use the System
 
@@ -83,7 +87,7 @@ For more detailed instructions and help with error handling, check [`ui/README.m
 
 ### Backend Testing
 
-We use the [`pytest`](https://docs.pytest.org/en/stable/) framework to test our backend logic and ensure that the system will perform as expected.
+We use the [`pytest`](https://docs.pytest.org/en/stable/) framework to test our backend logic and ensure that the system will perform as expected. All backend tests are located at `/miner/tests/`. The testing suite includes fixtures for a temporary database, test projects, test `FileReports`, `ProjetReports`, etc., and more.
 
 
 To test the backend, open the project in a dev container. Open a new terminal instance, cd into the `/miner` directory, and run:
@@ -98,6 +102,8 @@ RUN_ML_TESTS=1 pytest
 
 - _Note_: We have a continuous integration pipeline configured for all pull requests (PRs) that requires all backend and frontend tests to pass before a PR can be merged.
 This pipeline _does_ run the ML tests by default.
+
+![pytest-report]()
 
 ### Frontend Testing
 
@@ -124,8 +130,41 @@ To test the UI, open a terminal instance outside of the dev container, cd to the
 npx vitest run
 ```
 
+**Vitest Output**
+![vitest-output](/vitest-output.png)
+
 ## Milestone 3 Documentation
 
+
+
+### Milestone Requirements
+
+We have met all milestone requirements. Additionally, we have a bonus deployment feature.
+
+1. A One-Page Résumé:
+- Education/Awards
+- Skills, categorized by expertise level
+- Projects, highlighting evidence of contributions/impact
+
+**The Résumé Edit Page**
+![resume-editor](/resume-editor.png)
+
+**Exported PDF Résumé**
+![exported-resume]()
+
+2. A Web Portfolio:
+- Timeline of skills, demonstrating learning progression and increased in expertise/depth
+- Heatmap of project activities, showing evidence of productivity over time
+- Showcase of top 3 projects, illustrating process to demonstrate evolution of changes
+- Dashboard supports a private mode where the user can interactively customize specific components or visualizations before going live
+- Dashboard supports a public mode where the dashboard information only changes based on search and filter
+
+
+**The Portfolio Edit Page**
+![portfolio-editor](/portfolio-editor.png)
+
+**Portfolio Deployed to a GitHub Pages Site**
+![web-portfolio](/web-portfolio.png)
 
 ## Milestone 2 Documentation
 
