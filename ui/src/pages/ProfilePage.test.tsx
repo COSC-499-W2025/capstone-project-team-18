@@ -50,7 +50,7 @@ describe("ProfilePage — consent banner", () => {
   it("does not show the banner when there is no consentRequired state", () => {
     render(<ProfilePage />);
     expect(
-      screen.queryByText(/you must accept the data consent/i)
+      screen.queryByText(/you must enter your email and accept the data consent/i)
     ).not.toBeInTheDocument();
   });
 
@@ -58,7 +58,7 @@ describe("ProfilePage — consent banner", () => {
     mockLocationState = { consentRequired: true };
     render(<ProfilePage />);
     expect(
-      screen.getByText(/you must accept the data consent/i)
+      screen.getByText(/you must enter your email and accept the data consent/i)
     ).toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe("ProfilePage — consent banner", () => {
     fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
 
     expect(
-      screen.queryByText(/you must accept the data consent/i)
+      screen.queryByText(/you must enter your email and accept the data consent/i)
     ).not.toBeInTheDocument();
   });
 
@@ -77,13 +77,13 @@ describe("ProfilePage — consent banner", () => {
     mockLocationState = { consentRequired: true };
     render(<ProfilePage />);
 
-    expect(screen.getByText(/you must accept the data consent/i)).toBeInTheDocument();
+    expect(screen.getByText(/you must enter your email and accept the data consent/i)).toBeInTheDocument();
 
     // The consent checkbox is the first checkbox on the page
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
 
     expect(
-      screen.queryByText(/you must accept the data consent/i)
+      screen.queryByText(/you must enter your email and accept the data consent/i)
     ).not.toBeInTheDocument();
   });
 
@@ -91,7 +91,7 @@ describe("ProfilePage — consent banner", () => {
     mockLocationState = { consentRequired: true };
     render(<ProfilePage />);
 
-    expect(screen.getByText(/you must accept the data consent/i)).toBeInTheDocument();
+    expect(screen.getByText(/you must enter your email and accept the data consent/i)).toBeInTheDocument();
     // Consent checkbox is present for the user to act on
     expect(screen.getAllByRole("checkbox").length).toBeGreaterThan(0);
   });
