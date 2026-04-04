@@ -1,30 +1,40 @@
-## Project Miner: Milestone 2
+# COSC 499: Capstone Software Engineering Project, Team 18
 
 Team 18's project miner. This README has been updated with Milestone 2 requirements. This guide will walk you through the set up.
 
-## Setup
+## Contents
+1. **[Setup and Installation Guide](#setup-and-installation-guide)**
+2. **[How to Use the System](#how-to-use-the-system)**
+3. **[Known Bugs](#known-bugs)**
+4. **[Testing the System](#testing-the-system)**
+5. **[Milestone 3 Documentation]()**
+6. **[Milestone 2 Documentation]()**
+7. **[Milestone 1 Documentation]()**
 
-This project is built with a API running in a docker container, and a front end built locally.
+## Setup and Installation Guide
+
+Our project is a local desktop application that uses Electron for the frontend, the Python and the FastAPI web framework for the backend, and a MySQL database for storing user data.
 
 ### Prerequisites
+
 - **Docker** (v4.65.0 or higher)
 - VSCode's [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
 - **npm** (v11.6.1 or higher)
 
-### Backend
+### Starting the Backend
 
 The easiest way to start the back-end for the project is through a Dev Container.
 
 #### Steps:
-1. Clone, and open the repo folder in VSCode.
+1. Clone this repository locally, and open the folder in VSCode.
 
-2. Accept the prompt to create a Dev Container or do the following:
+2. Accept the prompt to create a Dev Container. If there is no prompt do the following:
   - Open the Command Palette by pressing `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS).
   - Enter `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all necessary dependencies within it.
 
-3. To download the `.env` file, you will need to log into your UBC Microsoft account. You can download the file [here](https://ubcca-my.sharepoint.com/:u:/g/personal/ataschuk_student_ubc_ca/IQClK5YDUTpxQZBVlP2vqhKtAS-VBQtvIZyO0TrRWBriubY?e=KvJypq). Once it downloads, place the file in the project's root directory.
+3. Once the project has opeend in the dev container, download our `.env` file [here](https://ubcca-my.sharepoint.com/:u:/g/personal/ataschuk_student_ubc_ca/IQClK5YDUTpxQZBVlP2vqhKtAS-VBQtvIZyO0TrRWBriubY?e=KvJypq). You will need to log into Microsoft with your UBC CWL account. After the file has downloaded, move it into the project's root directory.
 
-4. After the porject has opened in the dev container, run:
+4. Open a new terminal in the dev container and do the following:
 
     ```bash
     source .env
@@ -35,22 +45,24 @@ The easiest way to start the back-end for the project is through a Dev Container
     cd miner && fastapi dev ./src/interface/api/api.py
     ```
 
+    When it API is ready to receive requests, it will print the following to the terminal:
+    ```bash
+    INFO   Application startup complete.
+    ```
+
 **Note:** if you get a `sqlalchemy.exc.OperationalError` it is likely because you are not CD'd into `/miner`.
 
 You can verify the API is running by going to http://127.0.0.1:8000/ping in your browser. You should see "pong".
 
-To test the backend, while CD'd into the miner, run `pytest`. By deafult, ML tests are skipped, but may be explictly included by running `RUN_ML_TESTS=1 pytest`.
-
----
-
-### Frontend
-
-While Milestone 2 may be run and verified straight from Swagger, we also have an Electron app for our front end.
+### Starting the Frontend
 
 #### Steps:
-1. **Outside of the dev container** cd into the `ui/` folder.
+1. **Outside of the dev container** open a new terminal instance and cd into the `ui/` folder of the project with:
+    ```bash
+    cd your/path/to/capstone-project-team-18/ui
+    ```
 
-2. Download and install the UI's packages, libraries, etc:
+2. Download and install the UI's dependencies:
     ```bash
     npm install
     ```
@@ -60,18 +72,70 @@ While Milestone 2 may be run and verified straight from Swagger, we also have an
     npm run dev
     ```
 
-Vite will print `http://localhost:5173` for the web renderer. For the Electron app, use the Electron window that opens after running `npm run dev`.
-
-If you run into any errors, check the `ui/README.md` for more detailed instructions.
+For more detailed instructions and help with error handling, check [`ui/README.md`](/ui/README.md).
 
 
-## Endpoints
+## How to Use the System
 
-All endpoints can be explored interactively via Swagger at http://127.0.0.1:8000/docs.
+## Known Bugs
+
+## Testing the System
+
+### Backend Testing
+
+We use the [`pytest`](https://docs.pytest.org/en/stable/) framework to test our backend logic and ensure that the system will perform as expected.
+
+
+To test the backend, open the project in a dev container. Open a new terminal instance, cd into the `/miner` directory, and run:
+```bash
+pytest
+```
+
+By default, tests for machine learning (ML) are skipped for local testing because they take significantly longer than the others (> 5 minutes). You can explictly include them by running:
+```bash
+RUN_ML_TESTS=1 pytest
+```
+
+- _Note_: We have a continuous integration pipeline configured for all pull requests (PRs) that requires all backend and frontend tests to pass before a PR can be merged.
+This pipeline _does_ run the ML tests by default.
+
+### Frontend Testing
+
+The Electron UI uses [`Vitest`](https://vitest.dev/) to run unit tests for the frontend. The API is not required to be running for these tests to work.
+
+#### What we Test
+- API client behavior (URL construction, base URL normalization).
+- Correct endpoint calls (`/projects`, `/projects/{project_name}`, `/skills`, `/ping`).
+- URL encoding for route parameters (e.g. project names with spaces such as "My Project").
+- Error handling for non-200 HTTP responses, including actionable error messages.
+- Backend connectivity checks independent of database state
+
+#### How the Tests Work
+In order to keep UI tests fast, deterministic, and independent from the backend:
+- Tests are ran in a Node/Vitest environment, not in a browser.
+- `fetch` is mocked using Vitest (`vi.fn()`), so no real HTTP requests are made.
+- Environment variables (e.g. `VITE_API_BASE_URL`) are injected manually per test.
+
+### Running the UI Tests Locally
+
+To test the UI, open a terminal instance outside of the dev container, cd to the `/ui` directory, and run:
+
+```bash
+npx vitest run
+```
+
+## Milestone 3 Documentation
+
+
+## Milestone 2 Documentation
+
+### API Endpoints
+
+While the backend is running, all endpoints can be explored interactively via Swagger at http://127.0.0.1:8000/docs. The documentation has also been added here for your convenience.
 
 ---
 
-### `POST /privacy-consent`
+#### `POST /privacy-consent`
 
 Sets the user's privacy consent and profile information. This must be completed before uploading projects.
 
@@ -96,7 +160,7 @@ Sets the user's privacy consent and profile information. This must be completed 
 
 ---
 
-### `POST /projects/upload`
+#### `POST /projects/upload`
 
 Uploads a zipped project file for analysis. The miner will extract the zip, discover projects inside, analyze each file for skills, languages, and commit patterns, then save the results to the database.
 
@@ -118,7 +182,7 @@ Uploads a zipped project file for analysis. The miner will extract the zip, disc
 
 ---
 
-### `GET /projects`
+#### `GET /projects`
 
 Returns a list of all analyzed projects stored in the database.
 
@@ -131,7 +195,7 @@ Returns a list of all analyzed projects stored in the database.
 
 ---
 
-### `GET /projects/{project_name}`
+#### `GET /projects/{project_name}`
 
 Retrieves the full analysis report for a specific project by name.
 
@@ -148,7 +212,7 @@ Retrieves the full analysis report for a specific project by name.
 
 ---
 
-### `GET /projects/{project_name}/showcase`
+#### `GET /projects/{project_name}/showcase`
 
 Returns a project formatted for showcase display — including dates, frameworks, and bullet points derived from the project analysis.
 
@@ -165,7 +229,7 @@ Returns a project formatted for showcase display — including dates, frameworks
 
 ---
 
-### `GET /skills`
+#### `GET /skills`
 
 Returns all skills extracted across all analyzed projects, weighted by how prominently they appear.
 
@@ -181,7 +245,7 @@ Returns all skills extracted across all analyzed projects, weighted by how promi
 
 ---
 
-### `GET /user-config`
+#### `GET /user-config`
 
 Returns the current user configuration including consent status, email, and GitHub username.
 
@@ -197,7 +261,7 @@ Returns the current user configuration including consent status, email, and GitH
 
 ---
 
-### `PUT /user-config`
+#### `PUT /user-config`
 
 Updates the user configuration.
 
@@ -205,7 +269,7 @@ Updates the user configuration.
 
 ---
 
-### `GET /github/login`
+#### `GET /github/login`
 
 Called by the frontend to generate an OAuth state. Generates and returns a
 GitHub authorization URL. The frontend should open the URL with the OS browser
@@ -225,7 +289,7 @@ to get the user's auth code (which will be used to get the access token).
 
 ---
 
-### `GET github/oauth-status`
+#### `GET github/oauth-status`
 
 Called by the frontend every 2 sec to poll the backend OAuth status for a generated state. This is a fallback if the deep link fails so that the frontend still knowns what the result (user accepts or denies) is so that it can switch from "pending" to "Connected".
 
@@ -240,7 +304,7 @@ Response:
 
 ---
 
-### `GET github/callback`
+#### `GET github/callback`
 
  Called by GitHub when the user does (or doesn't) authenticate our app. This gives us the auth code, which we use to get the access token (needed to take action on the user's behalf). A short piece of HTML to prompt the user to reopen our Electron app is returned in response.
 - e.g., http://localhost:8000/api/github/callback?code=abcdef123456
@@ -264,7 +328,7 @@ Response:
 
 ---
 
-### `PUT github/revoke_access_token`
+#### `PUT github/revoke_access_token`
 
 Sets the `access_token` column in the `UserConfigModel` to `None`.
 
@@ -282,7 +346,7 @@ Sets the `access_token` column in the `UserConfigModel` to `None`.
 ***Note*:** This endpoint should be called in conjunction with frontend logic to send the user to https://github.com/settings/applications so that they can revoke access on their end too.
 
 
-### `POST /resume/generate`
+#### `POST /resume/generate`
 
 Generates a resume from a list of previously analyzed projects.
 
@@ -298,13 +362,13 @@ Generates a resume from a list of previously analyzed projects.
 
 ---
 
-### `GET /resume/{resume_id}`
+#### `GET /resume/{resume_id}`
 
 Retrieves a previously generated resume by ID.
 
 ---
 
-### `POST /resume/{resume_id}/edit/metadata`
+#### `POST /resume/{resume_id}/edit/metadata`
 
 Updates the email and GitHub username on an existing resume.
 
@@ -318,7 +382,7 @@ Updates the email and GitHub username on an existing resume.
 
 ---
 
-### `POST /resume/{resume_id}/edit/bullet_point`
+#### `POST /resume/{resume_id}/edit/bullet_point`
 
 Edits or appends a bullet point on a specific resume item.
 
@@ -335,25 +399,25 @@ Edits or appends a bullet point on a specific resume item.
 
 ---
 
-### `POST /resume/{resume_id}/edit/resume_item`
+#### `POST /resume/{resume_id}/edit/resume_item`
 
 Edits the metadata (title, start date, end date) of a specific resume item.
 
 ---
 
-### `POST /resume/{resume_id}/refresh`
+#### `POST /resume/{resume_id}/refresh`
 
 Re-runs the resume generation pipeline using the same projects, producing an updated resume with the latest analysis data.
 
 ---
 
-### `GET /portfolio/{portfolio_id}`
+#### `GET /portfolio/{portfolio_id}`
 
 Retrieves a generated portfolio by ID.
 
 ---
 
-### `POST /portfolio/generate`
+#### `POST /portfolio/generate`
 
 Generates a portfolio from a list of previously analyzed projects.
 
@@ -367,85 +431,85 @@ Generates a portfolio from a list of previously analyzed projects.
 
 ---
 
-### `POST /portfolio/{portfolio_id}/refresh`
+#### `POST /portfolio/{portfolio_id}/refresh`
 
 Re-runs portfolio generation for an existing portfolio using the same projects.
 
 ---
 
-### `POST /portfolio/{portfolio_id}/sections/{section_id}/block/{block_tag}/edit`
+#### `POST /portfolio/{portfolio_id}/sections/{section_id}/block/{block_tag}/edit`
 
 Edits a specific block within a portfolio section.
 
 ---
 
-### `GET /portfolio/{portfolio_id}/conflicts`
+#### `GET /portfolio/{portfolio_id}/conflicts`
 
 Returns all blocks currently in a conflict state, for the UI to highlight edits that differ from the system-generated version.
 
 ---
 
-### `POST /portfolio/{portfolio_id}/sections/{section_id}/blocks/{block_tag}/resolve-accept`
+#### `POST /portfolio/{portfolio_id}/sections/{section_id}/blocks/{block_tag}/resolve-accept`
 
 Resolves a conflict by accepting the system-generated version of a block.
 
-## Requirements
+### Milestone 2 Requirements
 
 The full list of Milestone 2 requirements has been completed
 
-### R21
+#### R21
 
 **Allow incremental information by adding another zipped folder of files for the same portfolio or résumé that incorporates additional information at a later point in time**
 
 To showcase this, if you upload the early project and create a resume and portfolio, upload the later project, then call the portfolio and resume refresh endpoints, you will see the updated changes.
 
-### R22
+#### R22
 
 **Recognize duplicate files and maintains only one in the system**
 
 Duplicate files are recongnized by file path, and only one file (or internally called FileReports) are maintained.
 
-### R23
+#### R23
 
 **Allow users to choose which information is represented (e.g., re-ranking of projects, corrections to chronology, attributes for project comparison, skills to highlight, projects selected for showcase)**
 
 This use case can be achieved through editing the portfolio or resume.
 
-### R24
+#### R24
 
 **Incorporate a key role of the user in a given project**
 
 A user will be given roles in a project based on their commit habits. For example, an output may be "The user is a Contributor who demonstrates a bursty work pattern, primarily focusing on documentation and feature development, with a significant number of commits in a short time frame."
 
-### R25
+#### R25
 
 **Incorporate evidence of success (e.g., metrics, feedback, evaluation) for a given project**
 
 Evidence of success is included in project summaries by naming the specific features each project has. For example, an output may be "EarthLingo aims to enhance phonics education through pronunciation feedback and speech recognition using a tech stack that includes React, Next.js, TypeScript, and Speech Recognition." or "The TouristHelperApp aims to facilitate event management and trip planning by enabling users to add events, search for events, create trips, and generate itineraries. "
 
-### R26
+#### R26
 
 **Allow user to associate a portfolio image for a given project to use as the thumbnail**
 
-### R27
+#### R27
 
 **Customize and save information about a portfolio showcase project**
 
 The endpoint `/projects/{project_name}/showcase/customization` allows users to edit and save information about their portoflio showcase project.
 
-### R28
+#### R28
 
 **Customize and save the wording of a project used for a résumé item**
 
 The endpoint `POST /resume/{resume_id}/edit/bullet_point` can be used to edit the wording of a resume project.
 
-### R29
+#### R29
 
 **Display textual information about a project as a portfolio showcase**
 
 The textual information portfolio showcase item can be retrieve with the endpoint ``. Users will select their portoflio showcase, and that information will be displayed
 
-### R30
+#### R30
 
 **Display textual information about a project as a résumé item**
 
@@ -464,23 +528,23 @@ Frameworks: tkinter, pytest, typing
    - Primary contribution focus: fix (35%); Secondary: feat (25%)
 ```
 
-### R31
+#### R31
 
 **Use a FastAPI to faciliate the communication between the backend and the frontend**
 
 Achieved. We use FastAPI for our API needs.
 
-### R33/R34
+#### R33/R34
 
 Google Drive Link to the Zipped Folder: https://drive.google.com/file/d/1M0gzxZIEF1atHYQo4MammYUo7qcb4Fpz/view?usp=sharing
 
-### R35
+#### R35
 
 **Your API endpoints must be tested as if they are being called over HTTP but without running a real server, ensuring the correct status code and expected data.**
 
 Endpoints are tested over HTTP.
 
-### R36
+#### R36
 
 **Your system must have clear documentation for all of the API endpoints**
 
