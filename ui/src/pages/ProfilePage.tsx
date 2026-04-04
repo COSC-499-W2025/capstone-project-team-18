@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../api/apiClient";
 
 const SKILL_LABELS: Record<number, string> = {
@@ -18,6 +19,19 @@ type RatedSkill = { name: string; rating: number };
 type GithubAuthStatus = "idle" | "pending" | "success" | "denied" | "error";
 
 export default function ProfilePage() {
+  const location = useLocation();
+  const [consentBanner, setConsentBanner] = useState(
+    () => (location.state as any)?.consentRequired === true
+  );
+  const consentSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!consentBanner) return;
+    const timer = setTimeout(() => {
+      consentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [consentBanner]);
   const [name, setName] = useState("");
   const [github, setGithub] = useState("");
   const [email, setEmail] = useState("");
@@ -130,6 +144,7 @@ export default function ProfilePage() {
   function handleConsentChange(checked: boolean) {
     setConsent(checked);
     if (!checked) setMlConsent(false);
+    if (checked) setConsentBanner(false);
   }
 
   async function handleSave() {
@@ -640,13 +655,65 @@ export default function ProfilePage() {
             )}
           </div>
 
+          {consentBanner && (
+            <>
+              <style>{`
+                @keyframes slideDown {
+                  from { opacity: 0; transform: translateY(-10px); }
+                  to   { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes consentPulse {
+                  0%   { box-shadow: 0 0 0 0    rgba(217,119,6,0.5); }
+                  60%  { box-shadow: 0 0 0 10px rgba(217,119,6,0); }
+                  100% { box-shadow: 0 0 0 0    rgba(217,119,6,0); }
+                }
+              `}</style>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  background: "#fef3c7",
+                  border: "1px solid #d97706",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  marginBottom: 12,
+                  fontSize: 14,
+                  color: "#92400e",
+                  animation: "slideDown 0.4s ease",
+                }}
+              >
+                <span>You must enter your email and accept the data consent below before you can mine a project.</span>
+                <button
+                  type="button"
+                  onClick={() => setConsentBanner(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#92400e",
+                    fontSize: 18,
+                    lineHeight: 1,
+                    flexShrink: 0,
+                  }}
+                  aria-label="Dismiss"
+                >
+                  ×
+                </button>
+              </div>
+            </>
+          )}
+
           <div
+            ref={consentSectionRef}
             style={{
               marginBottom: 16,
               padding: 14,
               borderRadius: 12,
-              border: "1px solid var(--border)",
+              border: consentBanner ? "1px solid #d97706" : "1px solid var(--border)",
               background: "var(--bg-surface-deep)",
+              animation: consentBanner ? "consentPulse 1.4s ease 0.4s 3" : undefined,
             }}
           >
             <label

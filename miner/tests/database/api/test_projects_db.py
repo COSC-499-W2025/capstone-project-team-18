@@ -60,42 +60,69 @@ def _build_file_report(project_name: str, file_name: str) -> FileReport:
     )
 
 
-def test_save_project_report_versions_existing_project(temp_db):
+def test_reupload_with_changed_files_updates_in_place_not_versioned(temp_db):
+    """Re-uploading a project with changed files must update in place, not create Project1_2."""
     with Session(temp_db) as session:
         new_report = ProjectReport(
             file_reports=[_build_file_report("Project1", "new_file.py")],
             project_name="Project1"
         )
 
-        saved_model = save_project_report(session, new_report, 0, True)
+        saved_model = save_project_report(session, new_report, 0, needs_recomputation=True)
         session.commit()
 
-        assert saved_model.project_name == "Project1_2"
-        assert saved_model.analyzed_count == 2
-        assert saved_model.parent == "Project1"
+        assert saved_model.project_name == "Project1"
         assert len(saved_model.file_reports) == 1
-        assert saved_model.file_reports[0].project_name == "Project1_2"
+        assert saved_model.file_reports[0].project_name == "Project1"
 
 
-def test_save_project_report_versions_chain_parent_points_to_latest(temp_db):
+def test_reupload_with_changed_files_replaces_file_reports(temp_db):
+    """Re-uploading must replace old file reports, not accumulate them."""
     with Session(temp_db) as session:
-        report_v2 = ProjectReport(
-            file_reports=[_build_file_report("Project1", "v2.py")],
+        # Project1 starts with 2 files (file2.py, file3.py) from conftest
+        updated_report = ProjectReport(
+            file_reports=[_build_file_report("Project1", "changed.py")],
             project_name="Project1"
         )
-        save_project_report(session, report_v2, 0, True)
+        save_project_report(session, updated_report, 0, needs_recomputation=True)
         session.commit()
 
-        report_v3 = ProjectReport(
-            file_reports=[_build_file_report("Project1", "v3.py")],
+    with Session(temp_db) as session:
+        project = get_project_report_by_name(session, "Project1")
+        assert project is not None
+        file_names = {fr.filepath for fr in project.file_reports}
+        assert file_names == {"changed.py"}
+
+
+def test_reupload_multiple_times_stays_same_project_name(temp_db):
+    """Uploading the same project repeatedly must never create versioned names."""
+    with Session(temp_db) as session:
+        for i in range(3):
+            report = ProjectReport(
+                file_reports=[_build_file_report("Project1", f"file_v{i}.py")],
+                project_name="Project1"
+            )
+            saved = save_project_report(session, report, 0, needs_recomputation=True)
+            session.commit()
+            assert saved.project_name == "Project1"
+
+    with Session(temp_db) as session:
+        project = get_project_report_by_name(session, "Project1")
+        assert project is not None
+        assert project.project_name == "Project1"
+
+
+def test_reupload_unchanged_files_still_updates_in_place(temp_db):
+    """needs_recomputation=False must also update in place (existing behaviour)."""
+    with Session(temp_db) as session:
+        report = ProjectReport(
+            file_reports=[_build_file_report("Project1", "same.py")],
             project_name="Project1"
         )
-        saved_v3 = save_project_report(session, report_v3, 0, True)
+        saved = save_project_report(session, report, 0, needs_recomputation=False)
         session.commit()
 
-        assert saved_v3.project_name == "Project1_3"
-        assert saved_v3.analyzed_count == 3
-        assert saved_v3.parent == "Project1_2"
+        assert saved.project_name == "Project1"
 
 
 def test_save_project_report_clears_cached_insights_on_update(temp_db):
