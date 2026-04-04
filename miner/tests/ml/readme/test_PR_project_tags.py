@@ -121,6 +121,7 @@ def test_bertopic_failure_falls_back(monkeypatch):
         def fit_transform(self, _texts):
             raise RuntimeError("boom")
 
+    monkeypatch.setattr(readme_insights, "azure_openai_enabled", lambda: False)
     monkeypatch.setattr(readme_insights, "_MIN_DOCS_FOR_BERTOPIC", 1)
     monkeypatch.setattr(readme_insights, "_MIN_TOTAL_CHARS_FOR_BERTOPIC", 1)
     monkeypatch.setattr(readme_insights, "_get_topic_model",

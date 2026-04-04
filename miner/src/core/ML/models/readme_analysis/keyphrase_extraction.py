@@ -133,6 +133,11 @@ def extract_readme_keyphrases(text: str, top_n: int = _DEFAULT_TOP_N) -> list[st
 
     if azure_openai_enabled():
         phrases = _extract_with_azure_openai(truncated, top_n)
+        if not phrases:
+            logger.info(
+                "Azure README keyphrase extraction returned no phrases; using local fallback"
+            )
+            phrases = _extract_with_keybert(truncated, top_n)
     else:
         remote_phrases = remote_extract_keyphrases(truncated, top_n)
         if remote_phrases is not None:
