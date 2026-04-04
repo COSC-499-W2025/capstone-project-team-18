@@ -223,7 +223,6 @@ function TagChips({
             fontSize: 12,
             fontWeight: 600,
             lineHeight: 1.6,
-            fontWeight: 500,
           }}
         >
           {tag}
