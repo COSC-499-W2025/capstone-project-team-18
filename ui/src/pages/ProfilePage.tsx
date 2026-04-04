@@ -699,7 +699,7 @@ export default function ProfilePage() {
                   animation: "slideDown 0.4s ease",
                 }}
               >
-                <span>You must accept the data consent below before you can mine a project.</span>
+                <span>You must enter your email and accept the data consent below before you can mine a project.</span>
                 <button
                   type="button"
                   onClick={() => setConsentBanner(false)}
