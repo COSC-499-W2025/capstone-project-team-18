@@ -183,9 +183,14 @@ export default function ResumesPage() {
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* Title */}
-                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 2 }}>
                     {resume.title || `Resume #${resume.id}`}
                   </div>
+                  {resume.created_at && (
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+                      Created {formatRelativeDate(resume.created_at)}
+                    </div>
+                  )}
 
                   {/* Project pills */}
                   {resume.project_names && resume.project_names.length > 0 ? (
