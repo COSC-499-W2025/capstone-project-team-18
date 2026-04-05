@@ -12,6 +12,7 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
 import SkillsPage from "./pages/SkillsPage";
+import WalkthroughTour, { hasTourBeenCompleted } from "./components/WalkthroughTour";
 function ResumeRedirect() {
   const latestResumeId = getLatestResumeId();
 
@@ -37,9 +38,11 @@ function navLinkStyle(isActive: boolean) {
 
 export default function App() {
   const [backendDown, setBackendDown] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     api.ping().then((ok) => setBackendDown(!ok));
+    if (!hasTourBeenCompleted()) setShowTour(true);
   }, []);
 
   const location = useLocation();
@@ -131,7 +134,7 @@ export default function App() {
           Digital Artifact Miner
         </NavLink>
 
-        <nav style={{ display: "flex", gap: 8, WebkitAppRegion: "no-drag" } as CSSProperties}>
+        <nav data-tour="nav-bar" style={{ display: "flex", gap: 8, alignItems: "center", WebkitAppRegion: "no-drag" } as CSSProperties}>
           <NavLink to="/" end style={({ isActive }) => navLinkStyle(isActive)}>
             Dashboard
           </NavLink>
@@ -155,8 +158,28 @@ export default function App() {
           <NavLink to="/profile" style={({ isActive }) => navLinkStyle(isActive)}>
             Profile
           </NavLink>
+
+          <button
+            onClick={() => setShowTour(true)}
+            title="Start guided tour"
+            style={{
+              marginLeft: 4,
+              padding: "6px 10px",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "transparent",
+              color: "var(--text-muted)",
+              fontSize: 13,
+              cursor: "pointer",
+              WebkitAppRegion: "no-drag",
+            } as CSSProperties}
+          >
+            Tour
+          </button>
         </nav>
       </header>
+
+      {showTour && <WalkthroughTour onClose={() => setShowTour(false)} />}
 
       <Routes>
         <Route path="/" element={<HomePage backendReady={!backendDown} />} />

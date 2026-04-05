@@ -81,6 +81,7 @@ export default function ResumesPage() {
         </div>
 
         <button
+          data-tour="create-resume-btn"
           onClick={() => setShowCreateModal(true)}
           style={{
             padding: "10px 18px",

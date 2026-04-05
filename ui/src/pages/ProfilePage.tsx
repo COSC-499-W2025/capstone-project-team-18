@@ -239,6 +239,7 @@ export default function ProfilePage() {
         }}
       >
         <div
+          data-tour="profile-info"
           style={{
             background: "var(--bg-surface)",
             borderRadius: 16,
@@ -555,7 +556,7 @@ export default function ProfilePage() {
             GitHub access, Git-related analysis, and AI consent.
           </p>
 
-          <div style={{ marginBottom: 16 }}>
+          <div data-tour="github-connect" style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
               {githubConnected ? (
                 <button
@@ -706,6 +707,7 @@ export default function ProfilePage() {
           )}
 
           <div
+            data-tour="consent-section"
             ref={consentSectionRef}
             style={{
               marginBottom: 16,

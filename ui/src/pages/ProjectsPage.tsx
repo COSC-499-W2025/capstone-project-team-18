@@ -60,6 +60,7 @@ export default function ProjectsPage() {
     <div style={{ padding: 24, paddingTop: 40, maxWidth: 800, margin: "0 auto" }}>
       {/* Header */}
       <div
+        data-tour="projects-header"
         style={{
           display: "flex",
           justifyContent: "space-between",

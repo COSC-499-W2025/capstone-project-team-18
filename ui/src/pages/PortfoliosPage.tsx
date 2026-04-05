@@ -87,6 +87,7 @@ export default function PortfoliosPage() {
         </div>
 
         <button
+          data-tour="create-portfolio-btn"
           onClick={() => setShowCreateModal(true)}
           style={{
             padding: "10px 18px",
