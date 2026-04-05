@@ -11,6 +11,7 @@ import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ResumePage from "./pages/ResumePage";
 import ResumesPage from "./pages/ResumesPage";
+import TourResumePage from "./pages/TourResumePage";
 import SkillsPage from "./pages/SkillsPage";
 import WalkthroughTour, { hasTourBeenCompleted } from "./components/WalkthroughTour";
 function ResumeRedirect() {
@@ -199,6 +200,7 @@ export default function App() {
         <Route path="/resumes" element={<ResumesPage />} />
         <Route path="/resume" element={<ResumeRedirect />} />
         <Route path="/resume/new" element={<ResumePage />} />
+        <Route path="/resume/tour" element={<TourResumePage />} />
         <Route path="/resume/:id" element={<ResumePage />} />
         <Route path="/portfolios" element={<PortfoliosPage />} />
         <Route path="/portfolios/:id" element={<PortfolioEditPage />} />

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getLatestResumeId } from "../api/apiClient";
 import WavingHandIcon from "@mui/icons-material/WavingHand";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonIcon from "@mui/icons-material/Person";
@@ -34,6 +33,8 @@ type TourStep = {
   title: string;
   description: string;
   pulse?: boolean; // show pulsing ring (important action buttons)
+  /** If the selector is never found, navigate here and retry before skipping. */
+  fallbackPath?: string;
   Icon: React.ComponentType<SvgIconProps>;
 };
 
@@ -84,7 +85,7 @@ const steps: TourStep[] = [
     selector: '[data-tour="github-connect"]',
     title: "Connect GitHub",
     description:
-      "Upload your GitHub account to let the app automatically connect and analyze your contributions.",
+      "Connect your GitHub account to automatically deploy your portfolio to a GitHub Pages site for others to view!",
     Icon: GitHubIcon,
     pulse: true,
   },
@@ -93,7 +94,7 @@ const steps: TourStep[] = [
     selector: '[data-tour="consent-section"]',
     title: "Data & AI Consent",
     description:
-      "Project data processing consent is required to use the app. Optionally enable AI-assisted analysis for deeper insights and AI-generated summaries.",
+      "We require explicit consent to analyze any of your data. You may also enable an optional AI-assisted analysis for deeper insights and additional features.",
     Icon: PersonIcon,
   },
   {
@@ -101,7 +102,7 @@ const steps: TourStep[] = [
     selector: '[data-tour="projects-header"]',
     title: "Projects Page",
     description:
-      "All your uploaded projects appear here. Click any project to view its full analysis including the skills detected, technologies used, and contributions summarized.",
+      "All your projects will appear here. Select a project to view its full analysis including the skills detected, technologies used, and contributions summarized.",
     Icon: FolderIcon,
   },
   {
@@ -109,31 +110,14 @@ const steps: TourStep[] = [
     selector: '[data-tour="create-resume-btn"]',
     title: "Create a Resume",
     description:
-      "Use this button to generate a resume from your project data. Select which projects to include and get a tailored resume.",
+      "You can generate a resume from your project data. Select which projects to include and get a tailored resume.",
     Icon: DescriptionIcon,
     pulse: true,
   },
   {
-    // Resume edit page — path is dynamic (depends on which resume exists)
-    path: "/resume/",
-    pathMatch: "startsWith",
-    navigateTo: () => {
-      const id = getLatestResumeId();
-      return id ? `/resume/${id}` : "/resumes";
-    },
-    selector: '[data-tour="export-docx-btn"]',
-    title: "Export as Word Document",
-    description:
-      "For those who prefer a more familiar tool, the .docx export provides the flexibility to further refine and expand their resume in Microsoft Word.",
-    Icon: DescriptionIcon,
-  },
-  {
-    path: "/resume/",
-    pathMatch: "startsWith",
-    navigateTo: () => {
-      const id = getLatestResumeId();
-      return id ? `/resume/${id}` : "/resumes";
-    },
+    // Always use the tour example resume — avoids API loading delays on real pages.
+    path: "/resume/tour",
+    navigateTo: () => "/resume/tour",
     selector: '[data-tour="export-pdf-btn"]',
     title: "Export as PDF",
     description:
@@ -142,11 +126,21 @@ const steps: TourStep[] = [
     pulse: true,
   },
   {
+    path: "/resume/tour",
+    navigateTo: () => "/resume/tour",
+    selector: '[data-tour="export-docx-btn"]',
+    title: "Export as Word Document",
+    description:
+      "For those who prefer a more familiar tool, the .docx export provides the flexibility to further refine and expand their resume in Microsoft Word.",
+    Icon: DescriptionIcon,
+  },
+  {
     path: "/portfolios",
     selector: '[data-tour="create-portfolio-btn"]',
     title: "Create & Deploy a Portfolio",
     description:
-      "Build a visual portfolio website from your projects. Once created, you can deploy it online via GitHub Pages and can share it with others!",
+      "Build a portfolio website to show off your work. You can provide a summary about yourself, showcase your favorite projects, and more. \
+      When you're ready to share, you can deploy the website via GitHub Pages (requires a connected GitHub account), or download the portfolio locally.",
     Icon: WebIcon,
     pulse: true,
   },
@@ -155,7 +149,7 @@ const steps: TourStep[] = [
     selector: null,
     title: "You're All Set!",
     description:
-      "That's the full tour. Set up your profile, upload your projects, then generate resumes and portfolios tailored to each opportunity. Hope you enjoy!",
+      "That's the full tour. Set up your profile, upload your projects, then generate resumes and portfolios tailored to each opportunity!",
     Icon: RocketLaunchIcon,
   },
 ];
@@ -212,7 +206,7 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
   // Navigate to step's page, then poll until the target element appears.
   // If the element is never found (e.g. no resume exists yet), auto-advance.
   useEffect(() => {
-    const { path, pathMatch = "exact", navigateTo, selector } = steps[step];
+    const { path, pathMatch = "exact", navigateTo, selector, fallbackPath } = steps[step];
 
     const pathOk = pathMatch === "startsWith"
       ? location.pathname.startsWith(path)
@@ -243,8 +237,11 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
       } else if (attempts < 20) {
         attempts++;
         timeoutId = setTimeout(tryFind, 150);
+      } else if (fallbackPath && location.pathname !== fallbackPath) {
+        // Element not found on original page — try the fallback path (e.g. tour example resume)
+        navigate(fallbackPath);
       } else {
-        // Element never appeared on this page (e.g. no resume exists) — skip step
+        // Element still not found even on fallback — skip step
         goNextRef.current();
       }
     }
@@ -274,7 +271,7 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
   // ─── Tooltip position ─────────────────────────────────────────────────────
   // Uses clientWidth/clientHeight (excludes scrollbars and OS chrome) to
   // avoid clipping in Electron. Prefers the side with more room.
-  type TooltipPos = { top?: number; bottom?: number; left: number; width: number };
+  type TooltipPos = { top: number; left: number; width: number; maxHeight: number };
 
   function getTooltipPos(rect: DOMRect): TooltipPos {
     const W = document.documentElement.clientWidth;
@@ -283,16 +280,22 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
     const spotCenterX = rect.left + rect.width / 2;
     const left = clamp(spotCenterX - width / 2, EDGE, W - width - EDGE);
 
-    const gapAbove = rect.top - PAD - EDGE;
-    const gapBelow = H - rect.bottom - PAD - EDGE;
+    // Give the tooltip the full viewport height so content never needs to scroll.
+    // Prefer the side with more room; if neither fits, clamp into viewport.
+    const maxHeight = H - EDGE * 2;
+    const gapAbove = rect.top - PAD - 8 - EDGE;
+    const gapBelow = H - rect.bottom - PAD - 8 - EDGE;
 
+    let top: number;
     if (gapBelow >= TOOLTIP_H_EST || gapBelow >= gapAbove) {
-      const top = clamp(rect.bottom + PAD + 8, EDGE, H - TOOLTIP_H_EST - EDGE);
-      return { top, left, width };
+      top = rect.bottom + PAD + 8;
     } else {
-      const bottom = clamp(H - (rect.top - PAD - 8), EDGE, H - EDGE);
-      return { bottom, left, width };
+      top = rect.top - PAD - 8 - TOOLTIP_H_EST;
     }
+    // Clamp so tooltip always stays within the viewport (may overlap spotlight)
+    top = clamp(top, EDGE, H - TOOLTIP_H_EST - EDGE);
+
+    return { top, left, width, maxHeight };
   }
 
   const tooltipPos = targetRect ? getTooltipPos(targetRect) : null;
@@ -517,45 +520,50 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
             boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
             animation: "tour-fadein 0.2s ease",
             boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <ProgressBar />
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <div
+          {/* Scrollable body — buttons always stay visible below */}
+          <div style={{ overflowY: "auto", flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  background: "var(--accent-subtle, #e8f0fe)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon style={{ fontSize: 18, color: "var(--btn-primary)" }} />
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
+                {current.title}
+              </div>
+            </div>
+
+            <p
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: "var(--accent-subtle, #e8f0fe)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
+                margin: "0 0 14px",
+                fontSize: 13,
+                color: "var(--text-secondary)",
+                lineHeight: 1.55,
+                wordBreak: "break-word",
+                whiteSpace: "pre-line",
               }}
             >
-              <Icon style={{ fontSize: 18, color: "var(--btn-primary)" }} />
-            </div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
-              {current.title}
-            </div>
-          </div>
+              {current.description}
+            </p>
 
-          <p
-            style={{
-              margin: "0 0 14px",
-              fontSize: 13,
-              color: "var(--text-secondary)",
-              lineHeight: 1.55,
-              wordBreak: "break-word",
-              whiteSpace: "pre-line",
-            }}
-          >
-            {current.description}
-          </p>
-
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>
-            {step + 1} of {steps.length}
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>
+              {step + 1} of {steps.length}
+            </div>
           </div>
 
           <NavControls />
