@@ -1416,7 +1416,7 @@ function HeaderSection({
               style={inputStyle}
               value={draft.linkedin}
               onChange={(e) => setDraft((d) => ({ ...d, linkedin: e.target.value }))}
-              placeholder="Your LinkedIn Username"
+              placeholder="https://www.linkedin.com/in/your-profile"
             />
           </div>
           <div style={rowStyle}>

@@ -369,23 +369,58 @@ class DocxResumeRenderer(ResumeRender):
         run_name.bold = True
         run_name.font.size = Pt(18)
 
-        contact_parts = []
-        if resume.location:
-            contact_parts.append(resume.location)
-        if resume.email:
-            contact_parts.append(resume.email)
-        if resume.linkedin:
-            contact_parts.append(resume.linkedin)
-        if resume.github:
-            contact_parts.append(f"github.com/{resume.github}")
+        def _add_hyperlink(paragraph, text: str, url: str):
+            """Add a hyperlink run to an existing paragraph."""
+            part = paragraph.part
+            r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+            hyperlink = OxmlElement("w:hyperlink")
+            hyperlink.set(qn("r:id"), r_id)
+            run_elem = OxmlElement("w:r")
+            rPr = OxmlElement("w:rPr")
+            rStyle = OxmlElement("w:rStyle")
+            rStyle.set(qn("w:val"), "Hyperlink")
+            rPr.append(rStyle)
+            run_elem.append(rPr)
+            t = OxmlElement("w:t")
+            t.text = text
+            run_elem.append(t)
+            hyperlink.append(run_elem)
+            paragraph._p.append(hyperlink)
 
-        if contact_parts:
-            p_contact = doc.add_paragraph(" | ".join(contact_parts))
+        # Build contact line with hyperlinks for LinkedIn and GitHub
+        has_contact = resume.location or resume.email or resume.linkedin or resume.github
+        if has_contact:
+            p_contact = doc.add_paragraph()
             p_contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p_contact.paragraph_format.space_before = Pt(0)
             p_contact.paragraph_format.space_after = Pt(4)
-            for run in p_contact.runs:
+
+            separator = " | "
+            first = True
+
+            def _sep():
+                nonlocal first
+                if not first:
+                    run = p_contact.add_run(separator)
+                    run.font.size = Pt(10)
+                first = False
+
+            if resume.location:
+                _sep()
+                run = p_contact.add_run(resume.location)
                 run.font.size = Pt(10)
+            if resume.email:
+                _sep()
+                run = p_contact.add_run(resume.email)
+                run.font.size = Pt(10)
+            if resume.linkedin:
+                _sep()
+                linkedin_url = resume.linkedin if resume.linkedin.startswith("http") else f"https://{resume.linkedin}"
+                _add_hyperlink(p_contact, "LinkedIn", linkedin_url)
+            if resume.github:
+                _sep()
+                github_url = f"https://github.com/{resume.github}"
+                _add_hyperlink(p_contact, "GitHub", github_url)
 
         # ── Education ────────────────────────────────────────────────────────
         if resume.education:
