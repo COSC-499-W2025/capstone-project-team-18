@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { getLatestResumeId } from "../api/apiClient";
 import WavingHandIcon from "@mui/icons-material/WavingHand";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonIcon from "@mui/icons-material/Person";
@@ -23,7 +24,12 @@ const SPOT_Z = 9990;     // spotlight cutout (box-shadow technique, pointer-even
 const TOOLTIP_Z = 9995;  // tour tooltip card
 
 type TourStep = {
+  /** Exact path this step lives on, OR a path prefix when pathMatch is "startsWith" */
   path: string;
+  /** How to match location.pathname against `path`. Default: "exact" */
+  pathMatch?: "exact" | "startsWith";
+  /** Called when the tour needs to navigate to this step's page (overrides `path`). */
+  navigateTo?: () => string;
   selector: string | null; // null = centered welcome card
   title: string;
   description: string;
@@ -103,7 +109,35 @@ const steps: TourStep[] = [
     selector: '[data-tour="create-resume-btn"]',
     title: "Create a Resume",
     description:
-      "Use this button to generate an AI-powered resume from your project data. Select which projects to include and get a tailored resume.",
+      "Use this button to generate a resume from your project data. Select which projects to include and get a tailored resume.",
+    Icon: DescriptionIcon,
+    pulse: true,
+  },
+  {
+    // Resume edit page — path is dynamic (depends on which resume exists)
+    path: "/resume/",
+    pathMatch: "startsWith",
+    navigateTo: () => {
+      const id = getLatestResumeId();
+      return id ? `/resume/${id}` : "/resumes";
+    },
+    selector: '[data-tour="export-docx-btn"]',
+    title: "Export as Word Document",
+    description:
+      "For those who prefer a more familiar tool, the .docx export provides the flexibility to further refine and expand their resume in Microsoft Word.",
+    Icon: DescriptionIcon,
+  },
+  {
+    path: "/resume/",
+    pathMatch: "startsWith",
+    navigateTo: () => {
+      const id = getLatestResumeId();
+      return id ? `/resume/${id}` : "/resumes";
+    },
+    selector: '[data-tour="export-pdf-btn"]',
+    title: "Export as PDF",
+    description:
+      "The PDF export provides a polished, submission-ready version of your resume, formatted and ready for job applications without any additional edits.",
     Icon: DescriptionIcon,
     pulse: true,
   },
@@ -140,6 +174,9 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
+  // Stable ref so the tryFind polling can call the latest goNext without a stale closure
+  const goNextRef = useRef<() => void>(() => {});
+
   const current = steps[step];
   const isLast = step === steps.length - 1;
   const isCentered = current.selector === null;
@@ -169,13 +206,21 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // Navigate to step's page, then poll until the target element appears
-  useEffect(() => {
-    const { path, selector } = steps[step];
+  // Keep the ref in sync every render
+  useEffect(() => { goNextRef.current = goNext; });
 
-    if (location.pathname !== path) {
+  // Navigate to step's page, then poll until the target element appears.
+  // If the element is never found (e.g. no resume exists yet), auto-advance.
+  useEffect(() => {
+    const { path, pathMatch = "exact", navigateTo, selector } = steps[step];
+
+    const pathOk = pathMatch === "startsWith"
+      ? location.pathname.startsWith(path)
+      : location.pathname === path;
+
+    if (!pathOk) {
       setTargetRect(null);
-      navigate(path);
+      navigate(navigateTo ? navigateTo() : path);
       return;
     }
 
@@ -198,6 +243,9 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
       } else if (attempts < 20) {
         attempts++;
         timeoutId = setTimeout(tryFind, 150);
+      } else {
+        // Element never appeared on this page (e.g. no resume exists) — skip step
+        goNextRef.current();
       }
     }
 
@@ -305,7 +353,7 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
     );
   }
 
-  // ─── Progress dots ──────────────────────────────────────────────────────────
+  // ─── Progress bar ──────────────────────────────────────────────────────────
   function ProgressBar() {
     return (
       <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
@@ -341,12 +389,11 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
 
       {/*
         ── Universal backdrop ──────────────────────────────────────────────────
-        Always rendered during the tour. Blocks ALL page interaction so nothing
-        behind the tour can be accidentally clicked or typed into.
-        - Dark + flex when showing a centered card (welcome / finish)
-        - Dark + block during page navigation (smooth transition)
-        - Transparent when the spotlight is active (the spotlight's box-shadow
-          provides the dark overlay instead)
+        Always rendered. Blocks ALL page interaction so nothing behind the tour
+        can be accidentally clicked or typed into.
+        • Dark + flex  → centered card steps (welcome / finish)
+        • Dark + block → navigating between pages (smooth transition)
+        • Transparent  → spotlight active (spotlight's box-shadow is the overlay)
       */}
       <div
         style={{
@@ -427,13 +474,10 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
 
       {/*
         ── Spotlight ────────────────────────────────────────────────────────────
-        A single element positioned over the target with:
-          • border-radius: 14px  → rounded cutout corners
-          • box-shadow: 0 0 0 9999px rgba(0,0,0,0.65) → dark overlay everywhere else
-          • border: 2px solid    → blue highlight ring
-          • pointer-events: none → backdrop (at lower z-index) still blocks clicks
-                                   inside the cutout
-        This replaces the old 4-strip approach which produced square corners.
+        Single element using box-shadow for the dark overlay so the cutout
+        naturally inherits border-radius → true rounded corners.
+        pointer-events: none means the backdrop below still blocks clicks
+        inside the cutout hole.
       */}
       {showSpotlight && targetRect && (
         <div
@@ -458,8 +502,7 @@ export default function WalkthroughTour({ onClose }: { onClose: () => void }) {
       {/*
         ── Floating tooltip (spotlight steps) ──────────────────────────────────
         Positioned above or below the spotlight, whichever side has more room.
-        Width and position are clamped to stay within the viewport using
-        clientWidth/clientHeight (more reliable than innerWidth in Electron).
+        Clamped to viewport using clientWidth/clientHeight (reliable in Electron).
       */}
       {showSpotlight && tooltipPos && (
         <div
