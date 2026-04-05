@@ -91,7 +91,7 @@ For help with error handling, check [`ui/troubleshoot.md`](/ui/troubleshoot.md).
 
 This is a YouTube video covering how to download and set up our project.
 
-[![youtube vid](https://github.com/user-attachments/assets/4ee7ae50-2eea-407f-8b99-26a6443b93ed)](https://youtu.be/VPYGA6Qi-Ws "UBCO COSC 499 Team 18 Project Setup")
+[![youtube vid](https://github.com/user-attachments/assets/4ee7ae50-2eea-407f-8b99-26a6443b93ed)](https://youtu.be/qAExwEjk9Z4 "UBCO COSC 499 Team 18 Project Setup")
 
 ## Known Bugs
 
@@ -115,7 +115,8 @@ RUN_ML_TESTS=1 pytest
 - _Note_: We have a continuous integration pipeline configured for all pull requests (PRs) that requires all backend and frontend tests to pass before a PR can be merged.
 This pipeline _does_ run the ML tests by default.
 
-![pytest-report]()
+**Pytest Output (with ML tests)**
+<img width="2854" height="2830" alt="image" src="https://github.com/user-attachments/assets/a0117cd6-f984-49ac-9b00-fb60b702ae5a" />
 
 ### Frontend Testing
 
