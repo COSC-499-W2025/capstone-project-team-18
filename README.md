@@ -26,7 +26,6 @@ Our project is a desktop application that uses Electron for the frontend, the Py
 - **[Docker](https://www.docker.com/products/docker-desktop/)** (v4.65.0 or higher)
 - **[npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)** (v11.6.1 or higher)
 - **[Node.js](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)** (v20.0.0+ required; enforced via `ui/package.json` engines field)
-- **[Python](https://www.python.org/downloads/)** (v3.13 recommended)
 
 ### Downloading the Project and Starting the Backend
 
