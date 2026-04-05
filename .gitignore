@@ -89,3 +89,4 @@ miner/src/infrastructure/log/*
 miner/src/infrastructure/log/app.log
 
 .hf_cache/
+miner/helper.pdf
