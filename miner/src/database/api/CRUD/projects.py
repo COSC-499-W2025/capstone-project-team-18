@@ -119,6 +119,9 @@ def save_project_report(
         existing.user_config_used = user_config_id
         existing.statistic = incoming_model.statistic
         existing.last_updated = datetime.now(timezone.utc)
+        # Resurrect if the project was previously soft-deleted
+        if existing.is_deleted:
+            existing.is_deleted = False
 
         # Delete stale file reports and insights, then add new ones
         session.exec(
@@ -253,5 +256,34 @@ def get_all_project_report_models(session: Session) -> list[ProjectReportModel]:
     Returns:
         A list of ProjectReportModel instances.
     """
-    statement = select(ProjectReportModel)
+    statement = select(ProjectReportModel).where(
+        ProjectReportModel.is_deleted == False  # noqa: E712
+    )
     return list(session.exec(statement).all())
+
+
+def soft_delete_project_report_by_name(
+    session: Session,
+    project_name: str
+) -> bool:
+    """
+    Soft-delete a ProjectReportModel by setting is_deleted=True. The record
+    remains in the database so existing resumes and portfolios can still
+    reference it. DOES NOT COMMIT THE SESSION! YOU MUST COMMIT.
+
+    Args:
+        session: SQLModel Session
+        project_name: The project name to soft-delete
+
+    Returns:
+        True if the record was found and marked deleted, False if not found.
+    """
+    project = session.exec(
+        select(ProjectReportModel).where(
+            ProjectReportModel.project_name == project_name)
+    ).first()
+    if project is None:
+        return False
+    project.is_deleted = True
+    session.add(project)
+    return True

@@ -427,6 +427,9 @@ export default function ProjectDetailsPage() {
   const [imageRemoving, setImageRemoving] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function handleImageUpload(file: File) {
     setImageUploading(true);
@@ -453,6 +456,18 @@ export default function ProjectDetailsPage() {
       setImageUploadError((e as { message?: string })?.message ?? "Failed to remove image");
     } finally {
       setImageRemoving(false);
+    }
+  }
+
+  async function handleDeleteProject() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.deleteProject(projectName);
+      navigate("/projects");
+    } catch (e: unknown) {
+      setDeleteError((e as { message?: string })?.message ?? "Failed to delete project.");
+      setDeleting(false);
     }
   }
 
@@ -581,8 +596,8 @@ export default function ProjectDetailsPage() {
   // --- Render ---
   return (
     <div style={{ padding: "40px 48px" }}>
-      {/* Back button */}
-      <div style={{ marginBottom: 20 }}>
+      {/* Back button + Delete button */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <button
           type="button"
           onClick={() => navigate(backTo)}
@@ -597,6 +612,25 @@ export default function ProjectDetailsPage() {
         >
           {backLabel}
         </button>
+
+        {project && (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 10,
+              border: "none",
+              background: "#dc2626",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            Delete Project
+          </button>
+        )}
       </div>
 
       {loading && (
@@ -924,6 +958,90 @@ export default function ProjectDetailsPage() {
             </SectionCard>
           )}
         </>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {showDeleteConfirm && (
+        <div
+          onClick={() => { if (!deleting) setShowDeleteConfirm(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.68)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Delete Project</h2>
+            <p style={{ color: "#444", lineHeight: 1.6 }}>
+              Are you sure you want to delete{" "}
+              <strong>"{project?.project_name}"</strong>? It will no longer appear in your project list. Any resumes or portfolios that already reference it will be unaffected.
+            </p>
+
+            {deleteError && (
+              <div
+                style={{
+                  color: "var(--danger-text)",
+                  fontSize: 14,
+                  marginBottom: 16,
+                  padding: "8px 12px",
+                  background: "var(--danger-bg)",
+                  borderRadius: 8,
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: deleting ? "#777" : "#444",
+                  cursor: deleting ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleDeleteProject}
+                disabled={deleting}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: deleting ? "#b91c1c" : "#dc2626",
+                  color: "#fff",
+                  cursor: deleting ? "not-allowed" : "pointer",
+                  opacity: deleting ? 0.7 : 1,
+                }}
+              >
+                {deleting ? "Deleting..." : "Delete Project"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
