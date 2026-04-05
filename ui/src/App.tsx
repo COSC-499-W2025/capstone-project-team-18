@@ -39,10 +39,19 @@ function navLinkStyle(isActive: boolean) {
 export default function App() {
   const [backendDown, setBackendDown] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     api.ping().then((ok) => setBackendDown(!ok));
     if (!hasTourBeenCompleted()) setShowTour(true);
+  }, []);
+
+  useEffect(() => {
+    const ipc = (window as any).ipcRenderer;
+    if (!ipc) return;
+    const handler = (_event: any, fullscreen: boolean) => setIsFullscreen(fullscreen);
+    ipc.on('fullscreen-change', handler);
+    return () => ipc.off('fullscreen-change', handler);
   }, []);
 
   const location = useLocation();
@@ -115,7 +124,7 @@ export default function App() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "8px 24px 8px 120px",
+          padding: isFullscreen ? "8px 24px" : "8px 24px 8px 120px",
           borderBottom: "1px solid var(--border)",
           backgroundColor: "var(--bg-surface)",
           WebkitAppRegion: "drag",
