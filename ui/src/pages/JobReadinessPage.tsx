@@ -80,7 +80,17 @@ export default function JobReadinessPage() {
 
       setResult(response);
     } catch (error: any) {
-      setSubmitError(error?.message ?? "Failed to analyze job readiness");
+      const msg = error?.message ?? "";
+      let displayError = msg || "Failed to analyze job readiness";
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed?.error_code === "AI_SERVICE_UNAVAILABLE") {
+          displayError = "AI analysis is unavailable because you have not consented to AI features. Please enable AI consent in your profile settings to use Job Readiness analysis.";
+        }
+      } catch {
+        // not JSON, use message as-is
+      }
+      setSubmitError(displayError);
       setResult(null);
     } finally {
       setSubmitting(false);
