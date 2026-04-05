@@ -77,6 +77,7 @@ def test_generate_signature_fallback_variants(monkeypatch, overrides, expected_p
 
 def test_generate_signature_respects_require_ml_flag(monkeypatch):
     monkeypatch.setenv("ARTIFACT_MINER_SIGNATURE_REQUIRE_ML", "1")
+    monkeypatch.setattr(sg, "azure_openai_enabled", lambda: False)
     sg._CACHE.clear()
 
     summary = sg.generate_signature(_sample_facts())

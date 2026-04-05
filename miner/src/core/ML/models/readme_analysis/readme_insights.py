@@ -327,6 +327,7 @@ def extract_readme_themes_bulk(texts: list[str], max_themes: int = 5) -> list[li
     if azure_openai_enabled():
         foundry = AzureFoundryManager()
         results: list[list[str]] = []
+        azure_had_failure = False
         for text in texts:
             if not text or not text.strip():
                 results.append([])
@@ -344,10 +345,21 @@ def extract_readme_themes_bulk(texts: list[str], max_themes: int = 5) -> list[li
             )
             if response is None:
                 logger.warning("[TASK=README_THEMES] Azure generation returned no structured response for one README")
-                results.append([])
+                azure_had_failure = True
                 continue
-            results.append(_clean_theme_terms(response.themes)[:max_themes])
-        return results
+            cleaned_themes = _clean_theme_terms(response.themes)[:max_themes]
+            if not cleaned_themes:
+                azure_had_failure = True
+                logger.info(
+                    "[TASK=README_THEMES] Azure generation returned no usable themes for one README; using fallback path"
+                )
+                continue
+            results.append(cleaned_themes)
+        if not azure_had_failure and len(results) == len(texts):
+            return results
+        logger.info(
+            "[TASK=README_THEMES] Falling back to local theme extraction after Azure returned incomplete results"
+        )
 
     remote_themes = remote_extract_themes_bulk(texts, max_themes)
     if remote_themes is not None:
