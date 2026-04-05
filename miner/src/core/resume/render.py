@@ -28,14 +28,24 @@ class TextResumeRenderer(ResumeRender):
         if resume.education:
             to_return += "Education:\n"
             for ed in resume.education:
-                to_return += f"   - {ed}\n"
+                if isinstance(ed, dict):
+                    to_return += f"   - {ed.get('title', '')}\n"
+                    for bullet in ed.get("description") or []:
+                        to_return += f"      • {bullet}\n"
+                else:
+                    to_return += f"   - {ed}\n"
             to_return += "\n"
 
         # Check if resume has awards entries before rendering
         if resume.awards:
             to_return += "Awards:\n"
             for aw in resume.awards:
-                to_return += f"   - {aw}\n"
+                if isinstance(aw, dict):
+                    to_return += f"   - {aw.get('title', '')}\n"
+                    for bullet in aw.get("description") or []:
+                        to_return += f"      • {bullet}\n"
+                else:
+                    to_return += f"   - {aw}\n"
             to_return += "\n"
 
         for item in resume.items:
@@ -215,6 +225,12 @@ class ResumeLatexRenderer(ResumeRender):
                         tex.append(rf"\resumeProjectHeading{{\textbf{{{title}}}}}{{{latex_escape(date_str)}}}")
                     else:
                         tex.append(rf"  \item \small{{{title}}}")
+                    bullets = ed.get("description") or []
+                    if bullets:
+                        tex.append(r"\resumeItemListStart")
+                        for b in bullets:
+                            tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                        tex.append(r"\resumeItemListEnd")
                 else:
                     tex.append(rf"  \item \small{{{latex_escape(str(ed))}}}")
             tex.append(r"\resumeSubHeadingListEnd")
@@ -234,6 +250,12 @@ class ResumeLatexRenderer(ResumeRender):
                         tex.append(rf"\resumeProjectHeading{{\textbf{{{title}}}}}{{{latex_escape(date_str)}}}")
                     else:
                         tex.append(rf"  \item \small{{{title}}}")
+                    bullets = aw.get("description") or []
+                    if bullets:
+                        tex.append(r"\resumeItemListStart")
+                        for b in bullets:
+                            tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                        tex.append(r"\resumeItemListEnd")
                 else:
                     tex.append(rf"  \item \small{{{latex_escape(str(aw))}}}")
             tex.append(r"\resumeSubHeadingListEnd")
@@ -436,6 +458,8 @@ class DocxResumeRenderer(ResumeRender):
                     else:
                         p = doc.add_paragraph()
                         p.add_run(title)
+                    for bullet in ed.get("description") or []:
+                        _add_bullet(bullet)
                 else:
                     p = doc.add_paragraph()
                     p.add_run(str(ed))
@@ -454,6 +478,8 @@ class DocxResumeRenderer(ResumeRender):
                     else:
                         p = doc.add_paragraph()
                         p.add_run(title)
+                    for bullet in aw.get("description") or []:
+                        _add_bullet(bullet)
                 else:
                     p = doc.add_paragraph()
                     p.add_run(str(aw))

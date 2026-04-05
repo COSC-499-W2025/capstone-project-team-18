@@ -1081,7 +1081,7 @@ function ItemCard({
 
 // ─── Education Section ────────────────────────────────────────────────────────
 
-type EntryDraft = { title: string; start: string; end: string };
+type EntryDraft = { title: string; start: string; end: string; description: string };
 
 function EntryListSection({
   label,
@@ -1101,7 +1101,7 @@ function EntryListSection({
   const [draft, setDraft] = useState<EntryDraft[]>([]);
 
   function startEditing() {
-    setDraft(entries.map((e) => ({ title: e.title ?? "", start: e.start ?? "", end: e.end ?? "" })));
+    setDraft(entries.map((e) => ({ title: e.title ?? "", start: e.start ?? "", end: e.end ?? "", description: (e.description ?? []).join("\n") })));
     setEditing(true);
   }
 
@@ -1163,10 +1163,16 @@ function EntryListSection({
                 <input style={{ ...inputBase, flex: 1 }} value={entry.start} onChange={(e) => updateField(i, "start", e.target.value)} placeholder="Start (e.g. September 2022)" />
                 <input style={{ ...inputBase, flex: 1 }} value={entry.end} onChange={(e) => updateField(i, "end", e.target.value)} placeholder="End (e.g. April 2026)" />
               </div>
+              <textarea
+                style={{ ...inputBase, width: "100%", minHeight: 72, resize: "vertical", boxSizing: "border-box" }}
+                value={entry.description}
+                onChange={(e) => updateField(i, "description", e.target.value)}
+                placeholder={"Add bullet points (one per line)"}
+              />
             </div>
           ))}
           <button
-            onClick={() => setDraft((d) => [...d, { title: "", start: "", end: "" }])}
+            onClick={() => setDraft((d) => [...d, { title: "", start: "", end: "", description: "" }])}
             style={{ alignSelf: "flex-start", padding: "5px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, marginTop: 2 }}
           >+ Add Entry</button>
           <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
@@ -1184,9 +1190,18 @@ function EntryListSection({
             entries.map((entry, i) => {
               const dateRange = [entry.start, entry.end].filter(Boolean).join(" \u2013 ");
               return (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, color: "var(--text-primary)" }}>
-                  <span style={{ fontWeight: 500 }}>{entry.title}</span>
-                  {dateRange && <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 16, whiteSpace: "nowrap" }}>{dateRange}</span>}
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, color: "var(--text-primary)" }}>
+                    <span style={{ fontWeight: 500 }}>{entry.title}</span>
+                    {dateRange && <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 16, whiteSpace: "nowrap" }}>{dateRange}</span>}
+                  </div>
+                  {(entry.description ?? []).length > 0 && (
+                    <ul style={{ margin: "2px 0 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 1 }}>
+                      {(entry.description ?? []).map((b, j) => (
+                        <li key={j} style={{ fontSize: 12, color: "var(--text-muted)" }}>{b}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               );
             })
@@ -1217,7 +1232,7 @@ function EducationSection({
       onSave={async (draft) => {
         try {
           const res = await api.editResumeEducation(resumeId, {
-            education: draft.map((e) => ({ title: e.title.trim(), start: e.start.trim() || null, end: e.end.trim() || null })),
+            education: draft.map((e) => ({ title: e.title.trim(), start: e.start.trim() || null, end: e.end.trim() || null, description: e.description.split("\n").map((b) => b.trim()).filter(Boolean) })),
           });
           onUpdated(res);
         } catch (e: any) {
@@ -1251,7 +1266,7 @@ function AwardsSection({
       onSave={async (draft) => {
         try {
           const res = await api.editResumeAwards(resumeId, {
-            awards: draft.map((e) => ({ title: e.title.trim(), start: e.start.trim() || null, end: e.end.trim() || null })),
+            awards: draft.map((e) => ({ title: e.title.trim(), start: e.start.trim() || null, end: e.end.trim() || null, description: e.description.split("\n").map((b) => b.trim()).filter(Boolean) })),
           });
           onUpdated(res);
         } catch (e: any) {

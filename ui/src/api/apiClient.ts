@@ -230,12 +230,14 @@ export type EducationEntry = {
   title: string;
   start?: string | null;
   end?: string | null;
+  description?: string[];
 };
 
 export type AwardEntry = {
   title: string;
   start?: string | null;
   end?: string | null;
+  description?: string[];
 };
 
 export type ResumeResponse = {

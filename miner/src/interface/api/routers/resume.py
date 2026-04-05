@@ -90,6 +90,7 @@ class EducationEntry(SQLModel):
     title: str
     start: Optional[str] = None
     end: Optional[str] = None
+    description: List[str] = []
 
 
 class AwardEntry(SQLModel):
@@ -97,13 +98,19 @@ class AwardEntry(SQLModel):
     title: str
     start: Optional[str] = None
     end: Optional[str] = None
+    description: List[str] = []
 
 
 def _normalize_entry(entry) -> dict:
-    """Normalize a legacy plain-string entry or a structured dict into {title, start, end}."""
+    """Normalize a legacy plain-string entry or a structured dict into {title, start, end, description}."""
     if isinstance(entry, dict):
-        return {"title": entry.get("title", ""), "start": entry.get("start"), "end": entry.get("end")}
-    return {"title": str(entry), "start": None, "end": None}
+        return {
+            "title": entry.get("title", ""),
+            "start": entry.get("start"),
+            "end": entry.get("end"),
+            "description": entry.get("description") or [],
+        }
+    return {"title": str(entry), "start": None, "end": None, "description": []}
 
 
 class ResumeResponse(SQLModel):
