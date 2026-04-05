@@ -78,7 +78,7 @@ const steps: TourStep[] = [
     selector: '[data-tour="github-connect"]',
     title: "Connect GitHub",
     description:
-      "Upload your GitHub account to let the app automatically connect and analyze your contributions, as well as deploy your portfolios to the web",
+      "Upload your GitHub account to let the app automatically connect and analyze your contributions.",
     Icon: GitHubIcon,
     pulse: true,
   },
@@ -121,7 +121,7 @@ const steps: TourStep[] = [
     selector: null,
     title: "You're All Set!",
     description:
-      "That's the full tour. Set up your profile, upload your projects, then generate resumes and portfolios tailored to each opportunity. Hope yoi enjoy!",
+      "That's the full tour. Set up your profile, upload your projects, then generate resumes and portfolios tailored to each opportunity. Hope you enjoy!",
     Icon: RocketLaunchIcon,
   },
 ];
