@@ -184,6 +184,54 @@ def _build_resume_response(resume_model) -> ResumeResponse:
         last_updated=resume_model.last_updated,
     )
 
+def _apply_user_profile_skills(resume_model, raw_skills: list[str]) -> None:
+    """
+    Parse user profile skills ("Name:Level" format) and merge them into a
+    ResumeModel's categorized skill buckets.
+
+    Profile-specified levels take precedence: any detected skill whose name
+    matches a profile skill (case-insensitive) is removed from the detected
+    bucket so it can be placed in the profile-specified bucket instead.
+    Profile skills are prepended so they appear first.
+    """
+    from sqlalchemy.orm.attributes import flag_modified
+
+    profile_expert: list[str] = []
+    profile_intermediate: list[str] = []
+    profile_exposure: list[str] = []
+
+    for skill_str in raw_skills:
+        if ':' in skill_str:
+            name, level = skill_str.rsplit(':', 1)
+            name = name.strip()
+            level_lower = level.strip().lower()
+            if level_lower == 'expert':
+                profile_expert.append(name)
+            elif level_lower == 'intermediate':
+                profile_intermediate.append(name)
+            else:
+                profile_exposure.append(name)
+        else:
+            profile_exposure.append(skill_str.strip())
+
+    all_profile_lower = {s.lower() for s in profile_expert + profile_intermediate + profile_exposure}
+
+    # Keep detected skills that aren't already covered by the profile
+    detected_expert = [s for s in (resume_model.skills_expert or []) if s.lower() not in all_profile_lower]
+    detected_intermediate = [s for s in (resume_model.skills_intermediate or []) if s.lower() not in all_profile_lower]
+    detected_exposure = [s for s in (resume_model.skills_exposure or []) if s.lower() not in all_profile_lower]
+
+    resume_model.skills_expert = profile_expert + detected_expert
+    resume_model.skills_intermediate = profile_intermediate + detected_intermediate
+    resume_model.skills_exposure = profile_exposure + detected_exposure
+    resume_model.skills = resume_model.skills_expert + resume_model.skills_intermediate + resume_model.skills_exposure
+
+    flag_modified(resume_model, "skills_expert")
+    flag_modified(resume_model, "skills_intermediate")
+    flag_modified(resume_model, "skills_exposure")
+    flag_modified(resume_model, "skills")
+
+
 def _build_resume_list_item(resume_model) -> ResumeListItemResponse:
     """
     Build a lightweight response object for the resume list page.
@@ -465,12 +513,14 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
         user_github = user_config.github if user_config else None
         user_name = user_config.name if user_config else None
 
-        # Extract education/awards from ResumeConfigModel
+        # Extract education/awards/profile skills from ResumeConfigModel
         user_education = []
         user_awards = []
+        user_profile_skills: list[str] = []
         if user_config and user_config.resume_config:
             user_education = user_config.resume_config.education or []
             user_awards = user_config.resume_config.awards or []
+            user_profile_skills = user_config.resume_config.skills or []
 
         # Generate resume with email, github, name, education and awards
         resume_domain = user_report.generate_resume(
@@ -483,6 +533,10 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
 
         # Save using serialize_resume
         resume_model = save_resume(session, resume_domain)
+
+        # Merge user profile skills (explicit levels) with detected skills
+        if user_profile_skills:
+            _apply_user_profile_skills(resume_model, user_profile_skills)
 
         # Apply optional title after save
         if request.title:
@@ -760,6 +814,13 @@ def refresh_resume(
         updated_model = save_resume(session, new_resume_domain)
         updated_model.id = resume_id
         updated_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+
+        # Merge user profile skills into refreshed resume
+        user_config = _db.get_most_recent_user_config(session)
+        if user_config and user_config.resume_config:
+            user_profile_skills = user_config.resume_config.skills or []
+            if user_profile_skills:
+                _apply_user_profile_skills(updated_model, user_profile_skills)
 
         session.commit()
 
