@@ -1083,6 +1083,24 @@ function ItemCard({
 
 type EntryDraft = { title: string; start: string; end: string; description: string };
 
+const ENTRY_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+/** Convert "Month YYYY" → "YYYY-MM" for the native month input */
+function entryDateToMonthInput(value: string): string {
+  if (!value || value === "Present") return "";
+  const parts = value.split(" ");
+  const monthIdx = ENTRY_MONTHS.indexOf(parts[0]);
+  if (monthIdx === -1 || !parts[1]) return "";
+  return `${parts[1]}-${String(monthIdx + 1).padStart(2, "0")}`;
+}
+
+/** Convert "YYYY-MM" → "Month YYYY" for storage */
+function monthInputToEntryDate(value: string): string {
+  if (!value) return "";
+  const [year, month] = value.split("-");
+  return `${ENTRY_MONTHS[parseInt(month, 10) - 1]} ${year}`;
+}
+
 function EntryListSection({
   label,
   entries,
@@ -1159,9 +1177,20 @@ function EntryListSection({
                 onChange={(e) => updateField(i, "title", e.target.value)}
                 placeholder={titlePlaceholder}
               />
-              <div style={{ display: "flex", gap: 8 }}>
-                <input style={{ ...inputBase, flex: 1 }} value={entry.start} onChange={(e) => updateField(i, "start", e.target.value)} placeholder="Start (e.g. September 2022)" />
-                <input style={{ ...inputBase, flex: 1 }} value={entry.end} onChange={(e) => updateField(i, "end", e.target.value)} placeholder="End (e.g. April 2026)" />
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input
+                  type="month"
+                  value={entryDateToMonthInput(entry.start)}
+                  onChange={(e) => updateField(i, "start", monthInputToEntryDate(e.target.value))}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", colorScheme: "light", fontFamily: "inherit" }}
+                />
+                <span style={{ color: "var(--text-muted)", fontSize: 13 }}>–</span>
+                <input
+                  type="month"
+                  value={entryDateToMonthInput(entry.end)}
+                  onChange={(e) => updateField(i, "end", monthInputToEntryDate(e.target.value))}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", colorScheme: "light", fontFamily: "inherit" }}
+                />
               </div>
               <textarea
                 style={{ ...inputBase, width: "100%", minHeight: 72, resize: "vertical", boxSizing: "border-box" }}
