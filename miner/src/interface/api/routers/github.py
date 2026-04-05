@@ -138,12 +138,23 @@ def github_login():
 @router.get("/oauth-status")
 def github_oauth_status(state: str):
     """
-    Called by the frontend every 2 sec to poll the backend OAuth status
-    for a generated state.
+    Poll the OAuth flow status for a previously generated state token.
 
-    This is a fallback if the deep link fails so that the frontend still
-    knowns what the result (user accepts or denies) is so that it can
-    switch from "Pending" to "Connected".
+    The frontend calls this endpoint approximately every 2 seconds after opening
+    the GitHub authorization URL. It acts as a fallback when the deep-link
+    callback cannot be delivered directly to the Electron app, ensuring the UI
+    transitions from "Pending" to "Connected" (or "Denied") once the OAuth
+    flow completes in the browser.
+
+    Query parameters:
+    - `state`: The OAuth state string returned by `GET /github/login`.
+
+    Returns:
+    - 200: `{"state": "...", "status": "pending"|"success"|"denied"|"error", "detail": "..."|null}`
+
+    Raises:
+    - 404 `BAD_OAUTH_STATE`: The state value is not recognized.
+    - 410 `EXPIRED_OAUTH_STATE`: The state has expired (TTL is 600 seconds).
     """
     oauth_state = _get_oauth_state_or_raise(state)
     return {

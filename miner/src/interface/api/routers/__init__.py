@@ -12,10 +12,8 @@ from src.interface.api.routers.resume import router as resume
 from src.interface.api.routers.portfolio import router as portfolio
 from src.interface.api.routers.skills import router as skills
 from src.interface.api.routers.user_config import router as user_config
-from src.interface.api.routers.privacy_consent import router as privacy_consent
 from src.interface.api.routers.job_readiness import router as job_readiness
 from src.interface.api.routers.interview import router as interview
-
 
 
 __all__ = [
@@ -24,7 +22,6 @@ __all__ = [
     "portfolio",
     "skills",
     "user_config",
-    "privacy_consent",
     "job_readiness",
     "interview",
 ]
