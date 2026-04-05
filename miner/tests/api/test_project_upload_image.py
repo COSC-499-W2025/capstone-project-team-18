@@ -45,6 +45,7 @@ def seeded_project_with_image(blank_db, seeded_project):
         project.image_data = b"existing dummy image bytes"
         session.add(project)
         session.commit()
+        session.refresh(project)
         return project
 
 
@@ -132,3 +133,38 @@ def test_upload_project_image_sneaky_extension(client, seeded_project):
 
     assert response.status_code == 400
     assert "Invalid file type" in response.json()["detail"]
+
+
+# --- Tests for DELETE /projects/{project_name}/image ---
+
+def test_delete_project_image_success(client, blank_db, seeded_project_with_image):
+    """Successfully removing an image returns 200 and clears image_data in DB."""
+    r = client.delete(f"/projects/{seeded_project_with_image.project_name}/image")
+
+    assert r.status_code == 200
+    assert "successfully removed" in r.json()["message"]
+
+    with Session(blank_db) as session:
+        proj = session.get(ProjectReportModel, seeded_project_with_image.project_name)
+        assert proj.image_data is None
+
+
+def test_delete_project_image_not_found(client, blank_db):
+    """Deleting an image from a non-existent project returns 404."""
+    r = client.delete("/projects/ghost-project/image")
+    assert r.status_code == 404
+    assert r.json()["error_code"] == "PROJECT_NOT_FOUND"
+
+
+def test_delete_project_image_already_null_is_ok(client, blank_db, seeded_project):
+    """Deleting when image is already None still returns 200 (idempotent)."""
+    r = client.delete(f"/projects/{seeded_project.project_name}/image")
+    assert r.status_code == 200
+
+
+def test_delete_project_image_db_failure(client, seeded_project):
+    """A commit failure during delete returns 500."""
+    with patch('sqlmodel.Session.commit', side_effect=Exception("disk full")):
+        r = client.delete(f"/projects/{seeded_project.project_name}/image")
+    assert r.status_code == 500
+    assert r.json()["error_code"] == "DATABASE_OPERATION_FAILED"

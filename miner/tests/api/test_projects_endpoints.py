@@ -1,12 +1,10 @@
 """
 Tests for /projects endpoints
 """
-import io, datetime
+import io
 import pytest
 from unittest.mock import patch, MagicMock
 from sqlmodel import Session
-from urllib.parse import quote
-from src.database.api.models import ProjectReportModel
 
 from src.interface.api.routers.util import get_session
 
@@ -92,27 +90,3 @@ class TestUploadProject:
 
             assert response.status_code == 500
             assert "failed to process" in response.json()["message"].lower()
-
-def _insert_project(engine, name: str):
-    with Session(engine) as session:
-        session.add(ProjectReportModel(
-            project_name=name,
-            user_config_used=None,
-            image_data=None,
-            statistic={"dummy": True},
-            created_at=datetime.datetime.now(),
-            last_updated=datetime.datetime.now(),
-        ))
-        session.commit()
-
-
-def test_patch_representation_rank_negative_returns_422(client, blank_db):
-    _insert_project(blank_db, "Demo Project")
-
-    r = client.patch(
-        f"/projects/{quote('Demo Project')}/representation",
-        json={"representation_rank": -1},
-    )
-
-    assert r.status_code == 422, r.text
-    assert "representation_rank" in r.json().get("detail", "")

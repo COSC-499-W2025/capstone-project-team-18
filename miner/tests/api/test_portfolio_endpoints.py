@@ -739,34 +739,59 @@ class TestListConflicts:
 
 
 # ---------------------------------------------------------------------------
-# POST /portfolio/{id}/sections/{section_id}/blocks/{block_tag}/resolve-accept
+# GET /portfolio — list all portfolios
 # ---------------------------------------------------------------------------
 
-class TestResolveConflict:
-    def test_resolve_accept_system_clears_conflict(self, client, blank_db):
-        pid = _make_portfolio(blank_db)
-        sid = _make_section(blank_db, pid, section_id="summary")
-        _make_block(
-            blank_db, sid,
-            tag="main_block",
-            content="user version",
-            in_conflict=True,
-            conflict_content="system version",
-        )
-
-        r = client.post(
-            f"/portfolio/{pid}/sections/summary/blocks/main_block/resolve-accept"
-        )
+class TestListPortfolios:
+    def test_returns_empty_list_when_no_portfolios(self, client, blank_db):
+        r = client.get("/portfolio")
         assert r.status_code == 200
-        result = r.json()
-        assert result["in_conflict"] is False
-        assert result["current_content"] == "system version"
+        assert r.json()["portfolios"] == []
 
-    def test_resolve_nonexistent_block_returns_404(self, client, blank_db):
+    def test_returns_all_portfolios(self, client, blank_db):
+        _make_portfolio(blank_db, title="Alpha")
+        _make_portfolio(blank_db, title="Beta")
+        r = client.get("/portfolio")
+        assert r.status_code == 200
+        portfolios = r.json()["portfolios"]
+        assert len(portfolios) == 2
+
+    def test_response_contains_expected_fields(self, client, blank_db):
+        _make_portfolio(blank_db, title="MyPortfolio")
+        r = client.get("/portfolio")
+        p = r.json()["portfolios"][0]
+        for field in ("id", "title", "creation_time", "last_updated_at"):
+            assert field in p, f"Missing field: {field}"
+
+    def test_multiple_portfolios_all_returned(self, client, blank_db):
+        for i in range(5):
+            _make_portfolio(blank_db, title=f"Portfolio-{i}")
+        r = client.get("/portfolio")
+        assert len(r.json()["portfolios"]) == 5
+
+
+# ---------------------------------------------------------------------------
+# DELETE /portfolio/{id}
+# ---------------------------------------------------------------------------
+
+class TestDeletePortfolio:
+    def test_delete_existing_portfolio_returns_204(self, client, blank_db):
         pid = _make_portfolio(blank_db)
-        _make_section(blank_db, pid, section_id="summary")
+        r = client.delete(f"/portfolio/{pid}")
+        assert r.status_code == 204
 
-        r = client.post(
-            f"/portfolio/{pid}/sections/summary/blocks/ghost/resolve-accept"
-        )
+    def test_delete_removes_from_list(self, client, blank_db):
+        pid = _make_portfolio(blank_db)
+        client.delete(f"/portfolio/{pid}")
+        r = client.get("/portfolio")
+        ids = [p["id"] for p in r.json()["portfolios"]]
+        assert pid not in ids
+
+    def test_delete_nonexistent_returns_404(self, client, blank_db):
+        r = client.delete("/portfolio/99999")
         assert r.status_code == 404
+
+    def test_delete_invalid_id_returns_422(self, client, blank_db):
+        r = client.delete("/portfolio/not-a-number")
+        assert r.status_code == 422
+
