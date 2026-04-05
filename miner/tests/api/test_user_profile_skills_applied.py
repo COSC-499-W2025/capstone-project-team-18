@@ -279,53 +279,75 @@ class TestGenerateResumeAppliesProfileSkills:
 
 class TestRefreshResumeAppliesProfileSkills:
 
-    def _make_refresh_model(self, skills_expert=None, skills_intermediate=None, skills_exposure=None):
-        """Build a real ResumeModel suitable for use as a save_resume return value."""
-        from src.database.api.models import ResumeModel
-        model = ResumeModel(
-            id=1,
+    def _seed_resume(self, blank_db, *, project_name="proj1"):
+        """Insert a minimal resume with one item into blank_db and return its id."""
+        from src.database.api.models import ResumeModel, ResumeItemModel
+        from sqlmodel import Session
+
+        with Session(blank_db) as session:
+            resume = ResumeModel(
+                email="user@example.com",
+                github="userhandle",
+                skills=[],
+                skills_expert=[],
+                skills_intermediate=[],
+                skills_exposure=[],
+                created_at=datetime(2026, 1, 1),
+                last_updated=datetime(2026, 1, 1),
+            )
+            item = ResumeItemModel(
+                title="Dev",
+                frameworks=[],
+                bullet_points=[],
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 12, 31),
+                project_name=project_name,
+            )
+            resume.items = [item]
+            session.add(resume)
+            session.commit()
+            session.refresh(resume)
+            return resume.id
+
+    def _make_domain(self, *, skills_expert=None, skills_intermediate=None, skills_exposure=None):
+        """Build a Resume domain object with the given weighted skills."""
+        from src.core.resume.resume import Resume, ResumeItem
+        from src.core.statistic import WeightedSkills
+
+        expert_w = [WeightedSkills(s, 0.9) for s in (skills_expert or [])]
+        inter_w  = [WeightedSkills(s, 0.5) for s in (skills_intermediate or [])]
+        exp_w    = [WeightedSkills(s, 0.2) for s in (skills_exposure or [])]
+
+        domain = Resume(
             email="user@example.com",
             github="userhandle",
-            skills=(skills_expert or []) + (skills_intermediate or []) + (skills_exposure or []),
-            skills_expert=skills_expert or [],
-            skills_intermediate=skills_intermediate or [],
-            skills_exposure=skills_exposure or [],
-            created_at=datetime(2026, 1, 1),
-            last_updated=datetime(2026, 1, 1),
+            weight_skills=expert_w + inter_w + exp_w,
         )
-        model.items = []
-        return model
+        domain.add_item(ResumeItem(
+            title="Dev", frameworks=[], bullet_points=[],
+            start_date=None, end_date=None, project_name="proj1",
+        ))
+        return domain
 
     def test_profile_skills_appear_after_refresh(
-        self, client, bare_resume_model, user_config_with_skills
+        self, client, blank_db, user_config_with_skills
     ):
         """After refresh, profile skills should be merged into the updated model."""
-        from src.database.api.models import ResumeItemModel
+        resume_id = self._seed_resume(blank_db)
+        # Domain has no detected skills; profile skills should be the only ones present
+        domain = self._make_domain()
 
-        item = ResumeItemModel(
-            id=1, resume_id=1, project_name="proj1",
-            title="Dev", frameworks=[], bullet_points=[],
-            start_date=date(2025, 1, 1), end_date=date(2025, 12, 31),
-        )
-        bare_resume_model.items = [item]
-        refreshed_model = self._make_refresh_model()
-        mock_domain = MagicMock()
-
-        with patch("src.interface.api.routers.resume.get_resume_model_by_id") as mock_get, \
-             patch("src.interface.api.routers.resume.get_project_report_by_name") as mock_proj, \
+        with patch("src.interface.api.routers.resume.get_project_report_by_name") as mock_proj, \
              patch("src.interface.api.routers.resume.UserReport") as mock_report_cls, \
-             patch("src.interface.api.routers.resume.save_resume") as mock_save, \
-             patch("src.database.get_most_recent_user_config") as mock_user_cfg:
+             patch("src.interface.api.routers.resume._db") as mock_db:
 
-            mock_get.return_value = bare_resume_model
             mock_proj.return_value = MagicMock()
-            mock_report_cls.return_value.generate_resume.return_value = mock_domain
-            mock_save.return_value = refreshed_model
-            mock_user_cfg.return_value = user_config_with_skills
+            mock_report_cls.return_value.generate_resume.return_value = domain
+            mock_db.get_most_recent_user_config.return_value = user_config_with_skills
 
-            response = client.post("/resume/1/refresh")
+            response = client.post(f"/resume/{resume_id}/refresh")
 
-        assert response.status_code == 200
+        assert response.status_code == 200, response.text
         expertise = response.json()["skills_by_expertise"]
         assert expertise is not None
         assert "Python" in expertise["expert"]
@@ -334,39 +356,28 @@ class TestRefreshResumeAppliesProfileSkills:
         assert "Arduino" in expertise["exposure"]
 
     def test_refresh_without_profile_skills_leaves_detected_intact(
-        self, client, resume_model_with_detected, user_config_no_skills
+        self, client, blank_db, user_config_no_skills
     ):
         """Refresh with empty profile skills should not alter detected skills."""
-        from src.database.api.models import ResumeItemModel
-
-        item = ResumeItemModel(
-            id=1, resume_id=1, project_name="proj1",
-            title="Dev", frameworks=[], bullet_points=[],
-            start_date=date(2025, 1, 1), end_date=date(2025, 12, 31),
-        )
-        resume_model_with_detected.items = [item]
-        refreshed_model = self._make_refresh_model(
+        resume_id = self._seed_resume(blank_db)
+        # Domain carries detected skills; with no profile skills they should be preserved
+        domain = self._make_domain(
             skills_expert=["Python", "Docker"],
             skills_intermediate=["React"],
             skills_exposure=["Bash"],
         )
-        mock_domain = MagicMock()
 
-        with patch("src.interface.api.routers.resume.get_resume_model_by_id") as mock_get, \
-             patch("src.interface.api.routers.resume.get_project_report_by_name") as mock_proj, \
+        with patch("src.interface.api.routers.resume.get_project_report_by_name") as mock_proj, \
              patch("src.interface.api.routers.resume.UserReport") as mock_report_cls, \
-             patch("src.interface.api.routers.resume.save_resume") as mock_save, \
-             patch("src.database.get_most_recent_user_config") as mock_user_cfg:
+             patch("src.interface.api.routers.resume._db") as mock_db:
 
-            mock_get.return_value = resume_model_with_detected
             mock_proj.return_value = MagicMock()
-            mock_report_cls.return_value.generate_resume.return_value = mock_domain
-            mock_save.return_value = refreshed_model
-            mock_user_cfg.return_value = user_config_no_skills
+            mock_report_cls.return_value.generate_resume.return_value = domain
+            mock_db.get_most_recent_user_config.return_value = user_config_no_skills
 
-            response = client.post("/resume/1/refresh")
+            response = client.post(f"/resume/{resume_id}/refresh")
 
-        assert response.status_code == 200
+        assert response.status_code == 200, response.text
         expertise = response.json()["skills_by_expertise"]
         assert set(expertise["expert"]) == {"Python", "Docker"}
         assert set(expertise["intermediate"]) == {"React"}
