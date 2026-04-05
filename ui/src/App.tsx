@@ -99,7 +99,7 @@ export default function App() {
               Cannot connect to the API server. Please ensure the backend is running and try again.
             </div>
             <button
-              onClick={() => api.ping().then((ok) => setBackendDown(!ok))}
+              onClick={() => window.location.reload()}
               style={{
                 padding: "8px 24px",
                 borderRadius: 8,
