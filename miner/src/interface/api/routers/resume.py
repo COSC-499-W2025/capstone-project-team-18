@@ -61,8 +61,8 @@ class EditResumeItemMetadataRequest(SQLModel):
     resume_id: int
     item_index: int
 
-    start_date: datetime.date
-    end_date: datetime.date
+    start_date: Optional[datetime.date] = None
+    end_date: Optional[datetime.date] = None
     title: str
 
 
