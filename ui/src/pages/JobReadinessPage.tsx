@@ -206,7 +206,31 @@ export default function JobReadinessPage() {
 
               <div style={{ display: "grid", gap: 10 }}>
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 6 }}>Project Evidence</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontWeight: 600 }}>Project Evidence</div>
+                    {projects.length > 0 && (
+                      <button
+                        onClick={() => {
+                          if (selectedProjects.length === projects.length) {
+                            setSelectedProjects([]);
+                          } else {
+                            setSelectedProjects(projects.map((p) => p.project_name));
+                          }
+                        }}
+                        style={{
+                          padding: "3px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "var(--text-secondary)",
+                          cursor: "pointer",
+                          fontSize: 13,
+                        }}
+                      >
+                        {selectedProjects.length === projects.length ? "Deselect All" : "Select All"}
+                      </button>
+                    )}
+                  </div>
                   <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
                     Select the projects that best demonstrate the skills needed for this role.
                   </div>
