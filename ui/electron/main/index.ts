@@ -88,6 +88,14 @@ async function createWindow() {
     win?.webContents.send('main-process-message', new Date().toLocaleString())
   })
 
+  // Notify renderer when fullscreen state changes so it can adjust layout
+  win.on('enter-full-screen', () => {
+    win?.webContents.send('fullscreen-change', true)
+  })
+  win.on('leave-full-screen', () => {
+    win?.webContents.send('fullscreen-change', false)
+  })
+
   // Make all links open with the browser, not with the application
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https:')) shell.openExternal(url)
