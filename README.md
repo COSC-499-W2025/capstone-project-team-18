@@ -89,6 +89,8 @@ For help with error handling, check [`ui/troubleshoot.md`](/ui/troubleshoot.md).
 
 ## How to Use the System
 
+[![youtube vid](https://youtu.be/VPYGA6Qi-Ws/0.jpg)](https://youtu.be/VPYGA6Qi-Ws "UBCO COSC 499 Team 18 Project Setup")
+
 ## Known Bugs
 
 ## Testing the System
