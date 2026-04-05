@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/apiClient";
 
 const SKILL_LABELS: Record<number, string> = {
@@ -20,6 +20,7 @@ type GithubAuthStatus = "idle" | "pending" | "success" | "denied" | "error";
 
 export default function ProfilePage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [consentBanner, setConsentBanner] = useState(
     () => (location.state as any)?.consentRequired === true
   );
@@ -309,7 +310,7 @@ export default function ProfilePage() {
             )}
           </div>
           <p style={{ marginTop: 0, marginBottom: 16, color: "var(--text-muted)", fontSize: 14 }}>
-            Manage your resume's display name, education, awards, and skills.
+            Manage your resume's display name, education, awards, and skills. Changes are saved automatically.
           </p>
 
           <div style={{ marginBottom: 16 }}>
@@ -374,6 +375,9 @@ export default function ProfilePage() {
               >
                 Add
               </button>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              Type and press Enter, or click Add to save each entry.
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
               {education.map((entry, i) => (
@@ -453,6 +457,9 @@ export default function ProfilePage() {
               >
                 Add
               </button>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              Type and press Enter, or click Add to save each entry.
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
               {awards.map((award, i) => (
@@ -551,6 +558,9 @@ export default function ProfilePage() {
               >
                 Add
               </button>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              Type and press Enter, or click Add to save each entry.
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
               {skills.map((sk, i) => (
@@ -840,42 +850,91 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {error && <div style={{ color: "var(--danger-text)", marginBottom: 12 }}>{error}</div>}
-          {success && <div style={{ color: "#16a34a", marginBottom: 12 }}>{success}</div>}
+        </form>
+      </div>
 
+      {/* ── Full-width Save Settings card ── */}
+      <div
+        style={{
+          marginTop: 20,
+          background: "var(--bg-surface)",
+          borderRadius: 16,
+          padding: "20px 32px",
+          border: "1px solid var(--border)",
+        }}
+      >
+        {error && <div style={{ color: "var(--danger-text)", marginBottom: 12 }}>{error}</div>}
+        {success && (
           <div
             style={{
+              border: "1px solid #b2dfb2",
+              borderRadius: 10,
+              padding: "12px 16px",
+              background: "#f0faf0",
+              color: "#155724",
+              fontSize: 14,
+              marginBottom: 12,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
             }}
           >
-            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              {isLoadingConfig
-                ? "Loading saved settings..."
-                : isSaving
-                  ? "Saving..."
-                  : "Fill all required fields"}
-            </div>
-
+            <span>✓ {success} You're all set!</span>
             <button
-              type="submit"
-              disabled={!isValid || isSaving || isLoadingConfig}
+              type="button"
+              onClick={() => navigate("/")}
               style={{
-                padding: "10px 16px",
-                borderRadius: 10,
+                padding: "7px 14px",
+                borderRadius: 8,
                 border: "none",
-                background: isValid ? "var(--accent)" : "var(--bg-surface-deep)",
-                color: isValid ? "#fff" : "var(--text-muted)",
+                background: "#16a34a",
+                color: "#fff",
                 fontWeight: 600,
-                cursor: isValid ? "pointer" : "not-allowed",
-                opacity: isValid ? 1 : 0.6,
+                fontSize: 13,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
             >
-              {isSaving ? "Saving..." : "Save"}
+              ← Go to Dashboard
             </button>
           </div>
-        </form>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            {isLoadingConfig
+              ? "Loading saved settings..."
+              : isSaving
+                ? "Saving..."
+                : "Saves User Information, GitHub, and Consent Settings"}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={!isValid || isSaving || isLoadingConfig}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 10,
+              border: "none",
+              background: isValid ? "var(--accent)" : "var(--bg-surface-deep)",
+              color: isValid ? "#fff" : "var(--text-muted)",
+              fontWeight: 600,
+              cursor: isValid ? "pointer" : "not-allowed",
+              opacity: isValid ? 1 : 0.6,
+            }}
+          >
+            {isSaving ? "Saving..." : "Save Settings"}
+          </button>
+        </div>
       </div>
     </div>
   );
