@@ -50,6 +50,17 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"saving" | "saved" | null>(null);
+
+  // Refs so the auto-save effect can read Settings values without being in its deps
+  const emailRef = useRef(email);
+  const githubRef = useRef(github);
+  const consentRef = useRef(consent);
+  const mlConsentRef = useRef(mlConsent);
+
+  // Suppress auto-save until after the initial data load has rendered
+  const suppressAutoSaveRef = useRef(true);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubAuthStatus, setGithubAuthStatus] = useState<GithubAuthStatus>("idle");
@@ -82,6 +93,45 @@ export default function ProfilePage() {
     };
   }, []);
 
+  // Keep Settings refs in sync so auto-save always reads current values
+  useEffect(() => { emailRef.current = email; }, [email]);
+  useEffect(() => { githubRef.current = github; }, [github]);
+  useEffect(() => { consentRef.current = consent; }, [consent]);
+  useEffect(() => { mlConsentRef.current = mlConsent; }, [mlConsent]);
+
+  // Auto-save User Information whenever name / education / awards / skills change
+  useEffect(() => {
+    if (suppressAutoSaveRef.current) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        setAutoSaveStatus("saving");
+        await api.updateUserConfig({
+          consent: consentRef.current,
+          ml_consent: consentRef.current && mlConsentRef.current,
+          name: name.trim() || null,
+          user_email: emailRef.current.trim(),
+          github: githubRef.current.trim(),
+          resume_config: {
+            education,
+            awards,
+            skills: skills.map((s) => `${s.name}:${SKILL_LABELS[s.rating] ?? "Intermediate"}`),
+          },
+        });
+        setAutoSaveStatus("saved");
+        setTimeout(() => setAutoSaveStatus(null), 2000);
+      } catch {
+        setAutoSaveStatus(null);
+      }
+    }, 700);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [name, education, awards, skills]);
+
   useEffect(() => {
     let alive = true;
 
@@ -112,6 +162,8 @@ export default function ProfilePage() {
         );
         setMlConsent(Boolean(res?.ml_consent));
         setGithubConnected(Boolean(res?.github_connected));
+        // Allow auto-save after this render cycle completes
+        setTimeout(() => { suppressAutoSaveRef.current = false; }, 0);
       } catch (e: any) {
         if (!alive) return;
 
@@ -246,7 +298,15 @@ export default function ProfilePage() {
             border: "1px solid var(--border)",
           }}
         >
-          <h2 style={{ marginTop: 0, marginBottom: 4 }}>User Information</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <h2 style={{ margin: 0 }}>User Information</h2>
+            {autoSaveStatus === "saving" && (
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Saving…</span>
+            )}
+            {autoSaveStatus === "saved" && (
+              <span style={{ fontSize: 12, color: "#16a34a" }}>Saved</span>
+            )}
+          </div>
           <p style={{ marginTop: 0, marginBottom: 16, color: "var(--text-muted)", fontSize: 14 }}>
             Manage your resume's display name, education, awards, and skills.
           </p>

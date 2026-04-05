@@ -38,6 +38,9 @@ class SkillsByExpertise:
     intermediate: List[str]
     exposure: List[str]
 
+    def has_any(self) -> bool:
+        return bool(self.expert or self.intermediate or self.exposure)
+
 class Resume:
     """
     This is the main resume class that holds all the
@@ -74,6 +77,7 @@ class Resume:
         self.education = education or []
         self.awards = awards or []
         self.weighted_skills = weight_skills or []
+        self._skills_by_expertise: Optional[SkillsByExpertise] = None
 
         if weight_skills:
 
@@ -82,13 +86,24 @@ class Resume:
             for weighted_skill in weight_skills[:7]:
                 self.skills.append(weighted_skill.skill_name)
 
-    def get_skills_by_expertise(self) -> SkillsByExpertise:
+    def get_skills_by_expertise(self) -> Optional[SkillsByExpertise]:
         """
-        Categorize skills by expertise level based on weight:
+        Return skills categorized by expertise level.
+
+        Uses a stored snapshot (e.g. loaded from the database) when available.
+        Otherwise computes from weighted_skills using weight thresholds:
         - Expert: weight >= 0.7
         - Intermediate: 0.4 <= weight < 0.7
         - Exposure: weight < 0.4
+
+        Returns None if neither source is available.
         """
+        if self._skills_by_expertise is not None:
+            return self._skills_by_expertise
+
+        if not self.weighted_skills:
+            return None
+
         expert = []
         intermediate = []
         exposure = []

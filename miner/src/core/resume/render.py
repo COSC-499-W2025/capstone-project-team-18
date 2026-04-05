@@ -22,20 +22,41 @@ class TextResumeRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         to_return = ""
         to_return += f"Email: {resume.email}\n\n" if resume.email else ""
-        to_return += f"Core skills: {', '.join(resume.skills)}\n\n" if resume.skills else ""
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            skill_parts = []
+            if by_expertise.expert:
+                skill_parts.append(f"Expert: {', '.join(by_expertise.expert)}")
+            if by_expertise.intermediate:
+                skill_parts.append(f"Intermediate: {', '.join(by_expertise.intermediate)}")
+            if by_expertise.exposure:
+                skill_parts.append(f"Exposure: {', '.join(by_expertise.exposure)}")
+            to_return += "Technical Skills:\n" + "\n".join(f"   {p}" for p in skill_parts) + "\n\n"
+        elif resume.skills:
+            to_return += f"Core skills: {', '.join(resume.skills)}\n\n"
 
         # Check if resume has education entries before rendering
         if resume.education:
             to_return += "Education:\n"
             for ed in resume.education:
-                to_return += f"   - {ed}\n"
+                if isinstance(ed, dict):
+                    to_return += f"   - {ed.get('title', '')}\n"
+                    for bullet in ed.get("description") or []:
+                        to_return += f"      • {bullet}\n"
+                else:
+                    to_return += f"   - {ed}\n"
             to_return += "\n"
 
         # Check if resume has awards entries before rendering
         if resume.awards:
             to_return += "Awards:\n"
             for aw in resume.awards:
-                to_return += f"   - {aw}\n"
+                if isinstance(aw, dict):
+                    to_return += f"   - {aw.get('title', '')}\n"
+                    for bullet in aw.get("description") or []:
+                        to_return += f"      • {bullet}\n"
+                else:
+                    to_return += f"   - {aw}\n"
             to_return += "\n"
 
         for item in resume.items:
@@ -215,6 +236,12 @@ class ResumeLatexRenderer(ResumeRender):
                         tex.append(rf"\resumeProjectHeading{{\textbf{{{title}}}}}{{{latex_escape(date_str)}}}")
                     else:
                         tex.append(rf"  \item \small{{{title}}}")
+                    bullets = ed.get("description") or []
+                    if bullets:
+                        tex.append(r"\resumeItemListStart")
+                        for b in bullets:
+                            tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                        tex.append(r"\resumeItemListEnd")
                 else:
                     tex.append(rf"  \item \small{{{latex_escape(str(ed))}}}")
             tex.append(r"\resumeSubHeadingListEnd")
@@ -234,6 +261,12 @@ class ResumeLatexRenderer(ResumeRender):
                         tex.append(rf"\resumeProjectHeading{{\textbf{{{title}}}}}{{{latex_escape(date_str)}}}")
                     else:
                         tex.append(rf"  \item \small{{{title}}}")
+                    bullets = aw.get("description") or []
+                    if bullets:
+                        tex.append(r"\resumeItemListStart")
+                        for b in bullets:
+                            tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                        tex.append(r"\resumeItemListEnd")
                 else:
                     tex.append(rf"  \item \small{{{latex_escape(str(aw))}}}")
             tex.append(r"\resumeSubHeadingListEnd")
@@ -267,7 +300,21 @@ class ResumeLatexRenderer(ResumeRender):
             tex.append("")
 
         # --- Technical Skills ---
-        if resume.skills:
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            tex.append(r"\section{Technical Skills}")
+            tex.append(r"\begin{itemize}[leftmargin=0.15in, label={}]")
+            if by_expertise.expert:
+                expert_str = latex_escape(", ".join(by_expertise.expert))
+                tex.append(rf"  \item \small{{\textbf{{Expert:}} {expert_str}}}")
+            if by_expertise.intermediate:
+                intermediate_str = latex_escape(", ".join(by_expertise.intermediate))
+                tex.append(rf"  \item \small{{\textbf{{Intermediate:}} {intermediate_str}}}")
+            if by_expertise.exposure:
+                exposure_str = latex_escape(", ".join(by_expertise.exposure))
+                tex.append(rf"  \item \small{{\textbf{{Exposure:}} {exposure_str}}}")
+            tex.append(r"\end{itemize}")
+        elif resume.skills:
             skills = ", ".join(latex_escape(s) for s in resume.skills)
             tex.append(r"\section{Technical Skills}")
             tex.append(r"\begin{itemize}[leftmargin=0.15in, label={}]")
@@ -369,23 +416,58 @@ class DocxResumeRenderer(ResumeRender):
         run_name.bold = True
         run_name.font.size = Pt(18)
 
-        contact_parts = []
-        if resume.location:
-            contact_parts.append(resume.location)
-        if resume.email:
-            contact_parts.append(resume.email)
-        if resume.linkedin:
-            contact_parts.append(resume.linkedin)
-        if resume.github:
-            contact_parts.append(f"github.com/{resume.github}")
+        def _add_hyperlink(paragraph, text: str, url: str):
+            """Add a hyperlink run to an existing paragraph."""
+            part = paragraph.part
+            r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+            hyperlink = OxmlElement("w:hyperlink")
+            hyperlink.set(qn("r:id"), r_id)
+            run_elem = OxmlElement("w:r")
+            rPr = OxmlElement("w:rPr")
+            rStyle = OxmlElement("w:rStyle")
+            rStyle.set(qn("w:val"), "Hyperlink")
+            rPr.append(rStyle)
+            run_elem.append(rPr)
+            t = OxmlElement("w:t")
+            t.text = text
+            run_elem.append(t)
+            hyperlink.append(run_elem)
+            paragraph._p.append(hyperlink)
 
-        if contact_parts:
-            p_contact = doc.add_paragraph(" | ".join(contact_parts))
+        # Build contact line with hyperlinks for LinkedIn and GitHub
+        has_contact = resume.location or resume.email or resume.linkedin or resume.github
+        if has_contact:
+            p_contact = doc.add_paragraph()
             p_contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p_contact.paragraph_format.space_before = Pt(0)
             p_contact.paragraph_format.space_after = Pt(4)
-            for run in p_contact.runs:
+
+            separator = " | "
+            first = True
+
+            def _sep():
+                nonlocal first
+                if not first:
+                    run = p_contact.add_run(separator)
+                    run.font.size = Pt(10)
+                first = False
+
+            if resume.location:
+                _sep()
+                run = p_contact.add_run(resume.location)
                 run.font.size = Pt(10)
+            if resume.email:
+                _sep()
+                run = p_contact.add_run(resume.email)
+                run.font.size = Pt(10)
+            if resume.linkedin:
+                _sep()
+                linkedin_url = resume.linkedin if resume.linkedin.startswith("http") else f"https://{resume.linkedin}"
+                _add_hyperlink(p_contact, "LinkedIn", linkedin_url)
+            if resume.github:
+                _sep()
+                github_url = f"https://github.com/{resume.github}"
+                _add_hyperlink(p_contact, "GitHub", github_url)
 
         # ── Education ────────────────────────────────────────────────────────
         if resume.education:
@@ -401,6 +483,8 @@ class DocxResumeRenderer(ResumeRender):
                     else:
                         p = doc.add_paragraph()
                         p.add_run(title)
+                    for bullet in ed.get("description") or []:
+                        _add_bullet(bullet)
                 else:
                     p = doc.add_paragraph()
                     p.add_run(str(ed))
@@ -419,6 +503,8 @@ class DocxResumeRenderer(ResumeRender):
                     else:
                         p = doc.add_paragraph()
                         p.add_run(title)
+                    for bullet in aw.get("description") or []:
+                        _add_bullet(bullet)
                 else:
                     p = doc.add_paragraph()
                     p.add_run(str(aw))
@@ -442,7 +528,24 @@ class DocxResumeRenderer(ResumeRender):
                     _add_bullet(bullet)
 
         # ── Technical Skills ─────────────────────────────────────────────────
-        if resume.skills:
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            _add_section_heading("Technical Skills")
+            for label, skill_list in [
+                ("Expert", by_expertise.expert),
+                ("Intermediate", by_expertise.intermediate),
+                ("Exposure", by_expertise.exposure),
+            ]:
+                if skill_list:
+                    p = doc.add_paragraph()
+                    p.paragraph_format.space_before = Pt(2)
+                    p.paragraph_format.space_after = Pt(0)
+                    run_label = p.add_run(f"{label}: ")
+                    run_label.bold = True
+                    run_label.font.size = Pt(10)
+                    run_skills = p.add_run(", ".join(skill_list))
+                    run_skills.font.size = Pt(10)
+        elif resume.skills:
             _add_section_heading("Technical Skills")
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(2)
