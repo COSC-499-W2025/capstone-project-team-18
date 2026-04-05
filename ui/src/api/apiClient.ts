@@ -684,9 +684,6 @@ export const api = {
       payload
     ),
 
-  getPortfolioConflicts: (id: string | number) =>
-    getJson<any>(`/portfolio/${id}/conflicts`),
-
   githubLogin: () => getJson<GithubLoginResponse>("/github/login"),
 
   githubOauthStatus: (state: string) =>

@@ -111,8 +111,6 @@ def update_portfolio_block(
 
     block_model.current_content = updated_values.current_content
     block_model.last_user_edit_at = updated_values.last_user_edit_at
-    block_model.in_conflict = updated_values.in_conflict
-    block_model.conflict_content = updated_values.conflict_content
 
     session.add(block_model)
     return block_model
@@ -172,8 +170,6 @@ def sync_domain_block_to_db(
 
     # Update the block model to reflect the new information in the domain
     block_model.current_content = updated_values.current_content
-    block_model.conflict_content = updated_values.conflict_content
-    block_model.in_conflict = updated_values.in_conflict
     block_model.last_generated_at = updated_values.last_generated_at
     block_model.last_user_edit_at = updated_values.last_user_edit_at
 
@@ -327,10 +323,7 @@ def sync_section_blocks(session: Session, section_model: PortfolioSectionModel, 
 
         if tag in existing_blocks_map:
             block_model = existing_blocks_map[tag]
-            # Update the fields that change during a merge/conflict
             block_model.current_content = serialized_block.current_content
-            block_model.conflict_content = serialized_block.conflict_content
-            block_model.in_conflict = serialized_block.in_conflict
             block_model.last_generated_at = serialized_block.last_generated_at
         else:
             # Add new block found in the merged domain object

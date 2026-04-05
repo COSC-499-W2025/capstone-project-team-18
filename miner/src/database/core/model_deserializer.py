@@ -151,16 +151,6 @@ def deserialize_block(model: BlockModel) -> Block:
 
     block.metadata.last_generated_at = model.last_generated_at
     block.metadata.last_user_edit_at = model.last_user_edit_at
-    block.metadata.in_conflict = model.in_conflict
-
-    # 4. Restore Conflict Content if it exists
-    if model.conflict_content is not None:
-        if model.content_type == BlockContentType.TEXT:
-            block.metadata.conflict_content = TextBlock(
-                text=model.conflict_content)
-        elif model.content_type == BlockContentType.TEXT_LIST:
-            block.metadata.conflict_content = TextListBlock(
-                items=model.conflict_content)
 
     return block
 
