@@ -601,6 +601,9 @@ export const api = {
     return res;
   },
 
+  refreshResume: (resumeId: number) =>
+    postJson<any>(`/resume/${encodeURIComponent(String(resumeId))}/refresh`),
+
   analyzeJobReadiness: (payload: JobReadinessRequest) =>
     postJson<JobReadinessResponse>("/job-readiness/analyze", payload),
 

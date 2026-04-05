@@ -242,7 +242,9 @@ export default function PortfolioEditPage() {
   // Title editing
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [prevTitleDraft, setPrevTitleDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Action states
@@ -252,6 +254,7 @@ export default function PortfolioEditPage() {
   const [exportedPagesUrl, setExportedPagesUrl] = useState<string | null>(null);
   const [showDeployConfirm, setShowDeployConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -535,6 +538,21 @@ export default function PortfolioEditPage() {
     }
   }
 
+  async function handleSaveTitle() {
+    if (!portfolio) return;
+    setSavingTitle(true);
+    setSaveError(null);
+    try {
+      await api.editPortfolio(id!, { title: titleDraft });
+      setEditingTitle(false);
+      await loadPortfolio();
+    } catch (e: any) {
+      setSaveError(e?.message ?? "Failed to save.");
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
   async function handleRefresh() {
     setRefreshing(true);
     try {
@@ -776,6 +794,10 @@ export default function PortfolioEditPage() {
               <input
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveTitle();
+                  if (e.key === "Escape") { setTitleDraft(prevTitleDraft); setEditingTitle(false); }
+                }}
                 style={{
                   fontSize: 24,
                   fontWeight: 700,
@@ -789,24 +811,42 @@ export default function PortfolioEditPage() {
                 autoFocus
               />
               <button
-                onClick={() => setEditingTitle(false)}
+                onClick={() => { setTitleDraft(prevTitleDraft); setEditingTitle(false); }}
                 style={{
                   padding: "6px 12px",
                   borderRadius: 10,
                   border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#333",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
+                  fontSize: 14,
                 }}
               >
-                Apply
+                Back
+              </button>
+              <button
+                onClick={handleSaveTitle}
+                disabled={savingTitle}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: savingTitle ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                  color: savingTitle ? "var(--text-muted)" : "#fff",
+                  cursor: savingTitle ? "not-allowed" : "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  opacity: savingTitle ? 0.6 : 1,
+                }}
+              >
+                {savingTitle ? "Saving..." : "Apply"}
               </button>
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <h1 style={{ margin: 0, fontSize: 28 }}>{titleDraft}</h1>
               <button
-                onClick={() => setEditingTitle(true)}
+                onClick={() => { setPrevTitleDraft(titleDraft); setEditingTitle(true); }}
                 style={{
                   padding: "4px 8px",
                   borderRadius: 8,
@@ -852,7 +892,7 @@ export default function PortfolioEditPage() {
           </button>
 
           <button
-            onClick={handleRefresh}
+            onClick={() => setShowRefreshConfirm(true)}
             disabled={refreshing}
             style={{
               padding: "10px 14px",
@@ -1474,6 +1514,73 @@ export default function PortfolioEditPage() {
           })}
         </div>
       </div>
+
+      {/* ---- Refresh Confirmation Modal ---- */}
+      {showRefreshConfirm && (
+        <div
+          onClick={() => { if (!refreshing) setShowRefreshConfirm(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.68)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Refresh Portfolio</h2>
+            <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+              Are you sure you want to refresh the Portfolio? Your changes may be lost.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowRefreshConfirm(false)}
+                disabled={refreshing}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: refreshing ? "var(--text-muted)" : "#444",
+                  cursor: refreshing ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowRefreshConfirm(false); handleRefresh(); }}
+                disabled={refreshing}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: refreshing ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                  color: refreshing ? "var(--text-muted)" : "#fff",
+                  cursor: refreshing ? "not-allowed" : "pointer",
+                  opacity: refreshing ? 0.7 : 1,
+                  fontWeight: 600,
+                }}
+              >
+                {refreshing ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ---- Deploy Confirmation Modal ---- */}
       {showDeployConfirm && (
