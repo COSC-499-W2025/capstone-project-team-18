@@ -182,9 +182,35 @@ export default function CreatePortfolioModal({
 
         {/* Project selection */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 14, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
-            Select Projects *
-          </label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <label style={{ fontSize: 14, color: "var(--text-muted)" }}>
+              Select Projects *
+            </label>
+            {!projectsLoading && !projectsError && projects.length > 0 && (
+              <button
+                onClick={() => {
+                  if (isSubmitting) return;
+                  if (selectedProjects.size === projects.length) {
+                    setSelectedProjects(new Set());
+                  } else {
+                    setSelectedProjects(new Set(projects.map((p) => p.project_name)));
+                  }
+                }}
+                disabled={isSubmitting}
+                style={{
+                  padding: "3px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--text-secondary)",
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                  fontSize: 13,
+                }}
+              >
+                {selectedProjects.size === projects.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
+          </div>
 
           {projectsLoading && (
             <div
