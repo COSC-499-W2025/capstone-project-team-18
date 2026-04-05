@@ -1,27 +1,26 @@
 # API Endpoint Reference
 
-This document describes every HTTP endpoint exposed by the Capstone Project backend.
-The backend is a **FastAPI** application that runs on `http://127.0.0.1:8000` in development.
-Interactive Swagger UI is available at `http://127.0.0.1:8000/docs`.
+This document describes every HTTP endpoint exposed by our project's backend.
+The backend is a **FastAPI** application that runs at `http://127.0.0.1:8000`. An interactive Swagger UI is available at `http://127.0.0.1:8000/docs`.
 
 ---
 
 ## Table of Contents
 
-- [Overview](#overview)
-  - [Error Response Format](#error-response-format)
-  - [Authentication](#authentication)
-  - [ML Consent Gate](#ml-consent-gate)
-- [Health Check](#health-check)
-- [Projects](#projects)
-- [Resume](#resume)
-- [Portfolio](#portfolio)
-- [Skills](#skills)
-- [User Config](#user-config)
-- [Job Readiness](#job-readiness)
-- [Insights](#insights)
-- [Interview](#interview)
-- [GitHub OAuth](#github-oauth)
+1. [Overview](#overview)
+    - 1.1 [Error Response Format](#error-response-format)
+    - 1.2 [Authentication](#authentication)
+    - 1.3 [ML Consent Gate](#ml-consent-gate)
+2. [Health Check](#health-check)
+3. [Projects](#projects)
+4. [Resume](#resume)
+5. [Portfolio](#portfolio)
+6. [Skills](#skills)
+7. [User Config](#user-config)
+8. [Job Readiness](#job-readiness)
+9. [Insights](#insights)
+10. [Interview](#interview)
+11. [GitHub OAuth](#github-oauth)
 
 ---
 
@@ -47,7 +46,7 @@ Generic unhandled exceptions return:
 }
 ```
 
-| `error_code` | HTTP Status | When it occurs |
+| `error_code` | HTTP Status | Cause of Error |
 |---|---|---|
 | `PROJECT_NOT_FOUND` | 404 | A project name does not exist in the database |
 | `RESUME_NOT_FOUND` | 404 | A resume ID does not exist |
