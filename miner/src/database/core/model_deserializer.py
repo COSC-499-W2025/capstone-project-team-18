@@ -5,7 +5,7 @@ them into domain classes
 
 import base64
 from src.core.report import FileReport, ProjectReport
-from src.core.resume.resume import Resume, ResumeItem
+from src.core.resume.resume import Resume, ResumeItem, SkillsByExpertise
 from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
 from src.core.statistic import StatisticIndex, FileStatCollection, ProjectStatCollection, deserialize, Statistic, WeightedSkills
 from src.infrastructure.log.logging import get_logger
@@ -117,6 +117,14 @@ def deserialize_resume(model: ResumeModel) -> Resume:
 
     # Restore skills list directly
     resume.skills = list(model.skills)
+
+    # Restore categorized skills snapshot when any category was stored
+    if model.skills_expert or model.skills_intermediate or model.skills_exposure:
+        resume._skills_by_expertise = SkillsByExpertise(
+            expert=list(model.skills_expert or []),
+            intermediate=list(model.skills_intermediate or []),
+            exposure=list(model.skills_exposure or []),
+        )
 
     if model.items:
         for item_model in model.items:

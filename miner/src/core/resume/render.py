@@ -22,7 +22,18 @@ class TextResumeRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         to_return = ""
         to_return += f"Email: {resume.email}\n\n" if resume.email else ""
-        to_return += f"Core skills: {', '.join(resume.skills)}\n\n" if resume.skills else ""
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            skill_parts = []
+            if by_expertise.expert:
+                skill_parts.append(f"Expert: {', '.join(by_expertise.expert)}")
+            if by_expertise.intermediate:
+                skill_parts.append(f"Intermediate: {', '.join(by_expertise.intermediate)}")
+            if by_expertise.exposure:
+                skill_parts.append(f"Exposure: {', '.join(by_expertise.exposure)}")
+            to_return += "Technical Skills:\n" + "\n".join(f"   {p}" for p in skill_parts) + "\n\n"
+        elif resume.skills:
+            to_return += f"Core skills: {', '.join(resume.skills)}\n\n"
 
         # Check if resume has education entries before rendering
         if resume.education:
@@ -289,7 +300,21 @@ class ResumeLatexRenderer(ResumeRender):
             tex.append("")
 
         # --- Technical Skills ---
-        if resume.skills:
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            tex.append(r"\section{Technical Skills}")
+            tex.append(r"\begin{itemize}[leftmargin=0.15in, label={}]")
+            if by_expertise.expert:
+                expert_str = latex_escape(", ".join(by_expertise.expert))
+                tex.append(rf"  \item \small{{\textbf{{Expert:}} {expert_str}}}")
+            if by_expertise.intermediate:
+                intermediate_str = latex_escape(", ".join(by_expertise.intermediate))
+                tex.append(rf"  \item \small{{\textbf{{Intermediate:}} {intermediate_str}}}")
+            if by_expertise.exposure:
+                exposure_str = latex_escape(", ".join(by_expertise.exposure))
+                tex.append(rf"  \item \small{{\textbf{{Exposure:}} {exposure_str}}}")
+            tex.append(r"\end{itemize}")
+        elif resume.skills:
             skills = ", ".join(latex_escape(s) for s in resume.skills)
             tex.append(r"\section{Technical Skills}")
             tex.append(r"\begin{itemize}[leftmargin=0.15in, label={}]")
@@ -503,7 +528,24 @@ class DocxResumeRenderer(ResumeRender):
                     _add_bullet(bullet)
 
         # ── Technical Skills ─────────────────────────────────────────────────
-        if resume.skills:
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            _add_section_heading("Technical Skills")
+            for label, skill_list in [
+                ("Expert", by_expertise.expert),
+                ("Intermediate", by_expertise.intermediate),
+                ("Exposure", by_expertise.exposure),
+            ]:
+                if skill_list:
+                    p = doc.add_paragraph()
+                    p.paragraph_format.space_before = Pt(2)
+                    p.paragraph_format.space_after = Pt(0)
+                    run_label = p.add_run(f"{label}: ")
+                    run_label.bold = True
+                    run_label.font.size = Pt(10)
+                    run_skills = p.add_run(", ".join(skill_list))
+                    run_skills.font.size = Pt(10)
+        elif resume.skills:
             _add_section_heading("Technical Skills")
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(2)
