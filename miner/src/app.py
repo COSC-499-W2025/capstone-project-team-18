@@ -43,6 +43,13 @@ def _init_db() -> None:
                 conn.execute(text("ALTER TABLE resumemodel ADD COLUMN title TEXT"))
                 conn.commit()
 
+    if inspector.has_table("projectreportmodel"):
+        existing_cols = {col["name"] for col in inspector.get_columns("projectreportmodel")}
+        with engine.connect() as conn:
+            if "is_deleted" not in existing_cols:
+                conn.execute(text("ALTER TABLE projectreportmodel ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0"))
+                conn.commit()
+
 
 def init_system() -> tuple[bool, str]:
     """

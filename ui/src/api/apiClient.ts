@@ -458,6 +458,9 @@ export const api = {
   deleteProjectImage: (projectName: string) =>
     deleteJson(`/projects/${encodeURIComponent(projectName)}/image`),
 
+  deleteProject: (projectName: string) =>
+    deleteJson(`/projects/${encodeURIComponent(projectName)}`),
+
   getResume: (resumeId: string | number) =>
     getJson<ResumeResponse>(`/resume/${encodeURIComponent(String(resumeId))}`),
 

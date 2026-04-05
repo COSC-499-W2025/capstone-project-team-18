@@ -9,7 +9,8 @@ from pydantic import field_serializer
 from sqlmodel import Field, SQLModel
 from src.database.api.CRUD.projects import (get_all_project_report_models,
                                             get_project_report_by_name,
-                                            get_project_report_model_by_name)
+                                            get_project_report_model_by_name,
+                                            soft_delete_project_report_by_name)
 from src.database.api.CRUD.user_config import get_most_recent_user_config
 from src.database.api.models import ProjectReportModel
 from src.infrastructure.log.logging import get_logger
@@ -830,6 +831,46 @@ def upload_project_image(
                      project_name, str(e))
         raise DatabaseOperationError(
             f"Failed to upload image: {str(e)}") from e
+
+
+@router.delete("/{project_name}", status_code=204)
+def delete_project(
+    project_name: str,
+    session=Depends(get_session),
+):
+    """
+    Soft-delete a project by name.
+
+    The project record is retained in the database so that existing resumes
+    and portfolios can continue to reference it. The project will no longer
+    appear in the project list or be available for new resume/portfolio creation.
+    Re-uploading a zip with the same project name will resurrect the project.
+
+    Path parameters:
+    - `project_name`: The name of the project to delete.
+
+    Returns:
+    - 204: No content on success.
+
+    Raises:
+    - 404 `PROJECT_NOT_FOUND`: No project exists with the given name.
+    - 500 `DATABASE_OPERATION_FAILED`: The deletion failed; changes were rolled back.
+    """
+    decoded = unquote(project_name)
+    try:
+        deleted = soft_delete_project_report_by_name(session, decoded)
+        if not deleted:
+            raise ProjectNotFoundError(f"No project report named '{decoded}'")
+        session.commit()
+
+    except ProjectNotFoundError:
+        raise
+
+    except Exception as e:
+        session.rollback()
+        logger.error("Error soft-deleting project %s: %s", decoded, str(e))
+        raise DatabaseOperationError(
+            f"Failed to delete project: {str(e)}") from e
 
 
 @router.delete("/{project_name}/image")

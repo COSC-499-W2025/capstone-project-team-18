@@ -71,6 +71,8 @@ class ProjectReportModel(SQLModel, table=True):
         default_factory=list, sa_column=Column(JSON))
     showcase_last_user_edit_at: Optional[datetime] = None
 
+    is_deleted: bool = Field(default=False)
+
     # Relationships
 
     # Idea here is that user gets a warning if PR is outdate with current config
