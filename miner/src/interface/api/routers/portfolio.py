@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from src.services.portfolio.generate_update_portfolio_service import generate_and_save_portfolio, update_portfolio
 from src.services.portfolio.edit_portfolio_service import (
     get_portfolio_conflicts,
-    resolve_block_accept_system,
     edit_portfolio_metadata,
 )
 from src.services.portfolio.project_card_service import edit_project_card, set_showcase
@@ -166,30 +165,6 @@ def list_conflicts(portfolio_id: int, session: Session = Depends(get_session)):
     return get_portfolio_conflicts(session, portfolio_id)
 
 
-@router.post("/{portfolio_id}/sections/{section_id}/blocks/{block_tag}/resolve-accept")
-def resolve_accept_system(
-    portfolio_id: int,
-    section_id: str,
-    block_tag: str,
-    session: Session = Depends(get_session)
-):
-    """
-    Resolve a conflict by accepting the system-generated version of a block.
-
-    Discards the user's saved version and replaces it with the current
-    system-generated content, clearing the conflict flag.
-
-    Path parameters:
-    - `portfolio_id`: Integer primary key of the portfolio.
-    - `section_id`: Tag identifier of the section containing the block.
-    - `block_tag`: Tag identifier of the block to resolve.
-
-    Returns:
-    - 200: The resolved block object with conflict cleared.
-    """
-    return resolve_block_accept_system(session, portfolio_id, section_id, block_tag)
-
-
 class EditPortfolioRequest(BaseModel):
     title: Optional[str] = None
     project_ids_include: Optional[list[str]] = None
@@ -325,24 +300,24 @@ async def export_portfolio(
     session: Session = Depends(get_session),
 ):
     """
-    Pushes a static website of a portfolio to the user's `portfolio` repo and
-    deploys it via GitHub Pages.
+    Export a portfolio as a static website and optionally deploy it to GitHub Pages.
 
-    If the user has a GitHub access token stored, the selected portfolio is
-    deployed as a GitHub Pages site. If there is no GitHub auth, the site
-    is downloaded as a `.zip` file.
+    If the user has a GitHub access token stored, the portfolio is deployed to
+    their `portfolio` GitHub Pages repository and the live URL is returned.
+    If no GitHub token is present, a `.zip` archive of the static site is
+    returned for manual download.
 
-    Body Parameters:
-    - `portfolio_id`: The selected portfolio's ID
+    Path parameters:
+    - `portfolio_id`: Integer primary key of the portfolio to export.
 
     Returns (GitHub auth present):
-        200: {"pages_url": "https://{username}.github.io/portfolio"}
+    - 200: `{"pages_url": "https://{username}.github.io/portfolio"}`
 
     Returns (no GitHub auth):
-        200: ZIP archive — Content-Disposition: attachment; filename="portfolio_{id}.zip"
+    - 200: ZIP archive — `Content-Disposition: attachment; filename="portfolio_{id}.zip"`
 
     Raises:
-    - 404 `ID_NOT_FOUND`: Portfolio with ID `portfolio_id` not found in the database.
+    - 404 `ID_NOT_FOUND`: Portfolio with the given ID was not found in the database.
     - 404 `USER_CONFIG_NOT_FOUND`: No user configuration has been created yet.
     """
     try:

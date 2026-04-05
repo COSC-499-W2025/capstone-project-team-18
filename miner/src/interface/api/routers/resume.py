@@ -28,6 +28,8 @@ router = APIRouter(
 )
 
 # ---------- Request/Response Models ----------
+
+
 class GenerateResumeRequest(SQLModel):
     """Request model for generating a resume"""
     project_names: List[str]
@@ -123,6 +125,7 @@ class ResumeResponse(SQLModel):
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
 
+
 class ResumeListItemResponse(SQLModel):
     """Lightweight response model for listing produced resumes"""
     id: int
@@ -141,12 +144,16 @@ class ResumeListResponse(SQLModel):
     count: int
 
 # Helper function.
+
+
 def _build_resume_response(resume_model) -> ResumeResponse:
     """
     Build a ResumeResponse using per-resume education/awards snapshots.
     """
-    education = [EducationEntry(**_normalize_entry(e)) for e in (resume_model.education or [])]
-    awards = [AwardEntry(**_normalize_entry(a)) for a in (resume_model.awards or [])]
+    education = [EducationEntry(**_normalize_entry(e))
+                 for e in (resume_model.education or [])]
+    awards = [AwardEntry(**_normalize_entry(a))
+              for a in (resume_model.awards or [])]
 
     expert = resume_model.skills_expert or []
     intermediate = resume_model.skills_intermediate or []
@@ -177,6 +184,7 @@ def _build_resume_response(resume_model) -> ResumeResponse:
         last_updated=resume_model.last_updated,
     )
 
+
 def _build_resume_list_item(resume_model) -> ResumeListItemResponse:
     """
     Build a lightweight response object for the resume list page.
@@ -195,6 +203,7 @@ def _build_resume_list_item(resume_model) -> ResumeListItemResponse:
         item_count=len(resume_model.items or []),
         project_names=project_names,
     )
+
 
 class EditSkillsRequest(SQLModel):
     """Request model for editing categorized skills"""
@@ -236,12 +245,14 @@ def get_all_resumes(session=Depends(get_session)):
     Each entry contains: id, email, github, created_at, last_updated, item_count.
     """
     resume_models = list_resumes(session)
-    resumes = [_build_resume_list_item(resume_model) for resume_model in resume_models]
+    resumes = [_build_resume_list_item(resume_model)
+               for resume_model in resume_models]
 
     return ResumeListResponse(
         resumes=resumes,
         count=len(resumes),
     )
+
 
 @router.get("/{resume_id}", response_model=ResumeResponse)
 def get_resume(resume_id: int, session=Depends(get_session)):
@@ -280,7 +291,8 @@ def get_resume(resume_id: int, session=Depends(get_session)):
                 project_reports = [p for p in project_reports if p is not None]
                 if project_reports:
                     report = UserReport(project_reports)
-                    weighted_skills = report.statistics.get_value(UserStatCollection.USER_SKILLS.value) or []
+                    weighted_skills = report.statistics.get_value(
+                        UserStatCollection.USER_SKILLS.value) or []
                     expert, intermediate, exposure = [], [], []
                     for ws in weighted_skills:
                         if ws.weight >= 0.7:
@@ -296,6 +308,7 @@ def get_resume(resume_id: int, session=Depends(get_session)):
                 pass
 
     return _build_resume_response(result)
+
 
 @router.post("/{resume_id}/edit/skills", response_model=ResumeResponse)
 def edit_resume_skills(
@@ -321,14 +334,16 @@ def edit_resume_skills(
         resume_model.skills_exposure = list(request.exposure)
 
         # Update flat skills list
-        resume_model.skills = list(request.expert) + list(request.intermediate) + list(request.exposure)
+        resume_model.skills = list(
+            request.expert) + list(request.intermediate) + list(request.exposure)
 
         flag_modified(resume_model, "skills_expert")
         flag_modified(resume_model, "skills_intermediate")
         flag_modified(resume_model, "skills_exposure")
         flag_modified(resume_model, "skills")
 
-        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.add(resume_model)
         session.commit()
@@ -342,6 +357,7 @@ def edit_resume_skills(
             status_code=500,
             detail=f"Failed to edit skills: {str(e)}"
         )
+
 
 @router.post("/{resume_id}/edit/education", response_model=ResumeResponse)
 def edit_resume_education(
@@ -360,7 +376,8 @@ def edit_resume_education(
 
     try:
         resume_model.education = [e.model_dump() for e in request.education]
-        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.add(resume_model)
         session.commit()
@@ -393,7 +410,8 @@ def edit_resume_awards(
 
     try:
         resume_model.awards = [a.model_dump() for a in request.awards]
-        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.add(resume_model)
         session.commit()
@@ -445,7 +463,8 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
     for project_name in request.project_names:
         project = get_project_report_by_name(session, project_name)
         if not project:
-            raise ProjectNotFoundError(f"No project found with name '{project_name}'")
+            raise ProjectNotFoundError(
+                f"No project found with name '{project_name}'")
         project_reports.append(project)
 
     try:
@@ -486,7 +505,8 @@ def generate_resume(request: GenerateResumeRequest, session=Depends(get_session)
 
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to generate resume: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to generate resume: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/metadata", response_model=ResumeResponse)
@@ -539,7 +559,8 @@ def edit_resume_metadata(
         if request.linkedin is not None:
             resume_model.linkedin = request.linkedin.strip() or None
 
-        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.add(resume_model)
         session.commit()
@@ -616,7 +637,8 @@ def edit_resume_item_bullet_point(
         # Apply changes
         resume_item.bullet_points = updated_bullets
         resume_item.last_updated = datetime.datetime.now(datetime.timezone.utc)
-        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.add(resume_item)
         session.add(resume_model)
@@ -627,7 +649,8 @@ def edit_resume_item_bullet_point(
 
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to edit bullet point: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to edit bullet point: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/resume_item", response_model=ResumeResponse)
@@ -682,7 +705,8 @@ def edit_resume_item(
             resume_item.end_date = request.end_date
 
         resume_item.last_updated = datetime.datetime.now(datetime.timezone.utc)
-        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.add(resume_item)
         session.add(resume_model)
@@ -693,7 +717,8 @@ def edit_resume_item(
 
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to edit resume item: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to edit resume item: {str(e)}") from e
 
 
 @router.post("/{resume_id}/refresh", response_model=ResumeResponse)
@@ -737,7 +762,8 @@ def refresh_resume(
     for project_name in project_names:
         project = get_project_report_by_name(session, project_name)
         if not project:
-            raise ProjectNotFoundError(f"No project found with name '{project_name}'")
+            raise ProjectNotFoundError(
+                f"No project found with name '{project_name}'")
         project_reports.append(project)
 
     try:
@@ -752,7 +778,8 @@ def refresh_resume(
 
         updated_model = save_resume(session, new_resume_domain)
         updated_model.id = resume_id
-        updated_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        updated_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.commit()
 
@@ -760,7 +787,8 @@ def refresh_resume(
 
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to refresh resume: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to refresh resume: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/bullet_point/delete", response_model=ResumeResponse)
@@ -810,7 +838,8 @@ def delete_resume_item_bullet_point(
         updated_bullets.pop(request.bullet_point_index)
         resume_item.bullet_points = updated_bullets
         resume_item.last_updated = datetime.datetime.now(datetime.timezone.utc)
-        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.add(resume_item)
         session.add(resume_model)
@@ -821,7 +850,8 @@ def delete_resume_item_bullet_point(
 
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to delete bullet point: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to delete bullet point: {str(e)}") from e
 
 
 @router.post("/{resume_id}/edit/frameworks", response_model=ResumeResponse)
@@ -864,7 +894,8 @@ def edit_resume_item_frameworks(
     try:
         resume_item.frameworks = list(request.frameworks)
         resume_item.last_updated = datetime.datetime.now(datetime.timezone.utc)
-        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        resume_model.last_updated = datetime.datetime.now(
+            datetime.timezone.utc)
 
         session.add(resume_item)
         session.add(resume_model)
@@ -875,27 +906,8 @@ def edit_resume_item_frameworks(
 
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to edit frameworks: {str(e)}") from e
-
-
-@router.get("/{resume_id}/export/latex")
-def export_resume_latex(resume_id: int, session=Depends(get_session)):
-    """Export a resume as a raw LaTeX (.tex) file."""
-    from src.core.resume.render import ResumeLatexRenderer
-
-    resume = load_resume(session, resume_id)
-    if resume is None:
-        raise HTTPException(status_code=404, detail=f"No resume found with id {resume_id}")
-
-    tex = ResumeLatexRenderer().render(resume)
-    filename = f"{resume.title or f'resume_{resume_id}'}.tex"
-    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip() or f"resume_{resume_id}.tex"
-
-    return Response(
-        content=tex.encode("utf-8"),
-        media_type="application/x-tex",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+        raise DatabaseOperationError(
+            f"Failed to edit frameworks: {str(e)}") from e
 
 
 @router.get("/{resume_id}/export/pdf")
@@ -937,7 +949,8 @@ def export_resume_pdf(resume_id: int, session=Depends(get_session)):
         )
 
     filename = f"{resume.title or f'resume_{resume_id}'}.pdf"
-    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip()
+    filename = "".join(c for c in filename if c.isalnum()
+                       or c in ("-", "_", ".")).strip()
     if not filename:
         filename = f"resume_{resume_id}.pdf"
 
@@ -955,15 +968,18 @@ def export_resume_docx(resume_id: int, session=Depends(get_session)):
 
     resume = load_resume(session, resume_id)
     if resume is None:
-        raise HTTPException(status_code=404, detail=f"No resume found with id {resume_id}")
+        raise HTTPException(
+            status_code=404, detail=f"No resume found with id {resume_id}")
 
     try:
         docx_bytes = DocxResumeRenderer().render(resume)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Word export error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Word export error: {str(e)}")
 
     filename = f"{resume.title or f'resume_{resume_id}'}.docx"
-    filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", ".")).strip() or f"resume_{resume_id}.docx"
+    filename = "".join(c for c in filename if c.isalnum() or c in (
+        "-", "_", ".")).strip() or f"resume_{resume_id}.docx"
 
     return Response(
         content=docx_bytes,
@@ -1000,4 +1016,5 @@ def delete_resume_endpoint(
         raise
     except Exception as e:
         session.rollback()
-        raise DatabaseOperationError(f"Failed to delete resume: {str(e)}") from e
+        raise DatabaseOperationError(
+            f"Failed to delete resume: {str(e)}") from e

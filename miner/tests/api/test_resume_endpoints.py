@@ -772,100 +772,344 @@ def test_generate_resume_with_empty_education_awards(client, sample_resume_domai
         assert call_kwargs["awards"] == []
 
 
-def test_refresh_resume_success(client, sample_resume_domain, sample_resume_model):
-    """Test successfully refreshing a resume from its source projects"""
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
-            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
-            patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
+# --- Tests for POST /resume/{resume_id}/refresh ---
 
-        # Mock the existing resume model with a project name
-        mock_get_model.return_value = sample_resume_model
+class TestRefreshResume:
+    def test_refresh_success(self, client, sample_resume_domain, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
+             patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+             patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
+             patch('src.interface.api.routers.resume.save_resume') as mock_save:
 
-        # Mock project report
-        mock_project = MagicMock()
-        mock_project.project_name = "Test Project"
-        mock_get_project.return_value = mock_project
+            mock_get_model.return_value = sample_resume_model
 
-        # Mock UserReport
-        mock_report_instance = MagicMock()
-        refreshed_resume = sample_resume_domain
-        refreshed_resume.email = "refreshed@example.com"
-        mock_report_instance.generate_resume.return_value = refreshed_resume
-        mock_user_report.return_value = mock_report_instance
+            mock_project = MagicMock()
+            mock_project.project_name = "Test Project"
+            mock_get_project.return_value = mock_project
 
-        # Mock save
-        mock_save.return_value = sample_resume_model
+            mock_report_instance = MagicMock()
+            mock_report_instance.generate_resume.return_value = sample_resume_domain
+            mock_user_report.return_value = mock_report_instance
 
-        response = client.post("/resume/1/refresh")
+            mock_save.return_value = sample_resume_model
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == 1
+            r = client.post("/resume/1/refresh")
 
+        assert r.status_code == 200
+        assert r.json()["id"] == 1
 
-def test_refresh_resume_not_found(client):
-    """Test refreshing a non-existent resume"""
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load:
-        mock_load.return_value = None
+    def test_refresh_not_found(self, client):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = None
+            r = client.post("/resume/999/refresh")
+        assert r.status_code == 404
+        assert "no resume found" in r.json()["message"].lower()
 
-        response = client.post("/resume/999/refresh")
+    def test_refresh_no_items_returns_400(self, client, sample_resume_model):
+        sample_resume_model.items = []
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/refresh")
+        assert r.status_code == 400
+        assert "no projects" in r.json()["detail"].lower()
 
-        assert response.status_code == 404
-        assert "resume found" in response.json()["message"].lower()
+    def test_refresh_project_not_found_returns_404(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
+             patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project:
+            mock_get_model.return_value = sample_resume_model
+            mock_get_project.return_value = None
+            r = client.post("/resume/1/refresh")
+        assert r.status_code == 404
+        assert "project" in r.json()["message"].lower()
 
+    def test_refresh_preserves_id(self, client, sample_resume_domain, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
+             patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+             patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
+             patch('src.interface.api.routers.resume.save_resume') as mock_save:
 
-def test_refresh_resume_no_items(client, sample_resume_model):
-    """Test refreshing a resume with no items"""
-    sample_resume_model.items = []
+            mock_get_model.return_value = sample_resume_model
+            mock_get_project.return_value = MagicMock()
+            mock_report_instance = MagicMock()
+            mock_report_instance.generate_resume.return_value = sample_resume_domain
+            mock_user_report.return_value = mock_report_instance
+            sample_resume_model.id = None
+            mock_save.return_value = sample_resume_model
 
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model:
-        mock_get_model.return_value = sample_resume_model
+            r = client.post("/resume/1/refresh")
 
-        response = client.post("/resume/1/refresh")
-
-        assert response.status_code == 400
-        assert "no projects" in response.json()["detail"].lower()
-
-
-def test_refresh_resume_project_not_found(client, sample_resume_domain, sample_resume_model):
-    """Test refreshing when source project no longer exists"""
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
-            patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
-            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project:
-
-        mock_load.return_value = sample_resume_domain
-        mock_get_model.return_value = sample_resume_model
-        mock_get_project.return_value = None
-
-        response = client.post("/resume/1/refresh")
-
-        assert response.status_code == 404
-        assert "project" in response.json()["message"].lower()
-
-
-def test_refresh_resume_preserves_manual_edits(client, sample_resume_domain, sample_resume_model):
-    """Test that refreshing preserves the resume ID"""
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
-            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
-            patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
-
-        mock_get_model.return_value = sample_resume_model
-
-        mock_project = MagicMock()
-        mock_get_project.return_value = mock_project
-
-        mock_report_instance = MagicMock()
-        mock_report_instance.generate_resume.return_value = sample_resume_domain
-        mock_user_report.return_value = mock_report_instance
-
-        # Mock save to return model without ID
-        sample_resume_model.id = None
-        mock_save.return_value = sample_resume_model
-
-        response = client.post("/resume/1/refresh")
-
-        assert response.status_code == 200
-        # Verify the ID was restored
+        assert r.status_code == 200
         assert sample_resume_model.id == 1
+
+    def test_refresh_generation_failure_returns_500(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
+             patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+             patch('src.interface.api.routers.resume.UserReport') as mock_user_report:
+
+            mock_get_model.return_value = sample_resume_model
+            mock_get_project.return_value = MagicMock()
+            mock_user_report.side_effect = Exception("generation blew up")
+
+            r = client.post("/resume/1/refresh")
+
+        assert r.status_code == 500
+        assert r.json()["error_code"] == "DATABASE_OPERATION_FAILED"
+        assert "failed to refresh" in r.json()["message"].lower()
+
+
+# --- Tests for GET /resume ---
+
+class TestListResumes:
+    def test_returns_empty_list_when_no_resumes(self, client):
+        with patch('src.interface.api.routers.resume.list_resumes') as mock_list:
+            mock_list.return_value = []
+            r = client.get("/resume")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["resumes"] == []
+        assert body["count"] == 0
+
+    def test_returns_all_resumes(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.list_resumes') as mock_list:
+            mock_list.return_value = [sample_resume_model]
+            r = client.get("/resume")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] == 1
+        assert body["resumes"][0]["id"] == 1
+
+    def test_count_matches_resumes_length(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.list_resumes') as mock_list:
+            mock_list.return_value = [sample_resume_model, sample_resume_model]
+            r = client.get("/resume")
+        body = r.json()
+        assert body["count"] == len(body["resumes"])
+
+    def test_response_contains_expected_fields(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.list_resumes') as mock_list:
+            mock_list.return_value = [sample_resume_model]
+            r = client.get("/resume")
+        item = r.json()["resumes"][0]
+        for field in ("id", "email", "github", "created_at", "last_updated", "item_count"):
+            assert field in item
+
+    def test_item_count_reflects_resume_items(self, client, sample_resume_model):
+        """item_count should equal the number of ResumeItemModel entries."""
+        with patch('src.interface.api.routers.resume.list_resumes') as mock_list:
+            mock_list.return_value = [sample_resume_model]
+            r = client.get("/resume")
+        assert r.json()["resumes"][0]["item_count"] == 1
+
+    def test_project_names_listed(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.list_resumes') as mock_list:
+            mock_list.return_value = [sample_resume_model]
+            r = client.get("/resume")
+        assert "Test Project" in r.json()["resumes"][0]["project_names"]
+
+
+# --- Tests for DELETE /resume/{resume_id} ---
+
+class TestDeleteResume:
+    def test_delete_success(self, client):
+        with patch('src.interface.api.routers.resume.delete_resume') as mock_del:
+            mock_del.return_value = True
+            r = client.delete("/resume/1")
+        assert r.status_code == 200
+        assert "deleted" in r.json()["message"].lower()
+
+    def test_delete_not_found(self, client):
+        with patch('src.interface.api.routers.resume.delete_resume') as mock_del:
+            mock_del.return_value = False
+            r = client.delete("/resume/999")
+        assert r.status_code == 404
+        assert r.json()["error_code"] == "RESUME_NOT_FOUND"
+
+    def test_delete_invalid_id_returns_422(self, client):
+        r = client.delete("/resume/not-a-number")
+        assert r.status_code == 422
+
+    def test_delete_db_failure_returns_500(self, client):
+        with patch('src.interface.api.routers.resume.delete_resume',
+                   side_effect=Exception("disk full")):
+            r = client.delete("/resume/1")
+        assert r.status_code == 500
+        assert r.json()["error_code"] == "DATABASE_OPERATION_FAILED"
+
+
+# --- Tests for POST /resume/{resume_id}/edit/bullet_point/delete ---
+
+class TestDeleteBulletPoint:
+    def test_delete_bullet_success(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/bullet_point/delete", json={
+                "item_index": 0,
+                "bullet_point_index": 0,
+            })
+        assert r.status_code == 200
+        assert len(r.json()["items"][0]["bullet_points"]) == 1
+
+    def test_delete_bullet_resume_not_found(self, client):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = None
+            r = client.post("/resume/999/edit/bullet_point/delete", json={
+                "item_index": 0,
+                "bullet_point_index": 0,
+            })
+        assert r.status_code == 404
+
+    def test_delete_bullet_invalid_item_index(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/bullet_point/delete", json={
+                "item_index": 99,
+                "bullet_point_index": 0,
+            })
+        assert r.status_code == 400
+        assert "out of bounds" in r.json()["detail"].lower()
+
+    def test_delete_bullet_invalid_bullet_index(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/bullet_point/delete", json={
+                "item_index": 0,
+                "bullet_point_index": 99,
+            })
+        assert r.status_code == 400
+        assert "out of bounds" in r.json()["detail"].lower()
+
+
+# --- Tests for POST /resume/{resume_id}/edit/frameworks ---
+
+class TestEditFrameworks:
+    def test_edit_frameworks_success(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/frameworks", json={
+                "item_index": 0,
+                "frameworks": ["Django", "Vue"],
+            })
+        assert r.status_code == 200
+        assert r.json()["items"][0]["frameworks"] == ["Django", "Vue"]
+
+    def test_edit_frameworks_empty_list(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/frameworks", json={
+                "item_index": 0,
+                "frameworks": [],
+            })
+        assert r.status_code == 200
+        assert r.json()["items"][0]["frameworks"] == []
+
+    def test_edit_frameworks_resume_not_found(self, client):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = None
+            r = client.post("/resume/999/edit/frameworks", json={
+                "item_index": 0,
+                "frameworks": ["Django"],
+            })
+        assert r.status_code == 404
+
+    def test_edit_frameworks_invalid_item_index(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/frameworks", json={
+                "item_index": 99,
+                "frameworks": ["Django"],
+            })
+        assert r.status_code == 400
+
+
+# --- Tests for POST /resume/{resume_id}/edit/education ---
+
+class TestEditEducation:
+    def test_edit_education_success(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/education", json={
+                "education": [{"title": "BSc CS", "start": "2020", "end": "2024"}]
+            })
+        assert r.status_code == 200
+        assert r.json()["education"][0]["title"] == "BSc CS"
+
+    def test_edit_education_clears_list(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/education", json={"education": []})
+        assert r.status_code == 200
+        assert r.json()["education"] == []
+
+    def test_edit_education_resume_not_found(self, client):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = None
+            r = client.post("/resume/999/edit/education", json={
+                "education": [{"title": "BSc CS"}]
+            })
+        assert r.status_code == 404
+
+
+# --- Tests for POST /resume/{resume_id}/edit/awards ---
+
+class TestEditAwards:
+    def test_edit_awards_success(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/awards", json={
+                "awards": [{"title": "Dean's List", "start": "2023", "end": None}]
+            })
+        assert r.status_code == 200
+        assert r.json()["awards"][0]["title"] == "Dean's List"
+
+    def test_edit_awards_clears_list(self, client, sample_resume_model):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = sample_resume_model
+            r = client.post("/resume/1/edit/awards", json={"awards": []})
+        assert r.status_code == 200
+        assert r.json()["awards"] == []
+
+    def test_edit_awards_resume_not_found(self, client):
+        with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+            mock_get.return_value = None
+            r = client.post("/resume/999/edit/awards", json={
+                "awards": [{"title": "Prize"}]
+            })
+        assert r.status_code == 404
+
+
+# --- Tests for GET /resume/{resume_id}/export/pdf and /export/docx ---
+
+class TestExportResume:
+    def test_export_pdf_not_found(self, client):
+        with patch('src.interface.api.routers.resume.load_resume') as mock_load:
+            mock_load.return_value = None
+            r = client.get("/resume/999/export/pdf")
+        assert r.status_code == 404
+
+    def test_export_pdf_renderer_failure_returns_500(self, client):
+        mock_resume = MagicMock()
+        mock_resume.title = "My Resume"
+        with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
+             patch('src.core.resume.render.PDFRenderer') as mock_renderer_cls:
+            mock_load.return_value = mock_resume
+            mock_renderer_cls.return_value.render.side_effect = Exception("pdflatex missing")
+            r = client.get("/resume/1/export/pdf")
+        assert r.status_code == 500
+        assert "rendering" in r.json()["detail"].lower()
+
+    def test_export_docx_not_found(self, client):
+        with patch('src.interface.api.routers.resume.load_resume') as mock_load:
+            mock_load.return_value = None
+            r = client.get("/resume/999/export/docx")
+        assert r.status_code == 404
+
+    def test_export_docx_renderer_failure_returns_500(self, client):
+        mock_resume = MagicMock()
+        mock_resume.title = "My Resume"
+        with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
+             patch('src.core.resume.render.DocxResumeRenderer') as mock_renderer_cls:
+            mock_load.return_value = mock_resume
+            mock_renderer_cls.return_value.render.side_effect = Exception("docx error")
+            r = client.get("/resume/1/export/docx")
+        assert r.status_code == 500
+
