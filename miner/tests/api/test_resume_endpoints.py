@@ -869,3 +869,117 @@ def test_refresh_resume_preserves_manual_edits(client, sample_resume_domain, sam
         assert response.status_code == 200
         # Verify the ID was restored
         assert sample_resume_model.id == 1
+
+
+# --- Tests for null start_date / end_date (wrong-email analysis bug) ---
+
+def test_resume_item_allows_null_dates():
+    """ResumeItem should accept None for start_date and end_date (project analyzed with wrong email)."""
+    from src.core.resume.resume import ResumeItem
+
+    item = ResumeItem(
+        title="NullDateProject",
+        frameworks=[],
+        bullet_points=["Did some work"],
+        start_date=None,
+        end_date=None,
+        project_name="NullDateProject",
+    )
+
+    assert item.start_date is None
+    assert item.end_date is None
+
+
+def test_serialize_resume_item_null_dates():
+    """serialize_resume_item should produce a ResumeItemModel with null dates without raising."""
+    from src.core.resume.resume import ResumeItem
+    from src.database.core.model_serializer import serialize_resume_item
+
+    item = ResumeItem(
+        title="NullDateProject",
+        frameworks=[],
+        bullet_points=["Did some work"],
+        start_date=None,
+        end_date=None,
+        project_name="NullDateProject",
+    )
+
+    model = serialize_resume_item(item)
+
+    assert model.start_date is None
+    assert model.end_date is None
+    assert model.title == "NullDateProject"
+
+
+def test_generate_resume_null_dates_succeeds(client, blank_db):
+    """
+    POST /resume/generate should succeed (200) even when the project was analyzed with
+    the wrong email, causing start_date and end_date to be None on the resume items.
+
+    Regression test for: NOT NULL constraint failed: resumeitemmodel.start_date
+    """
+    from src.core.resume.resume import Resume, ResumeItem
+    from src.database.api.models import ResumeModel, ResumeItemModel
+    from sqlmodel import Session
+
+    # Build a resume domain object whose item has no dates (wrong-email scenario)
+    resume_no_dates = Resume(email="wrong@example.com")
+    null_date_item = ResumeItem(
+        title="EarthLingo",
+        frameworks=[],
+        bullet_points=["Applied Web Dev to deliver project outcomes"],
+        start_date=None,
+        end_date=None,
+        project_name="EarthLingo",
+    )
+    resume_no_dates.add_item(null_date_item)
+
+    mock_project = MagicMock()
+    mock_project.project_name = "EarthLingo"
+
+    with patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+            patch('src.interface.api.routers.resume.get_user_config_safe') as mock_config, \
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report:
+
+        mock_get_project.return_value = mock_project
+        mock_config.return_value = None
+
+        mock_report_instance = MagicMock()
+        mock_report_instance.generate_resume.return_value = resume_no_dates
+        mock_user_report.return_value = mock_report_instance
+
+        response = client.post("/resume/generate", json={
+            "project_names": ["EarthLingo"]
+        })
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert len(data["items"]) == 1
+    assert data["items"][0]["start_date"] is None
+    assert data["items"][0]["end_date"] is None
+
+
+def test_resume_item_model_accepts_null_dates(blank_db):
+    """ResumeItemModel should persist to DB with null start_date and end_date."""
+    from src.database.api.models import ResumeModel, ResumeItemModel
+    from sqlmodel import Session
+
+    with Session(blank_db) as session:
+        resume_model = ResumeModel(skills=[])
+        session.add(resume_model)
+        session.flush()
+
+        item_model = ResumeItemModel(
+            resume_id=resume_model.id,
+            title="NullDateProject",
+            frameworks=[],
+            bullet_points=["Did some work"],
+            start_date=None,
+            end_date=None,
+        )
+        session.add(item_model)
+        session.commit()
+        session.refresh(item_model)
+
+    assert item_model.start_date is None
+    assert item_model.end_date is None
