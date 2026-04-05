@@ -33,11 +33,11 @@ Our project is a desktop application that uses Electron for the frontend, the Py
 #### Steps:
 1. Clone this repository locally, and open the folder in VSCode.
 
-2. Accept the prompt to create a Dev Container. If there is no prompt do the following:
+2. Accept the prompt to create a Dev Container. If there is no prompt, do the following:
   - Open the Command Palette by pressing `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS).
   - Enter `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all necessary dependencies within it.
 
-3. Once the project has opened in the dev container, download the **499-Files** folder [here](https://ubcca-my.sharepoint.com/:f:/r/personal/ataschuk_student_ubc_ca/Documents/499-Files?csf=1&web=1&e=vlLZVP). You will need to log into Microsoft with your UBC CWL account.
+3. Once the project has opened in the dev container, download the **499-Files** folder [here](https://ubcca-my.sharepoint.com/:f:/r/personal/ataschuk_student_ubc_ca/Documents/499-Files?csf=1&web=1&e=vlLZVP). You will need to log in to Microsoft with your UBC CWL account.
 
 The folder contains the following files:
 - `.env`: Contains sensitive information for our project. After this file has downloaded, move it into the project's root directory.
@@ -64,7 +64,7 @@ The folder contains the following files:
     INFO   Application startup complete.
     ```
 
-**Note:** if you get a `sqlalchemy.exc.OperationalError` it is likely because you are not CD'd into `/miner`.
+**Note:** If you get a `sqlalchemy.exc.OperationalError`, it is likely because you are not CD'd into `/miner`.
 
 You can verify the API is running by going to http://127.0.0.1:8000/ping in your browser. You should see "pong".
 
@@ -104,7 +104,7 @@ To test the backend, open the project in a dev container. Open a new terminal in
 pytest
 ```
 
-By default, tests for machine learning (ML) are skipped for local testing because they take significantly longer than the others (> 5 minutes). You can explictly include them by running:
+By default, tests for machine learning (ML) are skipped for local testing because they take significantly longer than the others (> 5 minutes). You can explicitly include them by running:
 ```bash
 RUN_ML_TESTS=1 pytest
 ```
@@ -121,15 +121,15 @@ The Electron UI uses [`Vitest`](https://vitest.dev/) to run unit tests for the f
 #### What we Test
 - API client behavior (URL construction, base URL normalization).
 - Correct endpoint calls (`/projects`, `/projects/{project_name}`, `/skills`, `/ping`).
-- URL encoding for route parameters (e.g. project names with spaces such as "My Project").
+- URL encoding for route parameters (e.g., project names with spaces such as "My Project").
 - Error handling for non-200 HTTP responses, including actionable error messages.
 - Backend connectivity checks independent of database state
 
 #### How the Tests Work
 In order to keep UI tests fast, deterministic, and independent from the backend:
-- Tests are ran in a Node/Vitest environment, not in a browser.
+- Tests are run in a Node/Vitest environment, not in a browser.
 - `fetch` is mocked using Vitest (`vi.fn()`), so no real HTTP requests are made.
-- Environment variables (e.g. `VITE_API_BASE_URL`) are injected manually per test.
+- Environment variables (e.g., `VITE_API_BASE_URL`) are injected manually per test.
 
 ### Running the UI Tests Locally
 
@@ -140,7 +140,7 @@ npx vitest run
 ```
 
 **Vitest Output**
-![vitest-output](/vitest-output.png)
+<img width="1566" height="340" alt="image" src="https://github.com/user-attachments/assets/42cced53-d93d-4bf6-8617-371fb8ebabd2" />
 
 ## Milestone 3 Documentation
 
@@ -342,7 +342,7 @@ We have met all milestone requirements. Additionally, we have a bonus deployment
 - Projects, highlighting evidence of contributions/impact
 
 **The Résumé Edit Page**
-![resume-editor](/resume-editor.png)
+<img width="2522" height="3923" alt="image" src="https://github.com/user-attachments/assets/28f27f73-6095-433d-bad3-b4067ebffc7d" />
 
 **Exported PDF Résumé**
 ![exported-resume]()
@@ -356,16 +356,21 @@ We have met all milestone requirements. Additionally, we have a bonus deployment
 
 
 **The Portfolio Edit Page**
-![portfolio-editor](/portfolio-editor.png)
+<img width="2522" height="3678" alt="image" src="https://github.com/user-attachments/assets/d69e7cfd-edad-4bc8-865e-349b201f07cf" />
+
 
 **Portfolio Deployed to a GitHub Pages Site**
-![web-portfolio](/web-portfolio.png)
+<img width="3024" height="6596" alt="image" src="https://github.com/user-attachments/assets/af3d3242-ae3a-45d8-9cf6-d95d2cc533c0" />
+
+
 
 ## Milestone 2 Documentation
 
 ### API Endpoints
 
 While the backend is running, all endpoints can be explored interactively via Swagger at http://127.0.0.1:8000/docs. The documentation has also been added here for your convenience.
+
+**NOTE:** As of [Milestone #3](#milestone-3-documentation), this documentation is out of date. Please refer to [api_endpoints.md](/documentation/api_endpoints.md) for up-to-date documentation on our API.
 
 ---
 
