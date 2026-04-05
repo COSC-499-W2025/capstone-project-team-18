@@ -5,6 +5,7 @@ import TextBlockEditor from "../components/blocks/TextBlockEditor";
 import TextListBlockEditor from "../components/blocks/TextListBlockEditor";
 import ContributionMap from "../components/ContributionMap";
 import SkillTimelineGraph from "../components/SkillTimelineGraph";
+import { LanguageDonut } from "../components/LanguageDonut";
 
 // ---- Types ----------------------------------------------------------------
 
@@ -38,6 +39,7 @@ type PortfolioCard = {
   tags: string[];
   skills: string[];
   frameworks: string[];
+  languages?: Record<string, number>;
   is_showcase: boolean;
   collaboration_role?: string;
   title_override?: string | null;
@@ -63,6 +65,38 @@ type BlockEditEntry = {
 };
 
 // ---- Helpers ---------------------------------------------------------------
+
+const CODING_LANGUAGE_DISPLAY: Record<string, string> = {
+  PYTHON: "Python", JAVASCRIPT: "JavaScript", TYPESCRIPT: "TypeScript",
+  JAVA: "Java", CPP: "C++", C: "C", CSHARP: "C#", PHP: "PHP",
+  RUBY: "Ruby", SWIFT: "Swift", GO: "Go", RUST: "Rust",
+  HTML: "HTML", CSS: "CSS", SQL: "SQL", SHELL: "Shell", R: "R",
+};
+
+function parseCardLanguageName(key: string): string {
+  if (key.startsWith("__enum__:")) return key.split(":").pop() ?? key;
+  const dotIdx = key.lastIndexOf(".");
+  if (dotIdx >= 0) {
+    const member = key.slice(dotIdx + 1);
+    return CODING_LANGUAGE_DISPLAY[member] ?? member;
+  }
+  return key;
+}
+
+function aggregatePortfolioLanguages(cards: PortfolioCard[]): Array<{ lang: string; ratio: number }> {
+  const totals: Record<string, number> = {};
+  for (const card of cards) {
+    if (!card.languages) continue;
+    for (const [key, ratio] of Object.entries(card.languages)) {
+      const lang = parseCardLanguageName(key);
+      totals[lang] = (totals[lang] ?? 0) + ratio;
+    }
+  }
+  return Object.entries(totals)
+    .map(([lang, ratio]) => ({ lang, ratio }))
+    .filter(({ ratio }) => ratio > 0)
+    .sort((a, b) => b.ratio - a.ratio);
+}
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -277,6 +311,7 @@ export default function PortfolioEditPage() {
     endDate: null,
   });
   const [contributionLoading, setContributionLoading] = useState(false);
+  const [languageBreakdown, setLanguageBreakdown] = useState<Array<{ lang: string; ratio: number }>>([]);
 
   // ---- Load ----------------------------------------------------------------
 
@@ -300,6 +335,7 @@ export default function PortfolioEditPage() {
       setTitleDraft(data.title);
       initCardEdits(data.project_cards);
       initBlockEdits(data.sections);
+      setLanguageBreakdown(aggregatePortfolioLanguages(data.project_cards));
 
       try {
         setContributionLoading(true);
@@ -1042,9 +1078,24 @@ export default function PortfolioEditPage() {
       )}
 
       {/* ---- Figures ---- */}
-      {(contributionLoading || contributionData || Object.keys(skillTimelineData).length > 0) && (
+      {(contributionLoading || contributionData || Object.keys(skillTimelineData).length > 0 || languageBreakdown.length > 0) && (
         <div style={{ marginTop: 40 }}>
           <h2 style={{ marginBottom: 16 }}>Figures</h2>
+
+          {languageBreakdown.length > 0 && (
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 16,
+                padding: 20,
+                background: "var(--bg-surface)",
+                marginBottom: 16,
+              }}
+            >
+              <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 15, fontWeight: 600 }}>Language Breakdown</h3>
+              <LanguageDonut langs={languageBreakdown} />
+            </div>
+          )}
 
           {contributionLoading && (
             <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
