@@ -141,6 +141,40 @@ it("calls /resume/generate with correct URL and payload", async () => {
   );
 });
 
+it("calls DELETE /projects/:project_name with correct URL and method", async () => {
+  fetchMock.mockResolvedValueOnce({ ok: true, status: 204, text: async () => "" });
+
+  await api.deleteProject("My Project");
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/projects/My%20Project",
+    expect.objectContaining({ method: "DELETE" })
+  );
+});
+
+it("encodes spaces in project name for deleteProject", async () => {
+  fetchMock.mockResolvedValueOnce({ ok: true, status: 204, text: async () => "" });
+
+  await api.deleteProject("Hello World");
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/projects/Hello%20World",
+    expect.objectContaining({ method: "DELETE" })
+  );
+});
+
+it("throws on deleteProject non-ok response", async () => {
+  // deleteJson uses `msg || "API request failed (status)"`.
+  // Empty body → msg is "", so the fallback message is used.
+  fetchMock.mockResolvedValueOnce({
+    ok: false,
+    status: 404,
+    text: async () => "",
+  });
+
+  await expect(api.deleteProject("ghost")).rejects.toThrow("API request failed (404)");
+});
+
 it("calls /job-readiness/analyze with correct URL and payload", async () => {
   fetchMock.mockResolvedValueOnce({
     ok: true,
