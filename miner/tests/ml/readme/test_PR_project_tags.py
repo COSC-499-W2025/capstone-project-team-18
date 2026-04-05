@@ -28,6 +28,7 @@ def test_project_tags_from_readme_keyphrases():
 def test_project_tags_from_readme_text(tmp_path, monkeypatch, get_ready_specific_analyzer):
     readme_text = "API API API. This project exposes an API for clients."
 
+    monkeypatch.setattr(keyphrase_extraction, "azure_openai_enabled", lambda: False)
     monkeypatch.setattr(
         keyphrase_extraction,
         "_extract_with_keybert",
