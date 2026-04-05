@@ -220,6 +220,7 @@ export default function PortfolioEditPage() {
   const [exportedPagesUrl, setExportedPagesUrl] = useState<string | null>(null);
   const [showDeployConfirm, setShowDeployConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -855,7 +856,7 @@ export default function PortfolioEditPage() {
           </button>
 
           <button
-            onClick={handleRefresh}
+            onClick={() => setShowRefreshConfirm(true)}
             disabled={refreshing}
             style={{
               padding: "10px 14px",
@@ -1462,6 +1463,73 @@ export default function PortfolioEditPage() {
           })}
         </div>
       </div>
+
+      {/* ---- Refresh Confirmation Modal ---- */}
+      {showRefreshConfirm && (
+        <div
+          onClick={() => { if (!refreshing) setShowRefreshConfirm(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.68)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Refresh Portfolio</h2>
+            <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+              Are you sure you want to refresh the Portfolio? Your changes may be lost.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowRefreshConfirm(false)}
+                disabled={refreshing}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: refreshing ? "var(--text-muted)" : "#444",
+                  cursor: refreshing ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowRefreshConfirm(false); handleRefresh(); }}
+                disabled={refreshing}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: refreshing ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                  color: refreshing ? "var(--text-muted)" : "#fff",
+                  cursor: refreshing ? "not-allowed" : "pointer",
+                  opacity: refreshing ? 0.7 : 1,
+                  fontWeight: 600,
+                }}
+              >
+                {refreshing ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ---- Deploy Confirmation Modal ---- */}
       {showDeployConfirm && (
