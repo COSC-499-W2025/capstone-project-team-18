@@ -772,42 +772,117 @@ def test_generate_resume_with_empty_education_awards(client, sample_resume_domai
         assert call_kwargs["awards"] == []
 
 
-def test_refresh_resume_success(client, sample_resume_domain, sample_resume_model):
-    """Test successfully refreshing a resume from its source projects"""
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
-            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+def _seed_resume(blank_db):
+    """Helper: insert a resume with one item into blank_db and return its id."""
+    from src.database.api.models import ResumeModel, ResumeItemModel
+    from sqlmodel import Session
+    from datetime import date, datetime
+
+    with Session(blank_db) as session:
+        resume = ResumeModel(
+            email="test@example.com",
+            github="testuser",
+            skills=["Python"],
+            created_at=datetime(2026, 1, 1),
+            last_updated=datetime(2026, 1, 1),
+        )
+        item = ResumeItemModel(
+            title="OldProject",
+            frameworks=["Django"],
+            bullet_points=["Old work"],
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 12, 31),
+            project_name="OldProject",
+        )
+        resume.items = [item]
+        session.add(resume)
+        session.commit()
+        session.refresh(resume)
+        return resume.id
+
+
+def test_refresh_resume_success(client, blank_db):
+    """Refresh should return 200 and the same resume ID — no UNIQUE constraint error."""
+    from src.core.resume.resume import Resume, ResumeItem
+
+    resume_id = _seed_resume(blank_db)
+
+    refreshed_domain = Resume(email="test@example.com", github="testuser")
+    refreshed_domain.add_item(ResumeItem(
+        title="OldProject",
+        frameworks=[],
+        bullet_points=["Fresh bullet"],
+        start_date=None,
+        end_date=None,
+        project_name="OldProject",
+    ))
+
+    with patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
             patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
+            patch('src.interface.api.routers.resume._db') as mock_db:
 
-        # Mock the existing resume model with a project name
-        mock_get_model.return_value = sample_resume_model
-
-        # Mock project report
-        mock_project = MagicMock()
-        mock_project.project_name = "Test Project"
-        mock_get_project.return_value = mock_project
-
-        # Mock UserReport
+        mock_get_project.return_value = MagicMock()
         mock_report_instance = MagicMock()
-        refreshed_resume = sample_resume_domain
-        refreshed_resume.email = "refreshed@example.com"
-        mock_report_instance.generate_resume.return_value = refreshed_resume
+        mock_report_instance.generate_resume.return_value = refreshed_domain
         mock_user_report.return_value = mock_report_instance
+        mock_db.get_most_recent_user_config.return_value = None
 
-        # Mock save
-        mock_save.return_value = sample_resume_model
+        response = client.post(f"/resume/{resume_id}/refresh")
 
-        response = client.post("/resume/1/refresh")
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["id"] == resume_id
+    assert data["items"][0]["bullet_points"] == ["Fresh bullet"]
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == 1
+
+def test_refresh_resume_no_unique_constraint_error(client, blank_db):
+    """
+    Regression test: refreshing must NOT raise UNIQUE constraint failed on resumemodel.id.
+
+    The old implementation called save_resume() (which adds a new ResumeModel to the
+    session) then set updated_model.id = resume_id.  When autoflush fired during
+    get_most_recent_user_config the session tried to INSERT a second row with the same
+    PK, causing the IntegrityError.  The fix updates the existing row in-place.
+    """
+    from src.core.resume.resume import Resume, ResumeItem
+    from src.database.api.models import UserConfigModel
+
+    resume_id = _seed_resume(blank_db)
+
+    refreshed_domain = Resume(email="test@example.com")
+    refreshed_domain.add_item(ResumeItem(
+        title="OldProject",
+        frameworks=[],
+        bullet_points=["Refreshed"],
+        start_date=None,
+        end_date=None,
+        project_name="OldProject",
+    ))
+
+    # Return a real (empty) UserConfigModel so autoflush is actually triggered
+    # via the get_most_recent_user_config path, just as in production.
+    mock_user_config = UserConfigModel(id=99, consent=True)
+    mock_user_config.resume_config = None
+
+    with patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+            patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
+            patch('src.interface.api.routers.resume._db') as mock_db:
+
+        mock_get_project.return_value = MagicMock()
+        mock_report_instance = MagicMock()
+        mock_report_instance.generate_resume.return_value = refreshed_domain
+        mock_user_report.return_value = mock_report_instance
+        mock_db.get_most_recent_user_config.return_value = mock_user_config
+
+        response = client.post(f"/resume/{resume_id}/refresh")
+
+    assert response.status_code == 200, response.text
 
 
 def test_refresh_resume_not_found(client):
     """Test refreshing a non-existent resume"""
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load:
-        mock_load.return_value = None
+    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get:
+        mock_get.return_value = None
 
         response = client.post("/resume/999/refresh")
 
@@ -815,60 +890,68 @@ def test_refresh_resume_not_found(client):
         assert "resume found" in response.json()["message"].lower()
 
 
-def test_refresh_resume_no_items(client, sample_resume_model):
+def test_refresh_resume_no_items(client, blank_db):
     """Test refreshing a resume with no items"""
-    sample_resume_model.items = []
+    from src.database.api.models import ResumeModel
+    from sqlmodel import Session
+    from datetime import datetime
 
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model:
-        mock_get_model.return_value = sample_resume_model
+    with Session(blank_db) as session:
+        resume = ResumeModel(
+            skills=[],
+            created_at=datetime(2026, 1, 1),
+            last_updated=datetime(2026, 1, 1),
+        )
+        session.add(resume)
+        session.commit()
+        session.refresh(resume)
+        resume_id = resume.id
 
-        response = client.post("/resume/1/refresh")
+    response = client.post(f"/resume/{resume_id}/refresh")
 
-        assert response.status_code == 400
-        assert "no projects" in response.json()["detail"].lower()
+    assert response.status_code == 400
+    assert "no projects" in response.json()["detail"].lower()
 
 
-def test_refresh_resume_project_not_found(client, sample_resume_domain, sample_resume_model):
+def test_refresh_resume_project_not_found(client, blank_db):
     """Test refreshing when source project no longer exists"""
-    with patch('src.interface.api.routers.resume.load_resume') as mock_load, \
-            patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
-            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project:
+    resume_id = _seed_resume(blank_db)
 
-        mock_load.return_value = sample_resume_domain
-        mock_get_model.return_value = sample_resume_model
+    with patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project:
         mock_get_project.return_value = None
 
-        response = client.post("/resume/1/refresh")
+        response = client.post(f"/resume/{resume_id}/refresh")
 
-        assert response.status_code == 404
-        assert "project" in response.json()["message"].lower()
+    assert response.status_code == 404
+    assert "project" in response.json()["message"].lower()
 
 
-def test_refresh_resume_preserves_manual_edits(client, sample_resume_domain, sample_resume_model):
-    """Test that refreshing preserves the resume ID"""
-    with patch('src.interface.api.routers.resume.get_resume_model_by_id') as mock_get_model, \
-            patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
+def test_refresh_resume_preserves_id(client, blank_db):
+    """Refreshed resume must keep the original resume ID."""
+    from src.core.resume.resume import Resume, ResumeItem
+
+    resume_id = _seed_resume(blank_db)
+
+    refreshed_domain = Resume(email="test@example.com")
+    refreshed_domain.add_item(ResumeItem(
+        title="OldProject", frameworks=[], bullet_points=["bp"],
+        start_date=None, end_date=None, project_name="OldProject",
+    ))
+
+    with patch('src.interface.api.routers.resume.get_project_report_by_name') as mock_get_project, \
             patch('src.interface.api.routers.resume.UserReport') as mock_user_report, \
-            patch('src.interface.api.routers.resume.save_resume') as mock_save:
+            patch('src.interface.api.routers.resume._db') as mock_db:
 
-        mock_get_model.return_value = sample_resume_model
-
-        mock_project = MagicMock()
-        mock_get_project.return_value = mock_project
-
+        mock_get_project.return_value = MagicMock()
         mock_report_instance = MagicMock()
-        mock_report_instance.generate_resume.return_value = sample_resume_domain
+        mock_report_instance.generate_resume.return_value = refreshed_domain
         mock_user_report.return_value = mock_report_instance
+        mock_db.get_most_recent_user_config.return_value = None
 
-        # Mock save to return model without ID
-        sample_resume_model.id = None
-        mock_save.return_value = sample_resume_model
+        response = client.post(f"/resume/{resume_id}/refresh")
 
-        response = client.post("/resume/1/refresh")
-
-        assert response.status_code == 200
-        # Verify the ID was restored
-        assert sample_resume_model.id == 1
+    assert response.status_code == 200, response.text
+    assert response.json()["id"] == resume_id
 
 
 # --- Tests for null start_date / end_date (wrong-email analysis bug) ---

@@ -811,20 +811,41 @@ def refresh_resume(
             github=resume_model.github
         )
 
-        updated_model = save_resume(session, new_resume_domain)
-        updated_model.id = resume_id
-        updated_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+        # Update the existing model in-place to avoid a duplicate-ID INSERT.
+        # Deleting old items and replacing them is safer than creating a new
+        # ResumeModel and reassigning its PK after it is already tracked by the session.
+        from src.database.core.model_serializer import serialize_resume, serialize_resume_item
+        from sqlalchemy.orm.attributes import flag_modified
+
+        new_fields = serialize_resume(new_resume_domain)
+        resume_model.skills = new_fields.skills
+        resume_model.skills_expert = new_fields.skills_expert
+        resume_model.skills_intermediate = new_fields.skills_intermediate
+        resume_model.skills_exposure = new_fields.skills_exposure
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+
+        flag_modified(resume_model, "skills")
+        flag_modified(resume_model, "skills_expert")
+        flag_modified(resume_model, "skills_intermediate")
+        flag_modified(resume_model, "skills_exposure")
+
+        for old_item in list(resume_model.items or []):
+            session.delete(old_item)
+        session.flush()
+
+        new_item_models = [serialize_resume_item(ri) for ri in new_resume_domain.items]
+        resume_model.items = new_item_models
 
         # Merge user profile skills into refreshed resume
         user_config = _db.get_most_recent_user_config(session)
         if user_config and user_config.resume_config:
             user_profile_skills = user_config.resume_config.skills or []
             if user_profile_skills:
-                _apply_user_profile_skills(updated_model, user_profile_skills)
+                _apply_user_profile_skills(resume_model, user_profile_skills)
 
         session.commit()
 
-        return _build_resume_response(updated_model)
+        return _build_resume_response(resume_model)
 
     except Exception as e:
         session.rollback()
