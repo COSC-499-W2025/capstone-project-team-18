@@ -1671,7 +1671,7 @@ export default function ResumePage() {
                 autoFocus
               />
               <button
-                onClick={() => setEditingTitle(false)}
+                onClick={() => { setTitleDraft(resume.title ?? ""); setEditingTitle(false); }}
                 style={{
                   padding: "6px 12px",
                   borderRadius: 10,
@@ -1682,7 +1682,7 @@ export default function ResumePage() {
                   fontSize: 14,
                 }}
               >
-                Cancel
+                Back
               </button>
               <button
                 onClick={handleSaveTitle}

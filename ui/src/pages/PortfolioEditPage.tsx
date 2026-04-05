@@ -208,7 +208,9 @@ export default function PortfolioEditPage() {
   // Title editing
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [prevTitleDraft, setPrevTitleDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Action states
@@ -499,6 +501,21 @@ export default function PortfolioEditPage() {
     }
   }
 
+  async function handleSaveTitle() {
+    if (!portfolio) return;
+    setSavingTitle(true);
+    setSaveError(null);
+    try {
+      await api.editPortfolio(id!, { title: titleDraft });
+      setEditingTitle(false);
+      await loadPortfolio();
+    } catch (e: any) {
+      setSaveError(e?.message ?? "Failed to save.");
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
   async function handleRefresh() {
     setRefreshing(true);
     try {
@@ -740,6 +757,10 @@ export default function PortfolioEditPage() {
               <input
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveTitle();
+                  if (e.key === "Escape") { setTitleDraft(prevTitleDraft); setEditingTitle(false); }
+                }}
                 style={{
                   fontSize: 24,
                   fontWeight: 700,
@@ -753,24 +774,42 @@ export default function PortfolioEditPage() {
                 autoFocus
               />
               <button
-                onClick={() => setEditingTitle(false)}
+                onClick={() => { setTitleDraft(prevTitleDraft); setEditingTitle(false); }}
                 style={{
                   padding: "6px 12px",
                   borderRadius: 10,
                   border: "1px solid var(--border)",
                   background: "transparent",
-                  color: "#333",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
+                  fontSize: 14,
                 }}
               >
-                Apply
+                Back
+              </button>
+              <button
+                onClick={handleSaveTitle}
+                disabled={savingTitle}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: savingTitle ? "var(--bg-surface-deep)" : "var(--btn-primary)",
+                  color: savingTitle ? "var(--text-muted)" : "#fff",
+                  cursor: savingTitle ? "not-allowed" : "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  opacity: savingTitle ? 0.6 : 1,
+                }}
+              >
+                {savingTitle ? "Saving..." : "Apply"}
               </button>
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <h1 style={{ margin: 0, fontSize: 28 }}>{titleDraft}</h1>
               <button
-                onClick={() => setEditingTitle(true)}
+                onClick={() => { setPrevTitleDraft(titleDraft); setEditingTitle(true); }}
                 style={{
                   padding: "4px 8px",
                   borderRadius: 8,
