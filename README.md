@@ -37,7 +37,16 @@ Our project is a desktop application that uses Electron for the frontend, the Py
   - Open the Command Palette by pressing `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS).
   - Enter `>Dev Containers: Open Folder in Container...`. Docker will build the container and install all necessary dependencies within it.
 
-3. Once the project has opened in the dev container, download our `.env` file [here](https://ubcca-my.sharepoint.com/:u:/g/personal/ataschuk_student_ubc_ca/IQClK5YDUTpxQZBVlP2vqhKtAS-VBQtvIZyO0TrRWBriubY?e=KvJypq). You will need to log into Microsoft with your UBC CWL account. After the file has downloaded, move it into the project's root directory.
+3. Once the project has opened in the dev container, download the **499-Files** folder [here](https://ubcca-my.sharepoint.com/:f:/r/personal/ataschuk_student_ubc_ca/Documents/499-Files?csf=1&web=1&e=vlLZVP). You will need to log into Microsoft with your UBC CWL account.
+
+The folder contains the following files:
+- `.env`: Contains sensitive information for our project. After this file has downloaded, move it into the project's root directory.
+- `directed-study-thumbnail.png`: An image file that can be used as a thumbnail for the **cosc-448-directed-study** project.
+- `info.txt`: Contains the GitHub username and email address to enter on the profile page.
+- `literary-quote-thumbnail.bmp`: An image file that can be used as a thumbnail for the **Literary-Quote-Clock** project.
+- `projects.zip`: Contains the projects our app will analyze.
+- `selectify-thumbnail.png`: An image file that can be used as a thumbnail for the **Selectify** project.
+
 
 4. Open a new terminal in the dev container and do the following:
 
