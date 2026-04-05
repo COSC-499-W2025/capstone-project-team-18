@@ -279,10 +279,11 @@ Decomposes the system into 4 core processes, 4 data stores, and the same externa
 
 ```mermaid
 flowchart TB
+
     %% Style Definitions
-    classDef entity fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000;
-    classDef process fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000;
-    classDef datastore fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000;
+    classDef entity fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000
+    classDef process fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef datastore fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000
 
     %% External Entities
     User(["User"]):::entity
@@ -291,46 +292,45 @@ flowchart TB
     FS(["Local File System"]):::entity
 
     %% Data Stores
-    D1[("D1\nUser Config\nResume Config")]:::datastore
-    D2[("D2\nProject Reports\nFile Reports")]:::datastore
-    D3[("D3\nResumes")]:::datastore
-    D4[("D4\nPortfolios")]:::datastore
+    D1[("D1<br/>User Config<br/>Resume Config")]:::datastore
+    D2[("D2<br/>Project Reports<br/>File Reports")]:::datastore
+    D3[("D3<br/>Resumes")]:::datastore
+    D4[("D4<br/>Portfolios")]:::datastore
 
     %% Processes
-    P1("P1\nProject Upload &\nFile Analysis"):::process
-    P2("P2\nProject Report\nAggregation"):::process
-    P3("P3\nResume\nGeneration"):::process
-    P4("P4\nPortfolio\nGeneration"):::process
+    P1("P1<br/>Project Upload and<br/>File Analysis"):::process
+    P2("P2<br/>Project Report<br/>Aggregation"):::process
+    P3("P3<br/>Resume<br/>Generation"):::process
+    P4("P4<br/>Portfolio<br/>Generation"):::process
 
-    %% P1: Project Upload & File Analysis
-    User --->|"ZIP archive\nuser config & profile"| P1
-    FS --->|"project source files"| P1
-    P1 <--->|"OAuth request / token"| GHOAuth
-    P1 --->|"user config, OAuth token\neducation & awards"| D1
-    D1 --->|"user email"| P1
-    P1 ---->|"FileReports"| D2
+    %% P1: Project Upload and File Analysis
+    User -->|"ZIP archive<br/>user config and profile"| P1
+    FS -->|"project source files"| P1
+    P1 <-->|"OAuth request / token"| GHOAuth
+    P1 -->|"user config, OAuth token<br/>education and awards"| D1
+    D1 -->|"user email"| P1
+    P1 -->|"FileReports"| D2
 
     %% P2: Project Report Aggregation
-    D2 --->|"FileReports"| P2
-    P2 ---->|"ProjectReport\n(skills, frameworks, dates,\nwork patterns, project weight)"| D2
-    D2 ---->|"project & file reports"| User
+    D2 -->|"FileReports"| P2
+    P2 -->|"ProjectReport<br/>skills, frameworks, dates,<br/>work patterns, project weight"| D2
+    D2 -->|"project and file reports"| User
 
     %% P3: Resume Generation
-    User --->|"project selection\ncustomizations"| P3
-    D2 --->|"ProjectReports"| P3
-    D1 --->|"education, awards,\nglobal skills"| P3
-    P3 --->|"Resume + ResumeItems"| D3
-    D3 --->|"resume data"| User
-    P3 --->|"PDF / LaTeX / DOCX"| User
+    User -->|"project selection<br/>customizations"| P3
+    D2 -->|"ProjectReports"| P3
+    D1 -->|"education, awards,<br/>global skills"| P3
+    P3 -->|"Resume + ResumeItems"| D3
+    D3 -->|"resume data"| User
+    P3 -->|"PDF / LaTeX / DOCX"| User
 
     %% P4: Portfolio Generation
-    User --->|"project selection\nnarrative edits\nshowcase toggles"| P4
-    D2 --->|"ProjectReports"| P4
-    P4 --->|"Portfolio\n(sections, blocks,\nproject cards)"| D4
-    D4 --->|"portfolio data\n(with conflict resolution)"| User
-    P4 --->|"static HTML/CSS site"| GHPages
+    User -->|"project selection<br/>narrative edits<br/>showcase toggles"| P4
+    D2 -->|"ProjectReports"| P4
+    P4 -->|"Portfolio<br/>sections, blocks,<br/>project cards"| D4
+    D4 -->|"portfolio data<br/>with conflict resolution"| User
+    P4 -->|"static HTML/CSS site"| GHPages
 ```
-
 
 ### Milestone Requirements
 
