@@ -142,6 +142,7 @@ export default function JobReadinessPage() {
                   padding: 16,
                   background: "var(--bg-surface-deep)",
                   color: "var(--text-muted)",
+                  marginBottom: 18,
                 }}
               >
                 Loading resumes and projects...

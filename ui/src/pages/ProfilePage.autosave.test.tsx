@@ -237,7 +237,7 @@ describe("ProfilePage — auto-save", () => {
     render(<ProfilePage />);
     await act(async () => { await vi.runAllTimersAsync(); });
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = screen.getByRole("button", { name: /save settings/i });
     await act(async () => {
       fireEvent.click(saveButton);
     });
