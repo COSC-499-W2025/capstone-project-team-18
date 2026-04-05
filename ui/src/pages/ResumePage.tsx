@@ -1767,6 +1767,7 @@ export default function ResumePage() {
           </button>
 
           <button
+            data-tour="export-pdf-btn"
             onClick={async () => {
               setExporting(true);
               try {
@@ -1796,6 +1797,7 @@ export default function ResumePage() {
           </button>
 
           <button
+            data-tour="export-docx-btn"
             onClick={async () => {
               setExportingDocx(true);
               try {

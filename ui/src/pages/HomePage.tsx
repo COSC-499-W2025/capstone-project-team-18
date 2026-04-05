@@ -168,6 +168,7 @@ function handleUploadSuccess(file: File) {
         </div>
 
         <button
+          data-tour="upload-project-btn"
           onClick={() => setShowUploadModal(true)}
           style={{
             padding: "10px 18px",
@@ -194,6 +195,7 @@ function handleUploadSuccess(file: File) {
 
       {/* Cards */}
       <div
+        data-tour="dashboard-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "1.15fr 0.85fr",
