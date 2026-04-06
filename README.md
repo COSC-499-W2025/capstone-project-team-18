@@ -91,7 +91,7 @@ For help with error handling, check [`ui/troubleshoot.md`](/ui/troubleshoot.md).
 
 This is a YouTube video covering how to download and set up our project.
 
-[![youtube vid](https://github.com/user-attachments/assets/4ee7ae50-2eea-407f-8b99-26a6443b93ed)](https://youtu.be/qAExwEjk9Z4 "UBCO COSC 499 Team 18 Project Setup")
+[![youtube vid](https://github.com/user-attachments/assets/53809a04-678c-41ed-97d0-f7ecb59a53dd)](https://youtu.be/qAExwEjk9Z4 "UBCO COSC 499 Team 18 Project Setup")
 
 ## Known Bugs
 
