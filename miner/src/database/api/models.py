@@ -223,8 +223,8 @@ class ResumeItemModel(SQLModel, table=True):
     frameworks: List[str] = Field(sa_column=Column(JSON, nullable=False))
     bullet_points: List[str] = Field(sa_column=Column(JSON, nullable=False))
 
-    start_date: date
-    end_date: date
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc))

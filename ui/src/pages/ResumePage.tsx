@@ -15,10 +15,10 @@ function toMonthInput(dateStr?: string | null): string {
   return String(dateStr).slice(0, 7); // "YYYY-MM-DD" becomes "YYYY-MM"
 }
 
-function fromMonthInput(monthStr: string, fallback?: string | null): string {
+function fromMonthInput(monthStr: string, fallback?: string | null): string | null {
   if (monthStr) return `${monthStr}-01`;
   if (fallback) return String(fallback).slice(0, 10);
-  return "2000-01-01";
+  return null;
 }
 
 function formatMonthYear(value?: string | null): string {

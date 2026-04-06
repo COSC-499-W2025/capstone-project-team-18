@@ -24,8 +24,8 @@ class ResumeItem:
     title: str
     frameworks: list[WeightedSkills]
     bullet_points: list[str]
-    start_date: date
-    end_date: date
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     project_name: Optional[str] = None
 
     # Keep only the top three frameworks

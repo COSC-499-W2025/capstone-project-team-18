@@ -344,8 +344,8 @@ export type DeleteResumeBulletPointPayload = {
 export type EditResumeItemPayload = {
   resume_id: number;
   item_index: number;
-  start_date: string; // YYYY-MM-DD
-  end_date: string;   // YYYY-MM-DD
+  start_date: string | null; // YYYY-MM-DD
+  end_date: string | null;   // YYYY-MM-DD
   title: string;
 };
 
