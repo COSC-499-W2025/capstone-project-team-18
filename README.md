@@ -95,6 +95,15 @@ This is a YouTube video covering how to download and set up our project.
 
 ## Known Bugs
 
+| Issue                                                                                                                                                       | 
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | 
+| [583. Scoped npm package names are parsed incorrectly in Framework/library](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/583)               | 
+| [585. Clicking “Upload Project” on the Projects tab also navigates back to the dashboard](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/585) | 
+| [597. Resume PDF Export Breaks When a `ResumeItem` is Empty](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/597)                              | 
+| [598. Need generic error message for Job readiness](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/598)                                       | 
+| [599. User can remove a portfolio's name](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/599)                                                 | 
+
+
 ## Testing the System
 
 ### Backend Testing
