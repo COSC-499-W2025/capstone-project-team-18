@@ -3,8 +3,9 @@ This file will take the models from the database and load
 them into domain classes
 """
 
+import base64
 from src.core.report import FileReport, ProjectReport
-from src.core.resume.resume import Resume, ResumeItem
+from src.core.resume.resume import Resume, ResumeItem, SkillsByExpertise
 from src.database.api.models import FileReportModel, ProjectReportModel, ResumeItemModel, ResumeModel
 from src.core.statistic import StatisticIndex, FileStatCollection, ProjectStatCollection, deserialize, Statistic, WeightedSkills
 from src.infrastructure.log.logging import get_logger
@@ -18,7 +19,8 @@ from src.core.portfolio.sections.block.block_content import (
     TextListBlock,
     BlockContentType
 )
-from src.database.api.models import PortfolioModel, PortfolioSectionModel, BlockModel
+from src.core.portfolio.cards.project_card import ProjectCard
+from src.database.api.models import PortfolioModel, PortfolioSectionModel, BlockModel, PortfolioProjectCardModel
 
 logger = get_logger(__name__)
 
@@ -105,11 +107,24 @@ def deserialize_resume(model: ResumeModel) -> Resume:
     resume = Resume(
         email=model.email,
         github=model.github,
-        weight_skills=None
+        weight_skills=None,
+        name=model.name,
+        location=model.location,
+        linkedin=model.linkedin,
+        education=list(model.education or []),
+        awards=list(model.awards or []),
     )
 
     # Restore skills list directly
     resume.skills = list(model.skills)
+
+    # Restore categorized skills snapshot when any category was stored
+    if model.skills_expert or model.skills_intermediate or model.skills_exposure:
+        resume._skills_by_expertise = SkillsByExpertise(
+            expert=list(model.skills_expert or []),
+            intermediate=list(model.skills_intermediate or []),
+            exposure=list(model.skills_exposure or []),
+        )
 
     if model.items:
         for item_model in model.items:
@@ -136,16 +151,6 @@ def deserialize_block(model: BlockModel) -> Block:
 
     block.metadata.last_generated_at = model.last_generated_at
     block.metadata.last_user_edit_at = model.last_user_edit_at
-    block.metadata.in_conflict = model.in_conflict
-
-    # 4. Restore Conflict Content if it exists
-    if model.conflict_content is not None:
-        if model.content_type == BlockContentType.TEXT:
-            block.metadata.conflict_content = TextBlock(
-                text=model.conflict_content)
-        elif model.content_type == BlockContentType.TEXT_LIST:
-            block.metadata.conflict_content = TextListBlock(
-                items=model.conflict_content)
 
     return block
 
@@ -169,6 +174,36 @@ def deserialize_portfolio_section(model: PortfolioSectionModel) -> PortfolioSect
     return section
 
 
+def deserialize_project_card(model: PortfolioProjectCardModel) -> ProjectCard:
+    """
+    Reconstructs a ProjectCard domain object from a PortfolioProjectCardModel.
+    """
+    return ProjectCard(
+        portfolio_id=model.portfolio_id,
+        project_name=model.project_name,
+        image_data=base64.b64encode(model.image_data).decode("utf-8") if model.image_data else None,
+        summary=model.summary or "",
+        themes=list(model.themes or []),
+        tones=model.tones or "",
+        tags=list(model.tags or []),
+        skills=list(model.skills or []),
+        frameworks=list(model.frameworks or []),
+        languages=dict(model.languages or {}),
+        start_date=model.start_date,
+        end_date=model.end_date,
+        is_group_project=bool(model.is_group_project),
+        collaboration_role=model.collaboration_role or "",
+        work_pattern=model.work_pattern or "",
+        commit_type_distribution=dict(model.commit_type_distribution or {}),
+        activity_metrics=dict(model.activity_metrics or {}),
+        is_showcase=bool(model.is_showcase),
+        title_override=model.title_override,
+        summary_override=model.summary_override,
+        tags_override=list(model.tags_override) if model.tags_override is not None else None,
+        last_user_edit_at=model.last_user_edit_at,
+    )
+
+
 def deserialize_portfolio(model: PortfolioModel) -> Portfolio:
     """
     Reconstructs the full Portfolio domain tree.
@@ -181,10 +216,14 @@ def deserialize_portfolio(model: PortfolioModel) -> Portfolio:
     metadata = PortfolioMetadata(
         project_ids=model.project_ids_include,
         creation_date=model.creation_time,
-        last_updated_at=model.last_updated_at
+        last_updated_at=model.last_updated_at,
     )
 
     portfolio = Portfolio(
         sections=sections, metadata=metadata, title=model.title)
+
+    portfolio.project_cards = [
+        deserialize_project_card(c) for c in (model.project_cards or [])
+    ]
 
     return portfolio

@@ -8,5 +8,8 @@ export default defineConfig({
       "test/**/*.{test,spec}.?(c|m)[jt]s?(x)",
     ],
     testTimeout: 1000 * 29,
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.ts",
+    globals: true,
   },
 });

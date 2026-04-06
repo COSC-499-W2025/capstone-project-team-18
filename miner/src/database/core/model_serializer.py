@@ -2,11 +2,13 @@
 This file will take the domain classes in our code base and turn
 them into their respective SQLModels to be stored for future use
 """
+import base64
 from src.database.api.models import ResumeModel, ResumeItemModel
 from typing import Optional
 
 from src.core.report import FileReport, ProjectReport
 from src.core.portfolio.portfolio import Portfolio, PortfolioSection
+from src.core.portfolio.cards.project_card import ProjectCard
 from src.core.resume.resume import Resume, ResumeItem
 from src.database.api.models import (
     FileReportModel,
@@ -15,7 +17,8 @@ from src.database.api.models import (
     ResumeModel,
     PortfolioModel,
     PortfolioSectionModel,
-    BlockModel
+    BlockModel,
+    PortfolioProjectCardModel,
 )
 from src.utils.errors import DomainClassToModelConverisonError
 from src.core.portfolio.sections.block.block import Block, BlockContent
@@ -88,7 +91,9 @@ def serialize_project_report(
     project_model = ProjectReportModel(
         project_name=project_name,
         user_config_used=user_config_id,
-        statistic=project_statistics
+        statistic=project_statistics,
+        analyzed_count=1,
+        parent=None
     )
 
     file_models = [serialize_file_report(fr)
@@ -100,11 +105,35 @@ def serialize_project_report(
 
 
 def serialize_resume(resume: Resume) -> ResumeModel:
+    """ Serializes a Resume domain object into a ResumeModel (SQLModel) for DB storage. """
+
+    # Only categorize skills if weighted_skills are available.
+    # If empty (e.g. resume loaded from DB via deserialize_resume and re-saved),
+    # pass None so we don't overwrite the existing snapshot in the DB
+    skills_expert = None
+    skills_intermediate = None
+    skills_exposure = None
+
+    if resume.weighted_skills:
+        categorized = resume.get_skills_by_expertise()
+        skills_expert = categorized.expert
+        skills_intermediate = categorized.intermediate
+        skills_exposure = categorized.exposure
+
     return ResumeModel(
         id=None,
+        title=resume.title,
+        name=resume.name,
+        location=resume.location,
         email=resume.email,
         github=resume.github,
+        linkedin=resume.linkedin,
+        education=resume.education,
+        awards=resume.awards,
         skills=resume.skills,
+        skills_expert=skills_expert,
+        skills_intermediate=skills_intermediate,
+        skills_exposure=skills_exposure,
     )
 
 
@@ -123,7 +152,7 @@ def serialize_resume_item(
 
     return ResumeItemModel(
         id=None,
-        project_name=project_name,
+        project_name=project_name if project_name is not None else resume_item.project_name,
         title=resume_item.title,
         frameworks=frameworks_json,
         bullet_points=resume_item.bullet_points,
@@ -138,10 +167,7 @@ def serialize_block(block: Block[BlockContent]) -> BlockModel:
         content_type=block.current_content.content_type if block.current_content else "Unknown",
         last_generated_at=block.metadata.last_generated_at,
         last_user_edit_at=block.metadata.last_user_edit_at,
-        in_conflict=block.metadata.in_conflict,
         current_content=block.current_content.raw_value() if block.current_content else None,
-        conflict_content=block.metadata.conflict_content.raw_value(
-        ) if block.metadata.conflict_content else None
     )
 
 
@@ -159,15 +185,49 @@ def serialize_portfolio_section(section: PortfolioSection) -> PortfolioSectionMo
     return section_model
 
 
+def serialize_project_card(card: ProjectCard, portfolio_id: int) -> PortfolioProjectCardModel:
+    """
+    Serializes a ProjectCard domain object into a PortfolioProjectCardModel.
+    portfolio_id must be set (i.e. after the parent PortfolioModel has been flushed).
+    """
+    return PortfolioProjectCardModel(
+        portfolio_id=portfolio_id,
+        project_name=card.project_name,
+        image_data=base64.b64decode(card.image_data) if card.image_data else None,
+        summary=card.summary,
+        themes=list(card.themes),
+        tones=card.tones,
+        tags=list(card.tags),
+        skills=list(card.skills),
+        frameworks=list(card.frameworks),
+        languages=dict(card.languages),
+        start_date=card.start_date,
+        end_date=card.end_date,
+        is_group_project=card.is_group_project,
+        collaboration_role=card.collaboration_role,
+        work_pattern=card.work_pattern,
+        commit_type_distribution=dict(card.commit_type_distribution),
+        activity_metrics=dict(card.activity_metrics),
+        is_showcase=card.is_showcase,
+        title_override=card.title_override,
+        summary_override=card.summary_override,
+        tags_override=list(card.tags_override) if card.tags_override is not None else None,
+        last_user_edit_at=card.last_user_edit_at,
+    )
+
+
 def serialize_portfolio(portfolio: Portfolio) -> PortfolioModel:
     portfolio_model = PortfolioModel(
         title=portfolio.title,
         creation_time=portfolio.metadata.creation_time,
         last_updated_at=portfolio.metadata.last_updated_at,
-        project_ids_include=portfolio.metadata.project_ids_include
+        project_ids_include=portfolio.metadata.project_ids_include,
     )
 
     portfolio_model.sections = [
         serialize_portfolio_section(s) for s in portfolio.sections]
+
+    # project_cards are written separately in save_portfolio after flush
+    # (portfolio_id is not known until after session.flush())
 
     return portfolio_model

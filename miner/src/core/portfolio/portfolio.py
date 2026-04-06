@@ -1,9 +1,12 @@
 """
 Defines the Portfolio object.
 """
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, TYPE_CHECKING
 from src.core.portfolio.sections.portfolio_section import PortfolioSection, merge_section
+
+if TYPE_CHECKING:
+    from src.core.portfolio.cards.project_card import ProjectCard
 
 
 class PortfolioMetadata:
@@ -17,8 +20,8 @@ class PortfolioMetadata:
                  last_updated_at: Optional[datetime] = None,
                  ):
 
-        self.creation_time = creation_date or datetime.now()
-        self.last_updated_at = last_updated_at or datetime.now()
+        self.creation_time = creation_date or datetime.now(timezone.utc)
+        self.last_updated_at = last_updated_at or datetime.now(timezone.utc)
         self.project_ids_include = list(project_ids)
 
 
@@ -27,17 +30,23 @@ class Portfolio:
     This is the master class for the portfolio object. It
     only holds user ready content (text, image, etc). It does
     not hold user statistics.
+
+    Structured in three parts:
+      Part A — sections: narrative blocks (ML-generated + user-owned)
+      Part B — is_showcase flag on project cards (highlights top projects)
+      Part C — project_cards: unified gallery of all projects with rich metadata
     """
 
     metadata: PortfolioMetadata
     sections: list[PortfolioSection]
     title: str
+    project_cards: list["ProjectCard"]
 
     def __init__(self, sections: Optional[list[PortfolioSection]] = None, metadata: Optional[PortfolioMetadata] = None, title: str = "My Portfolio"):
         self.sections = sections or []
         self.metadata = metadata or PortfolioMetadata([])
         self.title = title
-        pass
+        self.project_cards = []
 
     def render(self) -> str:
         """Render the entire portfolio as a string by rendering each section."""
@@ -79,6 +88,6 @@ def merge_portfolios(existing: Portfolio, generated: Portfolio) -> Portfolio:
             merged_sections.append(sec)
 
     existing.sections = merged_sections
-    existing.metadata.last_updated_at = datetime.now()
+    existing.metadata.last_updated_at = datetime.now(timezone.utc)
 
     return existing

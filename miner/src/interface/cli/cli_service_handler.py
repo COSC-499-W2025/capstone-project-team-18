@@ -1,6 +1,4 @@
-"""
-Functions that allow the CLI to interact with the services
-"""
+"""Functions that allow the CLI to interact with the services."""
 
 from typing import Optional, Callable
 import os
@@ -9,7 +7,6 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from src.infrastructure.log.logging import get_logger
 from src.services.mining_service import start_miner_service, MinerResults
 from src.services.preferences.preference_service import UserConfig
 from src.interface.cli.user_preferences import UserPreferences
@@ -19,7 +16,25 @@ from src.core.resume.render import ResumeLatexRenderer
 from src.database.api.models import UserConfigModel as UserConfig
 
 
-logger = get_logger(__name__)
+def _configure_cli_ml_runtime() -> None:
+    """Keep CLI ML output quiet and deterministic enough for terminal usage."""
+    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+    os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    root_logger = logging.getLogger()
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+    root_logger.addHandler(logging.NullHandler())
+    root_logger.setLevel(logging.CRITICAL)
+    try:
+        from transformers.utils import logging as hf_logging
+        hf_logging.set_verbosity_error()
+    except Exception:
+        pass
 
 
 def start_miner_cli(
@@ -42,26 +57,7 @@ def start_miner_cli(
     :type progress_callback: Optional[Callable[[str, int, int, str], None]]
     """
 
-    # Keep ML enabled in CLI, but silence model loading noise/progress bars.
-    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
-    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-    os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
-    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-    # Silence noisy warnings from ML stack (e.g., UMAP/BERTopic) in CLI output.
-    warnings.filterwarnings("ignore", category=RuntimeWarning)
-    warnings.filterwarnings("ignore", category=UserWarning)
-    warnings.filterwarnings("ignore", category=FutureWarning)
-    # Ensure root logger does not emit to console.
-    root_logger = logging.getLogger()
-    for handler in list(root_logger.handlers):
-        root_logger.removeHandler(handler)
-    root_logger.addHandler(logging.NullHandler())
-    root_logger.setLevel(logging.CRITICAL)
-    try:
-        from transformers.utils import logging as hf_logging
-        hf_logging.set_verbosity_error()
-    except Exception:
-        pass
+    _configure_cli_ml_runtime()
 
     prefs = UserPreferences()
     zipped_file = Path(zipped_file_path)

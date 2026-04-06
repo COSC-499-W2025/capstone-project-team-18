@@ -108,38 +108,6 @@ def test_render_empty_section():
     assert section.render() == ""
 
 
-def test_tags_of_blocks_in_conflict():
-    section = PortfolioSection("s1", "Experience")
-
-    a = make_text_block("a", "A")
-    b = make_text_block("b", "B")
-
-    section.add_block(a)
-    section.add_block(b)
-
-    # force conflict
-    b.metadata.in_conflict = True
-
-    assert section.tags_of_blocks_in_conflict() == ["b"]
-
-
-def test_conflict_tags_respect_section_order():
-    section = PortfolioSection("s1", "Experience")
-
-    a = make_text_block("a", "A")
-    b = make_text_block("b", "B")
-    c = make_text_block("c", "C")
-
-    section.add_block(a)
-    section.add_block(b)
-    section.add_block(c)
-
-    c.metadata.in_conflict = True
-    a.metadata.in_conflict = True
-
-    assert section.tags_of_blocks_in_conflict() == ["a", "c"]
-
-
 def test_merge_updates_existing_block():
     existing = PortfolioSection("s1", "Experience")
     generated = PortfolioSection("s1", "Experience")

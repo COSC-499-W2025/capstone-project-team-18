@@ -22,7 +22,42 @@ class TextResumeRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         to_return = ""
         to_return += f"Email: {resume.email}\n\n" if resume.email else ""
-        to_return += f"Core skills: {', '.join(resume.skills)}\n\n" if resume.skills else ""
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            skill_parts = []
+            if by_expertise.expert:
+                skill_parts.append(f"Expert: {', '.join(by_expertise.expert)}")
+            if by_expertise.intermediate:
+                skill_parts.append(f"Intermediate: {', '.join(by_expertise.intermediate)}")
+            if by_expertise.exposure:
+                skill_parts.append(f"Exposure: {', '.join(by_expertise.exposure)}")
+            to_return += "Technical Skills:\n" + "\n".join(f"   {p}" for p in skill_parts) + "\n\n"
+        elif resume.skills:
+            to_return += f"Core skills: {', '.join(resume.skills)}\n\n"
+
+        # Check if resume has education entries before rendering
+        if resume.education:
+            to_return += "Education:\n"
+            for ed in resume.education:
+                if isinstance(ed, dict):
+                    to_return += f"   - {ed.get('title', '')}\n"
+                    for bullet in ed.get("description") or []:
+                        to_return += f"      • {bullet}\n"
+                else:
+                    to_return += f"   - {ed}\n"
+            to_return += "\n"
+
+        # Check if resume has awards entries before rendering
+        if resume.awards:
+            to_return += "Awards:\n"
+            for aw in resume.awards:
+                if isinstance(aw, dict):
+                    to_return += f"   - {aw.get('title', '')}\n"
+                    for bullet in aw.get("description") or []:
+                        to_return += f"      • {bullet}\n"
+                else:
+                    to_return += f"   - {aw}\n"
+            to_return += "\n"
 
         for item in resume.items:
             to_return += f"{item.title} : {item.start_date.strftime('%B, %Y')} - {item.end_date.strftime('%B, %Y')}\n"
@@ -101,7 +136,6 @@ class ResumeLatexRenderer(ResumeRender):
 \usepackage[usenames,dvipsnames]{color}
 \usepackage{verbatim}
 \usepackage{enumitem}
-\usepackage{fontawesome5}
 \usepackage[hidelinks]{hyperref}
 \usepackage{fancyhdr}
 \usepackage[english]{babel}
@@ -159,65 +193,364 @@ class ResumeLatexRenderer(ResumeRender):
     def render(self, resume: Resume) -> str:
         tex = [self.prefix, r"\begin{document}"]
 
-        # Header
-        tex.extend([
-            r"\begin{center}",
-            rf"\textbf{{\Huge \scshape Your Name}}\\[2pt]",
-        ])
+        # --- Header ---
+        tex.append(r"\begin{center}")
 
+        name = latex_escape(resume.name) if resume.name else "Your Name"
+        tex.append(rf"\textbf{{\Huge \scshape {name}}} \\ \vspace{{1pt}}")
+
+        contact_parts = []
+        if resume.location:
+            contact_parts.append(rf"\small {latex_escape(resume.location)}")
         if resume.email:
             email = latex_escape(resume.email)
-            tex.append(
-                rf"\href{{mailto:{email}}}{{\raisebox{{-0.2\height}}\faEnvelope\ \underline{email}}}}} ~")
+            contact_parts.append(
+                rf"\href{{mailto:{email}}}{{\underline{{{email}}}}}")
+        if resume.linkedin:
+            linkedin = resume.linkedin
+            href = linkedin if linkedin.startswith("http") else f"https://{linkedin}"
+            contact_parts.append(
+                rf"\href{{{latex_escape(href)}}}{{\underline{{LinkedIn}}}}")
         if resume.github:
             github = latex_escape(resume.github)
-            tex.append(
-                rf"\href{{{{https://github.com/{github}}}}}{{\raisebox{{-0.2\height}}\faGithub\ \underline{{github.com/{github}}}}}")
+            contact_parts.append(
+                rf"\href{{https://github.com/{github}}}{{\underline{{GitHub}}}}")
 
-        tex.extend([
-            r"\vspace{-8pt}"
-            r"\end{center}",
-            "",
-        ])
+        if contact_parts:
+            tex.append(" $|$ ".join(contact_parts) + r" \\")
 
-        # Projects
-        tex.append(r"\section{Projects}")
-        tex.append(r"\resumeSubHeadingListStart")
-
-        for item in resume.items:
-            title = latex_escape(item.title)
-            date = f"{item.start_date.strftime('%B, %Y')} -- {item.end_date.strftime('%B, %Y')}"
-
-            # Only include frameworks if there is at least one
-            if len(item.frameworks) > 0:
-                frameworks = ", ".join(
-                    [latex_escape(f.skill_name) for f in item.frameworks])
-                title_tex = rf"\textbf{{{title}}} $|$ \emph{{{frameworks}}}"
-            else:
-                title_tex = rf"\textbf{{{title}}}"
-
-            tex.append(
-                rf"\resumeProjectHeading"
-                rf"{{{title_tex}}}"
-                rf"{{{date}}}"
-            )
-
-            tex.append(r"\resumeItemListStart")
-            for b in item.bullet_points:
-                tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
-            tex.append(r"\resumeItemListEnd")
-
-        tex.append(r"\resumeSubHeadingListEnd")
+        tex.append(r"\end{center}")
         tex.append("")
 
-        # Skills
-        if resume.skills:
+        # --- Education ---
+        if resume.education:
+            tex.append(r"\section{Education}")
+            tex.append(r"\resumeSubHeadingListStart")
+            for ed in resume.education:
+                if isinstance(ed, dict):
+                    title = latex_escape(ed.get("title", ""))
+                    start = ed.get("start") or ""
+                    end = ed.get("end") or ""
+                    date_str = f"{start} -- {end}" if start and end else (start or end)
+                    if date_str:
+                        tex.append(rf"\resumeProjectHeading{{\textbf{{{title}}}}}{{{latex_escape(date_str)}}}")
+                    else:
+                        tex.append(rf"  \item \small{{{title}}}")
+                    bullets = ed.get("description") or []
+                    if bullets:
+                        tex.append(r"\resumeItemListStart")
+                        for b in bullets:
+                            tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                        tex.append(r"\resumeItemListEnd")
+                else:
+                    tex.append(rf"  \item \small{{{latex_escape(str(ed))}}}")
+            tex.append(r"\resumeSubHeadingListEnd")
+            tex.append("")
+
+        # --- Awards ---
+        if resume.awards:
+            tex.append(r"\section{Awards}")
+            tex.append(r"\resumeSubHeadingListStart")
+            for aw in resume.awards:
+                if isinstance(aw, dict):
+                    title = latex_escape(aw.get("title", ""))
+                    start = aw.get("start") or ""
+                    end = aw.get("end") or ""
+                    date_str = f"{start} -- {end}" if start and end else (start or end)
+                    if date_str:
+                        tex.append(rf"\resumeProjectHeading{{\textbf{{{title}}}}}{{{latex_escape(date_str)}}}")
+                    else:
+                        tex.append(rf"  \item \small{{{title}}}")
+                    bullets = aw.get("description") or []
+                    if bullets:
+                        tex.append(r"\resumeItemListStart")
+                        for b in bullets:
+                            tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                        tex.append(r"\resumeItemListEnd")
+                else:
+                    tex.append(rf"  \item \small{{{latex_escape(str(aw))}}}")
+            tex.append(r"\resumeSubHeadingListEnd")
+            tex.append("")
+
+        # --- Projects ---
+        if resume.items:
+            tex.append(r"\section{Projects}")
+            tex.append(r"\resumeSubHeadingListStart")
+
+            for item in resume.items:
+                title = latex_escape(item.title)
+                start = item.start_date.strftime('%B %Y') if item.start_date else ""
+                end = item.end_date.strftime('%B %Y') if item.end_date else ""
+                date = f"{start} -- {end}" if start or end else ""
+
+                if item.frameworks:
+                    frameworks = ", ".join(
+                        latex_escape(f.skill_name) for f in item.frameworks)
+                    title_tex = rf"\textbf{{{title}}} $|$ \emph{{{frameworks}}}"
+                else:
+                    title_tex = rf"\textbf{{{title}}}"
+
+                tex.append(rf"\resumeProjectHeading{{{title_tex}}}{{{date}}}")
+                tex.append(r"\resumeItemListStart")
+                for b in item.bullet_points:
+                    tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                tex.append(r"\resumeItemListEnd")
+
+            tex.append(r"\resumeSubHeadingListEnd")
+            tex.append("")
+
+        # --- Technical Skills ---
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            tex.append(r"\section{Technical Skills}")
+            tex.append(r"\begin{itemize}[leftmargin=0.15in, label={}]")
+            if by_expertise.expert:
+                expert_str = latex_escape(", ".join(by_expertise.expert))
+                tex.append(rf"  \item \small{{\textbf{{Expert:}} {expert_str}}}")
+            if by_expertise.intermediate:
+                intermediate_str = latex_escape(", ".join(by_expertise.intermediate))
+                tex.append(rf"  \item \small{{\textbf{{Intermediate:}} {intermediate_str}}}")
+            if by_expertise.exposure:
+                exposure_str = latex_escape(", ".join(by_expertise.exposure))
+                tex.append(rf"  \item \small{{\textbf{{Exposure:}} {exposure_str}}}")
+            tex.append(r"\end{itemize}")
+        elif resume.skills:
             skills = ", ".join(latex_escape(s) for s in resume.skills)
             tex.append(r"\section{Technical Skills}")
             tex.append(r"\begin{itemize}[leftmargin=0.15in, label={}]")
-            tex.append(rf"  \item {{{skills}}}")
+            tex.append(rf"  \item \small{{{skills}}}")
             tex.append(r"\end{itemize}")
 
         tex.append(r"\end{document}")
 
         return "\n".join(tex)
+
+
+class DocxResumeRenderer(ResumeRender):
+    """
+    Generates a .docx resume using python-docx.
+    Mirrors the section structure of the LaTeX renderer:
+    Header → Education → Awards → Projects → Technical Skills
+    """
+
+    def render(self, resume: Resume) -> bytes:
+        from docx import Document
+        from docx.shared import Pt, RGBColor, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+        import io
+
+        doc = Document()
+
+        # ── Narrow margins ──────────────────────────────────────────────────
+        for section in doc.sections:
+            section.top_margin = Inches(0.7)
+            section.bottom_margin = Inches(0.7)
+            section.left_margin = Inches(0.7)
+            section.right_margin = Inches(0.7)
+
+        # ── Default style ────────────────────────────────────────────────────
+        style = doc.styles["Normal"]
+        style.font.name = "Calibri"
+        style.font.size = Pt(11)
+
+        def _add_section_heading(text: str):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(6)
+            p.paragraph_format.space_after = Pt(2)
+            run = p.add_run(text.upper())
+            run.bold = True
+            run.font.size = Pt(11)
+            # Bottom border to mimic \titlerule
+            pPr = p._p.get_or_add_pPr()
+            pBdr = OxmlElement("w:pBdr")
+            bottom = OxmlElement("w:bottom")
+            bottom.set(qn("w:val"), "single")
+            bottom.set(qn("w:sz"), "6")
+            bottom.set(qn("w:space"), "1")
+            bottom.set(qn("w:color"), "000000")
+            pBdr.append(bottom)
+            pPr.append(pBdr)
+            return p
+
+        def _add_dated_row(title: str, date_str: str):
+            """One paragraph: bold title on left, italic date on right via tab stop."""
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(2)
+            p.paragraph_format.space_after = Pt(0)
+            # Right tab stop at page width minus margins
+            from docx.oxml import OxmlElement as _OX
+            from docx.oxml.ns import qn as _qn
+            from docx.shared import Twips
+            pPr = p._p.get_or_add_pPr()
+            tabs = _OX("w:tabs")
+            tab = _OX("w:tab")
+            tab.set(_qn("w:val"), "right")
+            tab.set(_qn("w:pos"), str(int(Twips(9360))))  # ~6.5 in
+            tabs.append(tab)
+            pPr.append(tabs)
+            run_title = p.add_run(title)
+            run_title.bold = True
+            p.add_run("\t")
+            run_date = p.add_run(date_str)
+            run_date.italic = True
+            run_date.font.size = Pt(10)
+            return p
+
+        def _add_bullet(text: str):
+            p = doc.add_paragraph(style="List Bullet")
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after = Pt(0)
+            p.paragraph_format.left_indent = Inches(0.25)
+            run = p.add_run(text)
+            run.font.size = Pt(10)
+            return p
+
+        # ── Header ───────────────────────────────────────────────────────────
+        name = resume.name or "Your Name"
+        p_name = doc.add_paragraph()
+        p_name.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_name.paragraph_format.space_after = Pt(2)
+        run_name = p_name.add_run(name)
+        run_name.bold = True
+        run_name.font.size = Pt(18)
+
+        def _add_hyperlink(paragraph, text: str, url: str):
+            """Add a hyperlink run to an existing paragraph."""
+            part = paragraph.part
+            r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+            hyperlink = OxmlElement("w:hyperlink")
+            hyperlink.set(qn("r:id"), r_id)
+            run_elem = OxmlElement("w:r")
+            rPr = OxmlElement("w:rPr")
+            rStyle = OxmlElement("w:rStyle")
+            rStyle.set(qn("w:val"), "Hyperlink")
+            rPr.append(rStyle)
+            run_elem.append(rPr)
+            t = OxmlElement("w:t")
+            t.text = text
+            run_elem.append(t)
+            hyperlink.append(run_elem)
+            paragraph._p.append(hyperlink)
+
+        # Build contact line with hyperlinks for LinkedIn and GitHub
+        has_contact = resume.location or resume.email or resume.linkedin or resume.github
+        if has_contact:
+            p_contact = doc.add_paragraph()
+            p_contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_contact.paragraph_format.space_before = Pt(0)
+            p_contact.paragraph_format.space_after = Pt(4)
+
+            separator = " | "
+            first = True
+
+            def _sep():
+                nonlocal first
+                if not first:
+                    run = p_contact.add_run(separator)
+                    run.font.size = Pt(10)
+                first = False
+
+            if resume.location:
+                _sep()
+                run = p_contact.add_run(resume.location)
+                run.font.size = Pt(10)
+            if resume.email:
+                _sep()
+                run = p_contact.add_run(resume.email)
+                run.font.size = Pt(10)
+            if resume.linkedin:
+                _sep()
+                linkedin_url = resume.linkedin if resume.linkedin.startswith("http") else f"https://{resume.linkedin}"
+                _add_hyperlink(p_contact, "LinkedIn", linkedin_url)
+            if resume.github:
+                _sep()
+                github_url = f"https://github.com/{resume.github}"
+                _add_hyperlink(p_contact, "GitHub", github_url)
+
+        # ── Education ────────────────────────────────────────────────────────
+        if resume.education:
+            _add_section_heading("Education")
+            for ed in resume.education:
+                if isinstance(ed, dict):
+                    title = ed.get("title", "")
+                    start = ed.get("start") or ""
+                    end = ed.get("end") or ""
+                    date_str = f"{start} \u2013 {end}" if start and end else (start or end)
+                    if date_str:
+                        _add_dated_row(title, date_str)
+                    else:
+                        p = doc.add_paragraph()
+                        p.add_run(title)
+                    for bullet in ed.get("description") or []:
+                        _add_bullet(bullet)
+                else:
+                    p = doc.add_paragraph()
+                    p.add_run(str(ed))
+
+        # ── Awards ───────────────────────────────────────────────────────────
+        if resume.awards:
+            _add_section_heading("Awards")
+            for aw in resume.awards:
+                if isinstance(aw, dict):
+                    title = aw.get("title", "")
+                    start = aw.get("start") or ""
+                    end = aw.get("end") or ""
+                    date_str = f"{start} \u2013 {end}" if start and end else (start or end)
+                    if date_str:
+                        _add_dated_row(title, date_str)
+                    else:
+                        p = doc.add_paragraph()
+                        p.add_run(title)
+                    for bullet in aw.get("description") or []:
+                        _add_bullet(bullet)
+                else:
+                    p = doc.add_paragraph()
+                    p.add_run(str(aw))
+
+        # ── Projects ─────────────────────────────────────────────────────────
+        if resume.items:
+            _add_section_heading("Projects")
+            for item in resume.items:
+                start = item.start_date.strftime("%B %Y") if item.start_date else ""
+                end = item.end_date.strftime("%B %Y") if item.end_date else ""
+                date_str = f"{start} \u2013 {end}" if start and end else (start or end)
+
+                if item.frameworks:
+                    fw_str = ", ".join(f.skill_name for f in item.frameworks)
+                    title_str = f"{item.title} | {fw_str}"
+                else:
+                    title_str = item.title
+
+                _add_dated_row(title_str, date_str)
+                for bullet in item.bullet_points:
+                    _add_bullet(bullet)
+
+        # ── Technical Skills ─────────────────────────────────────────────────
+        by_expertise = resume.get_skills_by_expertise()
+        if by_expertise and by_expertise.has_any():
+            _add_section_heading("Technical Skills")
+            for label, skill_list in [
+                ("Expert", by_expertise.expert),
+                ("Intermediate", by_expertise.intermediate),
+                ("Exposure", by_expertise.exposure),
+            ]:
+                if skill_list:
+                    p = doc.add_paragraph()
+                    p.paragraph_format.space_before = Pt(2)
+                    p.paragraph_format.space_after = Pt(0)
+                    run_label = p.add_run(f"{label}: ")
+                    run_label.bold = True
+                    run_label.font.size = Pt(10)
+                    run_skills = p.add_run(", ".join(skill_list))
+                    run_skills.font.size = Pt(10)
+        elif resume.skills:
+            _add_section_heading("Technical Skills")
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(2)
+            p.add_run(", ".join(resume.skills)).font.size = Pt(10)
+
+        buf = io.BytesIO()
+        doc.save(buf)
+        return buf.getvalue()

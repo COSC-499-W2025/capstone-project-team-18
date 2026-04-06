@@ -1,8 +1,10 @@
-from datetime import datetime
-from sqlmodel import Session, select
-from typing import Optional, List
-from sqlmodel import Session
-from src.database.api.models import ProjectReportModel, FileReportModel
+from datetime import datetime, timezone
+from typing import Optional
+
+from sqlalchemy.orm import selectinload
+from sqlmodel import Session, delete, select
+
+from src.database.api.models import ProjectReportModel, FileReportModel, ProjectInsightsModel
 from src.core.report import ProjectReport
 from src.database.core.model_serializer import serialize_project_report, serialize_file_report
 from src.database.core.model_deserializer import deserialize_project_report
@@ -75,7 +77,8 @@ def get_all_project_ids(
 def save_project_report(
     session: Session,
     project_report: ProjectReport,
-    user_config_id: Optional[int]
+    user_config_id: Optional[int],
+    needs_recomputation: bool = False
 ) -> ProjectReportModel:
     """
     Save a ProjectReport domain object along with all its FileReports
@@ -86,6 +89,7 @@ def save_project_report(
         session: SQLModel Session
         project_report: ProjectReport domain object
         user_config_id: ID of the associated UserConfigModel
+        needs_recomputation: Whether files were recomputed (True) or unchanged (False)
 
     Returns:
         The saved ProjectReportModel instance
@@ -110,35 +114,55 @@ def save_project_report(
     existing = existing or latest_related_project
     previous_project_name = existing.project_name
 
+    # Update in place regardless of whether files changed or not
+    if existing is not None:
+        existing.user_config_used = user_config_id
+        existing.statistic = incoming_model.statistic
+        existing.last_updated = datetime.now(timezone.utc)
+        # Resurrect if the project was previously soft-deleted
+        if existing.is_deleted:
+            existing.is_deleted = False
+
+        # Delete stale file reports and insights, then add new ones
+        session.exec(
+            delete(FileReportModel).where(
+                FileReportModel.project_name == previous_project_name)
+        )
+
+        session.exec(
+            delete(ProjectInsightsModel).where(
+                ProjectInsightsModel.project_name == previous_project_name)
+        )
+
+        for file_model in incoming_files:
+            file_model.project_name = existing.project_name
+            session.add(file_model)
+
+        session.add(existing)
+        return existing
+
+    # Files changed—create a NEW version row (do not mutate prior versions)
     if latest_related_project is not None:
         next_count = (latest_related_project.analyzed_count or 1) + 1
-        existing.project_name = f"{project_report.project_name}_{next_count}"
-        existing.analyzed_count = next_count
-        existing.parent = previous_project_name
+        versioned_name = f"{project_report.project_name}_{next_count}"
+        parent_name = latest_related_project.project_name
     else:
-        existing.project_name = project_report.project_name
-        existing.analyzed_count = 1
-        existing.parent = None
+        next_count = 1
+        versioned_name = project_report.project_name
+        parent_name = None
 
-    # Upsert behavior: refresh existing project row and replace child file rows.
-    # This prevents UNIQUE(project_name) crashes on repeated analyses.
-    existing.user_config_used = user_config_id
-    existing.statistic = incoming_model.statistic
-    existing.last_updated = datetime.now()
-
-    stale_files = session.exec(
-        select(FileReportModel).where(
-            FileReportModel.project_name == previous_project_name)
-    ).all()
-    for row in stale_files:
-        session.delete(row)
+    incoming_model.project_name = versioned_name
+    incoming_model.analyzed_count = next_count
+    incoming_model.parent = parent_name
+    incoming_model.created_at = datetime.now(timezone.utc)
+    incoming_model.last_updated = datetime.now(timezone.utc)
 
     for file_model in incoming_files:
-        file_model.project_name = existing.project_name
-        session.add(file_model)
+        file_model.project_name = versioned_name
 
-    session.add(existing)
-    return existing
+    incoming_model.file_reports = incoming_files
+    session.add(incoming_model)
+    return incoming_model
 
 
 def get_project_report_model_by_name(
@@ -148,6 +172,27 @@ def get_project_report_model_by_name(
     statement = select(ProjectReportModel).where(
         ProjectReportModel.project_name == project_name)
     return session.exec(statement).first()
+
+
+def get_project_report_models_by_names(
+    session: Session,
+    project_names: list[str],
+) -> list[ProjectReportModel]:
+    if not project_names:
+        return []
+
+    statement = (
+        select(ProjectReportModel)
+        .where(ProjectReportModel.project_name.in_(project_names))
+        # pyright: ignore
+        .options(selectinload(ProjectReportModel.file_reports))
+    )
+    projects = list(session.exec(statement).all())
+    projects_by_name = {project.project_name: project for project in projects}
+    missing = [name for name in project_names if name not in projects_by_name]
+    if missing:
+        raise KeyError(", ".join(missing))
+    return [projects_by_name[name] for name in project_names]
 
 
 def get_project_report_by_name(
@@ -201,7 +246,7 @@ def delete_project_report_by_name(
     return True
 
 
-def get_all_project_report_models(session: Session) -> List[ProjectReportModel]:
+def get_all_project_report_models(session: Session) -> list[ProjectReportModel]:
     """
     Retrieve all ProjectReportModel records from the database.
 
@@ -211,5 +256,34 @@ def get_all_project_report_models(session: Session) -> List[ProjectReportModel]:
     Returns:
         A list of ProjectReportModel instances.
     """
-    statement = select(ProjectReportModel)
+    statement = select(ProjectReportModel).where(
+        ProjectReportModel.is_deleted == False  # noqa: E712
+    )
     return list(session.exec(statement).all())
+
+
+def soft_delete_project_report_by_name(
+    session: Session,
+    project_name: str
+) -> bool:
+    """
+    Soft-delete a ProjectReportModel by setting is_deleted=True. The record
+    remains in the database so existing resumes and portfolios can still
+    reference it. DOES NOT COMMIT THE SESSION! YOU MUST COMMIT.
+
+    Args:
+        session: SQLModel Session
+        project_name: The project name to soft-delete
+
+    Returns:
+        True if the record was found and marked deleted, False if not found.
+    """
+    project = session.exec(
+        select(ProjectReportModel).where(
+            ProjectReportModel.project_name == project_name)
+    ).first()
+    if project is None:
+        return False
+    project.is_deleted = True
+    session.add(project)
+    return True

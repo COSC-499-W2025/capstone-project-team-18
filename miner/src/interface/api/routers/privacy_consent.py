@@ -33,12 +33,22 @@ def set_privacy_consent(
     session=Depends(get_session)
 ):
     """
-    POST /privacy-consent
+    Set or update the user's privacy consent and contact details.
 
-    This end point will set the user's privacy config. This endpoint handles
-    updates for their consent, user_email, or github.
+    Persists consent, email, and optional GitHub username to the most recent
+    user config record.
 
-    This endpoint will respond with the updated fields.
+    Body parameters:
+    - `consent`: Required boolean consent flag.
+    - `user_email`: Required email address (must be non-empty).
+    - `github`: Optional GitHub username.
+
+    Returns:
+    - 200: A `PrivacyConsentResponse` with message, consent, user_email, and github.
+
+    Raises:
+    - 400: user_email is not provided in the request body.
+    - 500: The consent record could not be saved; changes were rolled back.
     """
 
     if not request.user_email:
@@ -53,7 +63,7 @@ def set_privacy_consent(
         if request.github is not None:
             config.github = request.github
 
-        save_user_config(session, config)
+        save_user_config(session, config, request)
         session.commit()
 
         message = "Consent granted" if request.consent else "Consent revoked"

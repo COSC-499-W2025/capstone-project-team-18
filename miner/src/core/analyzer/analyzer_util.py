@@ -57,7 +57,7 @@ def single_file_analysis(
     if project_context.pre_analyzed:
         engine = get_engine()
         with Session(engine) as session:
-            if filepath_exists_in_db(session, analyzer.filepath):
+            if filepath_exists_in_db(session, analyzer.relative_path):
                 if analyzer.compare_hashes():
                     logger.info("Skipping already analyzed file: %s", file)
                     return get_file_report_by_hash(session, analyzer.hashed_content), project_needs_recomputation
@@ -91,7 +91,7 @@ def extract_file_reports(
     # Given a single project for a user and the project's structure return a list with each fileReport
     project_files = project_file.file_paths
 
-    workers = max(1, cpu_count() - 1)
+    workers = max(1, cpu_count() - 1) // 2
 
     args = [
         (
@@ -104,7 +104,7 @@ def extract_file_reports(
         for file in project_files
     ]
 
-    with Pool(processes=workers) as pool:
+    with Pool(processes=2) as pool:
         results = pool.starmap(single_file_analysis, args)
 
     file_reports = []

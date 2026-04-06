@@ -65,10 +65,16 @@ def test_activity_contribution_from_non_tracked_project(tmp_path, make_project_l
     for pr in [pr_email, pr_no_email]:
         contr = pr.get_value(
             ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)
+        ratio = pr.get_value(
+            ProjectStatCollection.ACTIVITY_TYPE_RATIO.value)
 
         assert contr[FileDomain.TEST] == approx(2/6)
         assert contr[FileDomain.DOCUMENTATION] == approx(1/6)
         assert contr[FileDomain.CODE] == approx(3/6)
+
+        assert ratio[FileDomain.TEST] == approx(2/6)
+        assert ratio[FileDomain.DOCUMENTATION] == approx(1/6)
+        assert ratio[FileDomain.CODE] == approx(3/6)
 
 
 def test_activity_contribution_from_git_project(project_realistic, mock_readme_analysis):
@@ -102,6 +108,8 @@ def test_activity_contribution_from_git_project(project_realistic, mock_readme_a
 
     contr = pr.get_value(
         ProjectStatCollection.ACTIVITY_TYPE_CONTRIBUTIONS.value)
+    ratio = pr.get_value(
+        ProjectStatCollection.ACTIVITY_TYPE_RATIO.value)
 
     # Bob added...
     # data.db local file that should be ignored as it has no file domain
@@ -122,3 +130,10 @@ def test_activity_contribution_from_git_project(project_realistic, mock_readme_a
     assert contr[FileDomain.CODE] == approx(4/8)
     assert contr[FileDomain.TEST] == approx(2/8)
     assert contr[FileDomain.DOCUMENTATION] == approx(2/8)
+
+    #   CODE: 7 / 14  (helpers.py + schema.sql)
+    #   TEST: 2 / 14  (test_main.py)
+    #   DOC:  5 / 14  (README.md)
+    assert ratio[FileDomain.CODE] == approx(7/14)
+    assert ratio[FileDomain.TEST] == approx(2/14)
+    assert ratio[FileDomain.DOCUMENTATION] == approx(5/14)

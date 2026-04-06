@@ -3,7 +3,7 @@ User-level statistic calculation classes and a report builder.
 
 Mirrors the structure used for project statistics.
 """
-from typing import List, TYPE_CHECKING, Type, Optional
+from typing import List, TYPE_CHECKING, Optional, Type
 from datetime import datetime
 
 from src.core.report.statistic_builder import StatisticCalculation, StatisticReportBuilder
@@ -161,11 +161,41 @@ class UserWeightedSkills(UserStatisticCalculation):
         return [Statistic(UserStatCollection.USER_SKILLS.value, user_weighted_skills)]
 
 
+class UserCommitActivityTimeline(UserStatisticCalculation):
+    """
+    Merges the project level timeline, to use in a contribution graph.
+
+    Maps through commit history and also gets total
+    commits for the group to utilize in
+    an alternative contribution graph view.
+    """
+
+    def calculate(self, report: "UserReport") -> List[Statistic]:
+        commits_dict = {}
+        user_commits_dict = {}
+
+        for project_report in report.project_reports:
+            project_commits_dict = project_report.get_value(
+                ProjectStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value)
+            project_user_commits_dict = project_report.get_value(
+                ProjectStatCollection.COMMIT_ACTIVITY_TIMELINE.value)
+
+            # merge project commits into user level
+            if project_commits_dict:
+                commits_dict = {date: project_commits_dict.get(date, 0) + commits_dict.get(
+                    date, 0) for date in set(project_commits_dict).union(commits_dict)}
+                user_commits_dict = {date: project_user_commits_dict.get(date, 0) + user_commits_dict.get(
+                    date, 0) for date in set(project_user_commits_dict).union(user_commits_dict)}
+
+        return [Statistic(UserStatCollection.COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(user_commits_dict.items()))), Statistic(UserStatCollection.TOTAL_COMMIT_ACTIVITY_TIMELINE.value, dict(sorted(commits_dict.items())))]
+
+
 class UserStatisticReportBuilder(StatisticReportBuilder["UserReport"]):
     ALL_CALCULATORS = [
         UserDates,
         UserCodingLanguageRatio,
-        UserWeightedSkills
+        UserWeightedSkills,
+        UserCommitActivityTimeline,
     ]
 
     def __init__(self, calculator_classes: Optional[list[Type]] = None) -> None:

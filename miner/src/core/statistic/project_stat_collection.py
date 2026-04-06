@@ -2,10 +2,11 @@
 This document logs all the different PROJECT statistics that can be collected.
 """
 
-from enum import Enum
 from datetime import date
-from .statistic_models import WeightedSkills, CodingLanguage, FileDomain
+from enum import Enum
+
 from .base_classes import StatisticTemplate
+from .statistic_models import CodingLanguage, FileDomain, WeightedSkills
 
 
 class ProjectStatisticTemplate(StatisticTemplate):
@@ -40,6 +41,12 @@ class ProjectStatCollection(Enum):
     PROJECT_SKILLS_DEMONSTRATED = ProjectStatisticTemplate(
         name="PROJECT_SKILLS_DEMONSTRATED",
         description="the skills demonstrated in this project",
+        expected_type=list[WeightedSkills],
+    )
+
+    GROUP_PROJECT_SKILLS_DEMONSTRATED = ProjectStatisticTemplate(
+        name="GROUP_PROJECT_SKILLS_DEMONSTRATED",
+        description="skills demonstrated in files touched by non-user collaborators",
         expected_type=list[WeightedSkills],
     )
 
@@ -91,9 +98,21 @@ class ProjectStatCollection(Enum):
         expected_type=dict[FileDomain, float]
     )
 
+    ACTIVITY_TYPE_RATIO = ProjectStatisticTemplate(
+        name="ACTIVITY_TYPE_RATIO",
+        description="Average contribution in each domain by all contributors",
+        expected_type=dict[FileDomain, float]
+    )
+
     PROJECT_FRAMEWORKS = ProjectStatisticTemplate(
         name="PROJECT_FRAMEWORKS",
         description="These are the imported packages",
+        expected_type=list[WeightedSkills]
+    )
+
+    GROUP_PROJECT_FRAMEWORKS = ProjectStatisticTemplate(
+        name="GROUP_PROJECT_FRAMEWORKS",
+        description="frameworks/packages detected in files touched by non-user collaborators",
         expected_type=list[WeightedSkills]
     )
 
@@ -149,4 +168,32 @@ class ProjectStatCollection(Enum):
         name="ROLE_DESCRIPTION",
         description="Human-readable description of user's role for resume",
         expected_type=str
+    )
+
+    GROUP_CONTRIBUTION = ProjectStatisticTemplate(
+        name="GROUP_CONTRIBUTION",
+        description="Mapping of commit count to author email in group project",
+        expected_type=dict  # Dict[str, int]
+    )
+
+    PROJECT_SKILL_ACTIVITY = ProjectStatisticTemplate(
+        name="PROJECT_SKILL_ACTIVITY",
+        description=(
+            "Commit dates on files demonstrating each skill within this project. "
+            "Used to build a cumulative skill-usage timeline. "
+            "JSON schema: { '<skill_name>': ['YYYY-MM-DD', ...], ... }"
+        ),
+        expected_type=dict[str, list],
+    )
+
+    COMMIT_ACTIVITY_TIMELINE = StatisticTemplate(
+        name="COMMIT_ACTIVITY_TIMELINE",
+        description="Commit counts per day, keyed by ISO date string",
+        expected_type=dict[str, int]  # {"2024-03-01": 3, "2024-03-02": 1, ...}
+    )
+
+    TOTAL_COMMIT_ACTIVITY_TIMELINE = StatisticTemplate(
+        name="TOTAL_COMMIT_ACTIVITY_TIMELINE",
+        description="total commit counts per day in a group project, keyed by ISO date string",
+        expected_type=dict[str, int]  # {"2024-03-01": 3, "2024-03-02": 1, ...}
     )

@@ -70,6 +70,17 @@ def fmt_mdy_short(d: datetime | date | None) -> str:
     return d.strftime("%b %d, %Y")
 
 
+def join_english(items: list[str]) -> str:
+    """Join a list of strings into natural English with commas and 'and'."""
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f", and {items[-1]}"
+
+
 def fmt_mdy(d: datetime | date | None) -> str:
     if d is None:
         return "an unknown date"

@@ -55,9 +55,6 @@ class UserReport(BaseReport):
         self.resume_items = []
         for report in ranked_project_reports:
             self.resume_items.append(report.generate_resume_item())
-            since_last_analysis_item = report.generate_since_last_analysis_item()
-            if since_last_analysis_item is not None:
-                self.resume_items.append(since_last_analysis_item)
 
         super().__init__(StatisticIndex())  # list of user-level statistics
 
@@ -67,7 +64,14 @@ class UserReport(BaseReport):
             calculator_classes=calculator_classes)
         builder.build(self)
 
-    def generate_resume(self, email: Optional[str], github: Optional[str]) -> Resume:
+    def generate_resume(
+        self,
+        email: Optional[str],
+        github: Optional[str],
+        education: Optional[list[str]] = None,
+        awards: Optional[list[str]] = None,
+        name: Optional[str] = None,
+    ) -> Resume:
         """
         Generates a Resume object based on the ResumeItem
         that are generated from the ProjectReports. As well
@@ -77,7 +81,14 @@ class UserReport(BaseReport):
         weighted_skills = self.statistics.get_value(
             UserStatCollection.USER_SKILLS.value)
 
-        resume = Resume(email, github, weighted_skills)
+        resume = Resume(
+            email,
+            github,
+            weighted_skills,
+            education=education,
+            awards=awards,
+            name=name,
+            )
 
         for item in self.resume_items:
             resume.add_item(item)
@@ -91,16 +102,6 @@ class UserReport(BaseReport):
         """
         from src.core.portfolio.builder.concrete_builders import (
             UserSummarySectionBuilder,
-            UserSkillsSectionBuilder,
-            UserCodingLanguageRatioSectionBuilder,
-            UserGenericStatisticsSectionBuilder,
-            ChronologicalProjectsSectionBuilder,
-            ProjectSummariesSectionBuilder,
-            ProjectTagsSectionBuilder,
-            ProjectThemesSectionBuilder,
-            ProjectTonesSectionBuilder,
-            ProjectActivityMetricsSectionBuilder,
-            ProjectCommitFocusSectionBuilder,
         )
 
         builder = PortfolioBuilder()
@@ -112,21 +113,6 @@ class UserReport(BaseReport):
         else:
             # Case we want to include every section
             builder.register_section_builder(UserSummarySectionBuilder())
-            builder.register_section_builder(UserSkillsSectionBuilder())
-            builder.register_section_builder(
-                UserCodingLanguageRatioSectionBuilder())
-            builder.register_section_builder(
-                UserGenericStatisticsSectionBuilder())
-            builder.register_section_builder(
-                ChronologicalProjectsSectionBuilder())
-            builder.register_section_builder(ProjectSummariesSectionBuilder())
-            builder.register_section_builder(ProjectTagsSectionBuilder())
-            builder.register_section_builder(ProjectThemesSectionBuilder())
-            builder.register_section_builder(ProjectTonesSectionBuilder())
-            builder.register_section_builder(
-                ProjectActivityMetricsSectionBuilder())
-            builder.register_section_builder(
-                ProjectCommitFocusSectionBuilder())
 
         return builder.build(self)
 

@@ -13,20 +13,33 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from src.utils.errors import KeyNotFoundError
-from src.app import init_system
-from src.interface.api.routers import (
-    projects,
-    resume,
-    portfolio,
-    skills,
-    user_config,
-    privacy_consent,
+from src.utils.errors import (
+    KeyNotFoundError,
+    ProjectNotFoundError,
+    ResumeNotFoundError,
+    UserConfigNotFoundError,
+    AIServiceUnavailableError,
+    DatabaseOperationError,
+    BadOAuthStateError,
+    ExpiredOAuthState
 )
+from src.app import init_system, _init_db
+from src.interface.api.routers.projects import router as projects_router
+from src.interface.api.routers.resume import router as resume_router
+from src.interface.api.routers.portfolio import router as portfolio_router
+from src.interface.api.routers.skills import router as skills_router
+from src.interface.api.routers.user_config import router as user_config_router
+from src.interface.api.routers.privacy_consent import router as privacy_consent_router
+from src.interface.api.routers.job_readiness import router as job_readiness_router
+from src.interface.api.routers.insights import router as insights_router
+from src.interface.api.routers.interview import router as interview_router
+from src.interface.api.routers.github import router as github_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Commands to run on startup
+    _init_db()  # Create database tables first
     init_system()
 
     yield
@@ -59,11 +72,16 @@ def ping_pong():
 
 
 # Register routers
-app.include_router(projects)
-app.include_router(resume)
-app.include_router(portfolio)
-app.include_router(skills)
-app.include_router(user_config)
+app.include_router(projects_router)
+app.include_router(resume_router)
+app.include_router(portfolio_router)
+app.include_router(skills_router)
+app.include_router(user_config_router)
+app.include_router(privacy_consent_router)
+app.include_router(job_readiness_router)
+app.include_router(insights_router)
+app.include_router(interview_router)
+app.include_router(github_router)
 
 # Error handlers. If these errors are ever raised in our code, return the following JSON
 
@@ -76,13 +94,69 @@ async def key_not_found_exception_handler(request: Request, exc: KeyNotFoundErro
     )
 
 
+@app.exception_handler(ProjectNotFoundError)
+async def project_not_found_exception_handler(request: Request, exc: ProjectNotFoundError):
+    return JSONResponse(
+        status_code=404,
+        content={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+@app.exception_handler(ResumeNotFoundError)
+async def resume_not_found_exception_handler(request: Request, exc: ResumeNotFoundError):
+    return JSONResponse(
+        status_code=404,
+        content={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+@app.exception_handler(UserConfigNotFoundError)
+async def user_config_not_found_exception_handler(request: Request, exc: UserConfigNotFoundError):
+    return JSONResponse(
+        status_code=404,
+        content={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+@app.exception_handler(AIServiceUnavailableError)
+async def ai_service_unavailable_exception_handler(request: Request, exc: AIServiceUnavailableError):
+    return JSONResponse(
+        status_code=503,
+        content={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+@app.exception_handler(DatabaseOperationError)
+async def database_operation_error_handler(request: Request, exc: DatabaseOperationError):
+    return JSONResponse(
+        status_code=500,
+        content={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+@app.exception_handler(BadOAuthStateError)
+async def bad_oauth_state_error_handler(request: Request, exc: BadOAuthStateError):
+    return JSONResponse(
+        status_code=404,
+        content={"error_code": exc.error_code, "message": str(exc)}
+    )
+
+
+@app.exception_handler(ExpiredOAuthState)
+async def expired_oauth_state_error_handler(request: Request, exc: BadOAuthStateError):
+    return JSONResponse(
+        status_code=410,
+        content={"error_code": exc.error_code, "message": str(exc)}
+    )
+
+
 @app.exception_handler(Exception)
 async def universal_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={"message": "An internal error occurred", "details": str(exc)},
     )
-app.include_router(privacy_consent)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

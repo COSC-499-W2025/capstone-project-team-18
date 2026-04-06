@@ -162,50 +162,6 @@ class ProjectReport(BaseReport):
             frameworks=frameworks if frameworks else [],
             bullet_points=bullet_points,
             start_date=start_date,
-            end_date=end_date
-        )
-
-    def generate_since_last_analysis_item(self) -> Optional[ResumeItem]:
-        """
-        Generates a resume item describing numeric project-level statistic
-        changes since the previous analysis, when available.
-        """
-
-        previous_project_name = self.get_value(
-            ProjectStatCollection.PREVIOUS_ANALYSIS_PROJECT.value)
-        statistic_deltas = self.get_value(
-            ProjectStatCollection.PROJECT_STATISTICS_DELTA.value)
-
-        if not previous_project_name or not statistic_deltas:
-            return None
-
-        bullets: list[str] = []
-
-        for stat_name, delta in sorted(statistic_deltas.items()):
-            direction = "increased" if delta > 0 else "decreased"
-            bullets.append(
-                f"{stat_name} {direction} by {abs(delta):.2f}"
-            )
-
-        if not bullets:
-            return None
-
-        start_date = self.get_value(
-            ProjectStatCollection.PROJECT_START_DATE.value)
-        end_date = self.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
-
-        if start_date is None:
-            start_date = date.today()
-
-        if end_date is None:
-            end_date = date.today()
-
-        base_project_name = self._get_base_project_name(self.project_name)
-
-        return ResumeItem(
-            title=f"{base_project_name} metrics since last analysis",
-            frameworks=[],
-            bullet_points=bullets,
-            start_date=start_date,
             end_date=end_date,
+            project_name=self.project_name,
         )

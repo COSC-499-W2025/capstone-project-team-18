@@ -165,8 +165,8 @@ def pr2_updated(project_report_from_stats) -> ProjectReport:
 @pytest.fixture
 def prs_db(blank_db, pr1, pr2):
     with Session(blank_db) as session:
-        save_project_report(session, pr1, None)
-        save_project_report(session, pr2, None)
+        save_project_report(session, pr1, None, False)
+        save_project_report(session, pr2, None, False)
         session.commit()
 
     yield blank_db

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, screen } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -28,6 +28,17 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST
 
+// Register capstone:// as the deep-link protocol for OAuth callbacks
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('capstone', process.execPath, [path.resolve(process.argv[1])])
+  }
+} else {
+  app.setAsDefaultProtocolClient('capstone')
+}
+
+app.setName('Artifact Miner')
+
 // Disable GPU Acceleration for Windows 7
 if (os.release().startsWith('6.1')) app.disableHardwareAcceleration()
 
@@ -44,9 +55,15 @@ const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 async function createWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+
   win = new BrowserWindow({
+    width: Math.round(width * 0.75),
+    height: Math.round(height * 0.75),
     title: 'Main window',
-    icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
+    icon: path.join(process.env.VITE_PUBLIC, 'favicon_io', 'android-chrome-512x512.png'),
+    backgroundColor: '#242424',
+    titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload,
       // Warning: Enable nodeIntegration and disable contextIsolation is not secure in production
@@ -61,7 +78,7 @@ async function createWindow() {
   if (VITE_DEV_SERVER_URL) { // #298
     win.loadURL(VITE_DEV_SERVER_URL)
     // Open devTool if the app is not packaged
-    win.webContents.openDevTools()
+    //win.webContents.openDevTools()
   } else {
     win.loadFile(indexHtml)
   }
@@ -69,6 +86,14 @@ async function createWindow() {
   // Test actively push message to the Electron-Renderer
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString())
+  })
+
+  // Notify renderer when fullscreen state changes so it can adjust layout
+  win.on('enter-full-screen', () => {
+    win?.webContents.send('fullscreen-change', true)
+  })
+  win.on('leave-full-screen', () => {
+    win?.webContents.send('fullscreen-change', false)
   })
 
   // Make all links open with the browser, not with the application
@@ -81,20 +106,45 @@ async function createWindow() {
   update(win)
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(process.env.VITE_PUBLIC, 'favicon_io', 'icon.png'))
+  }
+  createWindow()
+})
 
 app.on('window-all-closed', () => {
   win = null
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('second-instance', () => {
+app.on('second-instance', (_event, argv) => {
   if (win) {
-    // Focus on the main window if the user tried to open another
     if (win.isMinimized()) win.restore()
     win.focus()
   }
+  // On Windows/Linux the deep-link URL arrives as a command-line argument
+  const deepLink = argv.find(arg => arg.startsWith('capstone://'))
+  if (deepLink) handleDeepLink(deepLink)
 })
+
+// macOS deep-link handler
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  handleDeepLink(url)
+})
+
+function handleDeepLink(url: string) {
+  try {
+    const parsed = new URL(url)
+    const state = parsed.searchParams.get('state')
+    const status = parsed.searchParams.get('status')
+    const detail = parsed.searchParams.get('detail')
+    win?.webContents.send('github-oauth-callback', { state, status, detail })
+  } catch {
+    // malformed URL — ignore
+  }
+}
 
 app.on('activate', () => {
   const allWindows = BrowserWindow.getAllWindows()
@@ -103,6 +153,10 @@ app.on('activate', () => {
   } else {
     createWindow()
   }
+})
+
+ipcMain.handle('open-external', (_event, url: string) => {
+  shell.openExternal(url)
 })
 
 // New window example arg: new windows url

@@ -1,23 +1,113 @@
 """
 Generation service for a portfolio.
 """
+import base64
 from typing import Optional
 from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
 
 from src.core.report import UserReport
 from src.core.portfolio.portfolio import Portfolio
+from src.core.portfolio.cards.project_card import ProjectCard
+from src.core.statistic import ProjectStatCollection
 from src.utils.errors import KeyNotFoundError
 from src.core.portfolio.portfolio import merge_portfolios
 from src.database.api.CRUD.portfolio import update_portfolio_from_domain
 from src.database import (
     get_project_report_by_name,
+    get_project_report_models_by_names,
     get_engine,
     save_portfolio,
     load_portfolio,
     PortfolioModel,
     PortfolioSectionModel
 )
+
+
+def _build_project_cards(
+    project_models: list,
+    project_reports: list,
+    top_n_showcase: int = 3,
+) -> list[ProjectCard]:
+    """
+    Build one ProjectCard per project by extracting all relevant statistics.
+
+    The top_n_showcase projects (sorted by representation_rank) are automatically
+    flagged as is_showcase=True. Users can change this later via the showcase endpoint.
+
+    portfolio_id is set to -1 as a placeholder; it is assigned during save_portfolio
+    after the PortfolioModel has been flushed and its PK is known.
+    """
+    from src.core.portfolio.project_summary import build_project_summary, configure_summary_run
+
+    configure_summary_run(len(project_reports))
+
+    # Determine default showcase set: top N by representation_rank
+    ranked = sorted(
+        zip(project_models, project_reports),
+        key=lambda pair: (
+            pair[0].representation_rank is None,
+            pair[0].representation_rank if pair[0].representation_rank is not None else 10 ** 9,
+            pair[0].created_at,
+        ),
+    )
+    showcase_names = {pm.project_name for pm, _ in ranked[:top_n_showcase]}
+
+    cards = []
+
+    for model, report in zip(project_models, project_reports):
+        if report is None:
+            continue
+
+        themes = report.get_value(ProjectStatCollection.PROJECT_THEMES.value) or []
+        tones_raw = report.get_value(ProjectStatCollection.PROJECT_TONE.value)
+        tones = str(tones_raw) if tones_raw else ""
+        tags = report.get_value(ProjectStatCollection.PROJECT_TAGS.value) or []
+        skills_raw = report.get_value(
+            ProjectStatCollection.PROJECT_SKILLS_DEMONSTRATED.value) or []
+        frameworks_raw = report.get_value(
+            ProjectStatCollection.PROJECT_FRAMEWORKS.value) or []
+        languages_raw = report.get_value(
+            ProjectStatCollection.CODING_LANGUAGE_RATIO.value) or {}
+        start_date = report.get_value(ProjectStatCollection.PROJECT_START_DATE.value)
+        end_date = report.get_value(ProjectStatCollection.PROJECT_END_DATE.value)
+        is_group = report.get_value(ProjectStatCollection.IS_GROUP_PROJECT.value) or False
+        role = report.get_value(ProjectStatCollection.COLLABORATION_ROLE.value) or ""
+        work_pattern = report.get_value(ProjectStatCollection.WORK_PATTERN.value) or ""
+        commit_dist = report.get_value(
+            ProjectStatCollection.COMMIT_TYPE_DISTRIBUTION.value) or {}
+        activity = report.get_value(ProjectStatCollection.ACTIVITY_METRICS.value) or {}
+
+        summary = build_project_summary(report) or ""
+
+        # Normalise skill/framework objects to plain strings
+        skill_names = [getattr(s, "skill_name", str(s)) for s in skills_raw]
+        framework_names = [getattr(f, "skill_name", str(f)) for f in frameworks_raw]
+        # Normalise language keys
+        language_dict = {str(k): float(v) for k, v in languages_raw.items()}
+
+        cards.append(ProjectCard(
+            portfolio_id=-1,  # placeholder; assigned after flush in save_portfolio
+            project_name=model.project_name,
+            image_data=base64.b64encode(model.image_data).decode("utf-8") if model.image_data else None,
+            summary=summary,
+            themes=[str(t) for t in themes],
+            tones=tones,
+            tags=[str(t) for t in tags],
+            skills=skill_names,
+            frameworks=framework_names,
+            languages=language_dict,
+            start_date=start_date,
+            end_date=end_date,
+            is_group_project=bool(is_group),
+            collaboration_role=str(role),
+            work_pattern=str(work_pattern),
+            commit_type_distribution=dict(commit_dist),
+            activity_metrics=dict(activity),
+            is_showcase=model.project_name in showcase_names,
+        ))
+
+    return cards
 
 
 def _create_portfolio(project_names: list[str], portfolio_title: Optional[str]) -> Portfolio:
@@ -58,6 +148,11 @@ def generate_and_save_portfolio(project_names: list[str], portfolio_title: Optio
     passed. The portfolio will be given the title passed in, or it will default
     to a placeholder title.
 
+    Populates all three parts:
+      Part A — ML-generated narrative sections (+ user-owned sections)
+      Part B — is_showcase flag on the top-ranked project cards
+      Part C — project cards with rich metadata from project statistics
+
     :param project_names: List of project names
     :type project_names: list[str]
     :param portfolio_title: Title of the portoflio
@@ -69,6 +164,13 @@ def generate_and_save_portfolio(project_names: list[str], portfolio_title: Optio
     portfolio = _create_portfolio(project_names, portfolio_title)
 
     with Session(get_engine()) as session:
+        project_models = get_project_report_models_by_names(session, project_names)
+        project_reports = [
+            get_project_report_by_name(session, name) for name in project_names
+        ]
+
+        portfolio.project_cards = _build_project_cards(project_models, project_reports)
+
         portfolio_model = save_portfolio(session, portfolio)
         session.commit()
 
@@ -77,7 +179,8 @@ def generate_and_save_portfolio(project_names: list[str], portfolio_title: Optio
             .where(PortfolioModel.id == portfolio_model.id)
             .options(
                 joinedload(PortfolioModel.sections)  # type: ignore
-                .joinedload(PortfolioSectionModel.blocks)  # type: ignore
+                .joinedload(PortfolioSectionModel.blocks),  # type: ignore
+                joinedload(PortfolioModel.project_cards),  # type: ignore
             )
         )
 
@@ -112,11 +215,18 @@ def update_portfolio(portfolio_id: int) -> PortfolioModel:
 
         project_names = existing_portfolio.metadata.project_ids_include
 
-        # Regenerate the portfolio with new information
+        # Regenerate Part A sections with updated information
         updated_portfolio = _create_portfolio(project_names, "")
+        merged_portfolio = merge_portfolios(existing_portfolio, updated_portfolio)
 
-        merged_portfolio = merge_portfolios(
-            existing_portfolio, updated_portfolio)
+        # Rebuild Part C cards from fresh statistics
+        # (update_portfolio_from_domain preserves is_showcase and user overrides)
+        project_models = get_project_report_models_by_names(session, project_names)
+        project_reports = [
+            get_project_report_by_name(session, name) for name in project_names
+        ]
+        merged_portfolio.project_cards = _build_project_cards(
+            project_models, project_reports)
 
         portfolio_model = update_portfolio_from_domain(
             session, portfolio_id, merged_portfolio)

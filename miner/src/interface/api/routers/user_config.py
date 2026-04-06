@@ -1,17 +1,70 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Optional
-from sqlmodel import Session
+from datetime import datetime, timezone
+from typing import Optional, List
+from sqlmodel import Session, SQLModel
 
 from src.interface.api.routers.util import get_session
 from src.database import get_most_recent_user_config, save_user_config, UserConfigModel
 from src.database.api.CRUD.user_config import UserConfigUpdate
+from src.database.api.models import ResumeConfigModel
+from src.utils.errors import UserConfigNotFoundError, DatabaseOperationError
 
 router = APIRouter(
-    prefix="",
+    prefix="/user-config",
     tags=["user-config"],
 )
 
+# ---------- Request/Response Schemas ----------
 
+
+class ResumeConfigRequest(SQLModel):
+    """
+    Nested request model for resume configuration.
+    """
+    education: Optional[List[str]] = None
+    awards: Optional[List[str]] = None
+    skills: Optional[List[str]] = None
+
+
+class UserConfigRequest(SQLModel):
+    """
+    Request schema for updating user configuration
+    Now includes nested resume_config for education/awards/skills
+    """
+    consent: bool
+    ml_consent: bool = False
+    name: Optional[str] = None
+    user_email: str
+    github: Optional[str] = None
+    resume_config: Optional[ResumeConfigRequest] = None
+
+
+class ResumeConfigResponse(SQLModel):
+    """
+    Nested response model for resume configuration.
+    """
+    id: int
+    education: List[str] = []
+    awards: List[str] = []
+    skills: List[str] = []
+
+
+class UserConfigResponse(SQLModel):
+    """
+    Response schema for user configuration.
+    Includes nested resume_config with education/awards/skills
+    """
+    id: int
+    consent: bool
+    ml_consent: bool
+    name: Optional[str] = None
+    user_email: Optional[str] = None
+    github: Optional[str] = None
+    github_connected: bool = False
+    resume_config: Optional[ResumeConfigResponse] = None
+
+
+# ---------- Helper Functions ----------
 def get_user_config_safe(
     session: Session,
     user_config_id: Optional[int] = None
@@ -22,59 +75,144 @@ def get_user_config_safe(
 
     :param session: The database session
     :param user_config_id: Optional ID of the user config to retrieve
-    :raises HTTPException: 404 if a specific id is given but not found
+    :raises UserConfigNotFoundError: if a specific id is given but not found
     :return: The UserConfigModel
     """
     if user_config_id is not None:
         config = session.get(UserConfigModel, user_config_id)
         if not config:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No user config found with id {user_config_id}"
-            )
+            raise UserConfigNotFoundError(
+                f"No user config found with id {user_config_id}")
         return config
 
     return get_most_recent_user_config(session)
 
+# ---------- Route Handlers ----------
 
-@router.get("/user-config")
-def get_user_config(session=Depends(get_session)) -> UserConfigModel:
+
+@router.get("", response_model=UserConfigResponse)
+def get_user_config(session=Depends(get_session)):
     """
-    GET /user-config
+    Retrieve the current (most recent) user configuration record.
 
-    This endpoint retieves the in-use user config. It will respond with
-    the config and it's ID.
+    Returns:
+    - 200: A `UserConfigResponse` including any nested resume configuration
+      (education, awards, skills)
+
+    Raises:
+    - 404 `USER_CONFIG_NOT_FOUND`: No user configuration has been created yet.
     """
 
-    user_config = get_most_recent_user_config(session)
+    config = get_most_recent_user_config(session)
 
-    if not user_config:
-        raise HTTPException(status_code=404, detail="No user config found")
+    if not config:
+        raise UserConfigNotFoundError("No user config found")
 
-    return user_config
+    # Build response with nested resume config
+    resume_config_response = None
+    if config.resume_config:
+        resume_config_response = ResumeConfigResponse(
+            id=config.resume_config.id,
+            education=config.resume_config.education or [],
+            awards=config.resume_config.awards or [],
+            skills=config.resume_config.skills or [],
+        )
+
+    return UserConfigResponse(
+        id=config.id,
+        consent=config.consent,
+        ml_consent=config.ml_consent,
+        name=config.name,
+        user_email=config.user_email,
+        github=config.github,
+        github_connected=bool(config.access_token),
+        resume_config=resume_config_response,
+    )
 
 
-@router.put("/user-config/{config_id}")
-def update_user_config(
-    config_id: int,
-    config_update: UserConfigUpdate,
-    session=Depends(get_session)
-):
+@router.put("", response_model=UserConfigResponse)
+def update_user_config(request: UserConfigRequest, session=Depends(get_session)):
     """
-    PUT /user-config
+    Create or update the user configuration.
 
-    This endpoint updates the user's config. The values are given in the
-    payload, then we save that exact payload to the database and set it
-    as the current in use user config (with new id).
+    Persists core fields (consent, email, GitHub) and optionally creates or
+    updates the nested ResumeConfigModel (education, awards).
+
+    Body parameters:
+    - `consent`: Required boolean consent flag.
+    - `user_email`: Required email address.
+    - `github`: Optional GitHub username.
+    - `resume_config.education`: Optional list of education strings.
+    - `resume_config.awards`: Optional list of award strings.
+    - `resume_config.skills`: Optional list of skill strings.
+    Returns:
+    - 200: The updated `UserConfigResponse` with nested resume configuration.
+
+    Raises:
+    - 500 `DATABASE_OPERATION_FAILED`: The update failed; changes were rolled back.
     """
-    # Fetch the existing record
-    db_config = session.get(UserConfigModel, config_id)
-    if not db_config:
-        raise HTTPException(status_code=404, detail="Config not found")
+    try:
+        config = get_most_recent_user_config(session)
 
-    # Update and save
-    updated_config = save_user_config(session, db_config, config_update)
-    session.commit()
-    session.refresh(updated_config)
+        # Build update data for core fields
+        update_data = UserConfigUpdate(
+            consent=request.consent,
+            ml_consent=request.ml_consent,
+            name=request.name,
+            user_email=request.user_email,
+            github=request.github
+        )
 
-    return updated_config
+        # Update core fields using CRUD function
+        config = save_user_config(session, config, update_data)
+
+        # Handle resume config (education/awards/skills)
+        if request.resume_config:
+            if not config.resume_config:
+                # Create new ResumeConfigModel if it doesn't exist
+                config.resume_config = ResumeConfigModel(
+                    user_config_id=config.id,
+                    education=request.resume_config.education or [],
+                    awards=request.resume_config.awards or [],
+                    skills=request.resume_config.skills or [],
+                )
+                session.add(config.resume_config)
+            else:
+                # Update existing ResumeConfigModel
+                if request.resume_config.education is not None:
+                    config.resume_config.education = request.resume_config.education
+                if request.resume_config.awards is not None:
+                    config.resume_config.awards = request.resume_config.awards
+                if request.resume_config.skills is not None:
+                    config.resume_config.skills = request.resume_config.skills
+                config.resume_config.last_updated = datetime.now(timezone.utc)
+
+        # Persist changes
+
+        session.commit()
+        session.refresh(config)
+
+        # Build response
+        resume_config_response = None
+        if config.resume_config:
+            resume_config_response = ResumeConfigResponse(
+                id=config.resume_config.id,
+                education=config.resume_config.education or [],
+                awards=config.resume_config.awards or [],
+                skills=config.resume_config.skills or [],
+            )
+
+        return UserConfigResponse(
+            id=config.id,
+            consent=config.consent,
+            ml_consent=config.ml_consent,
+            name=config.name,
+            user_email=config.user_email,
+            github=config.github,
+            github_connected=bool(config.access_token),
+            resume_config=resume_config_response,
+        )
+    except Exception as e:
+        session.rollback()
+        raise DatabaseOperationError(
+            f"Failed to update user config: {str(e)}") from e
