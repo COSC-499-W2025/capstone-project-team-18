@@ -101,6 +101,15 @@ class AwardEntry(SQLModel):
     description: List[str] = []
 
 
+class ExperienceEntry(SQLModel):
+    """A single structured experience entry."""
+    title: str
+    position: str = ""
+    start: Optional[str] = None
+    end: Optional[str] = None
+    description: List[str] = []
+
+
 def _normalize_entry(entry) -> dict:
     """Normalize a legacy plain-string entry or a structured dict into {title, start, end, description}."""
     if isinstance(entry, dict):
@@ -111,6 +120,19 @@ def _normalize_entry(entry) -> dict:
             "description": entry.get("description") or [],
         }
     return {"title": str(entry), "start": None, "end": None, "description": []}
+
+
+def _normalize_experience_entry(entry) -> dict:
+    """Normalize an experience entry dict."""
+    if isinstance(entry, dict):
+        return {
+            "title": entry.get("title", ""),
+            "position": entry.get("position", ""),
+            "start": entry.get("start"),
+            "end": entry.get("end"),
+            "description": entry.get("description") or [],
+        }
+    return {"title": str(entry), "position": "", "start": None, "end": None, "description": []}
 
 
 class ResumeResponse(SQLModel):
@@ -126,6 +148,7 @@ class ResumeResponse(SQLModel):
     skills_by_expertise: Optional[SkillsByExpertiseResponse] = None
     education: List[EducationEntry] = []
     awards: List[AwardEntry] = []
+    experience: List[ExperienceEntry] = []
     items: List[ResumeItemResponse] = []
     created_at: Optional[datetime.datetime]
     last_updated: Optional[datetime.datetime]
@@ -154,6 +177,7 @@ def _build_resume_response(resume_model) -> ResumeResponse:
     """
     education = [EducationEntry(**_normalize_entry(e)) for e in (resume_model.education or [])]
     awards = [AwardEntry(**_normalize_entry(a)) for a in (resume_model.awards or [])]
+    experience = [ExperienceEntry(**_normalize_experience_entry(x)) for x in (resume_model.experience or [])]
 
     expert = resume_model.skills_expert or []
     intermediate = resume_model.skills_intermediate or []
@@ -179,6 +203,7 @@ def _build_resume_response(resume_model) -> ResumeResponse:
         skills_by_expertise=skills_by_expertise,
         education=education,
         awards=awards,
+        experience=experience,
         items=resume_model.items,
         created_at=resume_model.created_at,
         last_updated=resume_model.last_updated,
@@ -278,6 +303,11 @@ class EditEducationRequest(SQLModel):
 class EditAwardsRequest(SQLModel):
     """Request model for replacing the awards list on a resume"""
     awards: List[AwardEntry]
+
+
+class EditExperienceRequest(SQLModel):
+    """Request model for replacing the experience list on a resume"""
+    experience: List[ExperienceEntry]
 
 
 # ---------- Resume API Endpoints ----------
@@ -461,6 +491,39 @@ def edit_resume_awards(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to edit awards: {str(e)}"
+        )
+
+
+@router.post("/{resume_id}/edit/experience", response_model=ResumeResponse)
+def edit_resume_experience(
+    resume_id: int,
+    request: EditExperienceRequest,
+    session=Depends(get_session)
+):
+    """Replace the experience list for a resume."""
+    resume_model = get_resume_model_by_id(session, resume_id)
+
+    if not resume_model:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resume found with id {resume_id}"
+        )
+
+    try:
+        resume_model.experience = [x.model_dump() for x in request.experience]
+        resume_model.last_updated = datetime.datetime.now(datetime.timezone.utc)
+
+        session.add(resume_model)
+        session.commit()
+        session.refresh(resume_model)
+
+        return _build_resume_response(resume_model)
+
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to edit experience: {str(e)}"
         )
 
 

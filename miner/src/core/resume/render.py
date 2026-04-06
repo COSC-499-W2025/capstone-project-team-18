@@ -59,6 +59,21 @@ class TextResumeRenderer(ResumeRender):
                     to_return += f"   - {aw}\n"
             to_return += "\n"
 
+        # Check if resume has experience entries before rendering
+        if resume.experience:
+            to_return += "Experience:\n"
+            for ex in resume.experience:
+                if isinstance(ex, dict):
+                    position = ex.get("position", "")
+                    title = ex.get("title", "")
+                    header = f"{position} at {title}" if position else title
+                    to_return += f"   - {header}\n"
+                    for bullet in ex.get("description") or []:
+                        to_return += f"      • {bullet}\n"
+                else:
+                    to_return += f"   - {ex}\n"
+            to_return += "\n"
+
         for item in resume.items:
             to_return += f"{item.title} : {item.start_date.strftime('%B, %Y')} - {item.end_date.strftime('%B, %Y')}\n"
 
@@ -269,6 +284,33 @@ class ResumeLatexRenderer(ResumeRender):
                         tex.append(r"\resumeItemListEnd")
                 else:
                     tex.append(rf"  \item \small{{{latex_escape(str(aw))}}}")
+            tex.append(r"\resumeSubHeadingListEnd")
+            tex.append("")
+
+        # --- Experience ---
+        if resume.experience:
+            tex.append(r"\section{Experience}")
+            tex.append(r"\resumeSubHeadingListStart")
+            for ex in resume.experience:
+                if isinstance(ex, dict):
+                    title = latex_escape(ex.get("title", ""))
+                    position = latex_escape(ex.get("position", ""))
+                    start = ex.get("start") or ""
+                    end = ex.get("end") or ""
+                    date_str = f"{start} -- {end}" if start and end else (start or end)
+                    heading = rf"\textbf{{{title}}} $|$ \emph{{{position}}}" if position else rf"\textbf{{{title}}}"
+                    if date_str:
+                        tex.append(rf"\resumeProjectHeading{{{heading}}}{{{latex_escape(date_str)}}}")
+                    else:
+                        tex.append(rf"  \item \small{{{heading}}}")
+                    bullets = ex.get("description") or []
+                    if bullets:
+                        tex.append(r"\resumeItemListStart")
+                        for b in bullets:
+                            tex.append(rf"\resumeItem{{{latex_escape(b)}}}")
+                        tex.append(r"\resumeItemListEnd")
+                else:
+                    tex.append(rf"  \item \small{{{latex_escape(str(ex))}}}")
             tex.append(r"\resumeSubHeadingListEnd")
             tex.append("")
 
@@ -508,6 +550,28 @@ class DocxResumeRenderer(ResumeRender):
                 else:
                     p = doc.add_paragraph()
                     p.add_run(str(aw))
+
+        # ── Experience ───────────────────────────────────────────────────────
+        if resume.experience:
+            _add_section_heading("Experience")
+            for ex in resume.experience:
+                if isinstance(ex, dict):
+                    title = ex.get("title", "")
+                    position = ex.get("position", "")
+                    start = ex.get("start") or ""
+                    end = ex.get("end") or ""
+                    date_str = f"{start} \u2013 {end}" if start and end else (start or end)
+                    title_str = f"{position} | {title}" if position else title
+                    if date_str:
+                        _add_dated_row(title_str, date_str)
+                    else:
+                        p = doc.add_paragraph()
+                        p.add_run(title_str)
+                    for bullet in ex.get("description") or []:
+                        _add_bullet(bullet)
+                else:
+                    p = doc.add_paragraph()
+                    p.add_run(str(ex))
 
         # ── Projects ─────────────────────────────────────────────────────────
         if resume.items:

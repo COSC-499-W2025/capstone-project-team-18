@@ -174,13 +174,18 @@ class ResumeModel(SQLModel, table=True):
     linkedin: Optional[str] = None
     skills: List[str] = Field(sa_column=Column(JSON, nullable=False))
 
-    # Per-resume snapshots of education and awards (set at generation time)
-    # Each entry: {"title": str, "start": str|None, "end": str|None}
+    # Per-resume snapshots of education, awards, and experience (set at generation time)
+    # Each entry: {"title": str, "start": str|None, "end": str|None, "description": list[str]}
     education: List[Any] = Field(
         sa_column=Column(JSON, nullable=False),
         default_factory=list
     )
     awards: List[Any] = Field(
+        sa_column=Column(JSON, nullable=False),
+        default_factory=list
+    )
+    # Experience entries: {"title": str, "position": str, "start": str|None, "end": str|None, "description": list[str]}
+    experience: List[Any] = Field(
         sa_column=Column(JSON, nullable=False),
         default_factory=list
     )

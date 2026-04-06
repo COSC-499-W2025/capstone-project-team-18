@@ -61,6 +61,7 @@ class Resume:
         weight_skills: Optional[list[WeightedSkills]] = None,
         education: Optional[list[str]] = None,
         awards: Optional[list[str]] = None,
+        experience: Optional[list] = None,
         title: Optional[str] = None,
         name: Optional[str] = None,
         location: Optional[str] = None,
@@ -76,6 +77,7 @@ class Resume:
         self.skills = []
         self.education = education or []
         self.awards = awards or []
+        self.experience = experience or []
         self.weighted_skills = weight_skills or []
         self._skills_by_expertise: Optional[SkillsByExpertise] = None
 
