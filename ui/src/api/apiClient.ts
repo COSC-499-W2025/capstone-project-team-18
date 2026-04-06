@@ -240,6 +240,14 @@ export type AwardEntry = {
   description?: string[];
 };
 
+export type ExperienceEntry = {
+  title: string;
+  position?: string;
+  start?: string | null;
+  end?: string | null;
+  description?: string[];
+};
+
 export type ResumeResponse = {
   id?: number | null;
   title?: string | null;
@@ -252,6 +260,7 @@ export type ResumeResponse = {
   skills_by_expertise?: SkillsByExpertise | null;
   education?: EducationEntry[];
   awards?: AwardEntry[];
+  experience?: ExperienceEntry[];
   items: ResumeItemResponse[];
   created_at?: string | null;
   last_updated?: string | null;
@@ -366,6 +375,10 @@ export type EditResumeEducationPayload = {
 
 export type EditResumeAwardsPayload = {
   awards: AwardEntry[];
+};
+
+export type EditResumeExperiencePayload = {
+  experience: ExperienceEntry[];
 };
 
 export function getLatestResumeId(): number | null {
@@ -585,6 +598,12 @@ export const api = {
   editResumeAwards: (resumeId: number, payload: EditResumeAwardsPayload) =>
     postJson<ResumeResponse>(
       `/resume/${encodeURIComponent(String(resumeId))}/edit/awards`,
+      payload
+    ),
+
+  editResumeExperience: (resumeId: number, payload: EditResumeExperiencePayload) =>
+    postJson<ResumeResponse>(
+      `/resume/${encodeURIComponent(String(resumeId))}/edit/experience`,
       payload
     ),
 
