@@ -122,7 +122,7 @@ This pipeline _does_ run the ML tests by default.
 
 The Electron UI uses [`Vitest`](https://vitest.dev/) to run unit tests for the frontend. The API is not required to be running for these tests to work.
 
-#### What we Test
+#### What We Test
 - API client behavior (URL construction, base URL normalization).
 - Correct endpoint calls (`/projects`, `/projects/{project_name}`, `/skills`, `/ping`).
 - URL encoding for route parameters (e.g., project names with spaces such as "My Project").
@@ -362,13 +362,12 @@ We have met all milestone requirements. Additionally, we have a bonus deployment
 
 
 **The Portfolio Edit Page**
-<img width="2522" height="3678" alt="image" src="https://github.com/user-attachments/assets/d69e7cfd-edad-4bc8-865e-349b201f07cf" />
+<img width="1811" height="2062" alt="image" src="https://github.com/user-attachments/assets/0c610dd4-0a67-45b4-8215-497860cec2f1" />
+
 
 
 **Portfolio Deployed to a GitHub Pages Site**
-<img width="3024" height="6596" alt="image" src="https://github.com/user-attachments/assets/af3d3242-ae3a-45d8-9cf6-d95d2cc533c0" />
-
-
+<img width="3024" height="7181" alt="image" src="https://github.com/user-attachments/assets/439d70c1-6c89-4fe5-a498-1cff83bb694e" />
 
 ## Milestone 2 Documentation
 
