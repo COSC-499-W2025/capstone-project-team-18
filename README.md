@@ -349,7 +349,9 @@ We have met all milestone requirements. Additionally, we have a bonus deployment
 <img width="2522" height="3923" alt="image" src="https://github.com/user-attachments/assets/28f27f73-6095-433d-bad3-b4067ebffc7d" />
 
 **Exported PDF Résumé**
-![exported-resume]()
+<img width="1700" height="2200" alt="image" src="https://github.com/user-attachments/assets/be3599d0-e8dd-4db7-abb0-022ac305ead8" />
+
+
 
 2. A Web Portfolio:
 - Timeline of skills, demonstrating learning progression and increased in expertise/depth
