@@ -57,6 +57,7 @@ The folder contains the following files:
     ```bash
     cd miner && fastapi dev ./src/interface/api/api.py
     ```
+    - _Note_: This may take a minute or so because there are ~1.6GB of weights for the ML features.
 
     When it API is ready to receive requests, it will print the following to the terminal:
     ```bash
@@ -95,13 +96,13 @@ This is a YouTube video covering how to download and set up our project.
 
 ## Known Bugs
 
-| Issue                                                                                                                                                       | 
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | 
-| [583. Scoped npm package names are parsed incorrectly in Framework/library](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/583)               | 
-| [585. Clicking “Upload Project” on the Projects tab also navigates back to the dashboard](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/585) | 
-| [597. Resume PDF Export Breaks When a `ResumeItem` is Empty](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/597)                              | 
-| [598. Need generic error message for Job readiness](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/598)                                       | 
-| [599. User can remove a portfolio's name](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/599)                                                 | 
+| Issue                                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [583. Scoped npm package names are parsed incorrectly in Framework/library](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/583)               |
+| [585. Clicking “Upload Project” on the Projects tab also navigates back to the dashboard](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/585) |
+| [597. Resume PDF Export Breaks When a `ResumeItem` is Empty](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/597)                              |
+| [598. Need generic error message for Job readiness](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/598)                                       |
+| [599. User can remove a portfolio's name](https://github.com/COSC-499-W2025/capstone-project-team-18/issues/599)                                                 |
 
 
 ## Testing the System
@@ -377,6 +378,9 @@ We have met all milestone requirements. Additionally, we have a bonus deployment
 
 
 **Portfolio Deployed to a GitHub Pages Site**
+
+- _Note_: You can view this deployed portfolio [here](https://alextaschuk.github.io/portfolio/).
+
 <img width="3024" height="7181" alt="image" src="https://github.com/user-attachments/assets/439d70c1-6c89-4fe5-a498-1cff83bb694e" />
 
 ## Milestone 2 Documentation
