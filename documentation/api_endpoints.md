@@ -191,6 +191,31 @@ Retrieve the full report for a single project.
 
 ---
 
+### `DELETE /projects/{project_name}`
+
+Soft-delete a project by name.
+
+The project record is retained in the database so that existing resumes and portfolios
+can continue to reference it. The project will no longer appear in the project list or
+be available for new resume/portfolio creation. Re-uploading an archive with the same
+project name will resurrect the project.
+
+**Path Parameters**
+
+| Field | Type | Description |
+|---|---|---|
+| `project_name` | `string` | URL-encoded name of the project to delete (case-sensitive) |
+
+**Responses**
+
+| Status | Body | When |
+|---|---|---|
+| `204` | *(no content)* | Project was successfully soft-deleted |
+| `404 PROJECT_NOT_FOUND` | Error object | No project with that name exists |
+| `500 DATABASE_OPERATION_FAILED` | Error object | Deletion failed; changes were rolled back |
+
+---
+
 ### `POST /projects/{project_name}/image`
 
 Attach a thumbnail image to a project. The uploaded file must have a `Content-Type`

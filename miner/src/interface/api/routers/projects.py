@@ -833,7 +833,16 @@ def upload_project_image(
             f"Failed to upload image: {str(e)}") from e
 
 
-@router.delete("/{project_name}", status_code=204)
+@router.delete(
+    "/{project_name}",
+    status_code=204,
+    summary="Soft-delete a project",
+    responses={
+        204: {"description": "Project successfully soft-deleted (no content)"},
+        404: {"description": "PROJECT_NOT_FOUND — no project with that name exists"},
+        500: {"description": "DATABASE_OPERATION_FAILED — deletion failed; changes were rolled back"},
+    },
+)
 def delete_project(
     project_name: str,
     session=Depends(get_session),
@@ -847,7 +856,7 @@ def delete_project(
     Re-uploading a zip with the same project name will resurrect the project.
 
     Path parameters:
-    - `project_name`: The name of the project to delete.
+    - `project_name`: The URL-encoded name of the project to delete.
 
     Returns:
     - 204: No content on success.
