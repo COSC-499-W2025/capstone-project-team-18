@@ -1307,6 +1307,169 @@ function AwardsSection({
   );
 }
 
+// ─── Experience Section ───────────────────────────────────────────────────────
+
+type ExperienceDraft = { title: string; position: string; start: string; end: string; description: string };
+
+function ExperienceSection({
+  resumeId,
+  experience,
+  onUpdated,
+  onError,
+}: {
+  resumeId: number;
+  experience: import("../api/apiClient").ExperienceEntry[];
+  onUpdated: (res: import("../api/apiClient").ResumeResponse) => void;
+  onError: (msg: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<ExperienceDraft[]>([]);
+
+  function startEditing() {
+    setDraft(experience.map((e) => ({
+      title: e.title ?? "",
+      position: e.position ?? "",
+      start: e.start ?? "",
+      end: e.end ?? "",
+      description: (e.description ?? []).join("\n"),
+    })));
+    setEditing(true);
+  }
+
+  function updateField(i: number, field: keyof ExperienceDraft, value: string) {
+    setDraft((d) => d.map((e, idx) => (idx === i ? { ...e, [field]: value } : e)));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await api.editResumeExperience(resumeId, {
+        experience: draft
+          .filter((e) => e.title.trim())
+          .map((e) => ({
+            title: e.title.trim(),
+            position: e.position.trim() || undefined,
+            start: e.start.trim() || null,
+            end: e.end.trim() || null,
+            description: e.description.split("\n").map((b) => b.trim()).filter(Boolean),
+          })),
+      });
+      onUpdated(res);
+      setEditing(false);
+    } catch (e: any) {
+      onError(e?.message ?? "Failed to save experience.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputBase: React.CSSProperties = {
+    padding: "7px 10px",
+    borderRadius: 8,
+    border: "1px solid var(--border-strong)",
+    background: "var(--bg-input)",
+    color: "var(--text-primary)",
+    fontSize: 13,
+    fontFamily: "inherit",
+    outline: "none",
+  };
+
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 14, padding: "16px 20px", background: "var(--bg-surface)", marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <span style={SECTION_LABEL}>Experience</span>
+        {!editing && (
+          <button onClick={startEditing} style={{ padding: "4px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}>
+            Edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {draft.map((entry, i) => (
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--bg-surface-deep)", borderRadius: 10, padding: "10px 12px", position: "relative" }}>
+              <button
+                onClick={() => setDraft((d) => d.filter((_, idx) => idx !== i))}
+                style={{ position: "absolute", top: 8, right: 8, padding: "2px 7px", borderRadius: 6, border: "1px solid var(--danger-bg-strong)", background: "transparent", color: "var(--danger-text)", cursor: "pointer", fontSize: 12 }}
+              >✕</button>
+              <input
+                style={{ ...inputBase, width: "calc(100% - 44px)" }}
+                value={entry.title}
+                onChange={(e) => updateField(i, "title", e.target.value)}
+                placeholder="Company / Organization"
+              />
+              <input
+                style={{ ...inputBase, width: "100%" }}
+                value={entry.position}
+                onChange={(e) => updateField(i, "position", e.target.value)}
+                placeholder="Position / Role"
+              />
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input
+                  type="month"
+                  value={entryDateToMonthInput(entry.start)}
+                  onChange={(e) => updateField(i, "start", monthInputToEntryDate(e.target.value))}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", colorScheme: "light", fontFamily: "inherit" }}
+                />
+                <span style={{ color: "var(--text-muted)", fontSize: 13 }}>–</span>
+                <input
+                  type="month"
+                  value={entryDateToMonthInput(entry.end)}
+                  onChange={(e) => updateField(i, "end", monthInputToEntryDate(e.target.value))}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", colorScheme: "light", fontFamily: "inherit" }}
+                />
+              </div>
+              <textarea
+                style={{ ...inputBase, width: "100%", minHeight: 72, resize: "vertical", boxSizing: "border-box" }}
+                value={entry.description}
+                onChange={(e) => updateField(i, "description", e.target.value)}
+                placeholder="Add bullet points (one per line)"
+              />
+            </div>
+          ))}
+          <button
+            onClick={() => setDraft((d) => [...d, { title: "", position: "", start: "", end: "", description: "" }])}
+            style={{ alignSelf: "flex-start", padding: "5px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, marginTop: 2 }}
+          >+ Add Entry</button>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button onClick={() => setEditing(false)} disabled={saving} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, opacity: saving ? 0.6 : 1 }}>Cancel</button>
+            <button onClick={handleSave} disabled={saving} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--btn-primary)", color: saving ? "var(--text-muted)" : "#fff", cursor: saving ? "not-allowed" : "pointer", fontSize: 13, opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {experience.length === 0 ? (
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>No experience entries. Click Edit to add.</span>
+          ) : (
+            experience.map((entry, i) => {
+              const dateRange = [entry.start, entry.end].filter(Boolean).join(" \u2013 ");
+              return (
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, color: "var(--text-primary)" }}>
+                    <span style={{ fontWeight: 500 }}>{entry.position ? `${entry.position} · ${entry.title}` : entry.title}</span>
+                    {dateRange && <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 16, whiteSpace: "nowrap" }}>{dateRange}</span>}
+                  </div>
+                  {(entry.description ?? []).length > 0 && (
+                    <ul style={{ margin: "2px 0 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 1 }}>
+                      {(entry.description ?? []).map((b, j) => (
+                        <li key={j} style={{ fontSize: 12, color: "var(--text-muted)" }}>{b}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Header Section ───────────────────────────────────────────────────────────
 
 type HeaderDraft = {
@@ -1969,6 +2132,17 @@ export default function ResumePage() {
         onUpdated={(res) => {
           setResume(res);
           showSuccess("Awards saved.");
+        }}
+        onError={(msg) => setError(msg)}
+      />
+
+      {/* Experience */}
+      <ExperienceSection
+        resumeId={resume.id!}
+        experience={resume.experience ?? []}
+        onUpdated={(res) => {
+          setResume(res);
+          showSuccess("Experience saved.");
         }}
         onError={(msg) => setError(msg)}
       />
