@@ -84,17 +84,13 @@ def test_update_portfolio(mock_engine, prs_db, pr2_updated):
     assert original_section_ids.issubset(
         updated_section_ids), "Some original sections are missing after the update"
 
-    # Ensure blocks are present and that NO conflicts were triggered
+    # Ensure blocks are present and have content
     for section in updated_model.sections:
         assert len(
             section.blocks) > 0, f"Section '{section.section_id}' has no blocks"
 
         for block in section.blocks:
             assert block.current_content is not None, f"Block '{block.tag}' is missing content"
-
-            # Explicitly check that no blocks are in conflict
-            assert block.in_conflict is False, f"Block '{block.tag}' in section '{section.section_id}' incorrectly entered conflict mode"
-            assert not block.conflict_content, f"Block '{block.tag}' has conflict content but shouldn't"
 
 
 def test_generate_portfolio_preserves_existing_project_metadata_when_ml_consent_off(mock_engine, monkeypatch):

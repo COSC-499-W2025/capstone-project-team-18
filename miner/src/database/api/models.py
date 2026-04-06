@@ -246,12 +246,9 @@ class BlockModel(SQLModel, table=True):
     # Metadata
     last_generated_at: Optional[datetime] = None
     last_user_edit_at: Optional[datetime] = None
-    in_conflict: bool = Field(default=False)
 
     # Content as JSON
     current_content: Any = Field(sa_column=Column(JSON))
-    conflict_content: Optional[Any] = Field(
-        sa_column=Column(JSON), default=None)
 
     section: Optional["PortfolioSectionModel"] = Relationship(
         back_populates="blocks")

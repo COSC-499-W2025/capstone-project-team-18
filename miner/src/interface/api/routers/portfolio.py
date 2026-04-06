@@ -6,8 +6,6 @@ from pydantic import BaseModel
 
 from src.services.portfolio.generate_update_portfolio_service import generate_and_save_portfolio, update_portfolio
 from src.services.portfolio.edit_portfolio_service import (
-    get_portfolio_conflicts,
-    resolve_block_accept_system,
     edit_portfolio_metadata,
 )
 from src.services.portfolio.project_card_service import edit_project_card, set_showcase
@@ -148,46 +146,6 @@ def edit_portfolio_block(
     session.commit()
     return updated_block
 
-
-@router.get("/{portfolio_id}/conflicts")
-def list_conflicts(portfolio_id: int, session: Session = Depends(get_session)):
-    """
-    Return all blocks currently in a conflict state so the UI can highlight them.
-
-    A block is in conflict when the system-generated version differs from a
-    user-saved version and the user has not yet resolved the discrepancy.
-
-    Path parameters:
-    - `portfolio_id`: Integer primary key of the portfolio.
-
-    Returns:
-    - 200: A list of blocks currently in conflict state.
-    """
-    return get_portfolio_conflicts(session, portfolio_id)
-
-
-@router.post("/{portfolio_id}/sections/{section_id}/blocks/{block_tag}/resolve-accept")
-def resolve_accept_system(
-    portfolio_id: int,
-    section_id: str,
-    block_tag: str,
-    session: Session = Depends(get_session)
-):
-    """
-    Resolve a conflict by accepting the system-generated version of a block.
-
-    Discards the user's saved version and replaces it with the current
-    system-generated content, clearing the conflict flag.
-
-    Path parameters:
-    - `portfolio_id`: Integer primary key of the portfolio.
-    - `section_id`: Tag identifier of the section containing the block.
-    - `block_tag`: Tag identifier of the block to resolve.
-
-    Returns:
-    - 200: The resolved block object with conflict cleared.
-    """
-    return resolve_block_accept_system(session, portfolio_id, section_id, block_tag)
 
 
 class EditPortfolioRequest(BaseModel):

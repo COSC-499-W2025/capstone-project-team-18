@@ -77,30 +77,18 @@ class PortfolioSection:
             if self.blocks_by_tag[tag].current_content is not None
         )
 
-    def tags_of_blocks_in_conflict(self) -> list[str]:
-        """
-        Return a list of indices for all blocks in this section that are currently in conflict.
-        """
-        return [tag for tag in self.block_order if self.blocks_by_tag[tag].is_in_conflict()]
-
-
 def merge_section(existing: PortfolioSection, generated: PortfolioSection) -> PortfolioSection:
     """
     Merge a newly generated section into an existing section.
-    Conflicts are recorded in the respective blocks.
+    System-generated content always overwrites existing content.
     """
 
-    # Step 1: Index existing blocks by tag
     existing_blocks = existing.blocks_by_tag
 
     for new_block_tag, new_block in generated.blocks_by_tag.items():
         if new_block_tag in existing_blocks:
-            existing_block = existing_blocks[new_block_tag]
-
-            existing_block.system_upload(new_block.current_content)
-
+            existing_blocks[new_block_tag].system_upload(new_block.current_content)
         else:
-            # Step 3: If this is a brand new block, just add it
             existing.add_block(new_block)
             logger.info(
                 f"New block '{new_block_tag}' added to section '{existing.title}'")

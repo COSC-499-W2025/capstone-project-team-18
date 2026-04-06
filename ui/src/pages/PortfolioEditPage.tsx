@@ -10,10 +10,8 @@ import { LanguageDonut } from "../components/LanguageDonut";
 // ---- Types ----------------------------------------------------------------
 
 type BlockMetadata = {
-  in_conflict: boolean;
   last_generated_at?: string;
   last_user_edit_at?: string;
-  conflict_content?: any;
 };
 
 type Block = {
@@ -1038,21 +1036,6 @@ export default function PortfolioEditPage() {
 
                     return (
                       <div key={blockTag}>
-                        {block.metadata?.in_conflict && (
-                          <div
-                            style={{
-                              color: "var(--danger-text)",
-                              fontSize: 12,
-                              marginBottom: 10,
-                              padding: "6px 10px",
-                              background: "var(--danger-bg)",
-                              borderRadius: 8,
-                            }}
-                          >
-                            Conflict detected — system has new content
-                          </div>
-                        )}
-
                         {isText && (
                           <TextBlockEditor
                             draft={edit.draft as string}

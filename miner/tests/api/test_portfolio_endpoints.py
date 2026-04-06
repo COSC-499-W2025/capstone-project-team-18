@@ -59,8 +59,7 @@ def _make_section(engine, portfolio_id: int, *, section_id="summary", title="Sum
         return s.id
 
 
-def _make_block(engine, section_db_id: int, *, tag="main_block", content="Hello world",
-                in_conflict=False, conflict_content=None) -> int:
+def _make_block(engine, section_db_id: int, *, tag="main_block", content="Hello world") -> int:
     """Insert a BlockModel with TextBlock content, return its id."""
     with Session(engine) as session:
         b = BlockModel(
@@ -68,8 +67,6 @@ def _make_block(engine, section_db_id: int, *, tag="main_block", content="Hello 
             tag=tag,
             content_type="Text",
             current_content=content,
-            in_conflict=in_conflict,
-            conflict_content=conflict_content,
         )
         session.add(b)
         session.commit()
@@ -703,70 +700,3 @@ class TestEditBlock:
         assert r.status_code == 404
 
 
-# ---------------------------------------------------------------------------
-# GET /portfolio/{id}/conflicts
-# ---------------------------------------------------------------------------
-
-class TestListConflicts:
-    def test_no_conflicts_returns_empty(self, client, blank_db):
-        pid = _make_portfolio(blank_db)
-        sid = _make_section(blank_db, pid)
-        _make_block(blank_db, sid, in_conflict=False)
-
-        r = client.get(f"/portfolio/{pid}/conflicts")
-        assert r.status_code == 200
-        assert r.json() == []
-
-    def test_conflict_block_is_listed(self, client, blank_db):
-        pid = _make_portfolio(blank_db)
-        sid = _make_section(blank_db, pid, section_id="summary")
-        _make_block(
-            blank_db, sid,
-            tag="conflict_block",
-            content="user version",
-            in_conflict=True,
-            conflict_content="system version",
-        )
-
-        r = client.get(f"/portfolio/{pid}/conflicts")
-        assert r.status_code == 200
-        conflicts = r.json()
-        assert len(conflicts) == 1
-        assert conflicts[0]["block_tag"] == "conflict_block"
-        assert conflicts[0]["section_tag"] == "summary"
-        assert conflicts[0]["current_content"] == "user version"
-        assert conflicts[0]["conflicting_content"] == "system version"
-
-
-# ---------------------------------------------------------------------------
-# POST /portfolio/{id}/sections/{section_id}/blocks/{block_tag}/resolve-accept
-# ---------------------------------------------------------------------------
-
-class TestResolveConflict:
-    def test_resolve_accept_system_clears_conflict(self, client, blank_db):
-        pid = _make_portfolio(blank_db)
-        sid = _make_section(blank_db, pid, section_id="summary")
-        _make_block(
-            blank_db, sid,
-            tag="main_block",
-            content="user version",
-            in_conflict=True,
-            conflict_content="system version",
-        )
-
-        r = client.post(
-            f"/portfolio/{pid}/sections/summary/blocks/main_block/resolve-accept"
-        )
-        assert r.status_code == 200
-        result = r.json()
-        assert result["in_conflict"] is False
-        assert result["current_content"] == "system version"
-
-    def test_resolve_nonexistent_block_returns_404(self, client, blank_db):
-        pid = _make_portfolio(blank_db)
-        _make_section(blank_db, pid, section_id="summary")
-
-        r = client.post(
-            f"/portfolio/{pid}/sections/summary/blocks/ghost/resolve-accept"
-        )
-        assert r.status_code == 404

@@ -167,10 +167,7 @@ def serialize_block(block: Block[BlockContent]) -> BlockModel:
         content_type=block.current_content.content_type if block.current_content else "Unknown",
         last_generated_at=block.metadata.last_generated_at,
         last_user_edit_at=block.metadata.last_user_edit_at,
-        in_conflict=block.metadata.in_conflict,
         current_content=block.current_content.raw_value() if block.current_content else None,
-        conflict_content=block.metadata.conflict_content.raw_value(
-        ) if block.metadata.conflict_content else None
     )
 
 
